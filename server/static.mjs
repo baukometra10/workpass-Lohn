@@ -5,7 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { securityHeaders, corsHeaders } from "./security/http.mjs";
+import { uiSecurityHeaders, corsHeaders } from "./security/http.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -72,7 +72,7 @@ export function tryServeStatic(req, res, urlPath) {
   const headers = {
     "Content-Type": type,
     "Cache-Control": ext === ".html" ? "no-cache" : "public, max-age=300",
-    ...securityHeaders(),
+    ...uiSecurityHeaders(),
     ...corsHeaders(req),
   };
 

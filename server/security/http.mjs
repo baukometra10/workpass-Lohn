@@ -8,6 +8,7 @@ import { PLATFORM_ORIGINS, isAllowedOrigin, PLATFORM_DOMAIN } from "../platform-
 
 const MAX_BODY = Number(process.env.WORKPASS_MAX_BODY_BYTES || 1_500_000); // ~1.5 MB
 
+/** Strict CSP for JSON/API responses (no HTML assets). */
 export function securityHeaders(extra = {}) {
   return {
     "X-Content-Type-Options": "nosniff",
@@ -16,6 +17,37 @@ export function securityHeaders(extra = {}) {
     "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
     "Cache-Control": "no-store",
     "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+    ...extra,
+  };
+}
+
+/**
+ * CSP for Accounting UI (HTML/CSS/JS).
+ * Must NOT use default-src 'none' – that blanks the page in the browser
+ * even when the server returns 200.
+ */
+export function uiSecurityHeaders(extra = {}) {
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' https://cdnjs.cloudflare.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "img-src 'self' data: blob:",
+    "connect-src 'self'",
+    "worker-src 'self' blob:",
+    "child-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join("; ");
+
+  return {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+    "Content-Security-Policy": csp,
     ...extra,
   };
 }
