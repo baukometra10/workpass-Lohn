@@ -30,14 +30,27 @@ import { clientIp } from "./security/rate-limit.mjs";
 import { createBackup, listBackups, startBackupScheduler } from "./backup/backup.mjs";
 import { PLATFORM_DOMAIN, PLATFORM_ORIGINS, platformWebhookUrl } from "./platform-config.mjs";
 import { tryServeStatic } from "./static.mjs";
+import { logDataPaths } from "./paths.mjs";
 
 const PORT = Number(process.env.WORKPASS_API_PORT || process.env.PORT || 8787);
 const HOST = process.env.WORKPASS_API_HOST || (process.env.PORT ? "0.0.0.0" : "127.0.0.1");
 const FORCE_HTTPS = process.env.WORKPASS_FORCE_HTTPS === "1" || process.env.NODE_ENV === "production";
 const SERVE_UI = process.env.WORKPASS_SERVE_UI !== "0";
 
-const posture = assertProductionSecurity();
-initDb();
+console.log(`[boot] node=${process.version} PORT=${PORT} HOST=${HOST}`);
+console.log(`[boot] WORKPASS_API_KEY set=${Boolean(process.env.WORKPASS_API_KEY && process.env.WORKPASS_API_KEY !== "workpass-dev-key")}`);
+console.log(`[boot] WORKPASS_STRICT=${process.env.WORKPASS_STRICT || ""} NODE_ENV=${process.env.NODE_ENV || ""}`);
+
+let posture;
+try {
+  posture = assertProductionSecurity();
+  logDataPaths();
+  initDb();
+} catch (err) {
+  console.error("[boot] FATAL:", err?.message || err);
+  process.exit(1);
+}
+
 const backupSched = startBackupScheduler();
 
 function sendJson(res, status, body, req) {
@@ -342,4 +355,9 @@ server.listen(PORT, HOST, () => {
   if (backupSched.ok) console.log(`Backup scheduler: every ${backupSched.intervalHours}h`);
   else console.log("Backup scheduler: off – set WORKPASS_BACKUP_INTERVAL_HOURS=24");
   console.log("Auth: X-WorkPass-Key (timing-safe) · Tenant: X-WorkPass-Company-Id");
+});
+
+server.on("error", (err) => {
+  console.error("[boot] listen error:", err);
+  process.exit(1);
 });

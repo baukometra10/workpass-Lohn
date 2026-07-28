@@ -31,13 +31,18 @@ import { fileURLToPath } from "url";
 import { getSqlitePath, getSqlite, closeSqlite } from "../db/sqlite.mjs";
 import { getDataKey } from "../security/crypto.mjs";
 import { audit } from "../security/audit.mjs";
+import { resolveBackupDir } from "../paths.mjs";
 
 const MAGIC = "WPBK1";
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const defaultBackupDir = path.join(rootDir, "data", "backups");
 
 export function getBackupDir() {
-  return process.env.WORKPASS_BACKUP_DIR || defaultBackupDir;
+  try {
+    return resolveBackupDir();
+  } catch {
+    return process.env.WORKPASS_BACKUP_DIR || defaultBackupDir;
+  }
 }
 
 function backupKey() {

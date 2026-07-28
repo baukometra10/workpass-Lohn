@@ -5,6 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync, existsSync, readFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { resolveSqlitePath } from "../paths.mjs";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dataDir = path.join(rootDir, "data");
@@ -14,7 +15,7 @@ let db = null;
 let dbPathUsed = "";
 
 export function getSqlitePath() {
-  return process.env.WORKPASS_SQLITE_PATH || defaultDbPath;
+  return resolveSqlitePath();
 }
 
 export function openSqlite(dbPath = getSqlitePath()) {

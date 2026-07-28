@@ -9,7 +9,6 @@ import {
   saveInvoiceJob as repoSaveInvoice,
   loadInvoiceJob as repoLoadInvoice,
   listInvoiceJobs as repoListInvoice,
-  initDb,
 } from "./db/repository.mjs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -18,7 +17,7 @@ const dataDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "data
 const payrollDir = path.join(dataDir, "payroll");
 const invoiceDir = path.join(dataDir, "invoices");
 
-initDb();
+/** Persistence is opened via initDb() in server/index.mjs */
 
 export function savePayrollJob(job) {
   return repoSavePayroll(job);
