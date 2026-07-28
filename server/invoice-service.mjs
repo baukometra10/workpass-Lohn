@@ -1,0 +1,166 @@
+/**
+ * Platform invoice ingest → accounting store
+ * Isolation: company.id + invoice number → id = companyId::number
+ */
+import { loadInvoiceJob, saveInvoiceJob } from "./store.mjs";
+import { buildEmployeeDelivery, notifyPlatform } from "./notify.mjs";
+import { enqueueDelivery } from "./delivery-queue.mjs";
+import { ensureCompanyFromPayload } from "./company-service.mjs";
+import {
+  extractCompany,
+  requireCompanyId,
+  invoiceDocumentId,
+  assertSameTenant,
+  normalizeCompanyId,
+} from "./tenant.mjs";
+
+function normalizeInvoice(payload, company) {
+  const number = String(payload.number || payload.invoiceNumber || "").trim();
+  const items = Array.isArray(payload.items || payload.lines)
+    ? (payload.items || payload.lines).map((it) => ({
+      description: String(it.description || it.label || it.name || ""),
+      quantity: Number(it.quantity ?? it.qty ?? 1) || 1,
+      unitPrice: Number(it.unitPrice ?? it.price ?? it.amount ?? 0) || 0,
+      unit: String(it.unit || "Stk"),
+    }))
+    : [];
+
+  const taxRate = Number(payload.taxRate ?? 19) || 0;
+  const net = items.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
+  const tax = Math.round(net * (taxRate / 100) * 100) / 100;
+  const gross = Math.round((net + tax) * 100) / 100;
+
+  const sellerFromCompany = [
+    company.name,
+    company.address || [company.street, [company.zip, company.city].filter(Boolean).join(" ")].filter(Boolean).join("\n"),
+  ].filter(Boolean).join("\n");
+
+  return {
+    kind: "platform.invoice.v1",
+    number,
+    invoiceDate: String(payload.invoiceDate || payload.date || "").trim(),
+    serviceDate: String(payload.serviceDate || payload.invoiceDate || payload.date || "").trim(),
+    dueDate: String(payload.dueDate || "").trim(),
+    seller: String(payload.seller || sellerFromCompany || "").trim(),
+    customer: String(payload.customer || payload.buyer || "").trim(),
+    taxRate,
+    kleinunternehmer: Boolean(payload.kleinunternehmer),
+    reverseCharge: Boolean(payload.reverseCharge),
+    note: String(payload.note || "").trim(),
+    taxNumber: String(payload.taxNumber || company.taxNumber || "").trim(),
+    vatId: String(payload.vatId || company.vatId || "").trim(),
+    company: {
+      id: company.id,
+      name: company.name,
+      taxNumber: company.taxNumber || "",
+      vatId: company.vatId || "",
+    },
+    items,
+    totals: {
+      net: Math.round(net * 100) / 100,
+      tax,
+      gross,
+    },
+  };
+}
+
+export function ingestInvoice(payload, options = {}) {
+  if (!payload || typeof payload !== "object") {
+    return { ok: false, errors: ["Invoice-Nutzlast fehlt"], job: null };
+  }
+
+  const companyCheck = requireCompanyId(payload);
+  if (!companyCheck.ok) {
+    return { ok: false, errors: [companyCheck.error], job: null };
+  }
+  const scopeCheck = assertSameTenant(options.tenantScope, companyCheck.company.id, "Invoice-Payload");
+  if (!scopeCheck.ok) {
+    return { ok: false, errors: [scopeCheck.error], job: null };
+  }
+
+  ensureCompanyFromPayload(payload);
+  const company = extractCompany(payload);
+  const draft = normalizeInvoice(payload, company);
+  const errors = [];
+  if (!draft.number) errors.push("Rechnungsnummer fehlt");
+  if (!draft.seller) errors.push("Verkäufer (seller / company.name) fehlt");
+  if (!draft.customer) errors.push("Kunde (customer) fehlt");
+  if (!draft.items.length) errors.push("Positionen (items) fehlen");
+
+  const id = invoiceDocumentId(company.id, draft.number);
+  const now = new Date().toISOString();
+  const prev = loadInvoiceJob(id);
+  const job = {
+    id,
+    kind: "platform.invoice.job.v1",
+    status: errors.length ? "error" : "received",
+    createdAt: prev?.createdAt || now,
+    updatedAt: now,
+    company: {
+      id: company.id,
+      name: company.name || draft.company.name,
+    },
+    inbound: payload,
+    draft,
+    hubEntry: {
+      number: draft.number,
+      buyer: draft.customer.split("\n")[0],
+      total: draft.totals.gross.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      date: draft.invoiceDate,
+      savedAt: now,
+      companyId: company.id,
+      draft: {
+        documentType: "invoice",
+        invoiceNumber: draft.number,
+        invoiceDate: draft.invoiceDate,
+        serviceDate: draft.serviceDate,
+        dueDate: draft.dueDate,
+        seller: draft.seller,
+        customer: draft.customer,
+        taxRate: String(draft.taxRate),
+        kleinunternehmer: draft.kleinunternehmer,
+        reverseCharge: draft.reverseCharge,
+        note: draft.note,
+        taxNumber: draft.taxNumber,
+        vatId: draft.vatId,
+        companyId: company.id,
+        items: draft.items.map((it) => ({
+          description: it.description,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice,
+        })),
+      },
+    },
+    errors,
+  };
+
+  saveInvoiceJob(job);
+  return { ok: errors.length === 0, errors, job };
+}
+
+export async function releaseInvoiceJob(id, options = {}) {
+  const job = loadInvoiceJob(id);
+  if (!job) return { ok: false, error: "Rechnung nicht gefunden", job: null };
+
+  const companyId = normalizeCompanyId(job.company?.id || job.draft?.company?.id || "");
+  const scopeCheck = assertSameTenant(options.tenantScope, companyId, "Rechnung");
+  if (!scopeCheck.ok) return { ok: false, error: scopeCheck.error, job: null };
+
+  if (job.status === "error") return { ok: false, error: "Rechnung hat Fehler", job };
+  job.status = "released";
+  job.releasedAt = new Date().toISOString();
+  job.updatedAt = job.releasedAt;
+  saveInvoiceJob(job);
+
+  const delivery = buildEmployeeDelivery("invoice", job);
+  enqueueDelivery(delivery);
+  const platformNotify = await notifyPlatform({ event: "invoice.released", delivery });
+
+  return {
+    ok: true,
+    job,
+    delivery,
+    platformNotify,
+    message: "Freigegeben. Plattform stellt die Rechnung zu.",
+  };
+}

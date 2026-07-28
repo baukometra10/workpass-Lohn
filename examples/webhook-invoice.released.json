@@ -1,0 +1,41 @@
+{
+  "kind": "platform.accounting.event.v1",
+  "event": "invoice.released",
+  "occurredAt": "2026-07-28T10:05:00.000Z",
+  "source": "workpass-accounting-bridge",
+  "delivery": {
+    "kind": "platform.employee.delivery.v1",
+    "type": "invoice",
+    "deliveryId": "inv:muster-gmbh::RE-2025-0042",
+    "invoiceId": "muster-gmbh::RE-2025-0042",
+    "status": "ready_for_employee",
+    "releasedAt": "2026-07-28T10:05:00.000Z",
+    "company": {
+      "id": "muster-gmbh",
+      "name": "Muster GmbH"
+    },
+    "customer": "Kunde AG\nKundenweg 3\n10115 Berlin",
+    "number": "RE-2025-0042",
+    "summary": {
+      "gross": 952,
+      "net": 800,
+      "tax": 152,
+      "currency": "EUR"
+    },
+    "document": {
+      "kind": "platform.invoice.v1",
+      "number": "RE-2025-0042",
+      "company": {
+        "id": "muster-gmbh",
+        "name": "Muster GmbH"
+      },
+      "totals": {
+        "net": 800,
+        "tax": 152,
+        "gross": 952
+      }
+    },
+    "appRoute": "/invoices/muster-gmbh%3A%3ARE-2025-0042",
+    "title": "Rechnung RE-2025-0042"
+  }
+}

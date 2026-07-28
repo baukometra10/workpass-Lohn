@@ -1,0 +1,296 @@
+/* ── Lohnsteuerbescheinigung (Jahresbescheinigung / ELSTER-Stil) ── */
+
+.annual-tax-sheet {
+  width: 210mm;
+  max-width: 100%;
+  margin: 0 auto;
+  background: #fff;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 7pt;
+  line-height: 1.2;
+  box-sizing: border-box;
+}
+
+/* ── ELSTER offizieller Kopf ── */
+
+.lstb-official-header {
+  display: grid;
+  grid-template-columns: 28% 44% 28%;
+  gap: 2mm;
+  margin-bottom: 3mm;
+  padding-bottom: 2mm;
+  border-bottom: 1px solid #000;
+}
+
+.lstb-header-left,
+.lstb-header-center,
+.lstb-header-right {
+  font-size: 6.5pt;
+}
+
+.lstb-finanzamt {
+  margin: 0 0 1mm;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 6pt;
+  color: #333;
+}
+
+.lstb-finanzamt-val {
+  margin: 0;
+  min-height: 8mm;
+  border: 0.5px solid #000;
+  padding: 1.5mm;
+  font-size: 6.8pt;
+}
+
+.lstb-header-center {
+  text-align: center;
+}
+
+.lstb-header-center h2 {
+  margin: 0 0 1mm;
+  font-size: 10pt;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.lstb-header-center p {
+  margin: 0 0 0.5mm;
+  font-size: 7pt;
+}
+
+.lstb-sub {
+  font-size: 6pt !important;
+  color: #000;
+}
+
+.lstb-header-right {
+  text-align: right;
+}
+
+.lstb-header-right p {
+  margin: 0 0 1mm;
+  font-size: 6pt;
+  font-weight: 600;
+}
+
+.lstb-kmid {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 6.5pt !important;
+  font-weight: 700 !important;
+  word-break: break-all;
+}
+
+.lstb-cert-nr {
+  margin-top: 2mm !important;
+  font-size: 6pt !important;
+}
+
+.lstb-title-block-secondary {
+  text-align: center;
+  margin-bottom: 3mm;
+  padding: 1mm 0;
+  border-bottom: 0.5px solid #999;
+}
+
+.lstb-title-block-secondary p {
+  margin: 0;
+  font-size: 6.2pt;
+  color: #000;
+}
+
+.lstb-rows-table .lstb-empty td.lstb-euro,
+.lstb-rows-table .lstb-empty td.lstb-cent {
+  color: #999;
+}
+
+.lstb-rows-table .lstb-reserved .lstb-desc {
+  color: #666;
+  font-style: italic;
+}
+
+.lstb-document {
+  padding: 6mm 8mm 8mm;
+  border: 1px solid #000;
+  box-shadow: inset 0 0 0 0.5px #000;
+}
+
+.annual-tax-sheet {
+  font-size: 6.8pt;
+}
+
+
+.lstb-title-block {
+  text-align: center;
+  margin-bottom: 4mm;
+  padding-bottom: 2mm;
+  border-bottom: 0.5px solid #000;
+}
+
+.lstb-title-block h2 {
+  margin: 0 0 1mm;
+  font-size: 9pt;
+  font-weight: 700;
+  text-transform: none;
+}
+
+.lstb-title-block p {
+  margin: 0;
+  font-size: 7pt;
+}
+
+.lstb-grid {
+  display: grid;
+  grid-template-columns: 48% 52%;
+  gap: 0;
+  border: 0.5px solid #000;
+}
+
+.lstb-left {
+  border-right: 0.5px solid #000;
+  padding: 3mm;
+}
+
+.lstb-right {
+  padding: 0;
+}
+
+.lstb-meta-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 3mm;
+}
+
+.lstb-meta-table td {
+  border: 0.5px solid #000;
+  padding: 1.5px 3px;
+  vertical-align: top;
+  font-size: 6.5pt;
+}
+
+.lstb-meta-table .lstb-lbl {
+  width: 38%;
+  background: #fff;
+  font-weight: 600;
+}
+
+.lstb-address-block {
+  border: 0.5px solid #000;
+  min-height: 28mm;
+  margin-bottom: 3mm;
+}
+
+.lstb-address-block .lstb-block-h {
+  border-bottom: 0.5px solid #000;
+  padding: 1px 3px;
+  font-weight: 700;
+  font-size: 6.5pt;
+  background: #fff;
+}
+
+.lstb-address-block pre {
+  margin: 0;
+  padding: 2mm 3mm;
+  font-family: inherit;
+  font-size: 7pt;
+  white-space: pre-wrap;
+}
+
+.lstb-rows-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.lstb-rows-table th,
+.lstb-rows-table td {
+  border: 0.5px solid #000;
+  padding: 1px 3px;
+  font-size: 6.2pt;
+  vertical-align: top;
+}
+
+.lstb-rows-table th {
+  background: #fff;
+  font-weight: 700;
+  text-align: center;
+}
+
+.lstb-rows-table .lstb-nr {
+  width: 7%;
+  text-align: center;
+  font-weight: 700;
+}
+
+.lstb-rows-table .lstb-desc {
+  width: 58%;
+}
+
+.lstb-rows-table .lstb-euro,
+.lstb-rows-table .lstb-cent {
+  width: 17%;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.lstb-rows-table .lstb-text td.lstb-euro {
+  text-align: left;
+  font-weight: 400;
+}
+
+.lstb-footer-note {
+  margin-top: 3mm;
+  padding-top: 2mm;
+  border-top: 0.5px solid #000;
+  font-size: 5.8pt;
+  color: #000;
+}
+
+.lstb-months-summary {
+  margin-top: 2mm;
+  font-size: 6pt;
+}
+
+.lstb-warning {
+  margin: 2mm 0 0;
+  padding: 2mm;
+  border: 1px dashed #b45309;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 6.5pt;
+}
+
+body.annual-mode .preview-panel #payrollSheet,
+body.annual-mode .preview-panel .invoice-top,
+body.annual-mode .preview-panel .invoice-meta,
+body.annual-mode .preview-panel .invoice-addresses,
+body.annual-mode .preview-panel .invoice-items,
+body.annual-mode .preview-panel .invoice-summary,
+body.annual-mode .preview-panel .invoice-note,
+body.annual-mode .preview-panel .invoice-signature,
+body.annual-mode .preview-panel .invoice-bank,
+body.annual-mode .preview-panel .invoice-legal {
+  display: none !important;
+}
+
+body.annual-mode #annualTaxSheet {
+  display: block !important;
+}
+
+body.payroll-mode:not(.annual-mode) #annualTaxSheet {
+  display: none !important;
+}
+
+@media print {
+  body.print-annual-only #annualTaxSheet {
+    display: block !important;
+    width: 210mm !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+
+  body.print-annual-only #payrollSheet {
+    display: none !important;
+  }
+}

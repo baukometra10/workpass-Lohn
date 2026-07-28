@@ -1,0 +1,65 @@
+{
+  "kind": "platform.payroll.batch.v1",
+  "period": "2025-07",
+  "company": {
+    "id": "muster-gmbh",
+    "name": "Muster GmbH",
+    "street": "Musterstraße 1",
+    "zip": "80331",
+    "city": "München",
+    "taxNumber": "143/123/45678",
+    "vatId": "DE123456789",
+    "datevClientNo": "10001",
+    "datevConsultantNo": "12345"
+  },
+  "note": "Monatsbatch – alle Mitarbeiter",
+  "employees": [
+    {
+      "employee": {
+        "id": "02006",
+        "name": "Mustermann Max",
+        "street": "Beispielweg 5",
+        "zip": "80331",
+        "city": "München",
+        "taxId": "00123456789",
+        "insuranceNo": "65170839J008",
+        "birthDate": "1985-04-12",
+        "entryDate": "2018-06-01",
+        "taxClass": "I",
+        "churchTaxRate": "9",
+        "healthFund": "AOK Bayern",
+        "healthPercent": "14.9"
+      },
+      "attendance": { "days": 21, "hours": 168 },
+      "wageItems": [
+        { "code": "840", "label": "Fahrgeld p. v. 25%", "amount": 120, "taxFlag": "P", "svFlag": "P" },
+        { "code": "2000", "label": "Gehalt", "amount": 3500, "taxFlag": "L", "svFlag": "L" }
+      ],
+      "bank": {
+        "name": "Stadtsparkasse München",
+        "iban": "DE03700500000000012345"
+      }
+    },
+    {
+      "employee": {
+        "id": "02007",
+        "name": "Beispiel Anna",
+        "street": "Nebenstraße 2",
+        "zip": "80331",
+        "city": "München",
+        "taxClass": "I",
+        "churchTaxRate": "0",
+        "healthFund": "TK",
+        "healthPercent": "14.6"
+      },
+      "attendance": { "days": 20, "hours": 160 },
+      "wageItems": [
+        { "code": "2000", "label": "Gehalt", "amount": 2800, "taxFlag": "L", "svFlag": "L" }
+      ],
+      "bank": {
+        "name": "Testbank",
+        "iban": "DE89370400440532013000"
+      }
+    }
+  ]
+}

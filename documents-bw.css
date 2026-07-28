@@ -1,0 +1,247 @@
+/**
+ * Alle Dokumente: ausschließlich Schwarz auf Weiß
+ * (Rechnung, Lohnabrechnung alle Layouts, Lohnsteuerbescheinigung, PDF/Druck)
+ */
+
+.payroll-sheet,
+.annual-tax-sheet,
+#invoicePreview > .invoice-top,
+#invoicePreview > .invoice-meta,
+#invoicePreview > .addresses,
+#invoicePreview > .preview-items,
+#invoicePreview > .totals,
+#invoicePreview > .invoice-bank,
+#invoicePreview > .note-box,
+#invoicePreview > .wp-sig-layer,
+.pdf-export-clone {
+  --doc-ink: #000;
+  --doc-paper: #fff;
+  --doc-line: #000;
+  background: var(--doc-paper) !important;
+  color: var(--doc-ink) !important;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+/* ── Rechnung ── */
+#invoicePreview .invoice-top h2,
+#invoicePreview .dates strong,
+#invoicePreview .grand-total,
+#invoicePreview .totals strong {
+  color: #000 !important;
+}
+
+#invoicePreview .dates span,
+#invoicePreview .invoice-meta,
+#invoicePreview .signature-title {
+  color: #000 !important;
+}
+
+#invoicePreview .status-badge,
+#invoicePreview .status-warning,
+#invoicePreview .status-overdue {
+  background: #fff !important;
+  color: #000 !important;
+  border: 1px solid #000 !important;
+  box-shadow: none !important;
+}
+
+#invoicePreview .preview-items th {
+  color: #000 !important;
+  border-bottom: 1px solid #000 !important;
+  background: #fff !important;
+}
+
+#invoicePreview .preview-items td {
+  border-bottom: 1px solid #000 !important;
+}
+
+#invoicePreview .grand-total {
+  border-top: 2px solid #000 !important;
+}
+
+#invoicePreview .note-box,
+#invoicePreview .invoice-bank {
+  border: 1px solid #000 !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+}
+
+#invoicePreview .signature-line {
+  border-top-color: #000 !important;
+}
+
+/* ── Lohn: alle Layouts ── */
+.payroll-sheet,
+.payroll-sheet .payroll-document,
+.payroll-sheet .tpl-classic,
+.payroll-sheet .ag-sheet-body {
+  background: #fff !important;
+  color: #000 !important;
+  box-shadow: none !important;
+}
+
+.payroll-sheet .ag-title-row,
+.payroll-sheet .ag-header-block,
+.payroll-sheet .ag-master .ag-lbl,
+.payroll-sheet .ag-master .ag-val,
+.payroll-sheet .ag-box-h,
+.payroll-sheet .ag-addr-label,
+.payroll-sheet .ag-earnings thead th,
+.payroll-sheet .ag-taxsv-matrix thead th,
+.payroll-sheet .ag-verdienst thead th,
+.payroll-sheet .ag-netto-table .ag-section-h td,
+.payroll-sheet .ag-payout-final td,
+.payroll-sheet .ag-cal thead th,
+.payroll-sheet .ag-datev-meta-table td:nth-child(odd),
+.payroll-sheet .ag-datev-side-totals {
+  background: #fff !important;
+  color: #000 !important;
+}
+
+.payroll-sheet .ag-title,
+.payroll-sheet .ag-month,
+.payroll-sheet .ag-run,
+.payroll-sheet .ag-brand,
+.payroll-sheet .ag-dv-logo,
+.payroll-sheet .ag-emp-meta,
+.payroll-sheet .ag-emp-name,
+.payroll-sheet .ag-emp-addr,
+.payroll-sheet .ag-legend,
+.payroll-sheet .ag-legend-legal,
+.payroll-sheet .ag-legend-company,
+.payroll-sheet .ag-employer,
+.payroll-sheet .ag-stats .ag-lbl,
+.payroll-sheet .ag-addr-empty {
+  color: #000 !important;
+}
+
+.payroll-sheet .ag-header-block,
+.payroll-sheet .ag-mid-grid,
+.payroll-sheet .ag-master td,
+.payroll-sheet .ag-master th,
+.payroll-sheet .ag-earnings th,
+.payroll-sheet .ag-earnings td,
+.payroll-sheet .ag-taxsv-matrix th,
+.payroll-sheet .ag-taxsv-matrix td,
+.payroll-sheet .ag-verdienst th,
+.payroll-sheet .ag-verdienst td,
+.payroll-sheet .ag-netto-table td,
+.payroll-sheet .ag-payout-table td,
+.payroll-sheet .ag-stats td,
+.payroll-sheet .ag-cal td,
+.payroll-sheet .ag-cal th,
+.payroll-sheet .ag-datev-meta-table td,
+.payroll-sheet .ag-datev-costs-table td,
+.payroll-sheet .ag-datev-side-totals,
+.payroll-sheet .ag-dv-sum-box {
+  border-color: #000 !important;
+}
+
+.payroll-sheet .ag-title-row {
+  background: #fff !important;
+  border-bottom: 0.5px solid #000 !important;
+}
+
+.payroll-sheet .ag-employer {
+  border-left: none !important;
+  border-bottom: 0.5px solid #000 !important;
+}
+
+.payroll-sheet .ag-payout-final td {
+  border-top: 1px solid #000 !important;
+}
+
+.payroll-sheet .ag-dv-sum-box {
+  border-bottom-color: #000 !important;
+}
+
+.payroll-sheet .pd-company-footer::before {
+  color: #000 !important;
+}
+
+.payroll-sheet .ag-brand::after {
+  color: #000 !important;
+}
+
+.payroll-sheet.layout-modern .ag-title-row,
+.payroll-sheet.layout-formal .ag-title-row {
+  background: #fff !important;
+  border-bottom: 0.5px solid #000 !important;
+}
+
+.payroll-sheet.layout-formal .ag-title,
+.payroll-sheet.layout-formal .ag-month,
+.payroll-sheet.layout-formal .ag-run {
+  color: #000 !important;
+}
+
+.payroll-sheet.layout-modern .ag-payout-final td,
+.payroll-sheet.layout-formal .ag-payout-final td {
+  background: #fff !important;
+  color: #000 !important;
+  border-top: 1px solid #000 !important;
+}
+
+body.payroll-mode .payroll-sheet.layout-agenda {
+  box-shadow: none !important;
+  border: 1px solid #000;
+}
+
+/* ── Lohnsteuerbescheinigung ── */
+.annual-tax-sheet,
+.annual-tax-sheet .lstb-document {
+  background: #fff !important;
+  color: #000 !important;
+  box-shadow: none !important;
+}
+
+.annual-tax-sheet .lstb-meta-table .lstb-lbl,
+.annual-tax-sheet .lstb-rows-table th,
+.annual-tax-sheet .lstb-address-block .lstb-block-h,
+.annual-tax-sheet .lstb-title-block-secondary p,
+.annual-tax-sheet .lstb-sub,
+.annual-tax-sheet .lstb-finanzamt,
+.annual-tax-sheet .lstb-rows-table .lstb-reserved .lstb-desc,
+.annual-tax-sheet .lstb-rows-table .lstb-empty td {
+  background: #fff !important;
+  color: #000 !important;
+}
+
+.annual-tax-sheet .lstb-meta-table td,
+.annual-tax-sheet .lstb-rows-table td,
+.annual-tax-sheet .lstb-rows-table th,
+.annual-tax-sheet .lstb-address-block,
+.annual-tax-sheet .lstb-grid,
+.annual-tax-sheet .lstb-left,
+.annual-tax-sheet .lstb-finanzamt-val,
+.annual-tax-sheet .lstb-official-header,
+.annual-tax-sheet .lstb-title-block,
+.annual-tax-sheet .lstb-footer-note {
+  border-color: #000 !important;
+  color: #000 !important;
+}
+
+.annual-tax-sheet .lstb-warning {
+  background: #fff !important;
+  color: #000 !important;
+  border: 1px dashed #000 !important;
+}
+
+.annual-tax-sheet .lstb-header-center h2,
+.annual-tax-sheet .lstb-kmid {
+  color: #000 !important;
+}
+
+@media print {
+  .payroll-sheet,
+  .annual-tax-sheet,
+  #invoicePreview {
+    box-shadow: none !important;
+  }
+
+  * {
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+}

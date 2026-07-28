@@ -1,0 +1,117 @@
+/**
+ * DATEV LOHN17 – eigenständiges Blatt (Vorschau, Druck, PDF)
+ * Nur dieses Element wird gedruckt/exportiert.
+ */
+
+.datev-sheet-host {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 24px;
+  background: transparent;
+}
+
+.datev-sheet-host.hidden {
+  display: none !important;
+}
+
+.datev-sheet-a4 {
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  flex-shrink: 0;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.datev-sheet-bg {
+  position: absolute;
+  inset: 0;
+  width: 210mm;
+  height: 297mm;
+  object-fit: fill;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+.datev-sheet-values {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  font-family: "Courier New", Courier, "Liberation Mono", monospace;
+  font-size: 6pt;
+  line-height: 1;
+  color: #000;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.datev-sheet-values .dsv {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.datev-sheet-values .dsv-right {
+  text-align: right;
+}
+
+.datev-sheet-values .dsv-center {
+  text-align: center;
+}
+
+.datev-sheet-values .dsv-wrap {
+  white-space: pre-wrap;
+  line-height: 1.2;
+}
+
+.datev-sheet-values .dsv-bold {
+  font-weight: 700;
+}
+
+.datev-sheet-values .dsv-lg {
+  font-size: 6.8pt;
+}
+
+body.payroll-mode:not(.annual-mode) .preview-tools {
+  display: none !important;
+}
+
+body.payroll-mode .datev-sheet-host {
+  padding: 0;
+}
+
+body.payroll-mode .datev-sheet-a4 {
+  box-shadow: none;
+}
+
+@media print {
+  body.print-payroll-only:not(.print-annual-only) #invoicePreview > :not(#datevSheetHost) {
+    display: none !important;
+  }
+
+  body.print-payroll-only:not(.print-annual-only) #datevSheetHost,
+  body.print-payroll-only:not(.print-annual-only) #datevSheetHost.hidden {
+    display: block !important;
+    visibility: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  body.print-payroll-only:not(.print-annual-only) #datevSheetA4 {
+    width: 210mm !important;
+    height: 297mm !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  body.print-payroll-only:not(.print-annual-only) .datev-sheet-bg {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

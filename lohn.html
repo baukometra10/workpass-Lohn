@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WorkPass Lohn – Suppix AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="workpass-theme.css?v=3" />
+    <link rel="stylesheet" href="lohn.css?v=37" />
+  </head>
+  <body class="auth-locked">
+    <div id="authGate" class="auth-gate" aria-hidden="false">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <div class="auth-mark" aria-hidden="true"><span></span></div>
+          <div>
+            <strong>SUPPIX AI</strong>
+            <small>WorkPass Lohn · Buchhaltung</small>
+          </div>
+        </div>
+        <div class="auth-meta">
+          <div><span>Produkt</span>WorkPass Lohn</div>
+          <div><span>Modus</span>Standalone / Empfang</div>
+        </div>
+        <h1 id="authTitle">WorkPass Lohn entsperren</h1>
+        <p class="auth-hint" id="authHint">Geschützter Buchhaltungszugang · Suppix AI</p>
+        <form id="authForm">
+          <label for="authPin">PIN</label>
+          <input id="authPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" placeholder="••••" required />
+          <div id="authConfirmWrap" hidden>
+            <label for="authPinConfirm">PIN bestätigen</label>
+            <input id="authPinConfirm" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8" placeholder="••••" />
+          </div>
+          <p class="auth-error" id="authError" role="alert"></p>
+          <button type="submit" class="auth-submit" id="authSubmit">Anmelden</button>
+        </form>
+        <p class="auth-foot">Lokaler Schutz auf diesem Gerät · Sitzung sperrt bei Inaktivität</p>
+      </div>
+    </div>
+
+    <div id="lohnApp" class="lohn-shell" aria-hidden="true">
+      <header class="lohn-appbar">
+        <div class="lohn-brand">
+          <strong>WorkPass Lohn</strong>
+          <span>Suppix AI · Live-Abrechnung</span>
+          <span class="mode-pill" id="modePill" title="Arbeitet unabhängig von der Plattform">Standalone</span>
+        </div>
+
+        <div class="lohn-context">
+          <label class="ctx-field">
+            <span>Firma / Abrechnung</span>
+            <select id="companySelect" title="Gespeicherte Abrechnungen je Firma"></select>
+          </label>
+          <label class="ctx-field ctx-month">
+            <span>Monat</span>
+            <input id="payrollMonth" type="month" />
+          </label>
+        </div>
+
+        <div class="lohn-actions">
+          <div class="lohn-actions-group">
+            <label class="btn primary" for="importPlatformInput">Datei</label>
+            <input type="file" id="importPlatformInput" accept=".json,application/json" />
+            <label class="btn" for="importCsvInput">CSV</label>
+            <input type="file" id="importCsvInput" accept=".csv,.txt" />
+          </div>
+          <div class="lohn-actions-group">
+            <button type="button" id="btnNew">Neu</button>
+            <button type="button" id="btnExportJson">Export</button>
+            <button type="button" id="btnReference" class="btn-quiet" title="Demo Mustermann">Demo</button>
+          </div>
+          <div class="lohn-actions-group">
+            <button type="button" id="btnPrint" class="primary">Drucken</button>
+            <button type="button" id="btnPdf">PDF</button>
+            <button type="button" id="btnExportCsv" title="Bewegungsdaten CSV">CSV</button>
+            <button type="button" id="btnLock" title="Sofort sperren">Sperren</button>
+          </div>
+          <a href="index.html" class="btn btn-link" title="WorkPass Hub">Hub</a>
+        </div>
+      </header>
+
+      <div class="lohn-layout">
+        <aside class="lohn-form" id="lohnForm">
+          <div class="lohn-form-sticky">
+            <div id="statusBar" class="lohn-status warn">Bereit – manuell, Datei oder Inbox.</div>
+            <div id="printHints" class="print-hints" hidden></div>
+            <div id="missingPanel" class="missing-panel" hidden></div>
+            <div class="kpi-strip">
+              <div class="kpi"><span>Brutto</span><strong id="kpiGross">—</strong></div>
+              <div class="kpi"><span>Netto / Auszahlung</span><strong id="kpiNet">—</strong></div>
+            </div>
+            <nav class="form-jump" aria-label="Abschnitte">
+              <a href="#secEmpfang">Empfang</a>
+              <a href="#secFirma">Firma</a>
+              <a href="#secLohnarten">Lohnarten</a>
+              <a href="#secAuszahlung">Auszahlung</a>
+              <a href="#secArchiv">Archiv</a>
+            </nav>
+          </div>
+
+          <section class="form-section step" id="secEmpfang">
+            <div class="step-head">
+              <span class="step-num">1</span>
+              <h2>Empfang</h2>
+            </div>
+            <p class="section-hint">Datei, Inbox oder manuell – auch ohne Plattform.</p>
+            <div class="recv-modes" role="tablist">
+              <button type="button" class="recv-mode active" data-recv="file" id="recvFile">Datei</button>
+              <button type="button" class="recv-mode" data-recv="paste" id="recvPaste">Inbox / Paste</button>
+              <button type="button" class="recv-mode" data-recv="api" id="recvApi">API-Bridge</button>
+              <button type="button" class="recv-mode" data-recv="manual" id="recvManual">Manuell</button>
+            </div>
+            <div class="recv-panel" id="panelFile">
+              <div class="drop-target" id="dropTarget">
+                <strong>Datei hier ablegen</strong>
+                <span>JSON (platform.payroll.v1) oder CSV – auch ohne Plattform</span>
+              </div>
+            </div>
+            <div class="recv-panel" id="panelPaste" hidden>
+              <p class="section-hint">JSON aus E-Mail / Plattform-Versand hier einfügen und übernehmen.</p>
+              <textarea id="pasteInbox" class="paste-box" placeholder='{"kind":"platform.payroll.v1", ...}'></textarea>
+              <div class="btn-row">
+                <button type="button" class="primary" id="btnPasteApply">Inbox übernehmen</button>
+              </div>
+            </div>
+            <div class="recv-panel" id="panelApi" hidden>
+              <p class="section-hint">Bridge-Server empfängt Monatsdaten von der Plattform. Multi-Tenant: Firma-ID filtert die Inbox – jede Firma sieht nur ihre Daten. Nach Prüfung: Freigabe → Plattform → Mitarbeiter-App.</p>
+              <div class="field-grid">
+                <div class="full">
+                  <label for="apiBaseUrl">API-URL</label>
+                  <input id="apiBaseUrl" type="url" value="http://127.0.0.1:8787" placeholder="http://127.0.0.1:8787" />
+                </div>
+                <div class="full">
+                  <label for="apiKey">API-Key</label>
+                  <input id="apiKey" type="password" value="workpass-dev-key" autocomplete="off" />
+                </div>
+                <div class="full">
+                  <label for="apiCompanyId">Firma-ID (company.id) – Pflicht für Isolation</label>
+                  <input id="apiCompanyId" type="text" placeholder="z. B. lufthansa" autocomplete="off" />
+                </div>
+              </div>
+              <div class="btn-row">
+                <button type="button" class="primary" id="btnApiInbox">Inbox laden</button>
+                <button type="button" id="btnApiHealth">Server prüfen</button>
+              </div>
+              <div id="apiInboxList" class="api-inbox-list" aria-live="polite"></div>
+            </div>
+            <div class="recv-panel" id="panelManual" hidden>
+              <p class="section-hint">Kein Import nötig – Felder unten ausfüllen. Das Blatt aktualisiert sich live.</p>
+            </div>
+          </section>
+
+          <section class="form-section form-fill" id="secNext">
+            <div class="step-head">
+              <span class="step-num">✓</span>
+              <h2>Ausgabe</h2>
+            </div>
+            <ul class="flow-list compact" id="liveCheckList" aria-live="polite">
+              <li data-check="data"><strong>○</strong> Daten empfangen / erfasst</li>
+              <li data-check="master"><strong>○</strong> Stammdaten geprüft</li>
+              <li data-check="sheet"><strong>○</strong> Live-Blatt kontrolliert</li>
+              <li data-check="print"><strong>○</strong> Druckbereit (A4)</li>
+            </ul>
+            <div class="btn-row sticky-actions">
+              <button type="button" class="primary glossy" id="btnPrintSide">Drucken</button>
+              <button type="button" class="glossy-secondary" id="btnPdfSide">PDF</button>
+            </div>
+          </section>
+
+          <section class="form-section step" id="secFirma">
+            <div class="step-head">
+              <span class="step-num">2</span>
+              <h2>Firma &amp; Mitarbeiter</h2>
+            </div>
+            <div class="company-flow" id="companyFlow">
+              <p class="section-hint">
+                <strong>Standalone:</strong> Zuerst Firma anlegen, dann Mitarbeiter &amp; Lohnarten.
+                Alles erscheint <em>live</em> auf dem A4-Blatt rechts.
+              </p>
+              <div class="btn-row">
+                <button type="button" class="primary" id="btnNewCompany">Neue Firma anlegen</button>
+                <button type="button" id="btnFocusEmployee">Zum Mitarbeiter</button>
+              </div>
+            </div>
+            <div class="field-grid mt-block">
+              <div class="full">
+                <label for="companyName">Firmenname <span class="req">*</span></label>
+                <input id="companyName" type="text" placeholder="z. B. Muster GmbH" autocomplete="organization" />
+              </div>
+              <div>
+                <label for="mandantId">Firmen-ID (intern)</label>
+                <input id="mandantId" type="text" placeholder="z. B. muster-gmbh" autocomplete="off" />
+              </div>
+            </div>
+            <label for="seller">Arbeitgeber (Adresse auf dem Blatt)</label>
+            <textarea id="seller" rows="3" placeholder="Firma&#10;Straße&#10;PLZ Ort"></textarea>
+            <div class="field-grid mt-block">
+              <div>
+                <label for="taxNumber">Steuer-Nr.</label>
+                <input id="taxNumber" type="text" placeholder="143/123/45678" autocomplete="off" />
+              </div>
+              <div>
+                <label for="datevClientNo">Mandant-Nr.</label>
+                <input id="datevClientNo" type="text" placeholder="10001" inputmode="numeric" autocomplete="off" />
+              </div>
+              <div>
+                <label for="datevConsultantNo">Berater-Nr.</label>
+                <input id="datevConsultantNo" type="text" placeholder="12345" inputmode="numeric" autocomplete="off" />
+              </div>
+              <div class="full">
+                <label for="note">Hinweis</label>
+                <input id="note" type="text" placeholder="Optional auf der Abrechnung" />
+              </div>
+            </div>
+
+            <div class="field-grid mt-block" id="employeeBlock">
+              <div class="full">
+                <label for="employeeName">Name <span class="req">*</span></label>
+                <input id="employeeName" type="text" placeholder="Max Mustermann" />
+              </div>
+              <div class="full">
+                <label for="employeeAddress">Adresse</label>
+                <textarea id="employeeAddress" rows="2" placeholder="Straße&#10;PLZ Ort"></textarea>
+              </div>
+              <div>
+                <label for="employeeId">Pers.-Nr.</label>
+                <input id="employeeId" type="text" />
+              </div>
+              <div>
+                <label for="employeeTaxId">Steuer-ID</label>
+                <input id="employeeTaxId" type="text" />
+              </div>
+              <div>
+                <label for="employeeInsuranceNo">SV-Nummer</label>
+                <input id="employeeInsuranceNo" type="text" />
+              </div>
+              <div>
+                <label for="taxClass">Steuerklasse <span class="req">*</span></label>
+                <select id="taxClass">
+                  <option value="I">I – ledig</option>
+                  <option value="II">II – alleinerziehend</option>
+                  <option value="III">III – verheiratet (höher)</option>
+                  <option value="IV">IV – verheiratet (gleich)</option>
+                  <option value="V">V – verheiratet (niedriger)</option>
+                  <option value="VI">VI – Nebenjob</option>
+                </select>
+              </div>
+              <div>
+                <label for="employeeBirthDate">Geburtsdatum</label>
+                <input id="employeeBirthDate" type="date" />
+              </div>
+              <div>
+                <label for="employeeEntryDate">Eintritt</label>
+                <input id="employeeEntryDate" type="date" />
+              </div>
+              <div>
+                <label for="churchTaxRate">KiSt %</label>
+                <input id="churchTaxRate" type="number" min="0" step="1" value="0" />
+              </div>
+              <div>
+                <label for="healthFund">Krankenkasse</label>
+                <select id="healthFund">
+                  <option value="">— bitte wählen —</option>
+                </select>
+              </div>
+              <div>
+                <label for="healthPercent">KV AN % (optional)</label>
+                <input id="healthPercent" type="number" min="0" step="0.01" placeholder="auto" />
+              </div>
+              <div>
+                <label for="workDays">Arbeitstage</label>
+                <input id="workDays" type="number" min="0" step="1" />
+              </div>
+              <div>
+                <label for="workHours">Stunden</label>
+                <input id="workHours" type="number" min="0" step="0.01" />
+              </div>
+            </div>
+          </section>
+
+          <section class="form-section step" id="secLohnarten">
+            <div class="step-head">
+              <span class="step-num">3</span>
+              <h2>Lohnarten</h2>
+            </div>
+            <table class="wage-table" id="wageTable">
+              <thead>
+                <tr>
+                  <th>LA</th>
+                  <th>Bezeichnung</th>
+                  <th>Anz.</th>
+                  <th>€</th>
+                  <th>St</th>
+                  <th>SV</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="wageBody"></tbody>
+            </table>
+            <div class="btn-row">
+              <button type="button" id="btnAddWage">+ Lohnart</button>
+            </div>
+            <div class="wage-presets" id="wagePresets" aria-label="Schnell-Lohnarten"></div>
+            <p class="section-hint tiny">Hinweis: Lohnart „Abzug / Einbehalt“ (St=F, SV=N) reduziert nur den Auszahlungsbetrag – nicht das Steuer-/SV-Brutto. VWL als Bezug bleibt bruttowirksam.</p>
+          </section>
+
+          <section class="form-section step" id="secSteuerSv">
+            <div class="step-head">
+              <span class="step-num">3½</span>
+              <h2>Steuer &amp; SV (erweitert)</h2>
+            </div>
+            <div class="field-grid">
+              <div>
+                <label for="churchConfession">Konfession</label>
+                <select id="churchConfession">
+                  <option value="">— keine / ohne KiSt —</option>
+                  <option value="ev">evangelisch (ev)</option>
+                  <option value="rk">römisch-katholisch (rk)</option>
+                </select>
+              </div>
+              <div>
+                <label for="healthAdditionalPercent">KV-Zusatzbeitrag %</label>
+                <input id="healthAdditionalPercent" type="number" min="0" step="0.01" placeholder="z. B. 2,50" />
+              </div>
+              <div>
+                <label for="taxAllowanceMonthly">Freibetrag € / Monat</label>
+                <input id="taxAllowanceMonthly" type="number" min="0" step="0.01" placeholder="0" />
+              </div>
+              <div>
+                <label for="childAllowanceFactor">Kinderfreibetrag (ZKF)</label>
+                <input id="childAllowanceFactor" type="number" min="0" step="0.5" placeholder="0" />
+              </div>
+              <div>
+                <label for="departmentNo">Abt.-Nr.</label>
+                <input id="departmentNo" type="text" placeholder="optional" />
+              </div>
+              <div>
+                <label for="netDeductions">Sonstige Netto-Abzüge €</label>
+                <input id="netDeductions" type="number" min="0" step="0.01" placeholder="0" />
+              </div>
+              <div class="full check-row">
+                <label class="check-label">
+                  <input id="childlessPvSurcharge" type="checkbox" />
+                  PV-Zuschlag kinderlos (ab 23)
+                </label>
+              </div>
+              <div class="full check-row tax-iv-only" id="taxIvBox" hidden>
+                <label class="check-label">
+                  <input id="factorMethod" type="checkbox" />
+                  Faktorverfahren (nur Steuerklasse IV)
+                </label>
+                <label for="factorValue">Faktor</label>
+                <input id="factorValue" type="number" min="0" step="0.001" value="1" />
+              </div>
+            </div>
+            <p class="section-hint" id="calcMethodHint">Berechnung: BMF PAP 2026 + SGB IV (SV)</p>
+          </section>
+
+          <section class="form-section step" id="secAuszahlung">
+            <div class="step-head">
+              <span class="step-num">4</span>
+              <h2>Auszahlung</h2>
+            </div>
+            <div class="field-grid">
+              <div>
+                <label for="calcGross">Brutto</label>
+                <input id="calcGross" type="text" readonly class="readonly" />
+              </div>
+              <div>
+                <label for="calcNet">Netto</label>
+                <input id="calcNet" type="text" readonly class="readonly" />
+              </div>
+              <div>
+                <label for="bankName">Bank</label>
+                <select id="bankName">
+                  <option value="">— bitte wählen —</option>
+                </select>
+              </div>
+              <div>
+                <label for="bankIban">IBAN</label>
+                <input id="bankIban" type="text" placeholder="DE…" autocomplete="off" />
+              </div>
+            </div>
+          </section>
+
+          <section class="form-section" id="secArchiv">
+            <div class="step-head">
+              <span class="step-num">⌂</span>
+              <h2>Archiv je Firma</h2>
+            </div>
+            <div id="archiveBoard" class="archive-board"></div>
+          </section>
+
+          <details class="form-section pin-details">
+            <summary>
+              <span class="step-num">⚙</span>
+              <h2>Sicherheit · PIN</h2>
+            </summary>
+            <p class="section-hint">PIN ändern (gleicher Schutz wie im Hub).</p>
+            <div class="field-grid">
+              <div><label for="pinOld">Alte PIN</label><input id="pinOld" type="password" inputmode="numeric" maxlength="8" /></div>
+              <div><label for="pinNew">Neue PIN</label><input id="pinNew" type="password" inputmode="numeric" maxlength="8" /></div>
+              <div class="full"><label for="pinNewConfirm">Bestätigen</label><input id="pinNewConfirm" type="password" inputmode="numeric" maxlength="8" /></div>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="primary" id="btnChangePin">PIN speichern</button>
+            </div>
+          </details>
+        </aside>
+
+        <main class="lohn-preview">
+          <div class="preview-toolbar">
+            <span class="preview-label">Live-Vorschau · A4 · Entgeltabrechnung</span>
+            <span class="preview-note">Druck &amp; PDF = nur dieses Blatt</span>
+          </div>
+          <div class="preview-stage">
+            <div id="previewEmpty" class="preview-empty" hidden>
+              <strong>Noch keine Abrechnung geladen</strong>
+              <span>Demo laden, Datei empfangen oder manuell erfassen – das Blatt aktualisiert sich live.</span>
+              <div class="preview-empty-actions">
+                <button type="button" class="primary glossy" id="btnPreviewDemo">Demo Mustermann</button>
+                <button type="button" class="glossy-secondary" id="btnPreviewEmpfang">Zum Empfang</button>
+              </div>
+            </div>
+            <div id="datevSheetHost" class="datev-sheet-host" aria-label="Abrechnungsvorschau"></div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div id="wpToastHost" class="wp-toast-host" aria-live="polite" aria-relevant="additions"></div>
+
+    <script src="vendor/pap-standalone.js"></script>
+    <script src="payroll-bridge.js?v=1"></script>
+    <script src="legal-config.js"></script>
+    <script src="catalogs.js?v=1"></script>
+    <script src="datev-import.js?v=2"></script>
+    <script src="templates.js?v=1"></script>
+    <script src="datev-sheet.js?v=42"></script>
+    <script src="payroll-core.js?v=20"></script>
+    <script src="auth-gate.js?v=3"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="lohn-app.js?v=27"></script>
+  </body>
+</html>

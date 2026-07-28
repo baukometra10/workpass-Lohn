@@ -1,0 +1,55 @@
+{
+  "kind": "platform.payroll.v1",
+  "company": {
+    "id": "muster-gmbh",
+    "name": "Muster GmbH",
+    "street": "Musterstraße 1",
+    "zip": "80331",
+    "city": "München",
+    "taxNumber": "143/123/45678",
+    "vatId": "DE123456789",
+    "datevClientNo": "10001",
+    "datevConsultantNo": "12345"
+  },
+  "employee": {
+    "id": "02006",
+    "name": "Mustermann Max",
+    "street": "Beispielweg 5",
+    "zip": "80331",
+    "city": "München",
+    "taxId": "00123456789",
+    "insuranceNo": "65170839J008",
+    "birthDate": "1985-04-12",
+    "entryDate": "2018-06-01",
+    "taxClass": "I",
+    "churchTaxRate": "9",
+    "healthFund": "AOK Bayern",
+    "healthPercent": "14.9"
+  },
+  "period": "2025-07",
+  "attendance": {
+    "days": 21,
+    "hours": 168
+  },
+  "wageItems": [
+    {
+      "code": "840",
+      "label": "Fahrgeld p. v. 25%",
+      "amount": 120,
+      "taxFlag": "P",
+      "svFlag": "P"
+    },
+    {
+      "code": "2000",
+      "label": "Gehalt",
+      "amount": 3500,
+      "taxFlag": "L",
+      "svFlag": "L"
+    }
+  ],
+  "bank": {
+    "name": "Stadtsparkasse München",
+    "iban": "DE03700500000000012345"
+  },
+  "note": "Importiert von Plattform – zur Prüfung und Freigabe"
+}

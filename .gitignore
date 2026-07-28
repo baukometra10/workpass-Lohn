@@ -1,0 +1,14 @@
+node_modules/
+.env
+.env.*
+!.env.example
+server/data/
+server/.data-key
+*.sqlite
+*.wpbak
+.DS_Store
+test-results/
+playwright-report/
+.cursor/
+.vscode/
+scripts/patch-sig-stage.mjs

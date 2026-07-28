@@ -1,0 +1,33 @@
+{
+  "kind": "platform.invoice.v1",
+  "company": {
+    "id": "muster-gmbh",
+    "name": "Muster GmbH",
+    "street": "Musterstraße 1",
+    "zip": "80331",
+    "city": "München",
+    "taxNumber": "143/123/45678",
+    "vatId": "DE123456789"
+  },
+  "number": "RE-2025-0042",
+  "invoiceDate": "2025-07-15",
+  "serviceDate": "2025-07-01",
+  "dueDate": "2025-07-29",
+  "customer": "Kunde AG\nKundenweg 3\n10115 Berlin",
+  "taxRate": 19,
+  "note": "Von Plattform empfangene Rechnung – zur Prüfung in der Buchhaltung",
+  "items": [
+    {
+      "description": "Beratungsleistung Juli",
+      "quantity": 8,
+      "unitPrice": 95,
+      "unit": "Std"
+    },
+    {
+      "description": "Reisekosten pauschal",
+      "quantity": 1,
+      "unitPrice": 40,
+      "unit": "Stk"
+    }
+  ]
+}

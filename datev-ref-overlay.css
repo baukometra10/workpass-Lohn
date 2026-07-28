@@ -1,0 +1,147 @@
+/**
+ * DATEV LOHN17 – Werte exakt auf Referenz-PNG (Mustermann Juli 2025)
+ * Kalibriert auf assets/referenz-datev-mustermann.png · A4 210×297 mm
+ */
+
+.payroll-sheet.layout-datev-ref-mode .payroll-content-layer {
+  display: none !important;
+  pointer-events: none;
+}
+
+.payroll-sheet.layout-datev-ref-mode .payroll-bg-layer {
+  display: block !important;
+  opacity: 1;
+}
+
+.payroll-sheet.layout-datev-ref-mode .payroll-document {
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  min-height: 297mm;
+  max-height: 297mm;
+  padding: 0 !important;
+  margin: 0 auto;
+  background: #fff;
+  overflow: hidden;
+}
+
+.payroll-sheet.layout-datev-ref-mode .payroll-bg-layer {
+  position: absolute;
+  inset: 0;
+  width: 210mm;
+  height: 297mm;
+}
+
+.payroll-sheet.layout-datev-ref-mode .payroll-bg-layer img {
+  width: 210mm;
+  height: 297mm;
+  object-fit: fill;
+  display: block;
+}
+
+.datev-value-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 210mm;
+  height: 297mm;
+  z-index: 2;
+  pointer-events: none;
+  font-family: "Courier New", Courier, "Liberation Mono", monospace;
+  font-size: 6pt;
+  line-height: 1;
+  color: #000;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.datev-value-overlay .dov {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.datev-value-overlay .dov-r {
+  text-align: right;
+}
+
+.datev-value-overlay .dov-c {
+  text-align: center;
+}
+
+/* ── Kopf rechts ── */
+.dov-usa { top: 5.5mm; left: 178mm; font-size: 5.4pt; }
+.dov-head-date { top: 9mm; left: 178mm; font-size: 5.4pt; }
+.dov-head-page { top: 12.5mm; left: 178mm; font-size: 5.4pt; }
+
+/* Stammdaten Zeile 1 (Werte) */
+.dov-pers-nr { top: 24mm; left: 11mm; width: 14mm; font-size: 5.6pt; }
+.dov-birth { top: 24mm; left: 32mm; width: 14mm; font-size: 5.6pt; }
+.dov-stkl { top: 24mm; left: 50mm; width: 8mm; font-size: 5.6pt; }
+.dov-konf { top: 24mm; left: 78mm; width: 10mm; font-size: 5.6pt; }
+.dov-st-tg { top: 24mm; left: 154mm; width: 10mm; font-size: 5.6pt; text-align: center; }
+
+/* Stammdaten Zeile 2 */
+.dov-sv-nr { top: 33.5mm; left: 11mm; width: 42mm; font-size: 5.4pt; }
+.dov-kk-name { top: 33.5mm; left: 56mm; width: 48mm; font-size: 5.4pt; }
+.dov-kk-pct { top: 33.5mm; left: 108mm; width: 12mm; font-size: 5.6pt; text-align: center; }
+.dov-pgrs { top: 33.5mm; left: 122mm; width: 10mm; font-size: 5.6pt; text-align: center; }
+.dov-bgrs { top: 33.5mm; left: 134mm; width: 10mm; font-size: 5.6pt; text-align: center; }
+.dov-sv-tg { top: 33.5mm; left: 164mm; width: 10mm; font-size: 5.6pt; text-align: center; }
+
+/* Urlaub-/Tage-Raster (rechts oben) */
+.dov-vac-prev { top: 24mm; left: 122mm; width: 14mm; font-size: 5.4pt; text-align: right; }
+.dov-vac-ent { top: 24mm; left: 138mm; width: 14mm; font-size: 5.4pt; text-align: right; }
+.dov-work-days { top: 42mm; left: 122mm; width: 14mm; font-size: 5.4pt; text-align: right; }
+.dov-work-hours { top: 50mm; left: 122mm; width: 14mm; font-size: 5.4pt; text-align: right; }
+
+/* Adresse links */
+.dov-sender { top: 46mm; left: 12mm; width: 58mm; font-size: 5pt; line-height: 1.15; white-space: normal; }
+.dov-emp-meta { top: 54mm; left: 12mm; width: 58mm; font-size: 5.4pt; }
+.dov-emp-name { top: 58mm; left: 12mm; width: 58mm; font-size: 5.8pt; }
+.dov-emp-addr { top: 62mm; left: 12mm; width: 58mm; font-size: 5.8pt; line-height: 1.2; white-space: pre-wrap; }
+
+/* Mitte Eintritt / Steuer-ID */
+.dov-entry { top: 48mm; left: 72mm; width: 22mm; font-size: 5.4pt; }
+.dov-taxid-mid { top: 58mm; left: 72mm; width: 22mm; font-size: 5.4pt; }
+
+/* Hinweise */
+.dov-hints { top: 46mm; left: 118mm; width: 82mm; font-size: 5.4pt; line-height: 1.28; white-space: pre-wrap; }
+
+/* Summenspalte Betrag (rechts) */
+.dov-wage-840 { top: 99mm; right: 7mm; width: 16mm; font-size: 5.6pt; text-align: right; }
+.dov-wage-2000 { top: 105mm; right: 7mm; width: 16mm; font-size: 5.6pt; text-align: right; }
+.dov-gross-total { top: 118mm; right: 7mm; width: 16mm; font-size: 6pt; font-weight: 700; text-align: right; }
+.dov-tax-total { top: 130mm; right: 7mm; width: 16mm; font-size: 5.6pt; text-align: right; }
+.dov-sv-total { top: 140mm; right: 7mm; width: 16mm; font-size: 5.6pt; text-align: right; }
+.dov-net-total { top: 150mm; right: 7mm; width: 16mm; font-size: 6pt; font-weight: 700; text-align: right; }
+.dov-payout { top: 262mm; right: 7mm; width: 16mm; font-size: 6.8pt; font-weight: 700; text-align: right; }
+
+/* Steuer/SV Tabellenwerte */
+.dov-st-brutto { top: 127mm; left: 58mm; width: 16mm; font-size: 5.4pt; text-align: right; }
+.dov-lst { top: 127mm; left: 76mm; width: 14mm; font-size: 5.4pt; text-align: right; }
+.dov-kist { top: 127mm; left: 92mm; width: 14mm; font-size: 5.4pt; text-align: right; }
+.dov-kv-b { top: 137mm; left: 58mm; width: 14mm; font-size: 5.4pt; text-align: right; }
+.dov-rv-b { top: 137mm; left: 72mm; width: 14mm; font-size: 5.4pt; text-align: right; }
+.dov-kv-beitrag { top: 137mm; left: 122mm; width: 14mm; font-size: 5.4pt; text-align: right; }
+.dov-rv-beitrag { top: 137mm; left: 138mm; width: 14mm; font-size: 5.4pt; text-align: right; }
+.dov-av-beitrag { top: 137mm; left: 154mm; width: 14mm; font-size: 5.4pt; text-align: right; }
+.dov-pv-beitrag { top: 137mm; left: 170mm; width: 14mm; font-size: 5.4pt; text-align: right; }
+
+/* Footer */
+.dov-bank { top: 248mm; left: 12mm; width: 70mm; font-size: 5.4pt; }
+.dov-konto { top: 252mm; left: 12mm; width: 70mm; font-size: 5.4pt; }
+.dov-ag-sv { top: 248mm; left: 88mm; width: 18mm; font-size: 5.4pt; text-align: right; }
+.dov-ag-extra { top: 252mm; left: 88mm; width: 18mm; font-size: 5.4pt; text-align: right; }
+.dov-ag-total { top: 256mm; left: 88mm; width: 18mm; font-size: 5.4pt; text-align: right; }
+
+@media print {
+  .payroll-sheet.layout-datev-ref-mode .datev-value-overlay,
+  .payroll-sheet.layout-datev-ref-mode .payroll-bg-layer,
+  .payroll-sheet.layout-datev-ref-mode .payroll-bg-layer img {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

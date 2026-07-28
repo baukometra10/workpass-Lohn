@@ -1,0 +1,35 @@
+{
+  "name": "workpass-lohn",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WorkPass Lohn – Buchhaltung + Platform Bridge API",
+  "type": "module",
+  "scripts": {
+    "start": "node server/index.mjs",
+    "bridge": "node server/index.mjs",
+    "secrets": "node scripts/gen-secrets.mjs",
+    "smoke": "node scripts/smoke-connect.mjs",
+    "mock:platform": "node mock-platform/server.mjs",
+    "demo:delivery": "node scripts/demo-delivery.mjs",
+    "test": "node tests/run-tests.mjs",
+    "test:signature": "node tests/signature-tests.mjs",
+    "test:e2e": "node tests/e2e-lohn.mjs",
+    "test:api": "node tests/api-bridge.mjs",
+    "test:tenant": "node tests/tenant-isolation.mjs",
+    "test:db": "node tests/db-local.mjs",
+    "test:security": "node tests/security.mjs",
+    "test:backup": "node tests/backup.mjs",
+    "test:fields": "node tests/e2e-fields.mjs",
+    "backup:create": "node scripts/backup-cli.mjs create",
+    "backup:list": "node scripts/backup-cli.mjs list",
+    "backup:restore": "node scripts/backup-cli.mjs restore",
+    "sync": "node -e \"import('./server/db/repository.mjs').then(m=>m.flushSyncOutbox(500).then(r=>console.log(JSON.stringify(r,null,2))))\"",
+    "serve:ui": "npx --yes serve -l 8765 ."
+  },
+  "optionalDependencies": {
+    "pg": "^8.22.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

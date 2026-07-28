@@ -1,0 +1,494 @@
+/**
+ * Agenda-Referenzlayout (Abrechnung der Brutto-Netto-Bezüge)
+ * Orientierung: offizielles Agenda-Lohnblatt – schwarz/weiß, Raster, A4.
+ */
+
+/* ── Titelleiste wie Agenda: links Titel | mitte Monat | rechts Blatt ── */
+.payroll-sheet.layout-agenda .ag-title-row,
+.payroll-sheet.layout-standard .ag-title-row,
+.payroll-sheet.layout-compact .ag-title-row,
+.payroll-sheet.layout-modern .ag-title-row,
+.payroll-sheet.layout-formal .ag-title-row,
+.payroll-sheet.layout-datev .ag-title-row {
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  background: #fff;
+  border-bottom: 0.5px solid #000;
+  padding: 1mm 2mm;
+}
+
+.payroll-sheet .ag-title-left {
+  justify-self: start;
+  text-align: left;
+}
+
+.payroll-sheet .ag-title-center {
+  justify-self: center;
+  text-align: center;
+}
+
+.payroll-sheet .ag-title-main {
+  align-items: center;
+  text-align: center;
+}
+
+.payroll-sheet.layout-agenda .ag-title,
+.payroll-sheet.layout-standard .ag-title,
+.payroll-sheet.layout-compact .ag-title,
+.payroll-sheet.layout-modern .ag-title,
+.payroll-sheet.layout-formal .ag-title {
+  font-size: 7.5pt;
+  font-weight: 700;
+  color: #000;
+  display: block;
+}
+
+.payroll-sheet.layout-agenda .ag-month,
+.payroll-sheet.layout-standard .ag-month,
+.payroll-sheet.layout-compact .ag-month,
+.payroll-sheet.layout-modern .ag-month,
+.payroll-sheet.layout-formal .ag-month {
+  font-size: 8pt;
+  font-weight: 700;
+  color: #000;
+}
+
+.payroll-sheet .ag-run {
+  justify-self: end;
+  color: #000;
+  font-size: 6.2pt;
+}
+
+.payroll-sheet.layout-agenda .payroll-head-logo,
+.payroll-sheet.layout-standard .payroll-head-logo,
+.payroll-sheet.layout-compact .payroll-head-logo,
+.payroll-sheet.layout-modern .payroll-head-logo,
+.payroll-sheet.layout-formal .payroll-head-logo {
+  display: none;
+}
+
+/* ── Stammdaten-Raster (Agenda-Dichte) ── */
+.payroll-sheet.layout-agenda .ag-master,
+.payroll-sheet.layout-standard .ag-master,
+.payroll-sheet.layout-compact .ag-master,
+.payroll-sheet.layout-modern .ag-master,
+.payroll-sheet.layout-formal .ag-master {
+  font-size: 6pt;
+}
+
+.payroll-sheet.layout-agenda .ag-master .ag-lbl,
+.payroll-sheet.layout-standard .ag-master .ag-lbl,
+.payroll-sheet.layout-compact .ag-master .ag-lbl,
+.payroll-sheet.layout-modern .ag-master .ag-lbl,
+.payroll-sheet.layout-formal .ag-master .ag-lbl {
+  font-size: 5.8pt;
+  padding: 1px 2px;
+  white-space: nowrap;
+}
+
+.payroll-sheet.layout-agenda .ag-master .ag-val,
+.payroll-sheet.layout-standard .ag-master .ag-val,
+.payroll-sheet.layout-compact .ag-master .ag-val,
+.payroll-sheet.layout-modern .ag-master .ag-val,
+.payroll-sheet.layout-formal .ag-master .ag-val {
+  font-size: 6pt;
+  font-weight: 600;
+}
+
+.payroll-sheet.layout-agenda .ag-master .ag-val-wide,
+.payroll-sheet.layout-standard .ag-master .ag-val-wide {
+  font-size: 5.6pt;
+}
+
+/* ── Adresse + Informationen (links groß) ── */
+.payroll-sheet.layout-agenda .ag-employer {
+  text-decoration: underline;
+  font-size: 6.8pt;
+  padding: 1.5mm 2mm;
+  min-height: 5mm;
+}
+
+.payroll-sheet.layout-agenda .ag-emp-block {
+  padding: 5mm 2mm 2mm 12mm;
+  min-height: 22mm;
+}
+
+.payroll-sheet.layout-agenda .ag-info-standard {
+  flex: 1 1 auto;
+  min-height: 18mm;
+}
+
+.payroll-sheet.layout-agenda .ag-info-standard p {
+  min-height: 14mm;
+}
+
+/* ── Statistik + Kalender (rechts) ── */
+.payroll-sheet.layout-agenda .ag-right .ag-box-h:first-of-type,
+.payroll-sheet.layout-agenda .ag-stats-wrap > .ag-box-h {
+  font-size: 6.5pt;
+  font-weight: 700;
+  border-bottom: 0.5px solid #000;
+  padding: 1px 3px;
+}
+
+.payroll-sheet.layout-agenda .ag-cal-wrap {
+  flex: 1 1 auto;
+}
+
+.payroll-sheet.layout-agenda .ag-cal td,
+.payroll-sheet.layout-agenda .ag-cal th {
+  text-align: center;
+  font-size: 5.8pt;
+  padding: 0.5px 1px;
+}
+
+.payroll-sheet.layout-agenda .ag-cal-legend {
+  font-size: 5.4pt;
+  line-height: 1.2;
+  padding: 0.5mm 2mm;
+}
+
+/* ── Lohnarten-Tabelle ── */
+.payroll-sheet.layout-agenda .ag-earnings thead th {
+  font-size: 6pt;
+  font-weight: 700;
+  padding: 1px 2px;
+}
+
+.payroll-sheet.layout-agenda .ag-earnings td {
+  font-size: 6.2pt;
+}
+
+/* ── Steuer/SV-Matrix + Verdienst + Auszahlung ── */
+.payroll-sheet.layout-agenda .ag-taxsv-matrix {
+  font-size: 6pt;
+}
+
+.payroll-sheet.layout-agenda .ag-bottom {
+  border: 0.5px solid #000;
+}
+
+.payroll-sheet.layout-agenda .ag-verdienst thead th {
+  font-size: 6pt;
+  text-align: center;
+}
+
+.payroll-sheet.layout-agenda .ag-payout-table .ag-payout-final td {
+  font-size: 8pt;
+  font-weight: 700;
+  border-top: 1px solid #000 !important;
+}
+
+/* ── Fußzeile Agenda-Stil ── */
+.payroll-sheet.layout-agenda .ag-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  font-size: 5.8pt;
+  padding: 1mm 0 0;
+  border-top: 0.5px solid #000;
+}
+
+/* Stammdaten-Zellen (Agenda: Label über Wert) – alle Layouts */
+.payroll-sheet .ag-master-agenda .ag-m-cell,
+.payroll-sheet.layout-agenda .ag-master-agenda .ag-m-cell,
+.payroll-sheet.layout-standard .ag-master-agenda .ag-m-cell,
+.payroll-sheet.layout-datev .ag-master-agenda .ag-m-cell,
+.payroll-sheet.layout-compact .ag-master-agenda .ag-m-cell,
+.payroll-sheet.layout-modern .ag-master-agenda .ag-m-cell,
+.payroll-sheet.layout-formal .ag-master-agenda .ag-m-cell {
+  border: 0.5px solid #000;
+}
+
+.payroll-sheet .ag-stats-grid .ag-stat-cell .ag-val {
+  text-align: right;
+}
+
+.ag-master-agenda .ag-m-cell {
+  border: var(--ag-border, 0.5px solid #000);
+  padding: 0.5px 2px 1px;
+  vertical-align: top;
+  width: 9.09%;
+}
+
+.ag-master-agenda .ag-m-cell-wide {
+  width: 12%;
+}
+
+.ag-master-agenda .ag-m-cell .ag-lbl {
+  display: block;
+  font-size: 5.4pt;
+  font-weight: 400;
+  line-height: 1.15;
+  color: #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ag-master-agenda .ag-m-cell .ag-val {
+  display: block;
+  font-size: 6pt;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  min-height: 2.2mm;
+}
+
+/* Statistik-Raster 5×4 wie Agenda */
+.ag-stats-grid {
+  table-layout: fixed;
+}
+
+.ag-stats-grid .ag-stat-cell {
+  border: var(--ag-border, 0.5px solid #000);
+  padding: 0.5px 2px 1px;
+  vertical-align: top;
+  width: 20%;
+}
+
+.ag-stats-grid .ag-stat-cell .ag-lbl {
+  display: block;
+  font-size: 5.4pt;
+  font-weight: 400;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ag-stats-grid .ag-stat-cell .ag-val {
+  display: block;
+  font-size: 6pt;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  min-height: 2mm;
+}
+
+.payroll-sheet.layout-agenda .ag-brand::before {
+  content: "";
+}
+
+.payroll-sheet.layout-agenda .ag-brand {
+  font-weight: 700;
+  font-size: 9pt;
+  letter-spacing: -0.02em;
+}
+
+.payroll-sheet.layout-agenda .ag-brand::after {
+  content: ":";
+}
+
+.payroll-sheet.layout-agenda .ag-legend-block {
+  margin-top: 0.5mm;
+}
+
+.payroll-sheet.layout-agenda .ag-legend {
+  font-size: 5.3pt;
+  line-height: 1.25;
+}
+
+/* Steuer/SV-Matrix Agenda (8 Spalten + Summen rechts) */
+.ag-taxsv-wrap {
+  display: grid;
+  grid-template-columns: 1fr 28mm;
+  gap: 0;
+  border: 0.5px solid #000;
+  margin-bottom: 1mm;
+}
+
+.ag-taxsv-agenda {
+  margin-bottom: 0;
+  border: none;
+}
+
+.ag-taxsv-aside {
+  display: flex;
+  flex-direction: column;
+  border-left: 0.5px solid #000;
+  background: #fff;
+}
+
+.ag-taxsv-aside .ag-sum-box {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1.5mm 2mm;
+  border-bottom: 0.5px solid #000;
+  font-size: 5.8pt;
+  text-align: right;
+}
+
+.ag-taxsv-aside .ag-sum-box:last-child {
+  border-bottom: none;
+}
+
+.ag-taxsv-aside .ag-sum-box span {
+  display: block;
+  font-size: 5.4pt;
+  font-weight: 600;
+  text-align: left;
+  margin-bottom: 1px;
+}
+
+.ag-taxsv-aside .ag-sum-box strong {
+  font-size: 7pt;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-taxsv-aside .ag-sum-net strong {
+  font-size: 8pt;
+}
+
+.ag-taxsv-agenda thead th {
+  font-size: 4.8pt;
+  line-height: 1.15;
+  padding: 1px 1px;
+  vertical-align: bottom;
+}
+
+.ag-taxsv-agenda tbody td {
+  font-size: 5.8pt;
+}
+
+.ag-earnings tbody tr.ag-earnings-spacer td {
+  height: 4.2mm;
+  border-bottom: 0.5px solid #000;
+}
+
+.ag-earnings tfoot td.ag-num {
+  font-weight: 700;
+  font-size: 6.5pt;
+}
+
+.ag-master-agenda .ag-master-row .ag-m-cell {
+  width: auto;
+}
+
+.ag-master-agenda .ag-master-row:last-child .ag-m-cell {
+  width: 10%;
+}
+
+.ag-master-agenda .ag-master-row:last-child .ag-m-cell-wide {
+  width: 14%;
+}
+
+/* Modern/Formal/Standard: gleiche Agenda-Struktur, nur Schriftgröße */
+.payroll-sheet.layout-modern .ag-title,
+.payroll-sheet.layout-formal .ag-title {
+  font-size: 8pt;
+}
+
+.payroll-sheet.layout-modern .payroll-document,
+.payroll-sheet.layout-formal .payroll-document {
+  --ag-size: 7pt;
+}
+
+/* Rechnung: Agenda-ähnliches Raster */
+#invoicePreview.mode-invoice-doc .invoice-top h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  border-bottom: 2px solid #000;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+#invoicePreview .preview-items th {
+  border-top: 1px solid #000;
+  border-bottom: 1px solid #000;
+  font-weight: 700;
+  color: #000;
+}
+
+#invoicePreview .preview-items td {
+  border-bottom: 0.5px solid #000;
+}
+
+#invoicePreview .totals {
+  border: 1px solid #000;
+  padding: 10px 12px;
+}
+
+#invoicePreview .grand-total {
+  border-top: 2px solid #000;
+}
+
+/* Bearbeitbare Felder auf dem Abrechnungsblatt */
+.ag-verdienst-title {
+  font-size: 7.5pt !important;
+  font-weight: 700 !important;
+  text-align: left !important;
+  padding: 2px 4px !important;
+  letter-spacing: 0.02em;
+  background: #fff !important;
+}
+
+.ag-verdienst-block {
+  scroll-margin-top: 12mm;
+}
+
+.ag-inline-select,
+.ag-inline-input {
+  width: 100%;
+  max-width: 100%;
+  border: none;
+  background: #fff;
+  font: inherit;
+  color: #000;
+  padding: 0;
+  margin: 0;
+  text-align: right;
+  box-sizing: border-box;
+}
+
+.ag-m-cell-edit .ag-inline-select {
+  text-align: left;
+  font-size: 6.8pt;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.ag-m-cell-edit .ag-inline-select:focus,
+.ag-inline-input:focus {
+  outline: 1px solid #000;
+  outline-offset: -1px;
+}
+
+.ag-brutto-edit {
+  padding: 0 !important;
+}
+
+.ag-inline-amount {
+  font-size: 6.5pt;
+  font-weight: 700;
+  text-align: right;
+  padding: 1px 3px !important;
+  width: 100%;
+}
+
+.preview-sheet-hint {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 11px;
+  color: #333;
+  line-height: 1.35;
+  max-width: 420px;
+}
+
+@media print {
+  .preview-sheet-hint {
+    display: none !important;
+  }
+
+  .ag-inline-select,
+  .ag-inline-input {
+    appearance: none;
+    -webkit-appearance: none;
+    border: none !important;
+    outline: none !important;
+    background: transparent !important;
+  }
+}

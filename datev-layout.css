@@ -1,0 +1,685 @@
+/**
+ * DATEV LOHN17 – 1:1 Referenz Mustermann Juli 2025
+ * Bildvorlage: assets/referenz-datev-mustermann.png
+ */
+
+.payroll-sheet.layout-datev {
+  --ag-font: "Courier New", Courier, "Lucida Console", monospace;
+  --ag-size: 6.15pt;
+  --ag-border: 0.5px solid #000;
+  --ag-rail: 28mm;
+  width: 210mm;
+  max-width: 210mm;
+}
+
+.payroll-sheet.layout-datev .payroll-document {
+  width: 210mm;
+  max-width: 210mm;
+  min-height: auto !important;
+  padding: 7mm 8mm 5mm !important;
+  font-family: var(--ag-font) !important;
+  font-size: var(--ag-size) !important;
+  line-height: 1.05;
+  letter-spacing: 0;
+  color: #000;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.payroll-sheet.layout-datev .tpl-classic,
+.payroll-sheet.layout-datev .ag-sheet-body {
+  display: block;
+  min-height: auto !important;
+  flex: none !important;
+}
+
+.payroll-sheet.layout-datev .layout-agenda-only {
+  display: none !important;
+}
+
+.payroll-sheet:not(.layout-datev) .layout-datev-only {
+  display: none !important;
+}
+
+.payroll-sheet.layout-datev .layout-datev-no-ref {
+  display: none !important;
+}
+
+.payroll-sheet.layout-datev div.layout-datev-only,
+.payroll-sheet.layout-datev aside.layout-datev-only {
+  display: block;
+}
+
+.payroll-sheet.layout-datev table,
+.payroll-sheet.layout-datev .ag-earnings,
+.payroll-sheet.layout-datev .ag-master-datev,
+.payroll-sheet.layout-datev .ag-datev-days-grid,
+.payroll-sheet.layout-datev .ag-datev-tax-table,
+.payroll-sheet.layout-datev .ag-dv-vb-table,
+.payroll-sheet.layout-datev .ag-datev-costs-table {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.payroll-sheet.layout-datev thead {
+  display: table-header-group;
+}
+
+.payroll-sheet.layout-datev tbody {
+  display: table-row-group;
+}
+
+.payroll-sheet.layout-datev tr {
+  display: table-row;
+}
+
+.payroll-sheet.layout-datev th,
+.payroll-sheet.layout-datev td {
+  display: table-cell;
+}
+
+/* ── Kopf ── */
+.payroll-sheet.layout-datev .ag-header-block {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 41%;
+  border: var(--ag-border);
+  border-bottom: none;
+}
+
+.payroll-sheet.layout-datev .ag-title-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  padding: 1mm 2mm;
+  border-bottom: var(--ag-border);
+}
+
+.payroll-sheet.layout-datev .ag-title-left {
+  display: block;
+}
+
+.payroll-sheet.layout-datev .ag-title {
+  font-size: 6.8pt;
+  font-weight: 700;
+  display: inline;
+}
+
+.payroll-sheet.layout-datev .ag-title-sub {
+  font-size: 6.8pt;
+  font-weight: 700;
+  display: inline;
+  margin-left: 2mm;
+  margin-top: 0;
+}
+
+.payroll-sheet.layout-datev .ag-datev-run {
+  text-align: right;
+  font-size: 5.8pt;
+  line-height: 1.25;
+}
+
+.payroll-sheet.layout-datev .ag-datev-run span {
+  display: block;
+}
+
+.payroll-sheet.layout-datev .ag-master-datev {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: 5.6pt;
+}
+
+.payroll-sheet.layout-datev .ag-master-datev td {
+  border: var(--ag-border);
+  padding: 0.5px 2px;
+  vertical-align: bottom;
+  height: 6.2mm;
+}
+
+.payroll-sheet.layout-datev .ag-master-datev .ag-lbl {
+  display: block;
+  font-size: 5pt;
+  line-height: 1.05;
+}
+
+.payroll-sheet.layout-datev .ag-master-datev .ag-val,
+.payroll-sheet.layout-datev .ag-master-datev .ag-inline-select {
+  display: block;
+  font-size: 5.8pt;
+  min-height: 2.2mm;
+}
+
+.payroll-sheet.layout-datev .ag-datev-days-grid {
+  grid-column: 2;
+  grid-row: 2;
+  font-size: 5.4pt;
+}
+
+.payroll-sheet.layout-datev .ag-datev-days-grid td {
+  border: var(--ag-border);
+  padding: 0.5px 2px;
+  text-align: center;
+  width: 25%;
+  height: 6.2mm;
+  vertical-align: bottom;
+}
+
+.payroll-sheet.layout-datev .ag-datev-days-grid .ag-lbl {
+  display: block;
+  font-size: 4.8pt;
+}
+
+.payroll-sheet.layout-datev .ag-datev-days-grid .ag-val {
+  display: block;
+  font-size: 5.6pt;
+}
+
+/* ── Adresse | Meta | Hinweise (3 Spalten) ── */
+.payroll-sheet.layout-datev .ag-mid-grid {
+  display: grid;
+  grid-template-columns: 30% 16% 54%;
+  border-left: var(--ag-border);
+  border-right: var(--ag-border);
+  min-height: 22mm !important;
+  flex: none !important;
+}
+
+.payroll-sheet.layout-datev .ag-left {
+  border-right: var(--ag-border);
+}
+
+.payroll-sheet.layout-datev .ag-center {
+  border-right: var(--ag-border);
+}
+
+.payroll-sheet.layout-datev .ag-datev-mid-meta {
+  padding: 3mm 2mm;
+  font-size: 5.8pt;
+  line-height: 1.45;
+}
+
+.payroll-sheet.layout-datev .ag-datev-mid-meta p {
+  margin: 0 0 1.5mm;
+}
+
+.payroll-sheet.layout-datev .ag-datev-mid-meta .ag-lbl {
+  font-size: 5.4pt;
+  display: block;
+}
+
+.payroll-sheet.layout-datev .ag-datev-mid-meta .ag-val {
+  font-size: 5.8pt;
+}
+
+.payroll-sheet.layout-datev .ag-emp-block {
+  padding: 2.5mm 2mm 2mm 6mm;
+  min-height: 20mm;
+}
+
+.payroll-sheet.layout-datev .ag-datev-sender {
+  font-size: 5.2pt;
+  margin: 0 0 1.5mm;
+  line-height: 1.2;
+}
+
+.payroll-sheet.layout-datev .ag-emp-meta {
+  font-size: 5.6pt;
+  margin: 0 0 0.8mm;
+}
+
+.payroll-sheet.layout-datev .ag-emp-name {
+  font-size: 6pt;
+  margin: 0 0 0.8mm;
+}
+
+.payroll-sheet.layout-datev .ag-emp-addr {
+  font-size: 6pt;
+  margin: 0;
+  font-family: inherit;
+  white-space: pre-wrap;
+  background: transparent;
+  border: none;
+}
+
+.payroll-sheet.layout-datev .ag-datev-hinweise {
+  height: 100%;
+  border: none;
+}
+
+.payroll-sheet.layout-datev .ag-datev-hinweise .ag-box-h {
+  font-size: 5.6pt;
+  font-weight: 700;
+  padding: 1px 3px;
+  border-bottom: var(--ag-border);
+}
+
+.payroll-sheet.layout-datev .ag-datev-hinweise p {
+  white-space: pre-wrap;
+  font-size: 5.6pt;
+  line-height: 1.35;
+  margin: 0;
+  padding: 2mm;
+}
+
+/* ── Hauptkörper + Summenspalte ── */
+.payroll-sheet.layout-datev .ag-payroll-core {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--ag-rail);
+  border: var(--ag-border);
+  border-top: none;
+}
+
+.payroll-sheet.layout-datev .ag-datev-core-left {
+  grid-column: 1;
+  min-width: 0;
+}
+
+.payroll-sheet.layout-datev .ag-payroll-core > .ag-datev-rail {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: stretch;
+}
+
+.payroll-sheet.layout-datev .ag-payroll-core > :not(.ag-datev-rail):not(.ag-datev-core-left) {
+  grid-column: 1;
+}
+
+.payroll-sheet.layout-datev .ag-datev-section-h {
+  font-size: 5.6pt;
+  font-weight: 700;
+  padding: 0.5mm 2mm;
+  border-top: var(--ag-border);
+  border-bottom: var(--ag-border);
+  background: #fff;
+}
+
+.payroll-sheet.layout-datev .ag-payroll-core > .ag-datev-section-h:first-child {
+  border-top: none;
+}
+
+.payroll-sheet.layout-datev .ag-earnings-block {
+  display: block;
+}
+
+.payroll-sheet.layout-datev .ag-earnings th,
+.payroll-sheet.layout-datev .ag-earnings td {
+  border: var(--ag-border);
+  padding: 0.5px 2px;
+  font-size: 5.6pt;
+}
+
+.payroll-sheet.layout-datev .ag-earnings thead th {
+  font-size: 5.2pt;
+  font-weight: 600;
+  text-align: center;
+  vertical-align: bottom;
+  height: 5.5mm;
+}
+
+.payroll-sheet.layout-datev .ag-earnings tbody td {
+  height: 4.2mm;
+  vertical-align: middle;
+}
+
+.payroll-sheet.layout-datev .ag-earnings .ag-col-la { width: 7%; }
+.payroll-sheet.layout-datev .ag-earnings .ag-col-bez { width: 22%; }
+.payroll-sheet.layout-datev .ag-earnings .ag-col-einheit { width: 6%; }
+.payroll-sheet.layout-datev .ag-earnings .ag-col-menge { width: 7%; }
+.payroll-sheet.layout-datev .ag-earnings .ag-col-faktor { width: 8%; }
+.payroll-sheet.layout-datev .ag-earnings .ag-col-prozent { width: 9%; }
+.payroll-sheet.layout-datev .ag-earnings .ag-col-st,
+.payroll-sheet.layout-datev .ag-earnings .ag-col-sv,
+.payroll-sheet.layout-datev .ag-earnings .ag-col-gb { width: 4%; text-align: center; }
+
+.payroll-sheet.layout-datev .ag-earnings-hint td {
+  font-size: 5.6pt;
+  padding: 1px 3px;
+  height: 4.2mm;
+}
+
+.payroll-sheet.layout-datev .ag-earnings-spacer td {
+  height: 4.2mm;
+}
+
+/* Summenspalte rechts – durchgehend wie DATEV-Original */
+.payroll-sheet.layout-datev .ag-datev-rail {
+  display: flex;
+  flex-direction: column;
+  border-left: var(--ag-border);
+  background: #fff;
+  min-height: 100%;
+}
+
+.payroll-sheet.layout-datev .ag-dv-rail-section-gap {
+  height: 6.2mm;
+  border-bottom: var(--ag-border);
+  flex-shrink: 0;
+}
+
+.payroll-sheet.layout-datev .ag-dv-rail-earnings {
+  flex: 0 0 auto;
+  border-bottom: var(--ag-border);
+}
+
+.payroll-sheet.layout-datev .ag-dv-rail-h {
+  font-size: 5.2pt;
+  font-weight: 600;
+  text-align: center;
+  padding: 0.5px 2px;
+  height: 5.5mm;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-bottom: var(--ag-border);
+}
+
+.payroll-sheet.layout-datev .ag-dv-rail-amt {
+  font-size: 5.6pt;
+  text-align: right;
+  padding: 0.5px 2mm;
+  height: 4.2mm;
+  line-height: 4.2mm;
+  font-variant-numeric: tabular-nums;
+  border-bottom: var(--ag-border);
+}
+
+.payroll-sheet.layout-datev .ag-dv-rail-hint-spacer {
+  height: 4.2mm;
+  border-bottom: var(--ag-border);
+}
+
+.payroll-sheet.layout-datev .ag-dv-rail-spacer {
+  height: 4.2mm;
+  border-bottom: var(--ag-border);
+}
+
+.payroll-sheet.layout-datev .ag-dv-rail-totals {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.payroll-sheet.layout-datev .ag-datev-rail .ag-dv-sum-box {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1mm 1.5mm;
+  border-bottom: var(--ag-border);
+  min-height: 9mm;
+}
+
+.payroll-sheet.layout-datev .ag-datev-rail .ag-dv-sum-box span {
+  font-size: 4.8pt;
+  line-height: 1.1;
+}
+
+.payroll-sheet.layout-datev .ag-datev-rail .ag-dv-sum-box strong {
+  font-size: 6.6pt;
+  font-weight: 700;
+  text-align: right;
+  margin-top: 0.5mm;
+  display: block;
+  border-bottom: 1px solid #000;
+  padding-bottom: 0.3mm;
+}
+
+.payroll-sheet.layout-datev .ag-datev-rail .ag-dv-gross strong,
+.payroll-sheet.layout-datev .ag-datev-rail .ag-dv-payout strong {
+  border-bottom: 3px double #000;
+}
+
+.payroll-sheet.layout-datev .ag-datev-rail .ag-dv-payout {
+  flex: 1 1 auto;
+  min-height: 13mm;
+  margin-top: auto;
+}
+
+.payroll-sheet.layout-datev .ag-datev-rail .ag-dv-payout strong {
+  font-size: 7.2pt;
+}
+
+/* Steuer/SV */
+.payroll-sheet.layout-datev .ag-datev-tax-table th,
+.payroll-sheet.layout-datev .ag-datev-tax-table td {
+  border: var(--ag-border);
+  padding: 0.5px 2px;
+  font-size: 5.4pt;
+}
+
+.payroll-sheet.layout-datev .ag-datev-tax-table th {
+  font-weight: 600;
+  text-align: center;
+  font-size: 5pt;
+}
+
+.payroll-sheet.layout-datev .ag-datev-tax-table .ag-row-h {
+  font-weight: 700;
+  width: 4mm;
+  text-align: center;
+}
+
+.payroll-sheet.layout-datev .ag-datev-tax-table .ag-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Verdienstbescheinigung (3 Spalten, Netto leer) */
+.payroll-sheet.layout-datev .ag-dv-vb-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  border-top: var(--ag-border);
+}
+
+.payroll-sheet.layout-datev .ag-datev-verdienst-inline {
+  border-top: var(--ag-border);
+}
+
+.payroll-sheet.layout-datev .ag-dv-vb-table + .ag-dv-vb-table {
+  border-left: var(--ag-border);
+}
+
+.payroll-sheet.layout-datev .ag-dv-vb-table th,
+.payroll-sheet.layout-datev .ag-dv-vb-table td {
+  border: var(--ag-border);
+  padding: 0.5px 2px;
+  font-size: 5.4pt;
+}
+
+.payroll-sheet.layout-datev .ag-dv-vb-table thead th {
+  font-weight: 700;
+  font-size: 5.2pt;
+  text-align: center;
+}
+
+.payroll-sheet.layout-datev .ag-dv-vb-table .ag-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.payroll-sheet.layout-datev .ag-dv-vb-netto tbody td {
+  height: 4mm;
+}
+
+/* Bank + Kosten */
+.payroll-sheet.layout-datev .ag-datev-footer {
+  display: grid;
+  grid-template-columns: 1fr 36%;
+  min-height: 12mm;
+  border-top: var(--ag-border);
+}
+
+.payroll-sheet.layout-datev .ag-earnings .ag-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.payroll-sheet.layout-datev #pvLegendCalc {
+  display: none;
+}
+
+.payroll-sheet.layout-datev .ag-legend-company {
+  display: none;
+}
+
+.payroll-sheet.layout-datev .ag-datev-bank {
+  padding: 1.5mm 2mm;
+  font-size: 5.6pt;
+  line-height: 1.4;
+}
+
+.payroll-sheet.layout-datev .ag-datev-bank p {
+  margin: 0;
+}
+
+.payroll-sheet.layout-datev .ag-datev-footer .ag-datev-costs {
+  border-left: var(--ag-border);
+}
+
+.payroll-sheet.layout-datev .ag-datev-costs-table td {
+  border: var(--ag-border);
+  padding: 0.5px 3px;
+  font-size: 5.4pt;
+}
+
+.payroll-sheet.layout-datev .ag-datev-costs-table td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fußzeile */
+.payroll-sheet.layout-datev .ag-footer-anchor {
+  border: var(--ag-border);
+  border-top: none;
+}
+
+.payroll-sheet.layout-datev .ag-meta {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 1mm 2mm;
+  border-bottom: var(--ag-border);
+}
+
+.payroll-sheet.layout-datev #pvAgendaTimestamp {
+  display: none;
+}
+
+.payroll-sheet.layout-datev .ag-dv-footer-logo {
+  font-size: 8.5pt;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.payroll-sheet.layout-datev .ag-dv-footer-logo::before {
+  content: "";
+  display: inline-block;
+  width: 6mm;
+  height: 6mm;
+  margin-right: 1.5mm;
+  vertical-align: middle;
+  border: 1.5px solid #000;
+  background: repeating-linear-gradient(0deg, #000, #000 1px, #fff 1px, #fff 2.2px);
+}
+
+.payroll-sheet.layout-datev .ag-legend-block {
+  padding: 1mm 2mm 1.5mm;
+  font-size: 4.8pt;
+  line-height: 1.2;
+}
+
+.payroll-sheet.layout-datev .ag-legend-datev {
+  column-count: 2;
+  column-gap: 3mm;
+}
+
+.payroll-sheet.layout-datev .ag-legend-legal {
+  font-weight: 600;
+  text-align: center;
+  margin-top: 0.5mm;
+}
+
+@media print {
+  .payroll-sheet.layout-datev {
+    width: 210mm !important;
+  }
+
+  .payroll-sheet.layout-datev .payroll-document {
+    width: 210mm !important;
+    padding: 7mm 8mm 5mm !important;
+  }
+
+  .payroll-sheet.layout-datev-pdf-bg .payroll-bg-layer {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
+
+/* PDF/PNG Originalformular als Hintergrund */
+.payroll-sheet.layout-datev .payroll-document {
+  position: relative;
+}
+
+.payroll-sheet.layout-datev .payroll-bg-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.payroll-sheet.layout-datev .payroll-bg-layer img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: top center;
+  display: block;
+}
+
+.payroll-sheet.layout-datev .payroll-content-layer {
+  position: relative;
+  z-index: 1;
+}
+
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-earnings th,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-earnings td,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-master-datev td,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-datev-days-grid td,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-datev-tax-table th,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-datev-tax-table td,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-dv-vb-table th,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-dv-vb-table td,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-datev-costs-table td,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-datev-rail .ag-dv-sum-box {
+  border-color: transparent !important;
+  background: transparent !important;
+}
+
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-datev-section-h,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-box-h,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-lbl,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-datev-rail .ag-dv-sum-box span,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-legend-block,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-dv-rail-h,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-datev-sender,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden thead th {
+  color: transparent !important;
+  border-color: transparent !important;
+}
+
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-val,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-num,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-datev-rail strong,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-emp-name,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-emp-addr,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-emp-meta,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden #pvDatevHints {
+  color: #000 !important;
+}
+
+.payroll-sheet.layout-datev-pdf-bg:not(.layout-datev-bg-chrome-hidden) .payroll-content-layer {
+  background: rgba(255, 255, 255, 0.55);
+}

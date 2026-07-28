@@ -1,0 +1,361 @@
+/* WorkPass Neon-Dark – Hintergrund & glänzende Buttons wie Plattform-UI */
+:root {
+  --wp-bg: #060b16;
+  --wp-bg-elev: #0b1220;
+  --wp-bg-panel: #101826;
+  --wp-bg-soft: #141e2e;
+  --wp-line: rgba(90, 140, 200, 0.22);
+  --wp-line-strong: rgba(59, 160, 255, 0.55);
+  --wp-text: #e8eef8;
+  --wp-text-dim: #8a94a6;
+  --wp-cyan: #3b9eff;
+  --wp-cyan-hot: #5db4ff;
+  --wp-glow: rgba(59, 158, 255, 0.55);
+  --wp-glow-soft: rgba(59, 158, 255, 0.18);
+  --wp-ok: #34d399;
+  --wp-warn: #fbbf24;
+  --wp-danger: #f87171;
+  --wp-grad: linear-gradient(180deg, #182338 0%, #101a2c 100%);
+  --wp-grad-cta: linear-gradient(180deg, #1a4f8a 0%, #123a68 100%);
+  --wp-sans: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --wp-display: "Space Grotesk", "Barlow", system-ui, sans-serif;
+  --wp-mono: "IBM Plex Mono", "Courier New", monospace;
+  --wp-radius: 12px;
+  --wp-radius-sm: 10px;
+  --wp-shine:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 1px rgba(59, 158, 255, 0.35),
+    0 6px 18px rgba(20, 90, 180, 0.35),
+    0 10px 28px rgba(59, 158, 255, 0.22);
+}
+
+body.lexware-app,
+body.workpass-hub {
+  font-family: var(--wp-sans);
+  color: var(--wp-text);
+  background: var(--wp-bg) !important;
+}
+
+body.auth-locked { overflow: hidden; }
+
+/* ——— Auth ——— */
+.auth-gate {
+  position: fixed; inset: 0; z-index: 10000;
+  display: grid; place-items: center; padding: 24px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(59, 158, 255, 0.14), transparent 50%),
+    var(--wp-bg);
+}
+.auth-gate[hidden] { display: none !important; }
+.auth-card {
+  width: min(420px, 100%);
+  background: linear-gradient(180deg, #121a2b 0%, #0c1320 100%);
+  border: 1px solid var(--wp-line);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: var(--wp-shine);
+  position: relative; overflow: hidden;
+  color: var(--wp-text);
+}
+.auth-card::before {
+  content: ""; position: absolute; left: 12%; right: 12%; bottom: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--wp-cyan), transparent);
+  box-shadow: 0 0 16px var(--wp-glow);
+}
+.auth-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.auth-mark {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #7ec8ff, #1d4ed8 60%, #0b1220);
+  box-shadow: 0 0 0 2px rgba(59,158,255,0.35), 0 0 20px rgba(59,158,255,0.35);
+  display: grid; place-items: center;
+}
+.auth-mark span { width: 16px; height: 16px; border-radius: 50%; background: rgba(255,255,255,0.9); display: block; }
+.auth-brand strong { font-family: var(--wp-display); font-size: 1.15rem; color: #fff; letter-spacing: 0.04em; }
+.auth-brand small { display: block; color: var(--wp-text-dim); font-size: 0.72rem; margin-top: 2px; }
+.auth-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+.auth-meta div {
+  background: rgba(255,255,255,0.04); border: 1px solid var(--wp-line);
+  border-radius: 8px; padding: 8px 10px; font-family: var(--wp-mono); font-size: 0.68rem; color: #c5d0e0;
+}
+.auth-meta span {
+  display: block; font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--wp-text-dim); margin-bottom: 2px; font-family: var(--wp-sans);
+}
+.auth-card h1 { margin: 0 0 6px; font-family: var(--wp-display); font-size: 1.3rem; color: #fff; }
+.auth-card .auth-hint { margin: 0 0 16px; font-size: 0.84rem; color: var(--wp-text-dim); line-height: 1.4; }
+.auth-card label { display: block; font-size: 0.72rem; font-weight: 600; color: var(--wp-text-dim); margin-bottom: 5px; }
+.auth-card input {
+  width: 100%; padding: 11px 12px; border: 1px solid var(--wp-line-strong);
+  border-radius: 10px; background: #0a101c; color: #fff; font: inherit; font-size: 1.05rem;
+  letter-spacing: 0.18em; text-align: center; margin-bottom: 12px;
+  box-shadow: 0 0 0 1px rgba(59,158,255,0.12), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.auth-card input:focus {
+  outline: none; border-color: var(--wp-cyan);
+  box-shadow: 0 0 0 3px var(--wp-glow-soft), 0 8px 20px rgba(59,158,255,0.2);
+}
+.auth-error { min-height: 1.2em; color: var(--wp-danger); font-size: 0.78rem; margin: 0 0 10px; }
+.auth-submit {
+  width: 100%; border: 1px solid var(--wp-line-strong); border-radius: 12px; padding: 13px 16px;
+  font: inherit; font-weight: 700; font-size: 0.95rem; color: #fff;
+  background: var(--wp-grad-cta); cursor: pointer; box-shadow: var(--wp-shine);
+}
+.auth-submit:hover { filter: brightness(1.08); }
+.auth-foot { margin-top: 14px; text-align: center; font-size: 0.68rem; color: var(--wp-text-dim); }
+
+#workpassApp,
+#lohnApp.lohn-shell {
+  display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; width: 100%; height: 100%;
+}
+#workpassApp.lex-app-root {
+  display: flex; flex-direction: column; height: 100vh; min-height: 100vh; overflow: hidden;
+  background: var(--wp-bg);
+}
+#workpassApp[aria-hidden="true"],
+#lohnApp[aria-hidden="true"] {
+  visibility: hidden; pointer-events: none; position: fixed; inset: 0;
+}
+
+/* ——— Shiny button primitive ——— */
+.wp-btn-shine,
+body.workpass-hub .lex-ribbon-btn-primary,
+body.workpass-hub .lex-ribbon-btn-accent,
+body.workpass-hub .dash-action-btn,
+body.workpass-hub .secondary-btn:not(.danger-btn),
+body.workpass-hub .wp-lock-btn {
+  position: relative;
+  border-radius: var(--wp-radius-sm) !important;
+  border: 1px solid rgba(90, 140, 200, 0.28) !important;
+  background: linear-gradient(180deg, #182338 0%, #101a2c 100%) !important;
+  color: #fff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 1px 0 rgba(0, 0, 0, 0.35) !important;
+  transition: border-color 0.15s, box-shadow 0.15s, filter 0.15s;
+}
+body.workpass-hub .lex-ribbon-btn-primary,
+body.workpass-hub .lex-ribbon-btn-accent,
+body.workpass-hub .dash-action-btn:hover,
+.wp-btn-shine.active,
+body.workpass-hub .sidebar-nav-btn.active {
+  border-color: var(--wp-line-strong) !important;
+  background: linear-gradient(180deg, #1c3f6e 0%, #132a4d 100%) !important;
+  box-shadow: var(--wp-shine) !important;
+}
+
+/* ——— Hub chrome ——— */
+body.workpass-hub .lex-appbar {
+  background: linear-gradient(180deg, #0c1424 0%, #080f1a 100%) !important;
+  border-bottom: 1px solid var(--wp-line) !important;
+  color: var(--wp-text) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+body.workpass-hub .lex-appbar-titles strong {
+  font-family: var(--wp-display); color: #fff !important;
+}
+body.workpass-hub .lex-appbar-titles span,
+body.workpass-hub .lex-menu-btn,
+body.workpass-hub .lex-appbar-mandant { color: var(--wp-text-dim) !important; }
+body.workpass-hub .lex-menu-btn:hover { color: #fff !important; }
+
+body.workpass-hub .app-sidebar,
+body.workpass-hub .lex-module-panel {
+  background: var(--wp-bg-elev) !important;
+  border-right: 1px solid var(--wp-line) !important;
+  color: var(--wp-text) !important;
+}
+body.workpass-hub .lex-module-head,
+body.workpass-hub .lex-nav-group,
+body.workpass-hub .sidebar-footer {
+  color: var(--wp-text-dim) !important;
+}
+body.workpass-hub .sidebar-nav-btn {
+  color: #c5d0e0 !important;
+  border-radius: var(--wp-radius-sm) !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+}
+body.workpass-hub .sidebar-nav-btn:hover {
+  background: rgba(59, 158, 255, 0.08) !important;
+  border-color: rgba(59, 158, 255, 0.2) !important;
+  color: #fff !important;
+}
+body.workpass-hub .sidebar-nav-btn.active {
+  color: #fff !important;
+}
+
+body.workpass-hub .app-main,
+body.workpass-hub .form-panel,
+body.workpass-hub .panel,
+body.workpass-hub .workspace {
+  background: var(--wp-bg) !important;
+  color: var(--wp-text) !important;
+}
+body.workpass-hub .lex-ribbon {
+  background: var(--wp-bg-elev) !important;
+  border-bottom: 1px solid var(--wp-line) !important;
+}
+body.workpass-hub .lex-ribbon-caption,
+body.workpass-hub .lex-breadcrumb,
+body.workpass-hub .muted,
+body.workpass-hub .small,
+body.workpass-hub label,
+body.workpass-hub .preview-sheet-hint {
+  color: var(--wp-text-dim) !important;
+}
+body.workpass-hub .lex-ribbon-btn {
+  background: linear-gradient(180deg, #182338 0%, #101a2c 100%) !important;
+  border: 1px solid rgba(90, 140, 200, 0.25) !important;
+  color: #e8eef8 !important;
+  border-radius: 10px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+}
+body.workpass-hub .lex-ribbon-btn:hover {
+  border-color: var(--wp-line-strong) !important;
+  box-shadow: var(--wp-shine) !important;
+  color: #fff !important;
+}
+body.workpass-hub .lex-context-bar,
+body.workpass-hub .app-topbar {
+  background: transparent !important;
+  border-color: var(--wp-line) !important;
+}
+body.workpass-hub .dash-hero h2,
+body.workpass-hub .form-section-title,
+body.workpass-hub h2, body.workpass-hub h3 {
+  font-family: var(--wp-display);
+  color: #fff !important;
+}
+body.workpass-hub .onboarding-banner,
+body.workpass-hub .wp-hub-banner,
+body.workpass-hub .dash-kpi,
+body.workpass-hub .dash-action-btn,
+body.workpass-hub .form-section,
+body.workpass-hub .logo-upload-box,
+body.workpass-hub .data-backup-box,
+body.workpass-hub .pin-change-box,
+body.workpass-hub .letterhead-box,
+body.workpass-hub .invoice-archive-item {
+  background: var(--wp-bg-panel) !important;
+  border: 1px solid var(--wp-line) !important;
+  border-radius: var(--wp-radius) !important;
+  color: var(--wp-text) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+}
+body.workpass-hub .dash-action-btn strong { color: #fff !important; }
+body.workpass-hub .dash-action-btn span,
+body.workpass-hub .dash-kpi-label { color: var(--wp-text-dim) !important; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.68rem; }
+body.workpass-hub .dash-kpi-value { color: var(--wp-cyan-hot) !important; font-family: var(--wp-display); }
+body.workpass-hub .wp-hub-banner a { color: var(--wp-cyan-hot) !important; }
+
+body.workpass-hub input,
+body.workpass-hub select,
+body.workpass-hub textarea {
+  background: #0a101c !important;
+  border: 1px solid var(--wp-line) !important;
+  color: var(--wp-text) !important;
+  border-radius: 10px !important;
+}
+body.workpass-hub input:focus,
+body.workpass-hub select:focus,
+body.workpass-hub textarea:focus {
+  border-color: var(--wp-cyan) !important;
+  box-shadow: 0 0 0 3px var(--wp-glow-soft) !important;
+  outline: none !important;
+}
+body.workpass-hub .field-incomplete {
+  border-color: rgba(248, 113, 113, 0.7) !important;
+  box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.15) !important;
+}
+body.workpass-hub .ui-chip,
+body.workpass-hub .lex-draft-chip {
+  background: rgba(59, 158, 255, 0.1) !important;
+  border: 1px solid var(--wp-line) !important;
+  color: var(--wp-text) !important;
+  border-radius: 999px !important;
+}
+body.workpass-hub .ui-chip-ok,
+body.workpass-hub .draft-save-state:not(.unsaved) {
+  border-color: rgba(52, 211, 153, 0.45) !important;
+  color: var(--wp-ok) !important;
+}
+body.workpass-hub .ui-chip-warn,
+body.workpass-hub .draft-save-state.unsaved {
+  border-color: rgba(251, 191, 36, 0.45) !important;
+  color: var(--wp-warn) !important;
+}
+
+body.workpass-hub .doc-type-card {
+  background: var(--wp-grad) !important;
+  border: 1px solid var(--wp-line) !important;
+  color: var(--wp-text) !important;
+  border-radius: var(--wp-radius) !important;
+}
+body.workpass-hub .doc-type-card.active {
+  border-color: var(--wp-line-strong) !important;
+  box-shadow: var(--wp-shine) !important;
+  color: #fff !important;
+}
+
+body.workpass-hub .preview-pane,
+body.workpass-hub .preview-wrap,
+body.workpass-hub .preview-stage {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(59, 158, 255, 0.08), transparent 45%),
+    #050914 !important;
+  border-left: 1px solid var(--wp-line) !important;
+}
+body.workpass-hub #invoicePreview,
+body.workpass-hub .invoice-sheet,
+body.workpass-hub .preview-document {
+  background: #fff !important;
+  color: #111 !important;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45) !important;
+}
+
+.lex-menu-portal {
+  z-index: 5000 !important;
+  background: #101826 !important;
+  color: var(--wp-text) !important;
+  border: 1px solid var(--wp-line-strong) !important;
+  box-shadow: var(--wp-shine) !important;
+  border-radius: 12px !important;
+  min-width: 220px !important;
+}
+.lex-menu-portal button {
+  color: var(--wp-text) !important;
+  font-size: 0.82rem !important;
+  padding: 9px 14px !important;
+}
+.lex-menu-portal button:hover {
+  background: rgba(59, 158, 255, 0.12) !important;
+  color: #fff !important;
+}
+
+.wp-appbar-actions { display: flex; gap: 8px; align-items: center; }
+.wp-lock-btn {
+  padding: 7px 12px !important;
+  font-size: 0.78rem !important;
+  cursor: pointer;
+  text-decoration: none !important;
+}
+.wp-lock-btn:hover { box-shadow: var(--wp-shine) !important; }
+
+.invoice-archive-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.invoice-archive-item {
+  display: flex; justify-content: space-between; gap: 10px; align-items: center;
+  padding: 10px 12px; font-size: 0.82rem;
+}
+.invoice-archive-item button {
+  border: 1px solid var(--wp-line-strong) !important;
+  background: var(--wp-grad-cta) !important;
+  color: #fff !important;
+  border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 0.75rem;
+  box-shadow: 0 6px 16px rgba(59, 158, 255, 0.25);
+}
+
+.pin-change-box { margin-top: 16px; padding: 14px; }
+.pin-change-box .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+@media (max-width: 900px) {
+  .pin-change-box .grid { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,94 @@
+[
+  {
+    "kind": "platform.employee.delivery.v1",
+    "type": "payslip",
+    "deliveryId": "pay:muster-gmbh::02006::2025-07",
+    "jobId": "muster-gmbh::02006::2025-07",
+    "status": "ready_for_employee",
+    "releasedAt": "2026-07-28T08:08:31.088Z",
+    "employee": {
+      "id": "02006",
+      "name": "Mustermann Max"
+    },
+    "company": {
+      "id": "muster-gmbh",
+      "name": "Muster GmbH"
+    },
+    "period": "2025-07",
+    "summary": {
+      "gross": 3620,
+      "net": 2215.88,
+      "currency": "EUR"
+    },
+    "document": {
+      "kind": "platform.payslip.v1",
+      "employee": {
+        "id": "02006",
+        "name": "Mustermann Max",
+        "address": "Beispielweg 5\n80331 München",
+        "taxId": "00123456789",
+        "insuranceNo": "65170839J008",
+        "taxClass": "I"
+      },
+      "company": {
+        "id": "muster-gmbh",
+        "name": "Muster GmbH"
+      },
+      "period": "2025-07",
+      "status": "released",
+      "errors": [],
+      "calculatedAt": "2026-07-28T08:08:31.075Z",
+      "totals": {
+        "gross": 3620,
+        "net": 2215.88,
+        "taxGross": 3500,
+        "svGross": 3500,
+        "payrollTax": 411.58,
+        "churchTax": 37.04,
+        "solidarity": 0,
+        "health": 521.5,
+        "pension": 325.5,
+        "care": 63,
+        "unemployment": 45.5,
+        "svTotal": 955.5,
+        "employerShare": 955.5
+      },
+      "attendance": {
+        "days": 21,
+        "hours": 168
+      },
+      "wageItems": [
+        {
+          "code": "840",
+          "label": "Fahrgeld p. v. 25%",
+          "amount": 120,
+          "taxFlag": "P",
+          "svFlag": "P",
+          "quantity": 0,
+          "factor": 120
+        },
+        {
+          "code": "2000",
+          "label": "Gehalt",
+          "amount": 3500,
+          "taxFlag": "L",
+          "svFlag": "L",
+          "quantity": 0,
+          "factor": 3500
+        }
+      ],
+      "bank": {
+        "name": "Stadtsparkasse München",
+        "iban": "DE03700500000000012345"
+      },
+      "note": "Importiert von Plattform – zur Prüfung und Freigabe",
+      "legalRatesApplied": true,
+      "jobId": "muster-gmbh::02006::2025-07",
+      "releasedAt": "2026-07-28T08:08:31.088Z"
+    },
+    "appRoute": "/employee/payslips/muster-gmbh%3A%3A02006%3A%3A2025-07",
+    "title": "Entgeltabrechnung 2025-07",
+    "receivedAt": "2026-07-28T08:08:31.120Z",
+    "employeeAppStatus": "visible"
+  }
+]

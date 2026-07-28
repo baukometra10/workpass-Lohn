@@ -1,0 +1,48 @@
+{
+  "kind": "platform.accounting.event.v1",
+  "event": "payslip.released",
+  "occurredAt": "2026-07-28T10:00:00.000Z",
+  "source": "workpass-accounting-bridge",
+  "delivery": {
+    "kind": "platform.employee.delivery.v1",
+    "type": "payslip",
+    "deliveryId": "pay:muster-gmbh::02006::2025-07",
+    "jobId": "muster-gmbh::02006::2025-07",
+    "status": "ready_for_employee",
+    "releasedAt": "2026-07-28T10:00:00.000Z",
+    "employee": {
+      "id": "02006",
+      "name": "Mustermann Max"
+    },
+    "company": {
+      "id": "muster-gmbh",
+      "name": "Muster GmbH"
+    },
+    "period": "2025-07",
+    "summary": {
+      "gross": 3620,
+      "net": 2215.88,
+      "currency": "EUR"
+    },
+    "document": {
+      "kind": "platform.payslip.v1",
+      "jobId": "muster-gmbh::02006::2025-07",
+      "status": "released",
+      "employee": {
+        "id": "02006",
+        "name": "Mustermann Max"
+      },
+      "company": {
+        "id": "muster-gmbh",
+        "name": "Muster GmbH"
+      },
+      "period": "2025-07",
+      "totals": {
+        "gross": 3620,
+        "net": 2215.88
+      }
+    },
+    "appRoute": "/employee/payslips/muster-gmbh%3A%3A02006%3A%3A2025-07",
+    "title": "Entgeltabrechnung 2025-07"
+  }
+}

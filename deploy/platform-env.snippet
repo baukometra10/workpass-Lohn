@@ -1,0 +1,14 @@
+# Platform (suppix-ai-workpass.com) – env after Accounting is on Railway
+
+WORKPASS_ACCOUNTING_BASE_URL=https://YOUR-SERVICE.up.railway.app
+WORKPASS_API_KEY=same-as-accounting-WORKPASS_API_KEY
+
+# Webhook: Accounting → Platform (implement receive endpoint)
+# URL fixed:
+#   POST https://suppix-ai-workpass.com/api/workpass/webhooks/accounting
+# Header:
+#   X-WorkPass-Webhook-Key=<same WORKPASS_PLATFORM_WEBHOOK_KEY>
+
+# Headers on every Accounting API call:
+#   X-WorkPass-Key: <WORKPASS_API_KEY>
+#   X-WorkPass-Company-Id: <company.id>

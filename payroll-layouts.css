@@ -1,0 +1,867 @@
+/* ── Klassische Lohnabrechnung (Agenda / DATEV-Stil) ── */
+
+.payroll-sheet.layout-agenda,
+.payroll-sheet.layout-compact,
+.payroll-sheet.layout-standard {
+  --ag-font: Arial, Helvetica, sans-serif;
+  --ag-size: 6.8pt;
+  --ag-border: 0.5px solid #000;
+  box-shadow: none;
+  font-family: var(--ag-font);
+  color: #000;
+}
+
+.payroll-sheet.layout-datev {
+  box-shadow: none;
+  color: #000;
+}
+
+/* Agenda Standard: A4-Vorschau mit Fußzeile am unteren Blattrand */
+.payroll-sheet.layout-agenda .payroll-document {
+  min-height: 289mm;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.payroll-sheet.layout-agenda .tpl-classic {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.payroll-sheet.layout-agenda .ag-sheet-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.payroll-sheet.layout-agenda .ag-mid-grid {
+  flex: 0 0 auto;
+  min-height: 38mm;
+}
+
+.payroll-sheet.layout-agenda .ag-left,
+.payroll-sheet.layout-agenda .ag-right {
+  min-height: 100%;
+}
+
+.payroll-sheet.layout-agenda .ag-info-box {
+  flex: 1 1 auto;
+}
+
+.payroll-sheet.layout-agenda .ag-bottom {
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+.payroll-sheet.layout-agenda .ag-footer-anchor {
+  flex-shrink: 0;
+  margin-top: 0;
+}
+
+.payroll-sheet.layout-agenda .ag-footer-anchor {
+  margin-top: 1mm;
+  padding-top: 0;
+}
+
+.payroll-sheet.layout-agenda .ag-title-row {
+  background: #fff;
+  padding: 1.5mm 2mm 1mm;
+  border-bottom: var(--ag-border);
+}
+
+.payroll-sheet.layout-agenda .ag-title-main {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.payroll-sheet.layout-agenda .ag-title {
+  color: #000;
+  font-size: 8pt;
+  font-weight: 700;
+}
+
+.payroll-sheet.layout-agenda .ag-month {
+  color: #000;
+  font-size: 7.5pt;
+  font-weight: 700;
+}
+
+.payroll-sheet.layout-agenda .ag-header-block {
+  border: none;
+  margin-bottom: 1mm;
+}
+
+.payroll-sheet.layout-agenda .ag-master .ag-lbl {
+  background: #fff;
+  color: #000;
+  font-weight: 400;
+}
+
+.payroll-sheet.layout-agenda .ag-master .ag-val {
+  font-weight: 400;
+}
+
+.payroll-sheet.layout-agenda .ag-addr-label {
+  display: none;
+}
+
+.payroll-sheet.layout-agenda .ag-employer {
+  padding: 1.5mm 2mm;
+  font-weight: 400;
+  font-size: 6.8pt;
+  text-decoration: underline;
+  border-bottom: var(--ag-border);
+}
+
+.payroll-sheet.layout-agenda .ag-emp-block {
+  padding: 6mm 2mm 2mm 10mm;
+}
+
+.payroll-sheet.layout-agenda .ag-emp-meta {
+  font-size: 6.8pt;
+  color: #000;
+}
+
+.payroll-sheet.layout-agenda .ag-emp-name {
+  font-size: 8pt;
+  font-weight: 400;
+  margin-bottom: 1mm;
+}
+
+.payroll-sheet.layout-agenda .ag-emp-addr {
+  font-size: 8pt;
+}
+
+.payroll-sheet.layout-agenda .ag-box-h {
+  background: #fff;
+  color: #000;
+  font-weight: 700;
+}
+
+.payroll-sheet.layout-agenda .ag-earnings thead th,
+.payroll-sheet.layout-agenda .ag-taxsv-matrix thead th,
+.payroll-sheet.layout-agenda .ag-verdienst thead th {
+  background: #fff;
+  color: #000;
+}
+
+.payroll-sheet.layout-agenda .ag-netto-table .ag-section-h td {
+  background: #fff;
+}
+
+.payroll-sheet.layout-agenda .ag-payout-final td {
+  background: #fff;
+  color: #000;
+  font-weight: 700;
+  border-top: 1px solid #000 !important;
+}
+
+.payroll-sheet.layout-agenda .ag-payout-table .ag-payout-final td.ag-num {
+  font-size: 8.5pt;
+}
+
+.payroll-sheet.layout-agenda .ag-master .ag-lbl {
+  background: #fff;
+}
+
+.payroll-sheet.layout-agenda .ag-earnings thead th,
+.payroll-sheet.layout-agenda .ag-taxsv-matrix thead th,
+.payroll-sheet.layout-agenda .ag-verdienst thead th,
+.payroll-sheet.layout-agenda .ag-netto-table .ag-section-h td {
+  background: #fff;
+  font-weight: 700;
+}
+
+.payroll-document .pd-company-footer-alt,
+.payroll-document .payroll-legal-footer-alt {
+  display: none !important;
+}
+
+.payroll-sheet.layout-datev .ag-title-row {
+  background: #fff;
+}
+
+.payroll-sheet.layout-datev .ag-brand {
+  color: #000;
+}
+
+.payroll-sheet.layout-agenda .payroll-document,
+.payroll-sheet.layout-compact .payroll-document,
+.payroll-sheet.layout-standard .payroll-document,
+.pdf-export-clone.payroll-sheet.layout-agenda .payroll-document,
+.pdf-export-clone.payroll-sheet.layout-compact .payroll-document,
+.pdf-export-clone.payroll-sheet.layout-standard .payroll-document {
+  padding: 4mm 5mm 3mm;
+  gap: 0;
+  font-family: var(--ag-font);
+  font-size: var(--ag-size);
+  line-height: 1.05;
+  color: #000;
+  min-height: auto;
+}
+
+/* Modern: schwarz-weiß, klare Typografie */
+.payroll-sheet.layout-modern {
+  --ag-size: 7pt;
+  --ag-border: 0.5px solid #000;
+}
+
+.payroll-sheet.layout-modern .payroll-document,
+.pdf-export-clone.payroll-sheet.layout-modern .payroll-document {
+  padding: 6mm 7mm 5mm;
+}
+
+.payroll-sheet.layout-modern .ag-title-row {
+  background: #fff;
+  border-bottom: var(--ag-border);
+}
+
+.payroll-sheet.layout-modern .ag-title {
+  color: #000;
+  font-size: 8.5pt;
+}
+
+.payroll-sheet.layout-modern .ag-month {
+  color: #000;
+}
+
+.payroll-sheet.layout-modern .ag-box-h {
+  background: #fff;
+  color: #000;
+  border-bottom: var(--ag-border);
+}
+
+.payroll-sheet.layout-modern .ag-employer {
+  color: #000;
+  border-left: none;
+  border-bottom: var(--ag-border);
+}
+
+.payroll-sheet.layout-modern .ag-master .ag-lbl {
+  background: #fff;
+  color: #000;
+}
+
+.payroll-sheet.layout-modern .ag-payout-final td {
+  background: #fff;
+  color: #000;
+  border-top: 1px solid #000 !important;
+}
+
+.payroll-sheet.layout-modern .ag-earnings thead th,
+.payroll-sheet.layout-modern .ag-taxsv-matrix thead th,
+.payroll-sheet.layout-modern .ag-verdienst thead th {
+  background: #fff;
+  color: #000;
+}
+
+/* Formal: schwarz-weiß, klassischer Kopf */
+.payroll-sheet.layout-formal .ag-header-block {
+  border-color: #000;
+}
+
+.payroll-sheet.layout-formal .ag-title-row {
+  background: #fff;
+  color: #000;
+  padding: 2mm 2mm 1.5mm;
+  border-bottom: var(--ag-border);
+}
+
+.payroll-sheet.layout-formal .ag-title,
+.payroll-sheet.layout-formal .ag-month,
+.payroll-sheet.layout-formal .ag-run {
+  color: #000;
+}
+
+.payroll-sheet.layout-formal .ag-master .ag-lbl {
+  background: #fff;
+  color: #000;
+}
+
+.payroll-sheet.layout-formal .ag-box-h {
+  background: #fff;
+  color: #000;
+}
+
+/* ── Header block (Titel + Stammdaten) ── */
+
+.ag-header-block {
+  border: var(--ag-border);
+  margin-bottom: 1.5mm;
+  background: #fff;
+}
+
+.ag-title-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 3mm;
+  padding: 1.5mm 2mm;
+  border-bottom: var(--ag-border);
+  background: #fff;
+}
+
+.ag-title-row .payroll-head-logo {
+  max-height: 10mm;
+  max-width: 30mm;
+  object-fit: contain;
+}
+
+.ag-title-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5mm;
+  text-align: center;
+}
+
+.ag-title {
+  font-size: 8.5pt;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.ag-month {
+  font-size: 8pt;
+  font-weight: 700;
+  color: #000;
+}
+
+.ag-run {
+  text-align: right;
+  font-size: 6.5pt;
+  line-height: 1.3;
+  white-space: nowrap;
+  color: #000;
+}
+
+/* ── Master data grid ── */
+
+.ag-master {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.ag-master col.ag-m-lbl {
+  width: 7.5%;
+}
+
+.ag-master col.ag-m-val {
+  width: 12.5%;
+}
+
+.ag-master td,
+.ag-master th {
+  border: var(--ag-border);
+  padding: 1.5px 3px;
+  vertical-align: middle;
+  font-size: 6.2pt;
+  font-weight: 400;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ag-master .ag-lbl {
+  background: #fff;
+  color: #000;
+  font-weight: 500;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.ag-master .ag-val {
+  background: #fff;
+  font-weight: 600;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ag-master .ag-val-wide {
+  font-size: 5.8pt;
+  letter-spacing: -0.02em;
+}
+
+/* ── Middle: address + stats ── */
+
+.ag-mid-grid {
+  display: grid;
+  grid-template-columns: 58% 42%;
+  gap: 0;
+  margin-bottom: 1mm;
+  border: var(--ag-border);
+}
+
+.ag-left {
+  border-right: var(--ag-border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ag-addr-section {
+  border-bottom: var(--ag-border);
+}
+
+.ag-addr-label {
+  padding: 1px 3px;
+  font-size: 6pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #000;
+  background: #fff;
+  border-bottom: var(--ag-border);
+}
+
+.ag-employer {
+  padding: 2mm 3mm 2.5mm;
+  font-weight: 600;
+  font-size: 7pt;
+  line-height: 1.35;
+  background: #fff;
+  min-height: 0;
+}
+
+.ag-employer .ag-addr-line-first {
+  font-weight: 700;
+  font-size: 7.5pt;
+}
+
+.ag-addr-empty {
+  color: #000;
+  font-style: italic;
+  font-weight: 400;
+  opacity: 0.65;
+}
+
+.ag-employee-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.ag-emp-block {
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  padding: 2.5mm 3mm 2mm 5mm;
+  min-height: 0;
+  background: #fff;
+}
+
+.ag-emp-meta {
+  margin: 0 0 1mm;
+  font-size: 6.5pt;
+  color: #000;
+  font-weight: 500;
+}
+
+.ag-emp-name {
+  margin: 0 0 2mm;
+  font-size: 9pt;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.ag-emp-addr {
+  margin: 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: 7.5pt;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  color: #000;
+  flex: 1;
+  border: none;
+  background: transparent;
+}
+
+.ag-info-box {
+  border-top: var(--ag-border);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ag-box-h {
+  padding: 1px 3px;
+  border-bottom: var(--ag-border);
+  font-size: 6.5pt;
+  font-weight: 700;
+  background: #fff;
+  color: #000;
+  letter-spacing: 0.01em;
+}
+
+.ag-info-box p {
+  margin: 0;
+  padding: 1.5mm 2mm;
+  font-size: 6.5pt;
+  flex: 1;
+}
+
+.ag-right {
+  display: flex;
+  flex-direction: column;
+}
+
+.ag-stats {
+  width: 100%;
+  border-collapse: collapse;
+  flex: 1;
+}
+
+.ag-stats td,
+.ag-stats th {
+  border: var(--ag-border);
+  padding: 0.5px 2px;
+  font-size: 6.2pt;
+}
+
+.ag-stats .ag-lbl {
+  width: 55%;
+  color: #000;
+}
+
+.ag-stats .ag-val {
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-cal-wrap {
+  border-top: var(--ag-border);
+}
+
+.ag-cal {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 5.8pt;
+}
+
+.ag-cal th,
+.ag-cal td {
+  border: var(--ag-border);
+  padding: 0.3px 1px;
+  text-align: center;
+}
+
+.ag-cal .ag-kw {
+  font-weight: 700;
+  width: 8%;
+}
+
+.ag-cal-legend {
+  margin: 0;
+  padding: 0.5px 2px;
+  font-size: 5.5pt;
+  border-top: var(--ag-border);
+}
+
+/* ── Earnings table ── */
+
+.ag-earnings {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1mm;
+}
+
+.ag-earnings th,
+.ag-earnings td {
+  border: var(--ag-border);
+  padding: 1px 3px;
+  font-size: 6.5pt;
+  line-height: 1.3;
+}
+
+.ag-earnings thead th {
+  font-weight: 600;
+  background: #fff;
+  text-align: center;
+  padding: 1.5px 3px;
+}
+
+.ag-earnings .ag-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.ag-earnings tfoot td {
+  font-weight: 700;
+  border-top: 1px solid #000;
+}
+
+.ag-earnings .ag-col-la { width: 7%; }
+.ag-earnings .ag-col-bez { width: 22%; }
+.ag-earnings .ag-col-menge { width: 8%; }
+.ag-earnings .ag-col-faktor { width: 8%; }
+.ag-earnings .ag-col-pct { width: 7%; }
+.ag-earnings .ag-col-st { width: 4%; text-align: center; }
+.ag-earnings .ag-col-sv { width: 4%; text-align: center; }
+.ag-earnings .ag-col-gb { width: 4%; text-align: center; }
+.ag-earnings .ag-col-betrag { width: 12%; }
+
+/* ── Tax / SV matrix ── */
+
+.ag-taxsv-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1mm;
+  font-size: 6.2pt;
+}
+
+.ag-taxsv-matrix th,
+.ag-taxsv-matrix td {
+  border: var(--ag-border);
+  padding: 1px 2px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
+.ag-taxsv-matrix th.ag-row-h,
+.ag-taxsv-matrix td.ag-row-h {
+  text-align: left;
+  font-weight: 600;
+  width: 6%;
+}
+
+.ag-taxsv-matrix thead th {
+  text-align: center;
+  font-weight: 600;
+  background: #fff;
+  font-size: 5.8pt;
+}
+
+.ag-taxsv-matrix tfoot td {
+  font-weight: 700;
+}
+
+.ag-taxsv-matrix .ag-netto-row td {
+  border-top: 1px solid #000;
+  font-size: 7pt;
+}
+
+/* ── Bottom: Verdienst + Netto + Auszahlung ── */
+
+.ag-bottom {
+  display: grid;
+  grid-template-columns: 42% 28% 30%;
+  gap: 0;
+  border: var(--ag-border);
+  margin-bottom: 1mm;
+}
+
+.ag-bottom-monthly {
+  grid-template-columns: 1fr 1fr;
+}
+
+.payroll-sheet.layout-datev .ag-bottom-monthly {
+  grid-template-columns: 1fr 1fr;
+}
+
+.ag-bottom > table {
+  border-collapse: collapse;
+  width: 100%;
+  height: 100%;
+}
+
+.ag-bottom > table + table {
+  border-left: var(--ag-border);
+}
+
+.ag-verdienst th,
+.ag-verdienst td,
+.ag-netto-table th,
+.ag-netto-table td,
+.ag-payout-table th,
+.ag-payout-table td {
+  border: var(--ag-border);
+  padding: 1px 3px;
+  font-size: 6.2pt;
+  line-height: 1.3;
+}
+
+.ag-verdienst thead th {
+  background: #fff;
+  font-weight: 600;
+  text-align: center;
+  font-size: 6pt;
+}
+
+.ag-verdienst .ag-num,
+.ag-netto-table .ag-num,
+.ag-payout-table .ag-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-payout-table .ag-payout-final td {
+  font-weight: 700;
+  font-size: 8pt;
+  border-top: 2px solid #000 !important;
+  background: #fff;
+  padding: 2px 3px;
+}
+
+.ag-payout-table .ag-payout-final td.ag-num {
+  font-size: 9pt;
+}
+
+.ag-netto-table .ag-section-h td {
+  font-weight: 700;
+  background: #fff;
+  font-size: 6pt;
+}
+
+/* ── Footer (Agenda-Stil) ── */
+
+.ag-footer-anchor {
+  width: 100%;
+  margin-top: 1mm;
+  flex-shrink: 0;
+}
+
+.ag-sheet-body {
+  display: block;
+}
+
+.tpl-classic {
+  display: block;
+}
+
+@media print {
+  .payroll-sheet .ag-footer-anchor {
+    margin-top: 1mm !important;
+  }
+
+  .payroll-sheet .ag-title-row {
+    background: #fff !important;
+  }
+
+  .payroll-sheet.layout-modern .ag-title-row {
+    background: #fff !important;
+  }
+
+  .payroll-sheet.layout-modern .ag-payout-final td {
+    background: #fff !important;
+    color: #000 !important;
+  }
+}
+
+.ag-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 4mm;
+  padding: 1mm 0 0.5mm;
+  font-size: 5.8pt;
+  color: #000;
+  border-top: var(--ag-border);
+}
+
+.ag-meta #pvAgendaTimestamp {
+  flex: 1;
+  line-height: 1.25;
+}
+
+.ag-brand {
+  font-weight: 700;
+  font-size: 8pt;
+  white-space: nowrap;
+}
+
+.ag-brand::after {
+  content: ":";
+}
+
+.ag-legend-block {
+  border-top: var(--ag-border);
+  padding-top: 0.5mm;
+}
+
+.ag-legend {
+  margin: 0;
+  padding: 0.2mm 0;
+  font-size: 5.4pt;
+  color: #000;
+  line-height: 1.22;
+}
+
+.ag-legend-legal {
+  margin-top: 0.5mm;
+  font-weight: 500;
+}
+
+.ag-legend-company {
+  margin: 0.5mm 0 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: 5.4pt;
+  line-height: 1.22;
+  white-space: pre-wrap;
+  color: #000;
+  border: none;
+  background: transparent;
+}
+
+.payroll-sheet.layout-agenda .pd-company-footer,
+.payroll-sheet.layout-datev .pd-company-footer,
+.payroll-sheet.layout-compact .pd-company-footer {
+  margin-top: 0.5mm;
+  padding-top: 1mm;
+  border-top: var(--ag-border);
+}
+
+.payroll-sheet.layout-agenda .pd-company-footer pre,
+.payroll-sheet.layout-datev .pd-company-footer pre {
+  font-size: 5.8pt;
+  text-align: left;
+}
+
+.payroll-sheet.layout-agenda .payroll-legal-footer,
+.payroll-sheet.layout-datev .payroll-legal-footer,
+.payroll-sheet.layout-compact .payroll-legal-footer {
+  font-size: 5.5pt;
+  border-top: none;
+  padding-top: 0.5mm;
+}
+
+/* DATEV: alle Styles in datev-layout.css */
+
+.payroll-sheet:not(.layout-datev) .ag-datev-costs,
+.payroll-sheet:not(.layout-datev) .ag-datev-hinweise,
+.payroll-sheet:not(.layout-datev) .ag-datev-urlaub,
+.payroll-sheet:not(.layout-datev) .ag-datev-rail,
+.payroll-sheet:not(.layout-datev) .ag-datev-side-totals,
+.payroll-sheet:not(.layout-datev) .ag-datev-mid-meta,
+.payroll-sheet:not(.layout-datev) .ag-datev-verdienst-inline,
+.payroll-sheet:not(.layout-datev) .ag-datev-footer,
+.payroll-sheet:not(.layout-datev) .ag-datev-section-h {
+  display: none !important;
+}
+
+/* Compact: hide calendar */
+.payroll-sheet.layout-compact .ag-cal-wrap {
+  display: none;
+}
+
+.payroll-sheet.layout-compact .payroll-document {
+  --ag-size: 6.2pt;
+}
+
+/* Standard: like agenda, no logo emphasis */
+.payroll-sheet.layout-standard .ag-title-row .payroll-head-logo,
+.payroll-sheet.layout-standard .ag-cal-wrap {
+  display: none;
+}

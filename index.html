@@ -1,0 +1,1634 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WorkPass Lohn – Suppix AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Allura&family=Barlow:wght@400;500;600;700&family=Dancing+Script:wght@500;600&family=Great+Vibes&family=IBM+Plex+Mono:wght@400;500&family=Pacifico&family=Pinyon+Script&family=Satisfy&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=42" />
+    <link rel="stylesheet" href="agenda-reference.css?v=6" />
+    <link rel="stylesheet" href="app-ui.css?v=9" />
+    <link rel="stylesheet" href="payroll-layouts.css?v=21" />
+    <link rel="stylesheet" href="datev-layout.css?v=10" />
+    <link rel="stylesheet" href="datev-ref-overlay.css?v=2" />
+    <link rel="stylesheet" href="datev-sheet.css?v=2" />
+    <link rel="stylesheet" href="print-datev.css?v=3" />
+    <link rel="stylesheet" href="verdienst-sheet.css?v=1" />
+    <link rel="stylesheet" href="annual-certificate.css?v=3" />
+    <link rel="stylesheet" href="documents-bw.css?v=1" />
+    <link rel="stylesheet" href="workpass-theme.css?v=3" />
+  </head>
+  <body class="lexware-app workpass-hub auth-locked">
+    <div id="authGate" class="auth-gate" aria-hidden="false">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <div class="auth-mark" aria-hidden="true"><span></span></div>
+          <div>
+            <strong>SUPPIX AI</strong>
+            <small>WorkPass Lohn · Buchhaltung</small>
+          </div>
+        </div>
+        <div class="auth-meta">
+          <div><span>Produkt</span>WorkPass Lohn</div>
+          <div><span>Modus</span>Hub · Standalone</div>
+        </div>
+        <h1 id="authTitle">WorkPass Lohn entsperren</h1>
+        <p class="auth-hint" id="authHint">Geschützter Buchhaltungszugang · Suppix AI</p>
+        <form id="authForm">
+          <label for="authPin">PIN</label>
+          <input id="authPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" placeholder="••••" required />
+          <div id="authConfirmWrap" hidden>
+            <label for="authPinConfirm">PIN bestätigen</label>
+            <input id="authPinConfirm" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8" placeholder="••••" />
+          </div>
+          <p class="auth-error" id="authError" role="alert"></p>
+          <button type="submit" class="auth-submit" id="authSubmit">Anmelden</button>
+        </form>
+        <p class="auth-foot">Lokaler Schutz · Sitzung sperrt bei Inaktivität</p>
+      </div>
+    </div>
+
+    <div id="workpassApp" class="lex-app-root" aria-hidden="true">
+    <header class="lex-appbar" role="banner">
+      <div class="lex-appbar-brand">
+        <div class="lex-logo" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="28" height="28">
+            <defs><linearGradient id="wpGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#a855f7"/><stop offset="100%" stop-color="#c53d2f"/></linearGradient></defs>
+            <rect width="32" height="32" rx="8" fill="url(#wpGrad)"/>
+            <circle cx="16" cy="16" r="7" fill="none" stroke="#fff" stroke-width="2.2"/>
+            <circle cx="16" cy="16" r="2.5" fill="#fff"/>
+          </svg>
+        </div>
+        <div class="lex-appbar-titles">
+          <strong>WorkPass Lohn</strong>
+          <span>Suppix AI · Lohn &amp; Rechnung</span>
+        </div>
+      </div>
+      <nav class="lex-menubar" aria-label="Hauptmenü">
+        <button type="button" class="lex-menu-btn" data-menu="file">Datei</button>
+        <button type="button" class="lex-menu-btn" data-menu="edit">Bearbeiten</button>
+        <button type="button" class="lex-menu-btn" data-menu="view">Ansicht</button>
+        <button type="button" class="lex-menu-btn" data-menu="export">Export</button>
+        <button type="button" class="lex-menu-btn" data-menu="help" data-tab-jump="help">Hilfe</button>
+      </nav>
+      <div class="lex-appbar-right wp-appbar-actions">
+        <span class="lex-appbar-mandant" id="lexAppbarMandant">Mandant: Standard-Mandant</span>
+        <a href="lohn.html" class="wp-lock-btn" style="text-decoration:none">Lohn</a>
+        <button type="button" class="wp-lock-btn" id="btnLock" title="Sofort sperren">Sperren</button>
+      </div>
+      <div class="lex-menu-portal" id="lexMenuPortal" hidden></div>
+    </header>
+
+    <div class="app-frame">
+      <aside class="app-sidebar lex-module-panel" aria-label="Modulauswahl">
+        <div class="lex-module-head">Module</div>
+        <nav class="sidebar-nav lex-module-nav" role="tablist" aria-label="Eingabebereiche">
+          <p class="lex-nav-group">Allgemein</p>
+          <button type="button" class="form-tab sidebar-nav-btn active" data-tab="dashboard" role="tab" aria-selected="true">
+            <svg class="sidebar-nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" fill="currentColor"/></svg>
+            Übersicht
+          </button>
+          <button type="button" class="form-tab sidebar-nav-btn" data-tab="document" role="tab" aria-selected="false">
+            <svg class="sidebar-nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm0 2l5 5h-5V4zM8 13h8v2H8v-2zm0 4h8v2H8v-2z" fill="currentColor"/></svg>
+            Beleg erfassen
+          </button>
+          <button type="button" class="form-tab sidebar-nav-btn" data-tab="company" role="tab" aria-selected="false">
+            <svg class="sidebar-nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10z" fill="currentColor"/></svg>
+            Mandantenverwaltung
+          </button>
+          <p class="lex-nav-group mode-payroll-nav hidden">Lohn &amp; Gehalt</p>
+          <button type="button" class="form-tab sidebar-nav-btn mode-payroll-tab hidden" data-tab="payroll" role="tab" aria-selected="false">
+            <svg class="sidebar-nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z" fill="currentColor"/></svg>
+            Lohnabrechnung
+          </button>
+          <p class="lex-nav-group">System</p>
+          <button type="button" class="form-tab sidebar-nav-btn" data-tab="help" role="tab" aria-selected="false">
+            <svg class="sidebar-nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92A3.003 3.003 0 0 0 13 15h-2v-.5a3.996 3.996 0 0 1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z" fill="currentColor"/></svg>
+            Hilfe
+          </button>
+        </nav>
+        <div class="sidebar-footer lex-sidebar-footer">
+          <span id="sidebarVersionLabel">v2026.3</span>
+          <span>Lokale Daten · DSGVO-konform</span>
+        </div>
+      </aside>
+
+      <div class="app-main">
+        <div class="lex-ribbon" role="toolbar" aria-label="Aktionen">
+          <div class="lex-ribbon-group">
+            <span class="lex-ribbon-caption">Datei</span>
+            <div class="lex-ribbon-actions">
+              <button id="saveDraftBtn" type="button" class="lex-ribbon-btn" title="Entwurf speichern (Strg+S)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" fill="currentColor"/></svg>
+                Speichern
+              </button>
+              <button id="loadDraftBtn" type="button" class="lex-ribbon-btn" title="Entwurf laden">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H4v16h16V8h-6V4zm-2 14H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V8h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm4 4h-2v-6h2v6zM14 4v4h4l-4-4z" fill="currentColor"/></svg>
+                Öffnen
+              </button>
+              <button id="importPayrollBtn" type="button" class="lex-ribbon-btn mode-payroll-only hidden" title="Lohnabrechnung von Desktop importieren (JSON)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z" fill="currentColor"/></svg>
+                Import
+              </button>
+              <button id="exportPayrollJsonBtn" type="button" class="lex-ribbon-btn mode-payroll-only hidden" title="Lohnabrechnung als JSON speichern">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/></svg>
+                Export
+              </button>
+              <button id="duplicateDocBtn" type="button" class="lex-ribbon-btn" title="Als Vorlage duplizieren">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" fill="currentColor"/></svg>
+                Duplizieren
+              </button>
+            </div>
+          </div>
+          <div class="lex-ribbon-sep" aria-hidden="true"></div>
+          <div class="lex-ribbon-group">
+            <span class="lex-ribbon-caption">Export</span>
+            <div class="lex-ribbon-actions">
+              <button id="csvExportBtn" type="button" class="lex-ribbon-btn mode-invoice-only" title="Rechnung als CSV">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" fill="currentColor"/></svg>
+                CSV
+              </button>
+              <button id="datevCsvExportBtn" type="button" class="lex-ribbon-btn mode-payroll-only hidden" title="DATEV Bewegungsdaten">DATEV</button>
+              <button id="datevLodasExportBtn" type="button" class="lex-ribbon-btn mode-payroll-only hidden" title="DATEV LODAS">LODAS</button>
+              <button id="elsterXmlExportBtn" type="button" class="lex-ribbon-btn lex-ribbon-btn-accent mode-annual-only hidden" title="ELSTER XML">ELSTER</button>
+              <button id="pdfExportBtn" type="button" class="lex-ribbon-btn lex-ribbon-btn-accent" title="PDF exportieren">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H8c-1.1 0-2 .9-2 2v4H4v12h16V8h-4V4h2v4h4v12H6V8h2V4c0-1.1.9-2 2-2h10zM10 10h8v2h-8v-2zm0 4h8v2h-8v-2z" fill="currentColor"/></svg>
+                PDF
+              </button>
+              <button id="printVerdienstBtn" type="button" class="lex-ribbon-btn mode-payroll-only hidden" title="Verdienstbescheinigung drucken">
+                VB
+              </button>
+              <button id="previewVerdienstBtn" type="button" class="lex-ribbon-btn mode-payroll-only hidden" title="Verdienstbescheinigung anzeigen">
+                VB anzeigen
+              </button>
+              <button id="printBtn" type="button" class="lex-ribbon-btn lex-ribbon-btn-primary" title="Drucken (Strg+P)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 8H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3zm-3 11H8v-5h8v5zm3-7a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm-1-9H6v4h12V3z" fill="currentColor"/></svg>
+                Drucken
+              </button>
+            </div>
+          </div>
+          <div class="lex-ribbon-sep" aria-hidden="true"></div>
+          <div class="lex-ribbon-group">
+            <span class="lex-ribbon-caption">Bearbeiten</span>
+            <div class="lex-ribbon-actions">
+              <button id="resetBtn" type="button" class="lex-ribbon-btn lex-ribbon-btn-danger" title="Formular zurücksetzen">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" fill="currentColor"/></svg>
+                Zurücksetzen
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="lex-context-bar">
+          <nav class="lex-breadcrumb" id="lexBreadcrumb" aria-label="Pfad">
+            <span>Start</span><span class="lex-bc-sep">›</span><span id="lexBcModule">Beleg erfassen</span><span class="lex-bc-sep">›</span><span id="lexBcDoc" class="lex-bc-current">Rechnung</span>
+          </nav>
+          <div class="lex-context-meta">
+            <span id="draftSaveState" class="draft-save-state unsaved lex-draft-chip">Nicht gespeichert</span>
+            <div class="topbar-status ui-status-bar" aria-live="polite">
+              <span id="modeChip" class="ui-chip">Modus: Rechnung</span>
+              <span id="completionChip" class="ui-chip">Status: Offen</span>
+              <span id="legalChip" class="ui-chip ui-chip-legal">BMF PAP 2026</span>
+            </div>
+          </div>
+        </div>
+
+        <header class="app-topbar lex-page-header">
+          <div class="topbar-title">
+            <h2 id="topbarHeading">Dokument erstellen</h2>
+            <p id="topbarSubheading">Rechnungen &amp; Lohnabrechnungen nach deutschem Recht</p>
+          </div>
+        </header>
+
+        <div class="app-shell">
+      <main class="layout workspace">
+        <section class="panel form-panel">
+          <div class="tab-panel active" data-tab-panel="dashboard">
+            <section id="onboardingBanner" class="onboarding-banner dash-onboarding">
+              <div>
+                <strong>Willkommen bei WorkPass Lohn</strong>
+                <p class="small muted">Suppix AI · Rechnungen, Lohnabrechnungen &amp; Plattform-Empfang – auch standalone</p>
+              </div>
+              <button id="dismissOnboardingBtn" type="button" class="secondary-btn">Loslegen</button>
+            </section>
+
+            <p class="wp-hub-banner">
+              <strong>Lohnarbeitsplatz:</strong> Plattformdaten empfangen, bearbeiten, A4 drucken →
+              <a href="lohn.html">lohn.html öffnen</a>
+            </p>
+
+            <header class="dash-hero">
+              <h2>Übersicht</h2>
+              <p id="dashWelcomeText">Ihr Mandant und alle Belege auf einen Blick.</p>
+            </header>
+
+            <div class="dash-kpi-grid" id="dashKpiGrid">
+              <article class="dash-kpi">
+                <span class="dash-kpi-label">Mandanten</span>
+                <strong class="dash-kpi-value" id="dashKpiProfiles">1</strong>
+              </article>
+              <article class="dash-kpi">
+                <span class="dash-kpi-label">Mitarbeiter</span>
+                <strong class="dash-kpi-value" id="dashKpiEmployees">0</strong>
+              </article>
+              <article class="dash-kpi">
+                <span class="dash-kpi-label">Lohn-Monate gespeichert</span>
+                <strong class="dash-kpi-value" id="dashKpiPayrollMonths">0</strong>
+              </article>
+              <article class="dash-kpi">
+                <span class="dash-kpi-label">Aktueller Modus</span>
+                <strong class="dash-kpi-value dash-kpi-mode" id="dashKpiMode">Rechnung</strong>
+              </article>
+            </div>
+
+            <section class="form-section">
+              <h2 class="form-section-title">Rechnungsarchiv</h2>
+              <div id="invoiceArchiveList" class="invoice-archive-list"></div>
+            </section>
+
+            <section class="form-section">
+              <h2 class="form-section-title">Schnellzugriff</h2>
+              <div class="dash-quick-actions">
+                <button type="button" class="dash-action-btn" data-dash-go="document" data-dash-mode="invoice">
+                  <strong>Neue Rechnung</strong>
+                  <span>§ 14 UStG · PDF &amp; CSV</span>
+                </button>
+                <a href="lohn.html" class="dash-action-btn" style="text-decoration:none;color:inherit">
+                  <strong>Lohnabrechnung</strong>
+                  <span>Empfang · Bearbeitung · WorkPass A4</span>
+                </a>
+                <button type="button" class="dash-action-btn" data-dash-go="document" data-dash-mode="payroll-annual">
+                  <strong>Lohnsteuerbescheinigung</strong>
+                  <span>Jahresbescheinigung · ELSTER</span>
+                </button>
+                <button type="button" class="dash-action-btn" data-dash-go="company">
+                  <strong>Mandant verwalten</strong>
+                  <span>Stammdaten, Bank, Logo</span>
+                </button>
+              </div>
+            </section>
+
+            <section class="form-section">
+              <h2 class="form-section-title">Mitarbeiter-Historie</h2>
+              <p class="muted small">Gespeicherte Monatsabrechnungen (lokal). Für Jahresbescheinigung werden diese summiert.</p>
+              <div class="dash-table-wrap">
+                <table class="dash-table" id="dashEmployeeTable">
+                  <thead>
+                    <tr>
+                      <th>Mitarbeiter</th>
+                      <th>Monate</th>
+                      <th>Letzter Monat</th>
+                      <th>Aktion</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dashEmployeeBody">
+                    <tr><td colspan="4" class="dash-empty">Noch keine Lohn-Monatsdaten gespeichert.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="form-section dash-checklist">
+              <h2 class="form-section-title">Checkliste Mandant</h2>
+              <ul class="dash-checklist-items" id="dashChecklist">
+                <li data-check="seller">Firma / Arbeitgeber hinterlegt</li>
+                <li data-check="tax">Steuernummer oder USt-IdNr.</li>
+                <li data-check="bank">Bankverbindung Firma</li>
+                <li data-check="layout">Lohn-Vorlage gewählt</li>
+              </ul>
+            </section>
+          </div>
+
+          <div class="tab-panel" data-tab-panel="document">
+            <section class="form-section workflow-banner hidden" aria-hidden="true">
+              <h2 class="form-section-title">Arbeitsablauf</h2>
+              <ol class="workflow-steps">
+                <li><strong>Mandant</strong> – Firma, Bank, Vorlage (Agenda empfohlen)</li>
+                <li><strong>Lohn</strong> – Mitarbeiter, Steuerklasse, Brutto-Bezüge</li>
+                <li><strong>PDF / Druck</strong> – Abrechnung wie Agenda-Referenz (schwarz/weiß)</li>
+              </ol>
+              <p class="muted small workflow-ref">Referenz: <code>assets/referenz-agenda-lohnabrechnung.png</code></p>
+            </section>
+
+            <section class="form-section">
+            <h2 class="form-section-title">Dokumenttyp</h2>
+            <div class="doc-type-picker" role="radiogroup" aria-label="Dokumenttyp">
+              <button type="button" class="doc-type-card active" data-doc-type="invoice" aria-pressed="true">
+                <strong>Rechnung</strong>
+                <span>§ 14 UStG · PDF &amp; CSV</span>
+              </button>
+              <button type="button" class="doc-type-card" data-doc-type="payroll" aria-pressed="false">
+                <strong>Lohnabrechnung</strong>
+                <span>Monatlich · Agenda-Standard</span>
+              </button>
+              <button type="button" class="doc-type-card" data-doc-type="payroll-annual" aria-pressed="false">
+                <strong>Lohnsteuerbescheinigung</strong>
+                <span>Jährlich · ELSTER-Format</span>
+              </button>
+            </div>
+            <select id="documentType" class="doc-type-select-hidden" aria-hidden="true" tabindex="-1">
+              <option value="invoice" selected>Normale Rechnung (§ 14 UStG)</option>
+              <option value="payroll">Lohnabrechnung (monatlich)</option>
+              <option value="payroll-annual">Lohnsteuerbescheinigung (jährlich)</option>
+            </select>
+            </section>
+
+            <section class="form-section">
+            <h2 class="form-section-title">Dokumentdaten</h2>
+
+            <div class="grid two-col">
+              <label>
+                Dokumentnummer
+                <input id="invoiceNumber" type="text" placeholder="RE-2026-0001" />
+              </label>
+              <label>
+                Erstellungsdatum
+                <input id="invoiceDate" type="date" />
+              </label>
+              <label class="mode-invoice-only">
+                Leistungsdatum
+                <input id="serviceDate" type="date" />
+              </label>
+              <label class="mode-invoice-only">
+                Fälligkeitsdatum
+                <input id="dueDate" type="date" />
+              </label>
+              <label class="mode-invoice-only">
+                Umsatzsteuer
+                <select id="taxRate">
+                  <option value="0">0 % (steuerfrei / § 19 UStG)</option>
+                  <option value="7">7 % (ermäßigt)</option>
+                  <option value="19" selected>19 % (Regelsteuersatz)</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="grid two-col mode-invoice-only">
+              <label>
+                <input id="kleinunternehmer" type="checkbox" />
+                Kleinunternehmer (§ 19 UStG – keine USt ausweisen)
+              </label>
+              <label>
+                <input id="reverseCharge" type="checkbox" />
+                Reverse-Charge (§ 13b UStG)
+              </label>
+            </div>
+
+            <div class="grid two-col">
+              <label>
+                Absender / Arbeitgeber
+                <textarea id="seller" rows="5" placeholder="Muster GmbH&#10;Musterstraße 1&#10;12345 Musterstadt"></textarea>
+              </label>
+              <label>
+                Empfänger / Mitarbeiter-Adresse
+                <textarea id="customer" rows="5" placeholder="Kunde GmbH&#10;Beispielweg 7&#10;54321 Ort"></textarea>
+              </label>
+            </div>
+
+            <div class="items-header mode-invoice-only">
+              <h3>Positionen</h3>
+              <button id="addItemBtn" type="button">+ Position</button>
+            </div>
+
+            <div class="items-table-wrap mode-invoice-only">
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th>Beschreibung</th>
+                    <th>Menge</th>
+                    <th>Einzelpreis (EUR)</th>
+                    <th>Gesamt (EUR)</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="itemsBody"></tbody>
+              </table>
+            </div>
+
+            <label>
+              Notiz / Zahlungsbedingungen
+              <textarea id="note" rows="3" placeholder="Zahlbar ohne Abzug innerhalb von 14 Tagen."></textarea>
+            </label>
+
+            <section class="signature-pad-wrap mode-invoice-only" id="signatureSection">
+              <div class="signature-head">
+                <h3>Signatur</h3>
+                <button id="clearSignatureBtn" type="button" class="secondary-btn">Zurücksetzen</button>
+              </div>
+              <p class="signature-help">Alle Optionen: Firmen-Auto, stilvolle Namenssignatur, manuell zeichnen oder ohne Unterschrift.</p>
+              <div class="sig-mode-row" id="signatureModeRow" role="radiogroup" aria-label="Signatur-Modus"></div>
+              <label class="sig-name-field">
+                Name für Signatur
+                <input id="signatureName" type="text" placeholder="z. B. Alex Müller oder Jon" autocomplete="name" />
+                <div id="signatureStyleHat" class="sig-style-hat" hidden role="listbox" aria-label="Signaturstile"></div>
+              </label>
+              <div class="sig-color-row" id="signatureColorRow" aria-label="Signaturfarbe"></div>
+              <div class="sig-style-grid" id="signatureStyleGrid" hidden aria-hidden="true"></div>
+              <div class="sig-draw-panel" id="signatureDrawPanel" hidden>
+                <canvas id="signaturePad" width="700" height="220" aria-label="Signaturfeld"></canvas>
+                <p class="signature-help">Mit Maus oder Finger unterschreiben.</p>
+              </div>
+              <p class="signature-help" id="signatureModeHint"></p>
+              <div class="sig-advanced-box" id="signatureAdvancedBox">
+                <h4>Freie Position auf dem Beleg</h4>
+                <p class="signature-help">In der rechten Vorschau: Signatur anfassen und frei verschieben. Ecke = Größe. Doppelklick auf den Namen = bearbeiten oder leeren.</p>
+                <div class="sig-adv-grid">
+                  <label class="check-inline">
+                    <input id="sigShowCaption" type="checkbox" />
+                    Namen unter der Signatur anzeigen
+                  </label>
+                  <label class="check-inline">
+                    <input id="sigShowLine" type="checkbox" checked />
+                    Unterschriftslinie
+                  </label>
+                  <label class="check-inline">
+                    <input id="sigLockPosition" type="checkbox" />
+                    Position sperren
+                  </label>
+                </div>
+                <label>
+                  Text unter Signatur
+                  <div class="sig-caption-row">
+                    <input id="sigCaptionInput" type="text" placeholder="Name bearbeiten – leer = kein Text" />
+                    <button type="button" id="sigCaptionClearBtn" class="secondary-btn" title="Text komplett entfernen">Löschen</button>
+                    <button type="button" id="sigCaptionResetBtn" class="secondary-btn" title="Automatischen Namen wiederherstellen">Auto</button>
+                  </div>
+                </label>
+                <div class="sig-adv-sliders">
+                  <label>
+                    Drehung
+                    <input id="sigRotation" type="range" min="-25" max="25" step="0.5" value="-1.5" />
+                    <span id="sigRotationVal">-1.5°</span>
+                  </label>
+                  <label>
+                    Decazität
+                    <input id="sigOpacity" type="range" min="35" max="100" step="1" value="100" />
+                    <span id="sigOpacityVal">100%</span>
+                  </label>
+                  <label>
+                    Breite
+                    <input id="sigWidth" type="range" min="12" max="70" step="1" value="34" />
+                    <span id="sigWidthVal">34%</span>
+                  </label>
+                </div>
+                <div class="btn-row sig-adv-actions">
+                  <button type="button" id="sigResetLayoutBtn" class="secondary-btn">Position zurücksetzen</button>
+                  <button type="button" id="sigSealBtn" class="primary-btn">Technisch siegeln</button>
+                  <button type="button" id="sigUnsealBtn" class="secondary-btn">Siegel lösen</button>
+                </div>
+                <p class="signature-help" id="sigSealStatus">Siegel: offen (Entwurf)</p>
+              </div>
+            </section>
+            </section>
+          </div>
+
+          <div class="tab-panel" data-tab-panel="company">
+            <h2>Mandantenprofil</h2>
+            <p class="muted">Jede Firma kann ein eigenes Profil mit Layout, Bankdaten und Standardtexten haben.</p>
+
+            <div class="grid two-col">
+              <label>
+                Profil auswählen
+                <select id="companyProfileSelect"></select>
+              </label>
+              <label>
+                Profilname
+                <input id="companyProfileName" type="text" placeholder="z. B. Müller GmbH" />
+              </label>
+            </div>
+
+            <div class="tool-row">
+              <button id="saveCompanyProfileBtn" type="button" class="secondary-btn">Profil speichern</button>
+              <button id="newCompanyProfileBtn" type="button" class="secondary-btn">Neues Profil</button>
+              <button id="deleteCompanyProfileBtn" type="button" class="secondary-btn danger-btn">Profil löschen</button>
+            </div>
+
+            <section class="logo-upload-box">
+              <h3>Firmenlogo</h3>
+              <p class="muted small">PNG oder JPG, max. 2 MB – erscheint auf Rechnung und Lohnabrechnung.</p>
+              <div class="logo-upload-row">
+                <label class="logo-file-label">
+                  Logo auswählen
+                  <input id="companyLogoInput" type="file" accept="image/png,image/jpeg,image/webp" />
+                </label>
+                <button id="removeLogoBtn" type="button" class="secondary-btn danger-btn">Logo entfernen</button>
+              </div>
+              <img id="companyLogoPreview" class="company-logo-preview hidden" alt="Logo-Vorschau" />
+            </section>
+
+            <div class="grid two-col">
+              <label>
+                Steuernummer
+                <input id="taxNumber" type="text" placeholder="12/345/67890" />
+              </label>
+              <label>
+                USt-IdNr.
+                <input id="vatId" type="text" placeholder="DE123456789" />
+              </label>
+              <label>
+                Handelsregister
+                <input id="commercialRegister" type="text" placeholder="HRB 12345 Amtsgericht …" />
+              </label>
+              <label>
+                Geschäftsführer
+                <input id="managingDirector" type="text" placeholder="Max Mustermann" />
+              </label>
+              <label>
+                Bank
+                <input id="companyBankName" type="text" placeholder="Musterbank AG" />
+              </label>
+              <label>
+                IBAN (Firma)
+                <input id="companyIban" type="text" placeholder="DE00 0000 0000 0000 0000 00" />
+              </label>
+              <label>
+                BIC (Firma)
+                <input id="companyBic" type="text" placeholder="GENODE00XXX" />
+              </label>
+              <label class="payroll-layout-locked hidden">
+                Lohn-Vorlage
+                <select id="payrollLayoutSelect"></select>
+              </label>
+            </div>
+            <p id="payrollLayoutDescription" class="layout-description"></p>
+
+            <section class="letterhead-box">
+              <h3>Briefkopf &amp; Fußzeile (Lohnabrechnung)</h3>
+              <p class="muted small">Erscheint auf jeder Lohnabrechnung im PDF – z. B. Abteilung im Kopf, Impressum in der Fußzeile.</p>
+              <label>
+                Zusatzzeile unter Firmenname
+                <input id="payrollHeaderLine" type="text" placeholder="z. B. Personalabteilung · Lohnbuchhaltung" />
+              </label>
+              <label>
+                Fußzeile (mehrzeilig)
+                <textarea id="payrollFooterLine" rows="3" placeholder="Geschäftsführer · Handelsregister · Bankverbindung"></textarea>
+              </label>
+              <p class="muted small">Leer lassen = Fußzeile wird automatisch aus Geschäftsführer, HRB und Firmenbank erzeugt.</p>
+            </section>
+
+            <section class="data-backup-box">
+              <h3>Datensicherung</h3>
+              <p class="muted small">Alle Mandanten, Mitarbeiter und Einstellungen als Datei sichern oder wiederherstellen.</p>
+              <div class="tool-row">
+                <button id="exportDataBtn" type="button" class="secondary-btn">Alles exportieren</button>
+                <button id="importDataBtn" type="button" class="secondary-btn">Daten importieren</button>
+              </div>
+            </section>
+
+            <section class="pin-change-box">
+              <h3>Zugangsschutz (PIN)</h3>
+              <p class="muted small">PIN ändern – schützt Hub und Lohnarbeitsplatz auf diesem Gerät.</p>
+              <div class="grid">
+                <label>Alte PIN<input id="pinOld" type="password" inputmode="numeric" maxlength="8" /></label>
+                <label>Neue PIN<input id="pinNew" type="password" inputmode="numeric" maxlength="8" /></label>
+                <label>Bestätigen<input id="pinNewConfirm" type="password" inputmode="numeric" maxlength="8" /></label>
+              </div>
+              <div class="tool-row" style="margin-top:10px">
+                <button id="btnChangePin" type="button" class="secondary-btn">PIN speichern</button>
+              </div>
+            </section>
+          </div>
+
+          <div class="tab-panel" data-tab-panel="payroll">
+            <p class="wp-hub-banner">
+              Der optimierte Lohnarbeitsplatz liegt unter
+              <a href="lohn.html">lohn.html</a>
+              (Empfang, Live-A4, Druck). Die Tools unten bleiben für CSV/LODAS-Exporte verfügbar.
+            </p>
+            <section id="payrollFields" class="payroll-box">
+              <h3>Lohnabrechnung</h3>
+              <p class="legal-rates-banner" style="background:#e8f4fc;border:1px solid #7eb8da;padding:12px;border-radius:8px;margin-bottom:16px">
+                <strong>Arbeitsplatz Lohn:</strong> Plattformdaten empfangen, je Firma bearbeiten, DATEV-Blatt live prüfen und nur A4 drucken:
+                <a href="lohn.html" style="font-weight:700">Zur Lohnabrechnung öffnen →</a>
+              </p>
+
+              <div class="legal-rates-banner">
+                <div>
+                  <strong>Gesetzliche Sätze 2026 · BMF PAP</strong>
+                  <p class="muted small">Lohnsteuer nach offiziellem Programmablaufplan · SV: RV 9,3 · KV 7,3+2,9 % · PV 1,8/2,4 · AV 1,3</p>
+                </div>
+                <button id="applyLegalRatesBtn" type="button" class="secondary-btn">Sätze übernehmen</button>
+              </div>
+
+              <section class="payroll-template-section hidden" aria-hidden="true">
+                <h4>DATEV LOHN17</h4>
+                <p class="muted small">Einziges Layout: Originalformular Mustermann (Referenz-Screenshot).</p>
+                <div id="payrollTemplatePicker" class="doc-type-picker payroll-template-picker hidden" role="group" aria-label="Lohn-Vorlage wählen"></div>
+                <p id="payrollLayoutDescriptionPayroll" class="layout-description"></p>
+              </section>
+
+              <section class="payroll-employee-tools">
+                <h4>Mitarbeiter-Suche</h4>
+                <p class="muted small">Namen auswählen, um die letzten Monatsdaten zu übernehmen.</p>
+                <div class="grid two-col">
+                  <label>
+                    Mitarbeiter auswählen
+                    <select id="employeeSearch">
+                      <option value="">-- Mitarbeiter wählen --</option>
+                    </select>
+                  </label>
+                  <label>
+                    Referenzmonat
+                    <input id="employeeReferenceMonth" type="month" />
+                  </label>
+                </div>
+                <div class="tool-row">
+                  <button id="loadEmployeeDataBtn" type="button" class="secondary-btn">Mitarbeiterdaten laden</button>
+                  <button id="saveEmployeeDataBtn" type="button" class="secondary-btn">Monatsdaten speichern</button>
+                  <button id="exportAllPayrollCsvBtn" type="button" class="secondary-btn">Alle MA als DATEV-CSV</button>
+                </div>
+                <div class="tool-row ref-template-row">
+                  <button id="loadDatevRefBtn" type="button" class="secondary-btn">Referenz: DATEV Mustermann (Original)</button>
+                </div>
+                <div class="tool-row template-io-row">
+                  <button id="importTemplateBtn" type="button" class="secondary-btn">Vorlage importieren (JSON)</button>
+                  <button id="exportTemplateBtn" type="button" class="secondary-btn">Als Vorlage exportieren</button>
+                  <button id="importPayrollSidebarBtn" type="button" class="secondary-btn">Abrechnung importieren (JSON)</button>
+                </div>
+                <div class="tool-row template-io-row">
+                  <button id="importDatevCsvBtn" type="button" class="secondary-btn">DATEV CSV importieren</button>
+                  <button id="exportDatevCsvSidebarBtn" type="button" class="secondary-btn">DATEV CSV exportieren</button>
+                </div>
+                <section class="pdf-bg-section">
+                  <h4>DATEV-Originalformular (1:1 Referenz)</h4>
+                  <p class="muted small">Das Originalblatt aus dem Screenshot wird als Hintergrund geladen – Ihre Werte werden exakt darüber gelegt (Druck/PDF).</p>
+                  <div class="tool-row template-io-row">
+                    <button id="importPdfTemplateBtn" type="button" class="secondary-btn">Formular hochladen (PDF, PNG, JPG)</button>
+                    <button id="loadReferenzPngBtn" type="button" class="secondary-btn">Referenz-PNG laden</button>
+                    <button id="clearPdfTemplateBtn" type="button" class="secondary-btn">Hintergrund entfernen</button>
+                  </div>
+                  <label class="checkbox-row">
+                    <input id="usePdfBackgroundInput" type="checkbox" />
+                    Originalformular als Hintergrund anzeigen
+                  </label>
+                  <label class="checkbox-row layout-datev-bg-option hidden" id="hideChromeRow">
+                    <input id="hidePdfChromeInput" type="checkbox" />
+                    Nur Werte anzeigen (Raster ausblenden)
+                  </label>
+                </section>
+                <div class="tool-row">
+                  <label>
+                    Eingebaute Vorlage
+                    <select id="builtInTemplateSelect">
+                      <option value="">— Vorlage wählen —</option>
+                    </select>
+                  </label>
+                  <button id="loadBuiltInTemplateBtn" type="button" class="secondary-btn">Vorlage laden</button>
+                </div>
+                <div class="stb-scope-notice" role="note">
+                  <strong>Hinweis für Steuerberater</strong>
+                  <p>Diese Anwendung erstellt <em>Einzelabrechnungen</em> mit PDF/Druck und DATEV-CSV/LODAS-Export. Sie ersetzt <strong>keine</strong> DATEV Lohn und Gehalt-, Agenda- oder Addison-Mandantenverwaltung (kein Lohnjournal, keine Dauerbelege, keine ELSTER-Lohnsteueranmeldung).</p>
+                </div>
+                <p class="muted small">JSON-Vorlagen: exportieren, bearbeiten, wieder importieren. Formate: Lohnabrechnung, Vorlage oder Vollbackup (Einstellungen).</p>
+              </section>
+
+              <div class="grid two-col">
+                <label>
+                  Mitarbeitername
+                  <input id="employeeName" type="text" placeholder="Max Mustermann" />
+                </label>
+                <label>
+                  Personalnummer
+                  <input id="employeeId" type="text" placeholder="MA-1001" />
+                </label>
+                <label class="full-width">
+                  Mitarbeiter-Adresse (Straße, PLZ, Ort)
+                  <textarea id="employeeAddress" rows="3" placeholder="Musterstraße 5&#10;12345 Musterstadt"></textarea>
+                  <span class="field-hint">Erscheint auf der Lohnabrechnung unter „Mitarbeiter“</span>
+                </label>
+                <label>
+                  Steuer-ID
+                  <input id="employeeTaxId" type="text" placeholder="12 345 678 901" />
+                </label>
+                <label>
+                  SV-Nummer
+                  <input id="employeeInsuranceNo" type="text" placeholder="12 345678 A 123" />
+                </label>
+                <label>
+                  Geburtsdatum
+                  <input id="employeeBirthDate" type="date" />
+                </label>
+                <label>
+                  Eintritt
+                  <input id="employeeEntryDate" type="date" />
+                </label>
+                <label>
+                  Austritt
+                  <input id="employeeExitDate" type="date" />
+                </label>
+                <label>
+                  Abrechnungsmonat
+                  <input id="payrollMonth" type="month" />
+                </label>
+                <label class="mode-annual-only hidden">
+                  Bescheinigungsjahr
+                  <input id="taxYear" type="number" min="2015" max="2099" step="1" />
+                  <span class="field-hint">Summiert alle gespeicherten Monate dieses Jahres</span>
+                </label>
+                <label>
+                  Steuerklasse
+                  <select id="taxClass">
+                    <option value="I" selected>I</option>
+                    <option value="II">II</option>
+                    <option value="III">III</option>
+                    <option value="IV">IV</option>
+                    <option value="V">V</option>
+                    <option value="VI">VI</option>
+                  </select>
+                </label>
+                <label>
+                  Brutto gesamt (EUR)
+                  <input id="grossSalary" type="number" min="0" step="0.01" value="3500" placeholder="z. B. 3500" />
+                  <span class="field-hint">Schnelleingabe – wird auf die erste Lohnart (Gehalt) übernommen</span>
+                </label>
+                <label>
+                  Lohnsteuer (BMF PAP 2026)
+                  <input id="payrollTaxEffective" type="text" readonly value="wird berechnet…" />
+                </label>
+                <label>
+                  Freibetrag monatlich (EUR)
+                  <input id="taxAllowanceMonthly" type="number" min="0" step="0.01" value="0" />
+                </label>
+                <label>
+                  Kinderfreibetrag (ZKF)
+                  <input id="childAllowanceFactor" type="number" min="0" step="0.5" value="0" />
+                </label>
+                <label>
+                  Kirchensteuer
+                  <select id="churchTaxRate">
+                    <option value="0" selected>Keine</option>
+                    <option value="8">8 % (BY, BW)</option>
+                    <option value="9">9 % (übrige BL)</option>
+                  </select>
+                </label>
+                <label>
+                  <input id="childlessPvSurcharge" type="checkbox" />
+                  PV-Zuschlag kinderlos (ab 23 J., +0,6 %)
+                </label>
+                <label>
+                  KV-Zusatzbeitrag gesamt (%)
+                  <input id="healthAdditionalPercent" type="number" min="0" step="0.01" value="2.9" />
+                </label>
+                <label class="tax-class-iv-only hidden">
+                  <input id="factorMethod" type="checkbox" />
+                  Faktorverfahren (Steuerklasse IV)
+                </label>
+                <label class="tax-class-iv-only hidden">
+                  Faktor
+                  <input id="factorValue" type="number" min="0" step="0.001" value="1" />
+                </label>
+                <label>
+                  Rentenversicherung AN (%)
+                  <input id="pensionPercent" type="number" min="0" step="0.01" value="9.3" />
+                </label>
+                <label>
+                  Krankenversicherung AN (%)
+                  <input id="healthPercent" type="number" min="0" step="0.01" value="8.75" />
+                </label>
+                <label>
+                  Krankenkasse
+                  <select id="healthFund">
+                    <option value="AOK">AOK</option>
+                    <option value="BARMER">BARMER</option>
+                    <option value="Techniker Krankenkasse (TK)">Techniker Krankenkasse (TK)</option>
+                    <option value="DAK-Gesundheit">DAK-Gesundheit</option>
+                    <option value="KKH">KKH</option>
+                    <option value="hkk">hkk</option>
+                    <option value="SBK">SBK</option>
+                    <option value="Knappschaft">Knappschaft</option>
+                    <option value="Private Krankenversicherung">Private Krankenversicherung</option>
+                    <option value="Sonstige">Sonstige</option>
+                  </select>
+                </label>
+                <label>
+                  Pflegeversicherung AN (%)
+                  <input id="carePercent" type="number" min="0" step="0.01" value="1.8" />
+                </label>
+                <label>
+                  Arbeitslosenversicherung AN (%)
+                  <input id="unemploymentPercent" type="number" min="0" step="0.01" value="1.3" />
+                </label>
+                <label>
+                  Stunden / Monat
+                  <input id="workHours" type="number" min="0" step="0.01" value="160" />
+                </label>
+                <label>
+                  Arbeitstage
+                  <input id="workDays" type="number" min="0" step="0.01" value="21" />
+                </label>
+                <label>
+                  Bank (Auszahlung)
+                  <select id="bankName">
+                    <option value="">— bitte wählen —</option>
+                    <option>Sparkasse</option>
+                    <option>Commerzbank</option>
+                    <option>Deutsche Bank</option>
+                    <option>Postbank</option>
+                    <option>ING</option>
+                    <option>DKB</option>
+                    <option>Volksbank</option>
+                    <option>VR-Bank</option>
+                    <option>HypoVereinsbank (UniCredit)</option>
+                    <option>Andere Bank</option>
+                  </select>
+                </label>
+                <label>
+                  BIC
+                  <input id="bankBic" type="text" placeholder="GENODE00XXX" />
+                </label>
+                <label>
+                  IBAN
+                  <input id="bankIban" type="text" placeholder="DE00 0000 0000 0000 0000 00" />
+                </label>
+              </div>
+
+              <section class="wage-items-box">
+                <div class="wage-items-head">
+                  <h4>Brutto-Bezüge (Lohnarten)</h4>
+                  <button id="addWageItemBtn" type="button" class="secondary-btn">+ Lohnart</button>
+                </div>
+                <p class="muted small">Betrag direkt eintragen <strong>oder</strong> Menge × Faktor. St = steuerpflichtig (L), SV = pflichtig (L).</p>
+                <div class="table-wrap">
+                  <table class="wage-items-table">
+                    <thead>
+                      <tr>
+                        <th>Lohnart</th>
+                        <th>Bezeichnung</th>
+                        <th>Menge</th>
+                        <th>Faktor (EUR)</th>
+                        <th>Betrag</th>
+                        <th>St</th>
+                        <th>SV</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody id="wageItemsBody"></tbody>
+                  </table>
+                </div>
+              </section>
+            </section>
+          </div>
+
+          <div class="tab-panel" data-tab-panel="help">
+            <h2>Hilfe &amp; Dokumentation</h2>
+            <section class="help-card">
+              <h3>Schnellstart (5 Schritte)</h3>
+              <ol class="help-steps">
+                <li><strong>Übersicht</strong> – Mandant prüfen, Schnellzugriff nutzen</li>
+                <li><strong>Mandantenverwaltung</strong> – Firma, Logo, Bank, Lohn-Vorlage (Agenda empfohlen)</li>
+                <li><strong>Beleg erfassen</strong> – Rechnung, Lohnabrechnung oder Jahresbescheinigung wählen</li>
+                <li><strong>Lohn</strong> – Mitarbeiterdaten, „Gesetzliche Sätze übernehmen“, Monat speichern</li>
+                <li><strong>PDF / Druck</strong> – Vorschau prüfen, exportieren (Strg+S speichern, Strg+P drucken)</li>
+              </ol>
+            </section>
+            <section class="help-card">
+              <h3>Tastenkürzel</h3>
+              <ul class="help-steps">
+                <li><kbd>Strg+S</kbd> – Entwurf speichern</li>
+                <li><kbd>Strg+P</kbd> – Drucken / PDF</li>
+              </ul>
+            </section>
+            <section class="help-card">
+              <h3>Rechnung – Pflichtangaben § 14 UStG</h3>
+              <ul id="invoiceComplianceList" class="compliance-list"></ul>
+            </section>
+            <section class="help-card">
+              <h3>Lohnabrechnung</h3>
+              <p class="small">6 Layouts auf Agenda-Struktur: <strong>Agenda</strong>, DATEV, Standard, Kompakt, Modern, Formal – Druck/PDF <strong>schwarz/weiß</strong>.</p>
+              <p class="small">Lohnsteuer: BMF-Programmablaufplan 2026 · SV: gesetzliche Beitragssätze 2026.</p>
+              <p class="small">Monatsdaten speichern aktiviert Jahres-YTD auf der Abrechnung und die Lohnsteuerbescheinigung.</p>
+            </section>
+            <section class="help-card">
+              <h3>Export &amp; Schnittstellen</h3>
+              <ul class="help-steps">
+                <li><strong>PDF</strong> – Drucklayout 1:1 aus Vorschau</li>
+                <li><strong>Rechnung CSV</strong> – Buchhaltungsimport</li>
+                <li><strong>DATEV CSV / LODAS</strong> – Lohn Bewegungsdaten (Lohnmodus)</li>
+                <li><strong>ELSTER-XML</strong> – Vorbereitungsdatei Lohnsteuerbescheinigung (kein direkter ELSTER-Versand)</li>
+                <li><strong>Datensicherung</strong> – JSON unter Mandantenverwaltung</li>
+              </ul>
+            </section>
+            <section class="help-card help-legal">
+              <h3>Rechtlicher Hinweis</h3>
+              <p class="small">WorkPass Lohn (Suppix AI) ist ein Buchhaltungs-Arbeitsplatz für Steuerberater und Firmen. Es ersetzt keine zertifizierte Voll-Lohnsoftware und keine individuelle Steuerberatung. ELSTER-Exporte sind Vorbereitungsdateien zur manuellen Prüfung.</p>
+            </section>
+          </div>
+        </section>
+
+        <section class="panel preview-panel" id="invoicePreview">
+          <div class="preview-tools">
+            <p class="preview-sheet-hint mode-payroll-only">DATEV-Vorschau (leeres Formular). Für Plattform-Import und saubere Bearbeitung bitte <a href="lohn.html">Zur Lohnabrechnung</a> nutzen. Druck/PDF = nur A4.</p>
+            <label for="previewZoom" class="preview-zoom-label">Vorschau</label>
+            <select id="previewZoom" class="preview-zoom-select">
+              <option value="80">80 %</option>
+              <option value="100" selected>100 %</option>
+              <option value="120">120 %</option>
+            </select>
+          </div>
+
+          <div id="datevSheetHost" class="datev-sheet-host mode-payroll-only hidden" aria-label="DATEV Lohnabrechnung"></div>
+
+          <div class="invoice-top mode-invoice-only">
+            <div class="invoice-top-left">
+              <img id="previewCompanyLogo" class="preview-company-logo hidden" alt="Firmenlogo" />
+              <div>
+                <h2 id="previewDocumentTitle">Rechnung</h2>
+                <p id="previewInvoiceNumber">Nr. -</p>
+              </div>
+            </div>
+            <div class="dates">
+              <p class="mode-invoice-only"><span>Status:</span> <strong id="paymentStatus" class="status-badge">offen</strong></p>
+              <p class="mode-payroll-only hidden"><span>Monat:</span> <strong id="previewPayrollMonth">-</strong></p>
+              <p><span>Datum:</span> <strong id="previewInvoiceDate">-</strong></p>
+              <p class="mode-invoice-only"><span>Leistung:</span> <strong id="previewServiceDate">-</strong></p>
+              <p class="mode-invoice-only"><span>Fällig:</span> <strong id="previewDueDate">-</strong></p>
+            </div>
+          </div>
+
+          <div class="invoice-meta mode-invoice-only" id="invoiceMetaBlock">
+            <p id="previewTaxNumber"></p>
+            <p id="previewVatId"></p>
+            <p id="previewCommercialRegister"></p>
+          </div>
+
+          <div class="addresses mode-invoice-only">
+            <div>
+              <h3>Von</h3>
+              <pre id="previewSeller">-</pre>
+            </div>
+            <div>
+              <h3>An</h3>
+              <pre id="previewCustomer">-</pre>
+            </div>
+          </div>
+
+          <section id="payrollSheet" class="payroll-sheet hidden mode-payroll-only layout-datev">
+            <article class="payroll-document">
+              <div class="payroll-bg-layer layout-datev-only hidden" id="payrollBgLayer" aria-hidden="true">
+                <img id="payrollBgImage" alt="" src="assets/referenz-datev-mustermann.png" />
+              </div>
+              <div class="datev-value-overlay layout-datev-only hidden" id="datevValueOverlay" aria-hidden="true">
+                <span class="dov dov-usa" id="dovUsa">USA/US</span>
+                <span class="dov dov-head-date" id="dovHeadDate">-</span>
+                <span class="dov dov-head-page" id="dovHeadPage">Blatt: 1</span>
+                <span class="dov dov-pers-nr" id="dovPersNr">-</span>
+                <span class="dov dov-birth" id="dovBirth">-</span>
+                <span class="dov dov-stkl" id="dovStkl">-</span>
+                <span class="dov dov-konf" id="dovKonf">-</span>
+                <span class="dov dov-st-tg" id="dovStTg">30</span>
+                <span class="dov dov-sv-nr" id="dovSvNr">-</span>
+                <span class="dov dov-kk-name" id="dovKkName">-</span>
+                <span class="dov dov-kk-pct dov-r" id="dovKkPct">-</span>
+                <span class="dov dov-pgrs dov-c" id="dovPgrs">101</span>
+                <span class="dov dov-bgrs dov-c" id="dovBgrs">1112</span>
+                <span class="dov dov-sv-tg dov-c" id="dovSvTg">30</span>
+                <span class="dov dov-vac-prev dov-r" id="dovVacPrev">0,00</span>
+                <span class="dov dov-vac-ent dov-r" id="dovVacEnt">0,00</span>
+                <span class="dov dov-work-days dov-r" id="dovWorkDays">0,00</span>
+                <span class="dov dov-work-hours dov-r" id="dovWorkHours">0,00</span>
+                <span class="dov dov-sender" id="dovSender">-</span>
+                <span class="dov dov-emp-meta" id="dovEmpMeta">-</span>
+                <span class="dov dov-emp-name" id="dovEmpName">-</span>
+                <span class="dov dov-emp-addr" id="dovEmpAddr">-</span>
+                <span class="dov dov-entry" id="dovEntry">-</span>
+                <span class="dov dov-taxid-mid" id="dovTaxIdMid">-</span>
+                <span class="dov dov-hints" id="dovHints">-</span>
+                <span class="dov dov-wage-840 dov-r" id="dovWage840">-</span>
+                <span class="dov dov-wage-2000 dov-r" id="dovWage2000">-</span>
+                <span class="dov dov-gross-total dov-r" id="dovGrossTotal">-</span>
+                <span class="dov dov-tax-total dov-r" id="dovTaxTotal">-</span>
+                <span class="dov dov-sv-total dov-r" id="dovSvTotal">-</span>
+                <span class="dov dov-net-total dov-r" id="dovNetTotal">-</span>
+                <span class="dov dov-payout dov-r" id="dovPayout">-</span>
+                <span class="dov dov-st-brutto dov-r" id="dovStBrutto">-</span>
+                <span class="dov dov-lst dov-r" id="dovLst">-</span>
+                <span class="dov dov-kist dov-r" id="dovKist">-</span>
+                <span class="dov dov-kv-b dov-r" id="dovKvB">-</span>
+                <span class="dov dov-rv-b dov-r" id="dovRvB">-</span>
+                <span class="dov dov-kv-beitrag dov-r" id="dovKvBeitrag">-</span>
+                <span class="dov dov-rv-beitrag dov-r" id="dovRvBeitrag">-</span>
+                <span class="dov dov-av-beitrag dov-r" id="dovAvBeitrag">-</span>
+                <span class="dov dov-pv-beitrag dov-r" id="dovPvBeitrag">-</span>
+                <span class="dov dov-bank" id="dovBank">-</span>
+                <span class="dov dov-konto" id="dovKonto">-</span>
+                <span class="dov dov-ag-sv dov-r" id="dovAgSv">-</span>
+                <span class="dov dov-ag-extra dov-r" id="dovAgExtra">-</span>
+                <span class="dov dov-ag-total dov-r" id="dovAgTotal">-</span>
+              </div>
+              <div class="payroll-content-layer">
+              <div class="tpl-classic">
+                <div class="ag-sheet-body">
+                <header class="ag-header-block">
+                  <img id="payrollHeadLogo" class="payroll-head-logo hidden" alt="Firmenlogo" />
+                  <div class="ag-datev-meta-row layout-datev-no-ref">
+                    <span class="ag-dv-logo">DATEV</span>
+                    <table class="ag-datev-meta-table">
+                      <tbody>
+                        <tr>
+                          <td>Mandant-Nr.</td><td id="pvDatevClientNo">-</td>
+                          <td>Berater-Nr.</td><td id="pvDatevConsultantNo">-</td>
+                          <td>Abrechnungsmonat</td><td id="pvDatevMonthMeta">-</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="ag-title-row">
+                    <div class="ag-title-left">
+                      <span class="ag-title" id="payrollTitleText">Abrechnung der Brutto/Netto-Bezüge</span>
+                      <span class="ag-title-sub layout-datev-only" id="payrollTitleMonth">für -</span>
+                    </div>
+                    <div class="ag-title-center layout-agenda-only">
+                      <strong class="ag-month" id="payrollHeadMonth">-</strong>
+                    </div>
+                    <span class="ag-run layout-agenda-only"><span id="payrollHeadRun">1 / 1</span><br />Blatt: <span id="payrollHeadPage">1</span></span>
+                    <span class="ag-run layout-datev-only ag-datev-run">
+                      <span id="payrollHeadUsa">USA/US</span>
+                      <span id="payrollHeadDate">-</span>
+                      <span>Blatt: <span id="payrollHeadPageDatev">1</span></span>
+                    </span>
+                  </div>
+
+                <table class="ag-master ag-master-agenda layout-agenda-only">
+                  <tbody>
+                    <tr class="ag-master-row">
+                      <td class="ag-m-cell"><span class="ag-lbl">Pers.-Nr.</span><span class="ag-val" id="pvPersNr">-</span></td>
+                      <td class="ag-m-cell"><span class="ag-lbl">Steuer-ID</span><span class="ag-val" id="pvTaxId">-</span></td>
+                      <td class="ag-m-cell"><span class="ag-lbl">Geburtsdatum</span><span class="ag-val" id="pvBirthDate">-</span></td>
+                      <td class="ag-m-cell"><span class="ag-lbl">Eintritt</span><span class="ag-val" id="pvEntryDate">-</span></td>
+                      <td class="ag-m-cell"><span class="ag-lbl">Austritt</span><span class="ag-val" id="pvExitDate">-</span></td>
+                      <td class="ag-m-cell ag-m-cell-edit"><span class="ag-lbl">St.Kl.</span>
+                        <select id="pvTaxClassSelect" class="ag-inline-select" title="Steuerklasse – Änderung berechnet Netto sofort neu">
+                          <option value="I">1</option>
+                          <option value="II">2</option>
+                          <option value="III">3</option>
+                          <option value="IV">4</option>
+                          <option value="V">5</option>
+                          <option value="VI">6</option>
+                        </select>
+                      </td>
+                      <td class="ag-m-cell"><span class="ag-lbl">Faktor</span><span class="ag-val" id="pvFactorDisplay">-</span></td>
+                      <td class="ag-m-cell"><span class="ag-lbl">Kinder-FB</span><span class="ag-val" id="pvChildFreibetrag">0,0</span></td>
+                      <td class="ag-m-cell"><span class="ag-lbl">St.Tg.</span><span class="ag-val" id="pvStTage">30</span></td>
+                      <td class="ag-m-cell"><span class="ag-lbl">Freibetrag jährl.</span><span class="ag-val" id="pvFreibetragYearly">-</span></td>
+                      <td class="ag-m-cell"><span class="ag-lbl">Freibetrag mtl.</span><span class="ag-val" id="pvTaxAllowance">0,00</span></td>
+                      <td class="ag-m-cell"><span class="ag-lbl">Konfession</span><span class="ag-val" id="pvKonfession">-</span></td>
+                    </tr>
+                    <tr class="ag-master-row">
+                      <td class="ag-m-cell ag-m-cell-wide"><span class="ag-lbl">Vers.-Nr.</span><span class="ag-val" id="pvInsuranceNo">-</span></td>
+                      <td class="ag-m-cell ag-m-cell-wide"><span class="ag-lbl">Krankenkassenname</span><span class="ag-val" id="pvHealthFund">-</span></td>
+                      <td class="ag-m-cell"><span class="ag-lbl">KK % / Z%</span><span class="ag-val" id="pvKkZPct">-</span></td>
+                      <td class="ag-m-cell"><span class="ag-lbl">P G S</span><span class="ag-val" id="pvPersonGroup">1 0 1</span></td>
+                      <td class="ag-m-cell"><span class="ag-lbl">U M</span><span class="ag-val" id="pvUm">1</span></td>
+                      <td class="ag-m-cell"><span class="ag-lbl">M F B</span><span class="ag-val" id="pvMfb">Nein</span></td>
+                      <td class="ag-m-cell"><span class="ag-lbl">G Z</span><span class="ag-val" id="pvGz">0</span></td>
+                      <td class="ag-m-cell"><span class="ag-lbl" id="pvBgrsLabel">B G R S</span><span class="ag-val" id="pvBgrs">1 1 1 1</span></td>
+                      <td class="ag-m-cell"><span class="ag-lbl">Sv.Tg.</span><span class="ag-val" id="pvSvDays">30</span></td>
+                      <td class="ag-m-cell"><span class="ag-lbl">Anz.U.</span><span class="ag-val" id="pvAnzU">-</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <table class="ag-master ag-master-datev layout-datev-only">
+                  <tbody>
+                    <tr>
+                      <td><span class="ag-lbl">Personal-Nr.</span><span class="ag-val" id="pvDvPersNr">-</span></td>
+                      <td><span class="ag-lbl">Geburtsdatum</span><span class="ag-val" id="pvDvBirthDate">-</span></td>
+                      <td class="ag-m-cell-edit"><span class="ag-lbl">StKl</span>
+                        <select id="pvTaxClassSelectDv" class="ag-inline-select" title="Steuerklasse">
+                          <option value="I">1</option><option value="II">2</option><option value="III">3</option>
+                          <option value="IV">4</option><option value="V">5</option><option value="VI">6</option>
+                        </select>
+                      </td>
+                      <td><span class="ag-lbl">Faktor</span><span class="ag-val" id="pvDvFactor">-</span></td>
+                      <td><span class="ag-lbl">Ki.Frbtr.</span><span class="ag-val" id="pvDvChildFb">0,0</span></td>
+                      <td><span class="ag-lbl">Konfession</span><span class="ag-val" id="pvDvKonfession">-</span></td>
+                      <td><span class="ag-lbl">Freibetrag jährl.</span><span class="ag-val" id="pvDvFreibYear">-</span></td>
+                      <td><span class="ag-lbl">Freibetrag mtl.</span><span class="ag-val" id="pvDvFreibMtl">0,00</span></td>
+                      <td><span class="ag-lbl">DBA</span><span class="ag-val">-</span></td>
+                      <td><span class="ag-lbl">Midijob</span><span class="ag-val">-</span></td>
+                      <td><span class="ag-lbl">St.-Tg</span><span class="ag-val" id="pvDvStTage">30</span></td>
+                    </tr>
+                    <tr>
+                      <td colspan="2"><span class="ag-lbl">SV-Nummer</span><span class="ag-val" id="pvDvInsuranceNo">-</span></td>
+                      <td colspan="2"><span class="ag-lbl">Krankenkasse</span><span class="ag-val" id="pvDvHealthFund">-</span></td>
+                      <td><span class="ag-lbl">KK %</span><span class="ag-val" id="pvDvKkPct">-</span></td>
+                      <td><span class="ag-lbl">PGRS</span><span class="ag-val" id="pvDvPgrs">101</span></td>
+                      <td><span class="ag-lbl">BGRS</span><span class="ag-val" id="pvDvBgrs">1112</span></td>
+                      <td><span class="ag-lbl">Um.</span><span class="ag-val" id="pvDvUm">1</span></td>
+                      <td><span class="ag-lbl">SV-Tg</span><span class="ag-val" id="pvDvSvTage">30</span></td>
+                    </tr>
+                    <tr class="layout-datev-no-ref">
+                      <td colspan="3"><span class="ag-lbl">Steuer-ID</span><span class="ag-val" id="pvDvTaxId">-</span></td>
+                      <td><span class="ag-lbl">MFB</span><span class="ag-val" id="pvDvMfb">Nein</span></td>
+                      <td colspan="6"></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <table class="ag-datev-days-grid layout-datev-only">
+                  <tbody>
+                    <tr>
+                      <td><span class="ag-lbl">VJ Url. üb.</span><span class="ag-val" id="pvDvVacPrev">0,00</span></td>
+                      <td><span class="ag-lbl">Url. Anspr.</span><span class="ag-val" id="pvDvVacEnt">0,00</span></td>
+                      <td><span class="ag-lbl">Url.Tg.gen.</span><span class="ag-val" id="pvDvVacTaken">0,00</span></td>
+                      <td><span class="ag-lbl">Resturlaub</span><span class="ag-val" id="pvDvVacRemain">0,00</span></td>
+                    </tr>
+                    <tr>
+                      <td><span class="ag-lbl">Anw. Tage</span><span class="ag-val" id="pvDvWorkDays">0,00</span></td>
+                      <td><span class="ag-lbl">Urlaub Tage</span><span class="ag-val" id="pvDvVacDays">0,00</span></td>
+                      <td><span class="ag-lbl">Krankh. Tg.</span><span class="ag-val" id="pvDvSickDays">0,00</span></td>
+                      <td><span class="ag-lbl">Fehlz. Tage</span><span class="ag-val" id="pvDvMissingDays">0,00</span></td>
+                    </tr>
+                    <tr>
+                      <td><span class="ag-lbl">Anw. Std.</span><span class="ag-val" id="pvDvWorkHours">0,00</span></td>
+                      <td><span class="ag-lbl">Fehl. Std.</span><span class="ag-val" id="pvDvMissingHours">0,00</span></td>
+                      <td><span class="ag-lbl">Überst. Std.</span><span class="ag-val" id="pvDvOvertimeHours">0,00</span></td>
+                      <td><span class="ag-lbl">Std.lohn 1</span><span class="ag-val" id="pvDvHourRate">0,00</span></td>
+                    </tr>
+                    <tr>
+                      <td><span class="ag-lbl">Std.lohn 2</span><span class="ag-val" id="pvDvHourRate2">-</span></td>
+                      <td><span class="ag-lbl">Std.lohn 3</span><span class="ag-val" id="pvDvHourRate3">-</span></td>
+                      <td><span class="ag-lbl">Grundlohn</span><span class="ag-val" id="pvDvBasePay">-</span></td>
+                      <td><span class="ag-lbl">SV-AG mtl.</span><span class="ag-val" id="pvDvEmployerShareDay">0,00</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+                </header>
+
+                <div class="ag-mid-grid">
+                  <div class="ag-left">
+                    <div class="ag-addr-section ag-employer-section layout-agenda-only">
+                      <div class="ag-addr-label">Arbeitgeber</div>
+                      <div class="ag-employer" id="pvCompanyBlock">-</div>
+                      <p id="pvLetterheadSub" class="pd-letterhead-sub hidden"></p>
+                    </div>
+                    <div class="ag-addr-section ag-employee-section">
+                      <div class="ag-addr-label layout-agenda-only">Mitarbeiter</div>
+                      <div class="ag-emp-block">
+                        <p class="ag-datev-sender layout-datev-only" id="pvDatevSender"></p>
+                        <p class="ag-emp-meta" id="pvEmpMeta">-</p>
+                        <p class="ag-emp-name" id="pvEmpName">-</p>
+                        <pre class="ag-emp-addr" id="pvAddress">-</pre>
+                      </div>
+                    </div>
+                    <div class="ag-info-box ag-info-standard layout-agenda-only">
+                      <div class="ag-box-h">Informationen</div>
+                      <p id="pvInfoText">-</p>
+                    </div>
+                  </div>
+                  <div class="ag-center layout-datev-only">
+                    <div class="ag-datev-mid-meta">
+                      <p><span class="ag-lbl">Eintritt</span> <span class="ag-val" id="pvDvEntryMid">-</span></p>
+                      <p><span class="ag-lbl">Austritt</span> <span class="ag-val" id="pvDvExitMid">-</span></p>
+                      <p><span class="ag-lbl">Steuer-ID</span> <span class="ag-val" id="pvDvTaxIdMid">-</span></p>
+                      <p><span class="ag-lbl">MFB</span> <span class="ag-val" id="pvDvMfbMid">Nein</span></p>
+                    </div>
+                  </div>
+                  <div class="ag-right">
+                    <div class="ag-info-box ag-datev-hinweise layout-datev-only">
+                      <div class="ag-box-h">Hinweise zur Abrechnung</div>
+                      <p id="pvDatevHints">-</p>
+                    </div>
+                    <div class="ag-datev-urlaub layout-agenda-only">
+                      <div class="ag-box-h">Urlaub</div>
+                      <table class="ag-stats ag-urlaub-table">
+                        <tbody>
+                          <tr><td class="ag-lbl">Vorjahr</td><td class="ag-val" id="pvVacPrev">0,00</td></tr>
+                          <tr><td class="ag-lbl">Url.-Anspr.</td><td class="ag-val" id="pvVacEntitlement">0,00</td></tr>
+                          <tr><td class="ag-lbl">gen.-Url.</td><td class="ag-val" id="pvVacTaken">0,00</td></tr>
+                          <tr><td class="ag-lbl">Rest-Url.</td><td class="ag-val" id="pvVacRemain">0,00</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div class="ag-stats-wrap layout-agenda-only">
+                    <div class="ag-box-h">Statistische Werte</div>
+                    <table class="ag-stats ag-stats-grid">
+                      <tbody>
+                        <tr>
+                          <td class="ag-stat-cell"><span class="ag-lbl">Anw.-Std.</span><span class="ag-val" id="pvPaidUnpaidHours">0,00</span></td>
+                          <td class="ag-stat-cell"><span class="ag-lbl">Über.-Std.</span><span class="ag-val" id="pvOvertimeHours">0,00</span></td>
+                          <td class="ag-stat-cell"><span class="ag-lbl">Bez.Std.n.gel.</span><span class="ag-val" id="pvUnpaidHours">0,00</span></td>
+                          <td class="ag-stat-cell"><span class="ag-lbl">Url.-Anspr.</span><span class="ag-val" id="pvVacEntitlementAgenda">0,00</span></td>
+                          <td class="ag-stat-cell"><span class="ag-lbl">SV-AG-Anteil mtl.</span><span class="ag-val" id="pvEmployerShareStat">0,00</span></td>
+                        </tr>
+                        <tr>
+                          <td class="ag-stat-cell"><span class="ag-lbl">Anw.-Tage</span><span class="ag-val" id="pvDays">0,00</span></td>
+                          <td class="ag-stat-cell"><span class="ag-lbl">Fehl.-Tage</span><span class="ag-val" id="pvMissingDays">0,00</span></td>
+                          <td class="ag-stat-cell"><span class="ag-lbl">Krh.-Tage</span><span class="ag-val" id="pvSickDays">0,00</span></td>
+                          <td class="ag-stat-cell"><span class="ag-lbl">Url. Vorj.</span><span class="ag-val" id="pvVacPrevStat">0,00</span></td>
+                          <td class="ag-stat-cell"><span class="ag-lbl">SV-AG-Anteil kum.</span><span class="ag-val" id="pvEmployerShareKum">0,00</span></td>
+                        </tr>
+                        <tr>
+                          <td class="ag-stat-cell"><span class="ag-lbl">Std.-Lohn 1</span><span class="ag-val" id="pvHourRateStat">0,00</span></td>
+                          <td class="ag-stat-cell"><span class="ag-lbl">Std.-Lohn 2</span><span class="ag-val" id="pvHourRate2">-</span></td>
+                          <td class="ag-stat-cell"><span class="ag-lbl">Std.-Lohn 3</span><span class="ag-val" id="pvHourRate3">-</span></td>
+                          <td class="ag-stat-cell"><span class="ag-lbl">gen. Url. ges.</span><span class="ag-val" id="pvVacTakenStat">0,00</span></td>
+                          <td class="ag-stat-cell"><span class="ag-lbl">Arbeitszeitkonto (Std.)</span><span class="ag-val" id="pvTimeAcctHours">-</span></td>
+                        </tr>
+                        <tr>
+                          <td class="ag-stat-cell"><span class="ag-lbl">Durchschnitt 1</span><span class="ag-val" id="pvAverageHourRate">0,00</span></td>
+                          <td class="ag-stat-cell"><span class="ag-lbl">Durchschnitt 2</span><span class="ag-val" id="pvAverage2">-</span></td>
+                          <td class="ag-stat-cell"><span class="ag-lbl">Grundlohn</span><span class="ag-val" id="pvBasePay">-</span></td>
+                          <td class="ag-stat-cell"><span class="ag-lbl">Resturlaub</span><span class="ag-val" id="pvVacRemainStat">0,00</span></td>
+                          <td class="ag-stat-cell"><span class="ag-lbl">Arbeitszeitkonto (Betr.)</span><span class="ag-val" id="pvTimeAcctAmount">-</span></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    </div>
+                    <div class="ag-cal-wrap layout-agenda-only">
+                      <div class="ag-box-h">Kalender</div>
+                      <table class="ag-cal" id="pvCalendarTable">
+                        <thead>
+                          <tr><th class="ag-kw">KW</th><th>Mo</th><th>Di</th><th>Mi</th><th>Do</th><th>Fr</th><th>Sa</th><th>So</th></tr>
+                        </thead>
+                        <tbody id="pvCalendarBody"></tbody>
+                      </table>
+                      <p class="ag-cal-legend">A = Anwesenheit · Ü = Überstunden · U = Urlaub · K = Kug · F = Feiertag</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="ag-payroll-core">
+                <div class="ag-datev-core-left">
+                <div class="ag-datev-section-h layout-datev-only">Brutto-Bezüge</div>
+                <div class="ag-earnings-block">
+                <table class="ag-earnings ag-earnings-datev-main layout-datev-only">
+                  <thead id="pvEarningsHeadDatev">
+                    <tr>
+                      <th class="ag-col-la">Lohnart</th>
+                      <th class="ag-col-bez">Bezeichnung</th>
+                      <th class="ag-col-einheit">Einheit</th>
+                      <th class="ag-col-menge">Menge</th>
+                      <th class="ag-col-faktor">Faktor</th>
+                      <th class="ag-col-prozent">Prozentsatz</th>
+                      <th class="ag-col-st">St</th>
+                      <th class="ag-col-sv">SV</th>
+                      <th class="ag-col-gb">GB</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pvWageRows"></tbody>
+                </table>
+                <table class="ag-earnings layout-agenda-only">
+                  <thead id="pvEarningsHeadAgenda">
+                    <tr>
+                      <th class="ag-col-la">Lohnart</th>
+                      <th class="ag-col-bez">Bezeichnung</th>
+                      <th class="ag-col-menge">Menge</th>
+                      <th class="ag-col-faktor">Faktor</th>
+                      <th class="ag-col-pct">% / €-Zuschlag</th>
+                      <th class="ag-col-st">St *)</th>
+                      <th class="ag-col-sv">SV *)</th>
+                      <th class="ag-col-gb">GB *)</th>
+                      <th class="ag-col-betrag">Betrag</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pvWageRowsAgenda"></tbody>
+                  <tfoot>
+                    <tr>
+                      <td colspan="8" class="ag-num">Abrechnungs-Brutto</td>
+                      <td class="ag-num ag-brutto-edit">
+                        <input type="number" id="pvGrossEdit" class="ag-inline-input ag-inline-amount" min="0" step="0.01" title="Brutto ändern – Netto wird neu berechnet" />
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+                </div>
+
+                <div class="ag-taxsv-wrap layout-agenda-only">
+                <table class="ag-taxsv-matrix ag-taxsv-agenda">
+                  <thead>
+                    <tr>
+                      <th rowspan="2" class="ag-row-h"></th>
+                      <th colspan="4">Steuer</th>
+                      <th colspan="4">Sozialversicherung</th>
+                    </tr>
+                    <tr>
+                      <th>St. Brutto lfd. Bezüge (L)</th>
+                      <th>St. Abzüge lfd. Bezüge (L)</th>
+                      <th>St. Brutto sonst. Bez. (S)</th>
+                      <th>St. Abzüge sonst. Bez. (S)</th>
+                      <th>SV-Brutto lfd. Bezüge (L)</th>
+                      <th>SV-Beitrag lfd. Bezüge (L)</th>
+                      <th>SV-Brutto sonst. Bez. (S)</th>
+                      <th>SV-Beitrag sonst. Bez. (S)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pvAgendaTaxRows"></tbody>
+                </table>
+                <aside class="ag-taxsv-aside" aria-label="Abzüge und Netto">
+                  <div class="ag-sum-box"><span>Steuerrechtl. Abzüge</span><strong id="pvTaxDeductionBox">0,00</strong></div>
+                  <div class="ag-sum-box"><span>SV-rechtl. Abzüge</span><strong id="pvSvDeductionBox">0,00</strong></div>
+                  <div class="ag-sum-box ag-sum-net"><span>Abrechnungs-Netto</span><strong id="pvNet">0,00</strong></div>
+                </aside>
+                </div>
+
+                <div class="ag-datev-section-h layout-datev-only">Steuer/Sozialversicherung</div>
+                <div class="ag-datev-tax-block layout-datev-only">
+                  <table class="ag-datev-tax-table">
+                    <thead>
+                      <tr>
+                        <th class="ag-row-h"></th>
+                        <th>St</th>
+                        <th>Steuer-Brutto</th>
+                        <th>Lohnsteuer</th>
+                        <th>Kirchensteuer</th>
+                        <th>Solidaritätszuschlag</th>
+                      </tr>
+                    </thead>
+                    <tbody id="pvDatevTaxRow"></tbody>
+                    <thead>
+                      <tr>
+                        <th class="ag-row-h"></th>
+                        <th>SV</th>
+                        <th>KV-Brutto</th>
+                        <th>RV-Brutto</th>
+                        <th>AV-Brutto</th>
+                        <th>PV-Brutto</th>
+                        <th>KV-Beitrag</th>
+                        <th>RV-Beitrag</th>
+                        <th>AV-Beitrag</th>
+                        <th>PV-Beitrag</th>
+                      </tr>
+                    </thead>
+                    <tbody id="pvDatevSvRow"></tbody>
+                  </table>
+                </div>
+
+                <div class="ag-datev-verdienst-inline layout-datev-only">
+                  <div class="ag-dv-vb-cols">
+                    <table class="ag-dv-vb-table">
+                      <thead><tr><th colspan="2">Verdienstbescheinigung</th></tr></thead>
+                      <tbody id="pvDatevVbLeft"></tbody>
+                    </table>
+                    <table class="ag-dv-vb-table">
+                      <thead><tr><th colspan="2">Sozialversicherung</th></tr></thead>
+                      <tbody id="pvDatevVbRight"></tbody>
+                    </table>
+                    <table class="ag-dv-vb-table ag-dv-vb-netto">
+                      <thead><tr><th colspan="2">Netto-Bezüge / Netto-Abzüge</th></tr></thead>
+                      <tbody id="pvDatevVbNetto"></tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div class="ag-bottom ag-bottom-monthly layout-agenda-only">
+                  <table class="ag-netto-table">
+                    <tbody>
+                      <tr class="ag-section-h"><td colspan="2">Netto-Bezüge / Netto-Abzüge</td></tr>
+                      <tr><td id="pvNetBreakdown">2000 Gehalt</td><td class="ag-num" id="pvTotalGross">0,00</td></tr>
+                    </tbody>
+                    <tbody id="pvDeductionRows"></tbody>
+                  </table>
+                  <table class="ag-payout-table">
+                    <tbody>
+                      <tr><td>Bank</td><td id="pvBank">-</td></tr>
+                      <tr><td>BIC</td><td id="pvBic">-</td></tr>
+                      <tr><td>IBAN</td><td id="pvIban">-</td></tr>
+                      <tr class="ag-payout-final"><td>Auszahlungsbetrag</td><td class="ag-num" id="pvPayout">0,00</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="ag-datev-footer layout-datev-only">
+                  <div class="ag-datev-bank">
+                    <p>Bank: <span id="pvDatevBank">-</span></p>
+                    <p>Konto: <span id="pvDatevKonto">-</span></p>
+                  </div>
+                  <div class="ag-datev-costs">
+                    <table class="ag-datev-costs-table">
+                      <tbody>
+                        <tr><td>SV-AG-Anteil</td><td class="ag-num" id="pvDatevEmployerShare">0,00</td></tr>
+                        <tr><td>Zus. AG-Kosten</td><td class="ag-num" id="pvDatevExtraCosts">0,00</td></tr>
+                        <tr><td>Gesamtkosten</td><td class="ag-num" id="pvDatevTotalCosts">0,00</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                </div>
+
+                <aside class="ag-datev-rail layout-datev-only" aria-label="DATEV Summen">
+                  <div class="ag-dv-rail-section-gap" aria-hidden="true"></div>
+                  <div class="ag-dv-rail-earnings">
+                    <div class="ag-dv-rail-h">Betrag</div>
+                    <div class="ag-dv-rail-amt-rows" id="pvDatevBetragRows"></div>
+                  </div>
+                  <div class="ag-dv-rail-totals">
+                  <div class="ag-dv-sum-box ag-dv-gross"><span>Gesamt-Brutto</span><strong id="pvDatevGrossTotal">0,00</strong></div>
+                  <div class="ag-dv-sum-box"><span>Steuerrechtliche Abzüge</span><strong id="pvDatevTaxTotal">0,00</strong></div>
+                  <div class="ag-dv-sum-box"><span>SV-rechtliche Abzüge</span><strong id="pvDatevSvTotal">0,00</strong></div>
+                  <div class="ag-dv-sum-box ag-dv-net"><span>Netto-Verdienst</span><strong id="pvDatevNetTotal">0,00</strong></div>
+                  <div class="ag-dv-sum-box ag-dv-payout"><span>Auszahlungsbetrag</span><strong id="pvDatevPayoutRail">0,00</strong></div>
+                  </div>
+                </aside>
+                </div>
+
+                <div class="ag-footer-anchor">
+                  <footer class="ag-meta">
+                    <span id="pvAgendaTimestamp">-</span>
+                    <span class="ag-brand layout-agenda-only">Agenda</span>
+                    <span class="ag-brand layout-datev-only ag-dv-footer-logo">DATEV</span>
+                  </footer>
+                  <div class="ag-legend-block" id="pvLegendBlock">
+                    <p class="ag-legend layout-agenda-only">*) E = Einmalbezug · F = Frei · L = laufender Bezug · P = pauschal · S = sonstiger Bezug · Z = Zuschlag/Kürzung</p>
+                    <p class="ag-legend layout-agenda-only">*) M = mehrjährig · St = Steuer · SV = sozialversicherungspflichtig · GB = Gesamt-Brutto · KKN = KV-Beitragssatz</p>
+                    <p class="ag-legend ag-legend-datev layout-datev-only" id="pvDatevLegend">1 = Hinzurechnungsbetrag · 2 = Vortragswert · 3 = Anrechnungswert · 4 = Herausrechnungsbetrag · E = Einmalbezug · F = Frei · L = laufender Bezug · M = mehrjährig · N = Nachberechnung · P = pauschal · S = sonstiger Bezug · St = Steuer · SV = sozialversicherungspflichtig · Z = Zuschlag/Kürzung · GB = Gesamt-Brutto · KKN = KV-Beitragssatz</p>
+                    <p class="ag-legend layout-datev-only" id="pvDatevFormNr">Form.-Nr. LOHN17</p>
+                    <p class="ag-legend" id="pvLegendCalc">* Berechnung Lohnsteuer: BMF-Programmablaufplan 2026</p>
+                    <p class="ag-legend ag-legend-legal" id="pvFooterLegal">Abrechnung nach § 108 Abs. 3 GewO · Entgeltabrechnung nach SGB IV</p>
+                    <pre class="ag-legend-company" id="pvFooterBlock"></pre>
+                  </div>
+                </div>
+              </div>
+              </div>
+              </div>
+            </article>
+          </section>
+
+          <section id="verdienstSheet" class="verdienst-sheet payroll-sheet hidden mode-payroll-only layout-agenda" aria-label="Verdienstbescheinigung">
+            <article class="payroll-document verdienst-document">
+              <header class="vb-header">
+                <h2 class="vb-title">Verdienstbescheinigung</h2>
+                <p class="vb-meta" id="vbMeta">-</p>
+                <p class="vb-sub" id="vbSub">Kumulierte Werte für Arbeitnehmernachweise</p>
+              </header>
+              <div class="ag-datev-verdienst-split layout-datev-only vb-body">
+                <table>
+                  <thead><tr><th colspan="2" class="ag-verdienst-title-dv">Verdienstbescheinigung</th></tr></thead>
+                  <tbody id="pvDatevVerdienstLeft"></tbody>
+                </table>
+                <table>
+                  <thead><tr><th colspan="2">Sozialversicherung</th></tr></thead>
+                  <tbody id="pvDatevVerdienstRight"></tbody>
+                </table>
+              </div>
+              <table class="ag-verdienst ag-verdienst-block layout-agenda-only vb-body">
+                <thead>
+                  <tr><th colspan="2" class="ag-verdienst-title">Verdienstbescheinigung</th><th>mtl.</th><th>Jahr</th></tr>
+                </thead>
+                <tbody id="pvVerdienstRows"></tbody>
+              </table>
+              <footer class="vb-footer">
+                <p id="vbTimestamp">-</p>
+                <p class="vb-legal">Ausdruck für den Arbeitnehmer · nicht Bestandteil der Monatsabrechnung</p>
+              </footer>
+            </article>
+          </section>
+
+          <section id="annualTaxSheet" class="annual-tax-sheet hidden mode-annual-only">
+            <article class="lstb-document">
+              <header class="lstb-official-header">
+                <div class="lstb-header-left">
+                  <p class="lstb-finanzamt">Finanzamt / Gemeinde</p>
+                  <p class="lstb-finanzamt-val" id="lstbFinanzamt">-</p>
+                </div>
+                <div class="lstb-header-center">
+                  <h2>Lohnsteuerbescheinigung</h2>
+                  <p>für das Kalenderjahr <strong id="lstbYearTitle">2026</strong></p>
+                  <p class="lstb-sub">Ausdruck der elektronischen Lohnsteuerbescheinigung nach § 39 Abs. 1 EStG</p>
+                </div>
+                <div class="lstb-header-right">
+                  <p>KmId</p>
+                  <p class="lstb-kmid" id="lstbKmId">-</p>
+                  <p class="lstb-cert-nr">Certifikat-Nr. <span id="lstbCertNr">-</span></p>
+                </div>
+              </header>
+              <header class="lstb-title-block lstb-title-block-secondary">
+                <p>FinanzDokument Pro · BMF PAP / SGB IV · Jahr <strong id="lstbYear">2026</strong></p>
+              </header>
+              <div class="lstb-grid">
+                <div class="lstb-left">
+                  <table class="lstb-meta-table">
+                    <tbody>
+                      <tr><td class="lstb-lbl">Personal-Nr.</td><td id="lstbPersNr">-</td></tr>
+                      <tr><td class="lstb-lbl">Identifikationsnummer</td><td id="lstbTaxId">-</td></tr>
+                      <tr><td class="lstb-lbl">SV-Nummer</td><td id="lstbInsuranceNo">-</td></tr>
+                      <tr><td class="lstb-lbl">Geburtsdatum</td><td id="lstbBirthDate">-</td></tr>
+                      <tr><td class="lstb-lbl">Steuerklasse</td><td id="lstbTaxClass">-</td></tr>
+                      <tr><td class="lstb-lbl">Kinderfreibeträge (ZKF)</td><td id="lstbChildAllowance">-</td></tr>
+                      <tr><td class="lstb-lbl">Kirchensteuer</td><td id="lstbChurch">-</td></tr>
+                      <tr><td class="lstb-lbl">Zeitraum</td><td id="lstbPeriod">-</td></tr>
+                    </tbody>
+                  </table>
+                  <div class="lstb-address-block">
+                    <div class="lstb-block-h">Arbeitnehmer/in</div>
+                    <pre id="lstbEmployee">-</pre>
+                  </div>
+                  <div class="lstb-address-block">
+                    <div class="lstb-block-h">Arbeitgeber</div>
+                    <pre id="lstbEmployer">-</pre>
+                  </div>
+                  <p class="lstb-months-summary" id="lstbMonthsSummary">-</p>
+                  <p class="lstb-warning hidden" id="lstbNoDataWarning">Keine Monatsdaten für dieses Jahr gespeichert. Bitte Monatsabrechnungen speichern oder aktuellen Monat im Jahr wählen.</p>
+                </div>
+                <div class="lstb-right">
+                  <table class="lstb-rows-table">
+                    <thead>
+                      <tr>
+                        <th class="lstb-nr">Nr.</th>
+                        <th class="lstb-desc">Bezeichnung</th>
+                        <th class="lstb-euro">Euro</th>
+                        <th class="lstb-cent">Cent</th>
+                      </tr>
+                    </thead>
+                    <tbody id="lstbRowsBody"></tbody>
+                  </table>
+                </div>
+              </div>
+              <footer class="lstb-footer-note">
+                <p id="lstbFooterNote">Bescheinigung nach § 39 Abs. 1 EStG · Berechnung aus gespeicherten Monatsabrechnungen · Lohnsteuer BMF-Programmablaufplan</p>
+              </footer>
+            </article>
+          </section>
+
+          <table class="preview-items mode-invoice-only">
+            <thead>
+              <tr>
+                <th>Beschreibung</th>
+                <th>Menge</th>
+                <th>Einzelpreis</th>
+                <th>Gesamt</th>
+              </tr>
+            </thead>
+            <tbody id="previewItemsBody"></tbody>
+          </table>
+
+          <div class="totals mode-invoice-only">
+            <p><span id="subtotalLabel">Zwischensumme (netto):</span> <strong id="previewSubtotal">0,00 EUR</strong></p>
+            <p id="taxRowPreview"><span id="taxLabel">USt:</span> <strong id="previewTax">0,00 EUR</strong></p>
+            <p class="grand-total"><span id="totalLabel">Gesamt:</span> <strong id="previewTotal">0,00 EUR</strong></p>
+          </div>
+
+          <div class="invoice-bank mode-invoice-only" id="invoiceBankBlock">
+            <h3>Bankverbindung</h3>
+            <p id="previewCompanyBank">-</p>
+          </div>
+
+          <div class="note-box mode-invoice-only">
+            <h3>Hinweis</h3>
+            <p id="previewNote">-</p>
+          </div>
+
+          <div class="wp-sig-layer mode-invoice-only" id="signaturePreviewBox" hidden
+               role="group" aria-label="Verschiebbare Signatur" tabindex="0">
+            <div class="wp-sig-chrome sig-ui-chrome" aria-hidden="true">
+              <span class="wp-sig-handle" data-sig-drag="1">⋮⋮ Verschieben</span>
+              <span class="wp-sig-resize" data-sig-resize="1" title="Größe ändern"></span>
+            </div>
+            <div class="wp-sig-line" id="signatureLineEl"></div>
+            <img id="signaturePreview" alt="Signatur" class="hidden" draggable="false" />
+            <p id="signatureNamePreview" class="signature-name" contenteditable="false" spellcheck="false"></p>
+            <p id="signatureModeBadge" class="signature-mode-badge sig-ui-chrome hidden"></p>
+          </div>
+          <aside class="wp-sig-seal mode-invoice-only sig-ui-chrome" id="signatureSealBadge" hidden>
+            <strong>WP-Siegel</strong>
+            <span id="signatureSealProof">—</span>
+          </aside>
+        </section>
+      </main>
+        </div>
+
+      <footer class="lex-statusbar" role="contentinfo">
+        <span class="lex-status-item" id="lexStatusMandant">Mandant: Standard-Mandant</span>
+        <span class="lex-status-item lex-status-center" id="lexStatusMessage">Bereit</span>
+        <span class="lex-status-item lex-status-right">
+          <span id="lexStatusDate"></span>
+          <span class="lex-status-sep">|</span>
+          <span id="lexStatusVersion">v2026.3</span>
+        </span>
+      </footer>
+      </div>
+    </div>
+
+    <!-- Datei-Inputs außerhalb der Tabs – sonst öffnet sich der Dialog unter Windows oft nicht -->
+    <div id="globalFileInputs" class="global-file-inputs" aria-hidden="true">
+      <input id="importPayrollInput" type="file" accept="application/json,.json" tabindex="-1" />
+      <input id="importDataInput" type="file" accept="application/json,.json" tabindex="-1" />
+      <input id="importTemplateInput" type="file" accept="application/json,.json" tabindex="-1" />
+      <input id="importDatevCsvInput" type="file" accept=".csv,.txt,text/csv,text/plain,application/vnd.ms-excel" tabindex="-1" />
+      <input id="importPdfTemplateInput" type="file" accept="application/pdf,image/png,image/jpeg,image/webp,.pdf" tabindex="-1" />
+    </div>
+    </div><!-- /#workpassApp -->
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="vendor/pdf.min.js"></script>
+    <script src="vendor/pap-standalone.js"></script>
+    <script src="datev-import.js?v=1"></script>
+    <script src="payroll-bridge.js?v=1"></script>
+    <script src="legal-config.js"></script>
+    <script src="annual-certificate.js?v=2"></script>
+    <script src="elster-export.js?v=1"></script>
+    <script src="datev-sheet.js?v=41"></script>
+    <script src="payroll-core.js?v=17"></script>
+    <script src="auth-gate.js?v=3"></script>
+    <script src="workpass-hub.js?v=1"></script>
+    <script src="templates.js?v=1" defer></script>
+    <script src="signature-engine.js?v=4"></script>
+    <script src="script.js?v=67" defer></script>
+  </body>
+</html>

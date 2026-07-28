@@ -1,0 +1,117 @@
+/**
+ * Druck-Fallback (Strg+P): nur DATEV-Lohnblatt
+ * Primärweg: DatevSheet.printSheet() öffnet separates Fenster
+ */
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  html,
+  body {
+    width: 210mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.print-payroll-only:not(.print-annual-only) .lex-appbar,
+  body.print-payroll-only:not(.print-annual-only) .app-sidebar,
+  body.print-payroll-only:not(.print-annual-only) .lex-module-panel,
+  body.print-payroll-only:not(.print-annual-only) .lex-ribbon,
+  body.print-payroll-only:not(.print-annual-only) .lex-context-bar,
+  body.print-payroll-only:not(.print-annual-only) .lex-page-header,
+  body.print-payroll-only:not(.print-annual-only) .app-topbar,
+  body.print-payroll-only:not(.print-annual-only) .lex-statusbar,
+  body.print-payroll-only:not(.print-annual-only) .form-panel,
+  body.print-payroll-only:not(.print-annual-only) .preview-tools,
+  body.print-payroll-only:not(.print-annual-only) .invoice-top,
+  body.print-payroll-only:not(.print-annual-only) .invoice-meta,
+  body.print-payroll-only:not(.print-annual-only) .mode-invoice-only,
+  body.print-payroll-only:not(.print-annual-only) #payrollSheet,
+  body.print-payroll-only:not(.print-annual-only) #verdienstSheet,
+  body.print-payroll-only:not(.print-annual-only) #annualTaxSheet,
+  body.print-payroll-only:not(.print-annual-only) .onboarding-banner,
+  body.print-payroll-only:not(.print-annual-only) .lex-menu-portal {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  body.print-payroll-only:not(.print-annual-only) .app-frame,
+  body.print-payroll-only:not(.print-annual-only) .app-main,
+  body.print-payroll-only:not(.print-annual-only) .app-shell,
+  body.print-payroll-only:not(.print-annual-only) .workspace,
+  body.print-payroll-only:not(.print-annual-only) .layout,
+  body.print-payroll-only:not(.print-annual-only) .preview-panel,
+  body.print-payroll-only:not(.print-annual-only) #invoicePreview {
+    display: block !important;
+    position: static !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    overflow: visible !important;
+  }
+
+  body.print-payroll-only:not(.print-annual-only) #invoicePreview > :not(#datevSheetHost) {
+    display: none !important;
+  }
+
+  body.print-payroll-only:not(.print-annual-only) #datevSheetHost,
+  body.print-payroll-only:not(.print-annual-only) #datevSheetHost.hidden {
+    display: block !important;
+    visibility: visible !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+  }
+
+  body.print-payroll-only:not(.print-annual-only) #datevSheetA4 {
+    display: block !important;
+    visibility: visible !important;
+    position: relative !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    max-height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+    transform: none !important;
+    zoom: 1 !important;
+  }
+
+  body.print-payroll-only:not(.print-annual-only) .datev-sheet-bg {
+    width: 210mm !important;
+    height: 297mm !important;
+    object-fit: fill !important;
+    display: block !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.print-payroll-only:not(.print-annual-only) .datev-sheet-values,
+  body.print-payroll-only:not(.print-annual-only) .datev-sheet-values .dsv {
+    visibility: visible !important;
+    color: #000 !important;
+  }
+}

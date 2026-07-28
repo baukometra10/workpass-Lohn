@@ -1,0 +1,117 @@
+/* Verdienstbescheinigung – separates Blatt (nicht auf Monatsabrechnung) */
+
+.verdienst-sheet {
+  width: 210mm;
+  max-width: 100%;
+  margin: 0 auto;
+  background: #fff;
+  color: #000;
+  border: 1px solid #000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.verdienst-sheet .verdienst-document {
+  padding: 8mm 10mm 6mm;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 7pt;
+  line-height: 1.2;
+}
+
+.verdienst-sheet.layout-datev .verdienst-document {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 6.6pt;
+}
+
+.vb-header {
+  border-bottom: 1px solid #000;
+  padding-bottom: 3mm;
+  margin-bottom: 4mm;
+}
+
+.vb-title {
+  margin: 0 0 2mm;
+  font-size: 11pt;
+  font-weight: 700;
+}
+
+.vb-meta {
+  margin: 0;
+  font-size: 7.5pt;
+  font-weight: 600;
+}
+
+.vb-sub {
+  margin: 1mm 0 0;
+  font-size: 6.5pt;
+  color: #333;
+}
+
+.vb-body {
+  margin-bottom: 4mm;
+}
+
+.verdienst-sheet .ag-verdienst-block {
+  width: 100%;
+  border-collapse: collapse;
+  border: 0.5px solid #000;
+}
+
+.verdienst-sheet .ag-datev-verdienst-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 0.5px solid #000;
+}
+
+.vb-footer {
+  border-top: 0.5px solid #000;
+  padding-top: 2mm;
+  font-size: 6pt;
+  color: #333;
+}
+
+.vb-footer p {
+  margin: 0 0 1mm;
+}
+
+.vb-legal {
+  font-style: italic;
+}
+
+body.verdienst-preview-mode #payrollSheet {
+  display: none !important;
+}
+
+body.verdienst-preview-mode #verdienstSheet {
+  display: block !important;
+}
+
+body.verdienst-preview-mode #verdienstSheet.hidden {
+  display: block !important;
+}
+
+@media print {
+  body.print-verdienst-only #payrollSheet,
+  body.print-verdienst-only #annualTaxSheet,
+  body.print-verdienst-only .invoice-top,
+  body.print-verdienst-only .preview-tools {
+    display: none !important;
+  }
+
+  body.print-verdienst-only #verdienstSheet {
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 210mm !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  body.print-verdienst-only #verdienstSheet.hidden {
+    display: block !important;
+  }
+
+  body.print-payroll-only #verdienstSheet {
+    display: none !important;
+  }
+}

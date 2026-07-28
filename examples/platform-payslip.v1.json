@@ -1,0 +1,37 @@
+{
+  "kind": "platform.payslip.v1",
+  "jobId": "muster-gmbh::02006::2025-07",
+  "employee": {
+    "id": "02006",
+    "name": "Mustermann Max"
+  },
+  "company": {
+    "id": "muster-gmbh",
+    "name": "Muster GmbH"
+  },
+  "period": "2025-07",
+  "status": "calculated",
+  "errors": [],
+  "calculatedAt": "2025-07-31T12:00:00.000Z",
+  "totals": {
+    "gross": 3620,
+    "net": 2454.36,
+    "payrollTax": 0,
+    "churchTax": 0,
+    "solidarity": 0,
+    "health": 0,
+    "pension": 0,
+    "care": 0,
+    "unemployment": 0,
+    "svTotal": 0
+  },
+  "attendance": {
+    "days": 21,
+    "hours": 168
+  },
+  "bank": {
+    "name": "Stadtsparkasse München",
+    "iban": "DE03700500000000012345"
+  },
+  "note": "Beispiel-Antwort an die Plattform – Plattform liefert an Mitarbeiter-App"
+}
