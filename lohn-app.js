@@ -612,7 +612,11 @@
     }
     if (mode === "api") {
       setModePill("API-Bridge", "Empfang vom Platform-Bridge-Server");
-      setStatus("API-Bridge – Inbox laden, prüfen, freigeben.", true);
+      setStatus("API-Bridge – Firmen & Inbox laden, prüfen, freigeben.", true);
+      loadApiConfigIntoForm();
+      if (String($("apiKey")?.value || "").trim()) {
+        loadPlatformCompanies();
+      }
     }
   }
 
@@ -825,6 +829,74 @@
     } catch (e) {
       setStatus(`Inbox-Fehler: ${e.message}`, false);
       window.alert(`Inbox konnte nicht geladen werden.\n${e.message}`);
+    }
+  }
+
+  function renderPlatformCompanies(payload) {
+    const host = $("apiCompanyList");
+    if (!host) return;
+    const companies = payload?.companies || [];
+    const workspaces = payload?.workspaces || [];
+    const wsById = Object.fromEntries(workspaces.map((w) => [w.id, w]));
+    if (!companies.length) {
+      host.innerHTML = '<p class="section-hint">Keine Firmen im Bridge-Register. Plattform muss <code>POST /v1/company/activate</code> senden.</p>';
+      return;
+    }
+    const activeId = String($("apiCompanyId")?.value || "").trim().toLowerCase();
+    host.innerHTML = `
+      <p class="api-inbox-title">Firmen / Abteilungen (${companies.length})</p>
+      ${companies.map((c) => {
+        const ws = wsById[c.id] || {};
+        const on = ws.accountingEnabled || c.meta?.accountingEnabled;
+        const section = ws.section?.title || c.meta?.section?.title || c.name || c.id;
+        const active = String(c.id).toLowerCase() === activeId ? " active" : "";
+        return `
+          <div class="api-company-item${active}${on ? " enabled" : ""}" data-company-id="${esc(c.id)}">
+            <div>
+              <strong>${esc(c.name || c.id)}</strong>
+              <span>ID · ${esc(c.id)} · ${on ? "Aktiv" : "Inaktiv"}</span>
+              <span>Abteilung · ${esc(section)}</span>
+            </div>
+            <div class="api-inbox-actions">
+              <button type="button" class="api-select-company primary" data-id="${esc(c.id)}">Öffnen</button>
+            </div>
+          </div>`;
+      }).join("")}
+    `;
+    host.querySelectorAll(".api-select-company").forEach((btn) => {
+      btn.addEventListener("click", () => selectPlatformCompany(btn.dataset.id));
+    });
+  }
+
+  function selectPlatformCompany(companyId) {
+    if (!companyId) return;
+    loadApiConfigIntoForm();
+    if ($("apiCompanyId")) $("apiCompanyId").value = companyId;
+    if ($("mandantId")) $("mandantId").value = companyId;
+    persistApiConfig();
+    const nameHint = document.querySelector(`.api-company-item[data-company-id="${CSS.escape(companyId)}"] strong`)?.textContent;
+    if (nameHint && $("companyName") && !$("companyName").value.trim()) {
+      $("companyName").value = nameHint;
+    }
+    setModePill("Firma", nameHint || companyId);
+    setStatus(`Abteilung aktiv: ${companyId}`, true);
+    toast(`Firma gewählt: ${nameHint || companyId}`, "ok");
+    loadPlatformCompanies();
+    loadApiInbox();
+  }
+
+  async function loadPlatformCompanies() {
+    try {
+      loadApiConfigIntoForm();
+      const data = await apiFetch("/v1/companies");
+      renderPlatformCompanies(data);
+      const n = data.companies?.length || 0;
+      const active = (data.workspaces || []).filter((w) => w.accountingEnabled).length;
+      setStatus(`Firmenregister: ${n} · aktiv ${active}`, true);
+    } catch (e) {
+      setStatus(`Firmen-Fehler: ${e.message}`, false);
+      const host = $("apiCompanyList");
+      if (host) host.innerHTML = `<p class="section-hint">Firmen konnten nicht geladen werden: ${esc(e.message)}</p>`;
     }
   }
 
@@ -1148,6 +1220,7 @@
       $(id)?.addEventListener("change", persistApiConfig);
     });
     $("btnApiInbox")?.addEventListener("click", loadApiInbox);
+    $("btnApiCompanies")?.addEventListener("click", loadPlatformCompanies);
     $("btnApiHealth")?.addEventListener("click", checkApiHealth);
     $("importPlatformInput").addEventListener("change", (e) => {
       importPlatformFile(e.target.files?.[0]);

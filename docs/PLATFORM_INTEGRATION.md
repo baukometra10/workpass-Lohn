@@ -58,6 +58,36 @@ npm run test:tenant
 
 Alle Firmenfelder (Adresse, Steuernummer, DATEV-Nrn., …) werden über die API ausgetauscht – siehe `examples/platform-company.v1.json`.
 
+### تفعيل الشركة → حساب + قسم فوري
+
+عندما تفعّل المنصة شركة لإرسال الكشوف للمحاسبة، استدعِ **فوراً**:
+
+`POST /v1/company/activate`  
+(مرادف: `POST /v1/company/provision`)
+
+```json
+{
+  "kind": "platform.company.activate.v1",
+  "event": "company.accounting.activated",
+  "company": { "id": "lufthansa", "name": "Deutsche Lufthansa AG", "…": "…" },
+  "connection": {
+    "accountingEnabled": true,
+    "sendPayslips": true,
+    "sendInvoices": true,
+    "activatedBy": "platform"
+  }
+}
+```
+
+النتيجة: سجل Mandant + مساحة عمل (`meta.section`) مع `accountingEnabled: true` — تظهر في واجهة Lohn حتى قبل أول كشف.
+
+مثال: `examples/platform-company.activate.v1.json`  
+SDK: `client.activateCompany(payload)`
+
+إعادة الاستدعاء آمنة (idempotent). إلغاء ناعم: `POST /v1/company/deactivate`.
+
+احتياط: أول `payroll/invoice ingest` ينشئ الحساب أيضاً إن نُسي التفعيل.
+
 ---
 
 ## العربية — ما الذي اكتمل من جهة المحاسبة؟
@@ -139,6 +169,12 @@ const rel = await client.releasePayroll(job.jobId);
 | Method | Path | Rolle |
 |--------|------|-------|
 | GET | `/health` | Liveness |
+| POST | `/v1/company/activate` | Firma aktivieren → Konto + Workspace sofort |
+| POST | `/v1/company/provision` | Alias für activate |
+| POST | `/v1/company/deactivate` | Accounting-Link soft-off |
+| POST | `/v1/company/upsert` | Firma anlegen/aktualisieren |
+| GET | `/v1/companies` | Firmenliste (+ workspaces) |
+| GET | `/v1/company/:id` | Eine Firma + workspace |
 | POST | `/v1/payroll/ingest` | `platform.payroll.v1` → Berechnung |
 | POST | `/v1/payroll/batch` | Monats-Batch |
 | GET | `/v1/payroll/:jobId` | Job |
@@ -159,6 +195,7 @@ Auth: Header `X-WorkPass-Key`.
 | Kind | Richtung |
 |------|----------|
 | `platform.payroll.v1` | Platform → Accounting |
+| `platform.company.activate.v1` | Platform → Accounting (تفعيل فوري) |
 | `platform.payslip.v1` | Accounting → Platform |
 | `platform.invoice.v1` | Platform ↔ Accounting |
 | `platform.employee.delivery.v1` | Accounting → Platform (nach Freigabe) |

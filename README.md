@@ -49,8 +49,9 @@ npm start
 | GET | `/v1/inbox` | Offene Jobs für die Buchhaltungs-UI |
 | GET | `/v1/delivery/pending` | Pull: freigegebene Docs für Mitarbeiter-App |
 | POST | `/v1/delivery/:id/ack` | Zustellung durch Plattform bestätigt |
+| POST | `/v1/company/activate` | Firma aktivieren → Konto + Workspace sofort |
 | POST | `/v1/company/upsert` | Firma anlegen/aktualisieren (`company.id`) |
-| GET | `/v1/companies` | Firmenliste (gefiltert bei Tenant-Header) |
+| GET | `/v1/companies` | Firmenliste (+ workspaces) |
 | GET | `/v1/company/:id` | Eine Firma |
 
 **Multi-Tenant:** Pflichtfeld `company.id` auf allen Payloads. Header `X-WorkPass-Company-Id` begrenzt jeden Zugriff auf genau diese Firma. Tests: `npm run test:tenant`

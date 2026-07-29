@@ -67,5 +67,21 @@ if (existsSync(companyEx) && companies.status === 200) {
   else fail(`company upsert → ${res.status} ${data.error || ""}`);
 }
 
+const activateEx = path.join(root, "examples", "platform-company.activate.v1.json");
+if (existsSync(activateEx) && companies.status === 200) {
+  const body = JSON.parse(readFileSync(activateEx, "utf8"));
+  const res = await fetch(`${base}/v1/company/activate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-WorkPass-Key": apiKey },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.ok && data.ok && data.workspace?.accountingEnabled) {
+    pass(`POST /v1/company/activate (${data.company?.id}) workspace=${data.workspace?.section?.id || "?"}`);
+  } else {
+    fail(`company activate → ${res.status} ${data.error || data.errors?.[0] || ""}`);
+  }
+}
+
 console.log(process.exitCode ? "\nFAILED – fix before go-live\n" : "\nOK – bridge ready for platform link\n");
 process.exit(process.exitCode || 0);

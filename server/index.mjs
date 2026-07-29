@@ -13,7 +13,14 @@ import { ingestPayroll, ingestPayrollBatch, releasePayrollJob } from "./payroll-
 import { ingestInvoice, releaseInvoiceJob } from "./invoice-service.mjs";
 import { listPayrollJobs, loadPayrollJob, listInvoiceJobs, loadInvoiceJob } from "./store.mjs";
 import { listPendingDeliveries, listAllDeliveries, ackDelivery } from "./delivery-queue.mjs";
-import { upsertCompany, loadCompany, listCompanies } from "./company-service.mjs";
+import {
+  upsertCompany,
+  activateCompany,
+  deactivateCompany,
+  loadCompany,
+  listCompanies,
+  companyWorkspaceView,
+} from "./company-service.mjs";
 import { tenantFromRequest, assertSameTenant, normalizeCompanyId } from "./tenant.mjs";
 import { initDb, syncHealth, flushSyncOutbox } from "./db/repository.mjs";
 import { postgresConfigured } from "./db/postgres.mjs";
@@ -92,7 +99,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "1.6.3",
+      version: "1.7.0",
       multiTenant: true,
       platform: {
         domain: PLATFORM_DOMAIN,
@@ -168,30 +175,82 @@ async function handler(req, res) {
     }
 
     // --- Companies ---
+    if (
+      req.method === "POST"
+      && (path === "/v1/company/activate" || path === "/v1/company/provision")
+    ) {
+      const body = await readBodyLimited(req);
+      const companyIdHint = body?.company?.id || body?.id || body?.companyId;
+      const scopeCheck = assertSameTenant(tenantScope, companyIdHint, "Company-Activate");
+      if (!scopeCheck.ok) {
+        audit({ type: "tenant.deny", outcome: "deny", ip, path, companyId: tenantScope });
+        return reply(403, { ok: false, error: scopeCheck.error });
+      }
+      const result = activateCompany(body || {});
+      audit({
+        type: "company.activate",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId: result.company?.id,
+        detail: { created: result.created },
+      });
+      return reply(result.ok ? 200 : 422, result);
+    }
+
+    if (req.method === "POST" && path === "/v1/company/deactivate") {
+      const body = await readBodyLimited(req);
+      const id = normalizeCompanyId(body?.company?.id || body?.id || body?.companyId || "");
+      const scopeCheck = assertSameTenant(tenantScope, id, "Company-Deactivate");
+      if (!scopeCheck.ok) {
+        audit({ type: "tenant.deny", outcome: "deny", ip, path, companyId: tenantScope });
+        return reply(403, { ok: false, error: scopeCheck.error });
+      }
+      const result = deactivateCompany(id, { deactivatedBy: body?.deactivatedBy || "platform" });
+      audit({
+        type: "company.deactivate",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId: id,
+      });
+      return reply(result.ok ? 200 : 404, result);
+    }
+
     if (req.method === "POST" && (path === "/v1/company" || path === "/v1/company/upsert")) {
       const body = await readBodyLimited(req);
       const scopeCheck = assertSameTenant(tenantScope, body?.id || body?.company?.id, "Company-Payload");
       if (!scopeCheck.ok) {
         audit({ type: "tenant.deny", outcome: "deny", ip, path, companyId: tenantScope });
-        return reply( 403, { ok: false, error: scopeCheck.error });
+        return reply(403, { ok: false, error: scopeCheck.error });
       }
       const result = upsertCompany(body?.company ? body : { company: body });
       audit({ type: "company.upsert", outcome: result.ok ? "ok" : "error", ip, path, companyId: result.company?.id });
-      return reply( result.ok ? 200 : 422, result);
+      return reply(result.ok ? 200 : 422, result);
     }
 
     if (req.method === "GET" && path === "/v1/companies") {
       const companies = listCompanies({ companyId: tenantScope || undefined });
-      return reply( 200, { ok: true, count: companies.length, companies });
+      const workspaces = companies.map(companyWorkspaceView);
+      return reply(200, {
+        ok: true,
+        count: companies.length,
+        companies,
+        workspaces,
+      });
     }
 
-    if (req.method === "GET" && path.startsWith("/v1/company/") && path !== "/v1/company/upsert") {
+    if (
+      req.method === "GET"
+      && path.startsWith("/v1/company/")
+      && !["/v1/company/upsert", "/v1/company/activate", "/v1/company/provision", "/v1/company/deactivate"].includes(path)
+    ) {
       const id = normalizeCompanyId(decodeURIComponent(path.slice("/v1/company/".length)));
       const scopeCheck = assertSameTenant(tenantScope, id, "Company");
-      if (!scopeCheck.ok) return reply( 403, { ok: false, error: scopeCheck.error });
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
       const company = loadCompany(id);
-      if (!company) return reply( 404, { ok: false, error: "Firma nicht gefunden" });
-      return reply( 200, { ok: true, company });
+      if (!company) return reply(404, { ok: false, error: "Firma nicht gefunden" });
+      return reply(200, { ok: true, company, workspace: companyWorkspaceView(company) });
     }
 
     // --- Payroll ---

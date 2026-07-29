@@ -1,0 +1,23 @@
+{
+  "kind": "platform.company.activate.v1",
+  "event": "company.accounting.activated",
+  "company": {
+    "id": "lufthansa",
+    "name": "Deutsche Lufthansa AG",
+    "street": "Venloer Str. 151–153",
+    "zip": "50672",
+    "city": "Köln",
+    "taxNumber": "215/123/45678",
+    "vatId": "DE122787627",
+    "datevClientNo": "50001",
+    "datevConsultantNo": "12345",
+    "email": "buchhaltung@example.lufthansa",
+    "phone": "+49 69 6960"
+  },
+  "connection": {
+    "accountingEnabled": true,
+    "sendPayslips": true,
+    "sendInvoices": true,
+    "activatedBy": "platform"
+  }
+}

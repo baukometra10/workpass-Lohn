@@ -61,6 +61,22 @@ export class WorkPassAccountingClient {
     return this.request("POST", "/v1/company/upsert", company);
   }
 
+  /**
+   * Activate accounting for a company → creates account + workspace section immediately.
+   * @param {object} payload platform.company.activate.v1 or company object
+   */
+  activateCompany(payload) {
+    return this.request("POST", "/v1/company/activate", payload);
+  }
+
+  /** Soft-disable accounting link (data retained). */
+  deactivateCompany(companyIdOrPayload) {
+    const body = typeof companyIdOrPayload === "string"
+      ? { id: companyIdOrPayload }
+      : companyIdOrPayload;
+    return this.request("POST", "/v1/company/deactivate", body);
+  }
+
   getCompany(id) {
     return this.request("GET", `/v1/company/${encodeURIComponent(id)}`);
   }

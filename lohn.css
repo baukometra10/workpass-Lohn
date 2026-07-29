@@ -627,6 +627,15 @@ textarea { min-height: 58px; resize: vertical; }
 .archive-item span { color: var(--muted); font-size: 0.68rem; }
 
 .api-inbox-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow: auto; }
+.api-company-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow: auto; }
+.api-company-item {
+  display: flex; justify-content: space-between; gap: 10px; align-items: center;
+  padding: 10px 12px; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; background: rgba(0,0,0,0.22);
+}
+.api-company-item.active { border-color: rgba(168, 85, 247, 0.55); box-shadow: inset 0 0 0 1px rgba(168, 85, 247, 0.25); }
+.api-company-item.enabled strong::after { content: " · live"; color: #7ddea2; font-weight: 500; font-size: 0.72rem; }
+.api-company-item strong { display: block; color: #fff; font-size: 0.88rem; }
+.api-company-item span { display: block; font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
 .api-inbox-title {
   margin: 8px 0 2px; font-size: 0.72rem; text-transform: uppercase;
   letter-spacing: 0.06em; color: var(--accent-hot);
