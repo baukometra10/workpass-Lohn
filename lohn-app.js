@@ -417,9 +417,12 @@
     refreshingArchive = true;
     const entries = PayrollCore.listArchiveEntries();
     const currentKey = PayrollCore.archiveKey(state);
-    const opts = ['<option value="">— aktuelle Abrechnung —</option>'];
+    const opts = ['<option value="">— aktuelle Abrechnung (jetzt bearbeiten) —</option>'];
     entries.forEach((e) => {
-      const label = `${e.companyName || "Firma"} · ${e.employeeName || "MA"} · ${e.payrollMonth || "—"}`;
+      const firma = e.companyName || e.mandantId || "Ohne Firmenname";
+      const ma = e.employeeName || "ohne Mitarbeiter";
+      const mon = e.payrollMonth || "ohne Monat";
+      const label = `${firma} · ${ma} · ${mon}`;
       opts.push(`<option value="${esc(e.key)}"${e.key === currentKey ? " selected" : ""}>${esc(label)}</option>`);
     });
     companySelect.innerHTML = opts.join("");

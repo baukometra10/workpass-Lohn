@@ -118,8 +118,26 @@ body.auth-locked { overflow: hidden; }
   width: 100%; padding: 8px 9px;
   border: 1px solid var(--border); border-radius: 10px;
   background: #0a101c; color: #fff; font: inherit; font-size: 0.82rem;
+  color-scheme: dark;
 }
-.ctx-field select option { color: #111; }
+/* Native <option> lists must stay high-contrast (Windows often paints dark bg). */
+.ctx-field select option,
+.lohn-form select option,
+.lohn-shell select option,
+select option {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+.ctx-field select option:checked,
+.lohn-form select option:checked,
+.lohn-shell select option:checked,
+select option:checked,
+.ctx-field select option:hover,
+.lohn-form select option:hover,
+.lohn-shell select option:hover {
+  background-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
 
 .lohn-actions {
   display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px;

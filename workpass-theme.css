@@ -263,6 +263,15 @@ body.workpass-hub textarea:focus {
   box-shadow: 0 0 0 3px var(--wp-glow-soft) !important;
   outline: none !important;
 }
+body.workpass-hub select option {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+body.workpass-hub select option:checked,
+body.workpass-hub select option:hover {
+  background-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
 body.workpass-hub .field-incomplete {
   border-color: rgba(248, 113, 113, 0.7) !important;
   box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.15) !important;
