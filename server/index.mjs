@@ -106,7 +106,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "1.8.0",
+      version: "1.8.1",
       multiTenant: true,
       platform: {
         domain: PLATFORM_DOMAIN,
