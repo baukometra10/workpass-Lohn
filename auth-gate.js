@@ -185,6 +185,27 @@
     }
   }
 
+  function applyConfigToGate() {
+    const tabs = document.getElementById("authModeTabs");
+    const preferPlatform = authConfig?.platformAuthConfigured || authConfig?.localAdminFallback;
+    const pinOk = authConfig?.devicePinAllowed !== false;
+    const setupIncomplete = Boolean(authConfig?.setupIncomplete);
+    const requirePlat = Boolean(authConfig?.requirePlatformLogin) && !setupIncomplete;
+    if (tabs) {
+      tabs.hidden = !(preferPlatform && pinOk && !requirePlat) && !(setupIncomplete && pinOk && preferPlatform);
+      // Always show tabs when both platform attempt and PIN are available
+      if (pinOk && (preferPlatform || setupIncomplete)) tabs.hidden = false;
+      if (requirePlat && !pinOk) tabs.hidden = true;
+    }
+    const tabPin = document.getElementById("authTabPin");
+    if (tabPin) tabPin.hidden = !pinOk || (requirePlat && !setupIncomplete);
+    const hint = document.getElementById("authHint");
+    if (hint && authConfig?.hint) hint.textContent = authConfig.hint;
+    if (hint && authConfig?.setupGaps?.length) {
+      hint.textContent = `${authConfig.hint} · Fehlt: ${authConfig.setupGaps.join(", ")}`;
+    }
+  }
+
   function showGate(msg) {
     const gate = gateEl();
     const app = appEl();
@@ -198,7 +219,12 @@
     if (err) err.textContent = msg || "";
     applyConfigToGate();
     const preferPlatform = authConfig?.platformAuthConfigured || authConfig?.localAdminFallback;
-    if (authConfig?.requirePlatformLogin || (preferPlatform && !authConfig?.devicePinAllowed)) {
+    const setupIncomplete = Boolean(authConfig?.setupIncomplete);
+    // If admin/platform setup incomplete → prefer PIN so the app stays usable
+    if (setupIncomplete && authConfig?.devicePinAllowed !== false) {
+      setLoginMode("pin");
+      setPinMode(!loadStore()?.pinHash);
+    } else if (authConfig?.requirePlatformLogin || (preferPlatform && !authConfig?.devicePinAllowed)) {
       setLoginMode("platform");
     } else if (preferPlatform) {
       setLoginMode(loginMode === "pin" ? "pin" : "platform");
@@ -219,17 +245,6 @@
     document.body.classList.remove("auth-locked");
     const err = document.getElementById("authError");
     if (err) err.textContent = "";
-  }
-
-  function applyConfigToGate() {
-    const tabs = document.getElementById("authModeTabs");
-    const preferPlatform = authConfig?.platformAuthConfigured || authConfig?.localAdminFallback;
-    const pinOk = authConfig?.devicePinAllowed !== false;
-    if (tabs) {
-      tabs.hidden = !(preferPlatform && pinOk && !authConfig?.requirePlatformLogin);
-    }
-    const tabPin = document.getElementById("authTabPin");
-    if (tabPin) tabPin.hidden = !pinOk || Boolean(authConfig?.requirePlatformLogin);
   }
 
   async function fetchAuthConfig() {

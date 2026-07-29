@@ -4,10 +4,11 @@
  */
 import crypto from "node:crypto";
 import { secureCompare } from "./security/crypto.mjs";
-import { rateLimit, noteAuthFailure, noteAuthSuccess, clientIp } from "./security/rate-limit.mjs";
+import { rateLimit, noteAuthFailure, noteAuthSuccess, clientIp, clearRateLimitState } from "./security/rate-limit.mjs";
 import { audit } from "./security/audit.mjs";
 
 const SESSION_TTL_MS = Number(process.env.WORKPASS_SESSION_TTL_MS || 8 * 60 * 60 * 1000); // 8h
+const ADMIN_PASSWORD_MIN = 8;
 
 function sessionSecret() {
   return (
@@ -25,24 +26,49 @@ function fromB64url(s) {
   return Buffer.from(String(s || ""), "base64url");
 }
 
+function hasLocalAdminConfigured() {
+  const wantEmail = String(process.env.WORKPASS_ADMIN_EMAIL || "").trim();
+  const wantPass = String(process.env.WORKPASS_ADMIN_PASSWORD || "");
+  return Boolean(wantEmail && wantPass.length >= ADMIN_PASSWORD_MIN);
+}
+
+function adminSetupGaps() {
+  const email = String(process.env.WORKPASS_ADMIN_EMAIL || "").trim();
+  const pass = String(process.env.WORKPASS_ADMIN_PASSWORD || "");
+  const gaps = [];
+  if (!email) gaps.push("WORKPASS_ADMIN_EMAIL fehlt");
+  if (!pass) gaps.push("WORKPASS_ADMIN_PASSWORD fehlt");
+  else if (pass.length < ADMIN_PASSWORD_MIN) {
+    gaps.push(`WORKPASS_ADMIN_PASSWORD zu kurz (min. ${ADMIN_PASSWORD_MIN})`);
+  }
+  return gaps;
+}
+
 export function authPublicConfig() {
   const platformUrl = String(process.env.WORKPASS_PLATFORM_AUTH_URL || "").trim();
   const hasLocalAdmin = hasLocalAdminConfigured();
-  const requirePlatform = process.env.WORKPASS_REQUIRE_PLATFORM_AUTH === "1";
+  const requirePlatformRaw = process.env.WORKPASS_REQUIRE_PLATFORM_AUTH === "1";
+  // Until local admin OR working platform login exists, never block Geräte-PIN
+  const setupIncomplete = !hasLocalAdmin;
+  const requirePlatform = requirePlatformRaw && hasLocalAdmin;
+  const gaps = adminSetupGaps();
+
   return {
     ok: true,
     platformAuthConfigured: Boolean(platformUrl),
     localAdminFallback: hasLocalAdmin,
     requirePlatformLogin: requirePlatform,
     devicePinAllowed: process.env.WORKPASS_DEVICE_PIN_ALLOWED !== "0",
+    setupIncomplete,
+    setupGaps: gaps,
     sessionTtlHours: Math.round(SESSION_TTL_MS / 3600000),
-    hint: platformUrl && !hasLocalAdmin
-      ? "Anmeldung mit WorkPass-Plattform-Konto"
-      : hasLocalAdmin
-        ? (platformUrl
-          ? "Plattform-Konto oder Admin-E-Mail aus Railway Variables"
-          : "Anmeldung mit Admin-Konto (Bridge-Env)")
-        : "Nur Geräte-PIN (Platform-Auth / Admin noch nicht konfiguriert)",
+    hint: setupIncomplete
+      ? (platformUrl
+        ? "Platform-Auth noch nicht nutzbar – Geräte-PIN verwenden ODER in Railway WORKPASS_ADMIN_EMAIL + WORKPASS_ADMIN_PASSWORD setzen"
+        : "In Railway WORKPASS_ADMIN_EMAIL + WORKPASS_ADMIN_PASSWORD setzen (min. 8 Zeichen), sonst Geräte-PIN")
+      : platformUrl
+        ? "Plattform-Konto oder Admin-E-Mail aus Railway Variables"
+        : "Anmeldung mit Admin-Konto (Bridge-Env)",
   };
 }
 
@@ -145,7 +171,11 @@ async function verifyWithPlatform(email, password) {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data?.ok) {
-      return { ok: false, error: data?.error || `Platform-Auth HTTP ${res.status}` };
+      return {
+        ok: false,
+        error: data?.error
+          || `Platform-Auth HTTP ${res.status} – Endpoint auf der Plattform fehlt oder lehnt ab`,
+      };
     }
     const user = data.user || {};
     const mail = String(user.email || email).toLowerCase();
@@ -166,21 +196,21 @@ async function verifyWithPlatform(email, password) {
   }
 }
 
-function hasLocalAdminConfigured() {
-  const wantEmail = String(process.env.WORKPASS_ADMIN_EMAIL || "").trim();
-  const wantPass = String(process.env.WORKPASS_ADMIN_PASSWORD || "");
-  return Boolean(wantEmail && wantPass.length >= 10);
-}
-
 function verifyLocalAdmin(email, password) {
   const wantEmail = String(process.env.WORKPASS_ADMIN_EMAIL || "").trim().toLowerCase();
   const wantPass = String(process.env.WORKPASS_ADMIN_PASSWORD || "");
-  if (!wantEmail || wantPass.length < 10) {
-    return { ok: false, error: "Kein lokales Admin-Konto konfiguriert (WORKPASS_ADMIN_EMAIL/PASSWORD)." };
+  if (!wantEmail || wantPass.length < ADMIN_PASSWORD_MIN) {
+    return {
+      ok: false,
+      error: `Admin-Konto fehlt in Railway (${adminSetupGaps().join(", ") || "prüfen"}).`,
+    };
   }
   const mail = String(email || "").trim().toLowerCase();
   if (!secureCompare(mail, wantEmail) || !secureCompare(password, wantPass)) {
-    return { ok: false, error: "E-Mail oder Passwort falsch (Admin-Konto)." };
+    return {
+      ok: false,
+      error: `E-Mail/Passwort falsch. Erwartet genau WORKPASS_ADMIN_EMAIL (${wantEmail}).`,
+    };
   }
   return {
     ok: true,
@@ -202,12 +232,16 @@ export async function loginWithPassword(email, password, req) {
   const rl = rateLimit({
     ip,
     route: "auth-login",
-    limit: Number(process.env.WORKPASS_AUTH_LOGIN_LIMIT || 20),
+    limit: Number(process.env.WORKPASS_AUTH_LOGIN_LIMIT || 30),
     windowMs: 15 * 60_000,
   });
   if (!rl.ok) {
     audit({ type: "auth.login.rate", outcome: "deny", ip });
-    return { ok: false, status: 429, error: "Zu viele Login-Versuche – bitte warten." };
+    return {
+      ok: false,
+      status: 429,
+      error: "Zu viele Login-Versuche – Railway Service neu starten ODER POST /v1/auth/unlock mit API-Key.",
+    };
   }
 
   const mail = String(email || "").trim().toLowerCase();
@@ -220,17 +254,15 @@ export async function loginWithPassword(email, password, req) {
   const allowLocalFallback = process.env.WORKPASS_AUTH_FALLBACK_LOCAL !== "0";
 
   if (result === null) {
-    // No platform URL configured
     result = verifyLocalAdmin(mail, pass);
-  } else if (!result.ok && allowLocalFallback && hasLocalAdminConfigured()) {
-    // Platform URL exists but rejected/unreachable → try Railway admin account
+  } else if (!result.ok && allowLocalFallback) {
     const local = verifyLocalAdmin(mail, pass);
     if (local.ok) {
       result = local;
     } else {
       result = {
         ok: false,
-        error: `${result.error || "Platform-Login fehlgeschlagen"} · Local: ${local.error}`,
+        error: `${result.error} | ${local.error}`,
       };
     }
   }
@@ -242,7 +274,8 @@ export async function loginWithPassword(email, password, req) {
       ok: false,
       status: 401,
       error: result?.error
-        || "Anmeldung fehlgeschlagen. Prüfen: WORKPASS_ADMIN_EMAIL/PASSWORD oder Platform-Auth.",
+        || "Anmeldung fehlgeschlagen.",
+      setupGaps: adminSetupGaps(),
     };
   }
 
@@ -263,6 +296,12 @@ export async function loginWithPassword(email, password, req) {
     user: session.user,
     via: result.via,
   };
+}
+
+/** Clear login lockout – requires API key (handled by caller). */
+export function unlockAuthRateLimits() {
+  clearRateLimitState();
+  return { ok: true, cleared: true };
 }
 
 export function requireAdminSession(req) {

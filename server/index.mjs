@@ -43,6 +43,7 @@ import {
   authPublicConfig,
   loginWithPassword,
   sessionFromRequest,
+  unlockAuthRateLimits,
 } from "./auth-session.mjs";
 import { clearRateLimitState } from "./security/rate-limit.mjs";
 
@@ -106,7 +107,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "1.8.1",
+      version: "1.8.2",
       multiTenant: true,
       platform: {
         domain: PLATFORM_DOMAIN,
@@ -171,6 +172,17 @@ async function handler(req, res) {
     const body = await readBodyLimited(req);
     const result = await loginWithPassword(body?.email, body?.password, req);
     return reply(result.status || (result.ok ? 200 : 401), result);
+  }
+
+  if (req.method === "POST" && path === "/v1/auth/unlock") {
+    const auth = authorizeRequest(req);
+    if (!auth.ok) {
+      if (auth.retryAfterMs) res.setHeader("Retry-After", String(Math.ceil(auth.retryAfterMs / 1000)));
+      return reply(auth.status || 401, { ok: false, error: auth.error });
+    }
+    unlockAuthRateLimits();
+    audit({ type: "auth.unlock", outcome: "ok", ip, path });
+    return reply(200, { ok: true, cleared: true });
   }
 
   if (req.method === "GET" && path === "/v1/auth/me") {
@@ -249,7 +261,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "1.8.1",
+          version: "1.8.2",
           ...syncHealth(),
         },
         companies: {
