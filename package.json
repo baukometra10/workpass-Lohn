@@ -17,6 +17,7 @@
     "test:api": "node tests/api-bridge.mjs",
     "test:tenant": "node tests/tenant-isolation.mjs",
     "test:company": "node tests/company-activate.mjs",
+    "test:auth": "node tests/auth-session.mjs",
     "test:db": "node tests/db-local.mjs",
     "test:security": "node tests/security.mjs",
     "test:backup": "node tests/backup.mjs",

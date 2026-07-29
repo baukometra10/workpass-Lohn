@@ -7,8 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="workpass-theme.css?v=4" />
-    <link rel="stylesheet" href="lohn.css?v=39" />
+    <link rel="stylesheet" href="workpass-theme.css?v=5" />
+    <link rel="stylesheet" href="lohn.css?v=40" />
   </head>
   <body class="auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
@@ -26,17 +26,29 @@
         </div>
         <h1 id="authTitle">WorkPass Lohn entsperren</h1>
         <p class="auth-hint" id="authHint">Geschützter Buchhaltungszugang · Suppix AI</p>
+        <div class="auth-mode-tabs" id="authModeTabs" hidden>
+          <button type="button" class="auth-mode-tab active" id="authTabPlatform">Plattform-Konto</button>
+          <button type="button" class="auth-mode-tab" id="authTabPin">Geräte-PIN</button>
+        </div>
         <form id="authForm">
-          <label for="authPin">PIN</label>
-          <input id="authPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" placeholder="••••" required />
-          <div id="authConfirmWrap" hidden>
-            <label for="authPinConfirm">PIN bestätigen</label>
-            <input id="authPinConfirm" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8" placeholder="••••" />
+          <div id="authPlatformFields">
+            <label for="authEmail">E-Mail (WorkPass)</label>
+            <input id="authEmail" type="email" autocomplete="username" placeholder="name@firma.de" />
+            <label for="authPassword">Passwort</label>
+            <input id="authPassword" type="password" autocomplete="current-password" placeholder="••••••••" />
+          </div>
+          <div id="authPinFields" hidden>
+            <label for="authPin">PIN</label>
+            <input id="authPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" placeholder="••••" />
+            <div id="authConfirmWrap" hidden>
+              <label for="authPinConfirm">PIN bestätigen</label>
+              <input id="authPinConfirm" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8" placeholder="••••" />
+            </div>
           </div>
           <p class="auth-error" id="authError" role="alert"></p>
           <button type="submit" class="auth-submit" id="authSubmit">Anmelden</button>
         </form>
-        <p class="auth-foot">Lokaler Schutz auf diesem Gerät · Sitzung sperrt bei Inaktivität</p>
+        <p class="auth-foot">Plattform-Passwort oder Geräte-PIN · Sitzung sperrt bei Inaktivität</p>
       </div>
     </div>
 
@@ -77,6 +89,7 @@
             <button type="button" id="btnExportCsv" title="Bewegungsdaten CSV">CSV</button>
             <button type="button" id="btnLock" title="Sofort sperren">Sperren</button>
           </div>
+          <a href="admin.html" class="btn btn-link" title="Accounting Admin">Admin</a>
           <a href="index.html" class="btn btn-link" title="WorkPass Hub">Hub</a>
         </div>
       </header>
@@ -442,9 +455,9 @@
     <script src="templates.js?v=1"></script>
     <script src="datev-sheet.js?v=42"></script>
     <script src="payroll-core.js?v=20"></script>
-    <script src="auth-gate.js?v=3"></script>
+    <script src="auth-gate.js?v=4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="lohn-app.js?v=32"></script>
+    <script src="lohn-app.js?v=33"></script>
   </body>
 </html>

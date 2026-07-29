@@ -617,7 +617,7 @@
       setModePill("API-Bridge", "Empfang vom Platform-Bridge-Server");
       setStatus("API-Bridge – Firmen & Inbox laden, prüfen, freigeben.", true);
       loadApiConfigIntoForm();
-      if (String($("apiKey")?.value || "").trim()) {
+      if (String($("apiKey")?.value || "").trim() || window.WorkPassAuth?.getSessionToken?.()) {
         loadPlatformCompanies();
       }
     }
@@ -731,15 +731,17 @@
 
   async function apiFetch(path, options = {}) {
     const { base, key, companyId } = apiConfig();
-    if (!key) {
-      throw new Error("API-Key fehlt – in den API-Einstellungen den Railway-Key (WORKPASS_API_KEY) eintragen.");
+    const sessionToken = window.WorkPassAuth?.getSessionToken?.() || "";
+    if (!key && !sessionToken) {
+      throw new Error("API-Key oder Plattform-Login erforderlich (WORKPASS_API_KEY oder Admin-Konto).");
     }
     persistApiConfig();
     const headers = {
       "Content-Type": "application/json",
-      "X-WorkPass-Key": key,
       ...(options.headers || {}),
     };
+    if (key) headers["X-WorkPass-Key"] = key;
+    if (sessionToken) headers["X-WorkPass-Session"] = sessionToken;
     const useTenant = options.skipTenant ? "" : companyId;
     if (useTenant) headers["X-WorkPass-Company-Id"] = useTenant;
     const { skipTenant: _skip, headers: _h, ...fetchOpts } = options;
@@ -756,7 +758,7 @@
         );
       }
       if (res.status === 401) {
-        throw new Error("API-Key falsch – exakt WORKPASS_API_KEY aus Railway Variables eintragen (nicht den PIN).");
+        throw new Error("Nicht autorisiert – API-Key oder Plattform-Login prüfen.");
       }
       throw new Error(data.error || data.errors?.join?.(" · ") || `HTTP ${res.status}`);
     }

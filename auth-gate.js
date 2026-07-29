@@ -1,17 +1,29 @@
 /**
- * WorkPass Lohn – lokaler Zugangsschutz (PIN)
- * Schützt vor Fremdzugriff am offenen Rechner. Kein Server-Login.
+ * WorkPass Lohn – Zugangsschutz
+ * 1) Plattform-Konto (E-Mail + Passwort) → Bridge-Session
+ * 2) Geräte-PIN (lokal) als zweiter Schutz / Offline-Fallback
  */
 (function () {
   const STORE_KEY = "workpassLohnAuthV1";
   const SESSION_KEY = "workpassLohnSessionV1";
-  const IDLE_MS = 12 * 60 * 1000; // 12 Minuten
+  const PLATFORM_SESSION_KEY = "workpassPlatformSessionV1";
+  const IDLE_MS = 12 * 60 * 1000;
   const TEST_BYPASS = "workpassLohnE2E";
 
   let idleTimer = null;
   let onUnlockCb = null;
   let pinFails = 0;
   let pinLockedUntil = 0;
+  let authConfig = null;
+  let loginMode = "platform"; // platform | pin
+
+  function apiOrigin() {
+    const h = String(location.hostname || "");
+    if (h === "localhost" || h === "127.0.0.1" || location.protocol === "file:") {
+      return "http://127.0.0.1:8787";
+    }
+    return String(location.origin || "").replace(/\/+$/, "");
+  }
 
   function loadStore() {
     try {
@@ -23,6 +35,22 @@
 
   function saveStore(data) {
     localStorage.setItem(STORE_KEY, JSON.stringify(data));
+  }
+
+  function loadPlatformSession() {
+    try {
+      return JSON.parse(sessionStorage.getItem(PLATFORM_SESSION_KEY) || "null");
+    } catch {
+      return null;
+    }
+  }
+
+  function savePlatformSession(data) {
+    sessionStorage.setItem(PLATFORM_SESSION_KEY, JSON.stringify(data));
+  }
+
+  function clearPlatformSession() {
+    sessionStorage.removeItem(PLATFORM_SESSION_KEY);
   }
 
   async function sha256(text) {
@@ -42,7 +70,6 @@
     return out;
   }
 
-  /** PBKDF2-SHA-256 PIN hash (v2). Legacy sha256 still accepted once then upgraded. */
   async function hashPin(pin, saltB64) {
     const salt = saltB64 ? fromB64(saltB64) : crypto.getRandomValues(new Uint8Array(16));
     const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(String(pin)), "PBKDF2", false, ["deriveBits"]);
@@ -59,7 +86,6 @@
       const next = await hashPin(pin, store.salt);
       return next.hash === store.pinHash;
     }
-    // Legacy
     const legacy = await sha256(`workpass-lohn:${pin}`);
     return legacy === store.pinHash;
   }
@@ -73,6 +99,12 @@
     } catch {
       return false;
     }
+  }
+
+  function platformSessionActive() {
+    const s = loadPlatformSession();
+    if (!s?.token || !s?.expiresAt) return false;
+    return Date.now() < Date.parse(s.expiresAt);
   }
 
   function touchSession() {
@@ -90,7 +122,7 @@
     if (!sessionActive()) return;
     idleTimer = setTimeout(() => {
       clearSession();
-      showGate("Sitzung abgelaufen – bitte erneut entsperren.");
+      showGate("Sitzung abgelaufen – bitte erneut anmelden.");
     }, IDLE_MS);
   }
 
@@ -106,27 +138,51 @@
     return document.getElementById("authGate");
   }
 
-  function setMode(setup) {
+  function appEl() {
+    return document.getElementById("workpassApp") || document.getElementById("lohnApp");
+  }
+
+  function setLoginMode(mode) {
+    loginMode = mode;
+    const platformBox = document.getElementById("authPlatformFields");
+    const pinBox = document.getElementById("authPinFields");
+    const tabPlat = document.getElementById("authTabPlatform");
+    const tabPin = document.getElementById("authTabPin");
+    if (platformBox) platformBox.hidden = mode !== "platform";
+    if (pinBox) pinBox.hidden = mode !== "pin";
+    tabPlat?.classList.toggle("active", mode === "platform");
+    tabPin?.classList.toggle("active", mode === "pin");
+    const title = document.getElementById("authTitle");
+    const hint = document.getElementById("authHint");
+    const btn = document.getElementById("authSubmit");
+    if (mode === "platform") {
+      if (title) title.textContent = "WorkPass Konto";
+      if (hint) hint.textContent = authConfig?.hint || "Mit Plattform-Passwort anmelden";
+      if (btn) btn.textContent = "Anmelden";
+      document.getElementById("authEmail")?.focus();
+    } else {
+      const store = loadStore();
+      setPinMode(!store?.pinHash);
+    }
+  }
+
+  function setPinMode(setup) {
     const title = document.getElementById("authTitle");
     const hint = document.getElementById("authHint");
     const confirmWrap = document.getElementById("authConfirmWrap");
     const btn = document.getElementById("authSubmit");
     if (!title) return;
     if (setup) {
-      title.textContent = "Zugang einrichten";
-      hint.textContent = "Legen Sie eine PIN fest (4–8 Ziffern). Sie schützt die Abrechnungen auf diesem Rechner.";
-      confirmWrap.hidden = false;
-      btn.textContent = "PIN speichern & öffnen";
+      title.textContent = "Geräte-PIN einrichten";
+      hint.textContent = "Zusätzlicher Schutz auf diesem Rechner (4–8 Ziffern).";
+      if (confirmWrap) confirmWrap.hidden = false;
+      if (btn) btn.textContent = "PIN speichern & öffnen";
     } else {
-      title.textContent = "WorkPass Lohn entsperren";
-      hint.textContent = "Geschützter Buchhaltungszugang · Suppix AI";
-      confirmWrap.hidden = true;
-      btn.textContent = "Anmelden";
+      title.textContent = "Geräte-PIN";
+      hint.textContent = "Lokaler Schutz · Sitzung sperrt bei Inaktivität";
+      if (confirmWrap) confirmWrap.hidden = true;
+      if (btn) btn.textContent = "Entsperren";
     }
-  }
-
-  function appEl() {
-    return document.getElementById("workpassApp") || document.getElementById("lohnApp");
   }
 
   function showGate(msg) {
@@ -140,15 +196,16 @@
     document.body.classList.add("auth-locked");
     const err = document.getElementById("authError");
     if (err) err.textContent = msg || "";
-    const store = loadStore();
-    setMode(!store?.pinHash);
-    const pin = document.getElementById("authPin");
-    if (pin) {
-      pin.value = "";
-      pin.focus();
+    applyConfigToGate();
+    const preferPlatform = authConfig?.platformAuthConfigured || authConfig?.localAdminFallback;
+    if (authConfig?.requirePlatformLogin || (preferPlatform && !authConfig?.devicePinAllowed)) {
+      setLoginMode("platform");
+    } else if (preferPlatform) {
+      setLoginMode(loginMode === "pin" ? "pin" : "platform");
+    } else {
+      setLoginMode("pin");
+      setPinMode(!loadStore()?.pinHash);
     }
-    const conf = document.getElementById("authPinConfirm");
-    if (conf) conf.value = "";
   }
 
   function hideGate() {
@@ -164,7 +221,70 @@
     if (err) err.textContent = "";
   }
 
-  async function submit() {
+  function applyConfigToGate() {
+    const tabs = document.getElementById("authModeTabs");
+    const preferPlatform = authConfig?.platformAuthConfigured || authConfig?.localAdminFallback;
+    const pinOk = authConfig?.devicePinAllowed !== false;
+    if (tabs) {
+      tabs.hidden = !(preferPlatform && pinOk && !authConfig?.requirePlatformLogin);
+    }
+    const tabPin = document.getElementById("authTabPin");
+    if (tabPin) tabPin.hidden = !pinOk || Boolean(authConfig?.requirePlatformLogin);
+  }
+
+  async function fetchAuthConfig() {
+    try {
+      const res = await fetch(`${apiOrigin()}/v1/auth/config`, { cache: "no-store" });
+      authConfig = await res.json();
+    } catch {
+      authConfig = {
+        ok: false,
+        platformAuthConfigured: false,
+        localAdminFallback: false,
+        requirePlatformLogin: false,
+        devicePinAllowed: true,
+        hint: "Bridge offline – Geräte-PIN nutzen",
+      };
+    }
+    return authConfig;
+  }
+
+  async function submitPlatform() {
+    const err = document.getElementById("authError");
+    const email = String(document.getElementById("authEmail")?.value || "").trim();
+    const password = String(document.getElementById("authPassword")?.value || "");
+    if (!email || password.length < 8) {
+      if (err) err.textContent = "E-Mail und Passwort (min. 8 Zeichen) erforderlich.";
+      return false;
+    }
+    try {
+      const res = await fetch(`${apiOrigin()}/v1/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        if (err) err.textContent = data.error || `Login fehlgeschlagen (${res.status})`;
+        return false;
+      }
+      savePlatformSession({
+        token: data.session,
+        expiresAt: data.expiresAt,
+        user: data.user,
+        via: data.via,
+      });
+      touchSession();
+      hideGate();
+      onUnlockCb?.();
+      return true;
+    } catch (e) {
+      if (err) err.textContent = `Bridge nicht erreichbar: ${e.message}`;
+      return false;
+    }
+  }
+
+  async function submitPin() {
     const err = document.getElementById("authError");
     if (Date.now() < pinLockedUntil) {
       const sec = Math.ceil((pinLockedUntil - Date.now()) / 1000);
@@ -210,7 +330,6 @@
       return false;
     }
     pinFails = 0;
-    // Upgrade legacy hash on successful login
     if (store.algo !== "pbkdf2-sha256") {
       const hashed = await hashPin(pin);
       saveStore({
@@ -228,8 +347,14 @@
     return true;
   }
 
+  async function submit() {
+    if (loginMode === "platform") return submitPlatform();
+    return submitPin();
+  }
+
   function lock() {
     clearSession();
+    if (authConfig?.requirePlatformLogin) clearPlatformSession();
     showGate("");
   }
 
@@ -250,9 +375,22 @@
     return { ok: true };
   }
 
-  function init(options) {
+  function getSessionToken() {
+    return loadPlatformSession()?.token || "";
+  }
+
+  function getSessionUser() {
+    return loadPlatformSession()?.user || null;
+  }
+
+  async function init(options) {
     onUnlockCb = options?.onUnlock || null;
     bindActivity();
+    await fetchAuthConfig();
+
+    document.getElementById("authTabPlatform")?.addEventListener("click", () => setLoginMode("platform"));
+    document.getElementById("authTabPin")?.addEventListener("click", () => setLoginMode("pin"));
+
     const form = document.getElementById("authForm");
     form?.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -260,7 +398,11 @@
     });
     document.getElementById("btnLock")?.addEventListener("click", lock);
 
-    if (sessionActive()) {
+    const requirePlat = Boolean(authConfig?.requirePlatformLogin);
+    const hasPlatSession = platformSessionActive();
+    const unlocked = sessionActive() && (!requirePlat || hasPlatSession);
+
+    if (unlocked) {
       hideGate();
       touchSession();
       onUnlockCb?.();
@@ -276,8 +418,12 @@
     unlock: submit,
     changePin,
     isUnlocked: sessionActive,
+    getSessionToken,
+    getSessionUser,
+    getAuthConfig: () => authConfig,
     STORE_KEY,
     SESSION_KEY,
+    PLATFORM_SESSION_KEY,
     TEST_BYPASS,
   };
 })();

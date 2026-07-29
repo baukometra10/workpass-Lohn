@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WorkPass Accounting Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="workpass-theme.css?v=5" />
+    <link rel="stylesheet" href="lohn.css?v=40" />
+    <style>
+      .admin-shell { max-width: 1100px; margin: 0 auto; padding: 24px 18px 48px; }
+      .admin-hero { margin-bottom: 22px; }
+      .admin-hero h1 { margin: 0 0 6px; font-family: var(--wp-display, "Space Grotesk", sans-serif); font-size: 1.6rem; color: #fff; }
+      .admin-hero p { margin: 0; color: var(--muted, #9bb0c9); font-size: 0.9rem; }
+      .admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 16px 0 22px; }
+      .admin-kpi { padding: 14px 16px; border: 1px solid rgba(90,140,200,0.25); border-radius: 12px; background: rgba(0,0,0,0.25); }
+      .admin-kpi span { display: block; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted, #9bb0c9); }
+      .admin-kpi strong { display: block; margin-top: 6px; font-size: 1.25rem; color: #fff; }
+      .admin-panel { border: 1px solid rgba(90,140,200,0.25); border-radius: 14px; padding: 16px; background: rgba(0,0,0,0.22); margin-bottom: 14px; }
+      .admin-panel h2 { margin: 0 0 10px; font-size: 1rem; color: #fff; }
+      .admin-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+      .admin-actions button, .admin-actions a {
+        border: 1px solid rgba(90,140,200,0.35); background: linear-gradient(180deg,#1a2740,#121b2c);
+        color: #fff; border-radius: 10px; padding: 8px 12px; font: inherit; font-size: 0.84rem; text-decoration: none; cursor: pointer;
+      }
+      .admin-actions button.primary { background: linear-gradient(135deg,#3b9eff,#7c3aed); border-color: transparent; }
+      .admin-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+      .admin-table th, .admin-table td { text-align: left; padding: 8px 6px; border-bottom: 1px solid rgba(90,140,200,0.18); color: #d7e6f7; }
+      .admin-table th { color: #8fb4d8; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
+      .admin-rights li { margin: 6px 0; color: #d7e6f7; font-size: 0.88rem; }
+      .admin-status { min-height: 1.2em; font-size: 0.82rem; color: #9bb0c9; margin-bottom: 10px; }
+      .admin-status.ok { color: #7ddea2; }
+      .admin-status.err { color: #f87171; }
+      .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.7rem; }
+      .badge-on { background: rgba(52,211,153,0.15); color: #7ddea2; }
+      .badge-off { background: rgba(248,113,113,0.12); color: #fca5a5; }
+    </style>
+  </head>
+  <body class="auth-locked">
+    <div id="authGate" class="auth-gate" aria-hidden="false">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <div class="auth-mark" aria-hidden="true"><span></span></div>
+          <div>
+            <strong>SUPPIX AI</strong>
+            <small>Accounting Admin</small>
+          </div>
+        </div>
+        <h1 id="authTitle">Admin-Zugang</h1>
+        <p class="auth-hint" id="authHint">Nur Accounting-Admin · Plattform-Konto oder Geräte-PIN</p>
+        <div class="auth-mode-tabs" id="authModeTabs" hidden>
+          <button type="button" class="auth-mode-tab active" id="authTabPlatform">Plattform-Konto</button>
+          <button type="button" class="auth-mode-tab" id="authTabPin">Geräte-PIN</button>
+        </div>
+        <form id="authForm">
+          <div id="authPlatformFields">
+            <label for="authEmail">E-Mail</label>
+            <input id="authEmail" type="email" autocomplete="username" />
+            <label for="authPassword">Passwort</label>
+            <input id="authPassword" type="password" autocomplete="current-password" />
+          </div>
+          <div id="authPinFields" hidden>
+            <label for="authPin">PIN</label>
+            <input id="authPin" type="password" inputmode="numeric" maxlength="8" />
+            <div id="authConfirmWrap" hidden>
+              <label for="authPinConfirm">PIN bestätigen</label>
+              <input id="authPinConfirm" type="password" inputmode="numeric" maxlength="8" />
+            </div>
+          </div>
+          <p class="auth-error" id="authError" role="alert"></p>
+          <button type="submit" class="auth-submit" id="authSubmit">Anmelden</button>
+        </form>
+        <p class="auth-foot"><a href="index.html" style="color:inherit">← Hub</a></p>
+      </div>
+    </div>
+
+    <div id="workpassApp" class="admin-shell" aria-hidden="true">
+      <div class="admin-hero">
+        <h1>Accounting Admin</h1>
+        <p id="adminWho">Ihre Rechte als Administrator der Buchhaltungs-Bridge.</p>
+      </div>
+      <div class="admin-status" id="adminStatus">Laden…</div>
+      <div class="admin-actions">
+        <button type="button" class="primary" id="btnRefresh">Aktualisieren</button>
+        <button type="button" id="btnBackup">Backup jetzt</button>
+        <button type="button" id="btnClearRate">Rate-Limit löschen</button>
+        <a href="lohn.html">Lohn</a>
+        <a href="index.html">Hub</a>
+        <button type="button" id="btnLock">Sperren</button>
+      </div>
+      <div class="admin-grid" id="adminKpis"></div>
+      <div class="admin-panel">
+        <h2>Ihre Admin-Rechte</h2>
+        <ul class="admin-rights" id="adminRights"></ul>
+      </div>
+      <div class="admin-panel">
+        <h2>Firmen / Abteilungen</h2>
+        <table class="admin-table">
+          <thead>
+            <tr><th>Firma</th><th>ID</th><th>Status</th><th>Abteilung</th></tr>
+          </thead>
+          <tbody id="adminCompanies"></tbody>
+        </table>
+      </div>
+      <div class="admin-panel">
+        <h2>Backups</h2>
+        <div id="adminBackups"></div>
+      </div>
+    </div>
+
+    <script src="auth-gate.js?v=4"></script>
+    <script>
+      function origin() {
+        const h = location.hostname;
+        if (h === "localhost" || h === "127.0.0.1") return "http://127.0.0.1:8787";
+        return location.origin;
+      }
+      async function api(path, opts = {}) {
+        const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
+        const token = window.WorkPassAuth?.getSessionToken?.();
+        if (token) headers["X-WorkPass-Session"] = token;
+        const key = localStorage.getItem("workpass.admin.apiKey") || "";
+        if (key) headers["X-WorkPass-Key"] = key;
+        const res = await fetch(`${origin()}${path}`, { ...opts, headers });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        return data;
+      }
+      function setStatus(msg, ok) {
+        const el = document.getElementById("adminStatus");
+        el.textContent = msg;
+        el.className = "admin-status " + (ok ? "ok" : "err");
+      }
+      async function refresh() {
+        try {
+          const data = await api("/v1/admin/overview");
+          const user = window.WorkPassAuth?.getSessionUser?.();
+          document.getElementById("adminWho").textContent = user
+            ? `${user.name || user.email} · Rolle: ${user.role}`
+            : "Angemeldet per API-Key / Session";
+          document.getElementById("adminKpis").innerHTML = `
+            <div class="admin-kpi"><span>Firmen</span><strong>${data.companies?.count ?? 0}</strong></div>
+            <div class="admin-kpi"><span>Aktiv</span><strong>${data.companies?.active ?? 0}</strong></div>
+            <div class="admin-kpi"><span>Backups</span><strong>${data.backup?.backups?.length ?? 0}</strong></div>
+            <div class="admin-kpi"><span>Version</span><strong>${data.health?.version || "—"}</strong></div>`;
+          const rights = data.rights || {};
+          document.getElementById("adminRights").innerHTML = Object.entries(rights)
+            .map(([k, v]) => `<li>${v ? "✓" : "–"} ${k}</li>`).join("");
+          const rows = (data.companies?.items || []).map((c) => `
+            <tr>
+              <td>${c.name || "—"}</td>
+              <td><code>${c.id || ""}</code></td>
+              <td><span class="badge ${c.accountingEnabled ? "badge-on" : "badge-off"}">${c.accountingEnabled ? "Aktiv" : "Inaktiv"}</span></td>
+              <td>${c.section?.title || c.section?.id || "—"}</td>
+            </tr>`).join("");
+          document.getElementById("adminCompanies").innerHTML = rows || `<tr><td colspan="4">Noch keine Firmen – Plattform muss activate senden.</td></tr>`;
+          const backups = data.backup?.backups || [];
+          document.getElementById("adminBackups").innerHTML = backups.length
+            ? `<ul>${backups.map((b) => `<li>${b.fileName || b.name || JSON.stringify(b)}</li>`).join("")}</ul>`
+            : "<p>Keine Backups gefunden.</p>";
+          setStatus("Admin-Übersicht geladen", true);
+        } catch (e) {
+          setStatus(e.message, false);
+        }
+      }
+      document.getElementById("btnRefresh")?.addEventListener("click", refresh);
+      document.getElementById("btnBackup")?.addEventListener("click", async () => {
+        try {
+          await api("/v1/admin/backup", { method: "POST", body: "{}" });
+          setStatus("Backup erstellt", true);
+          refresh();
+        } catch (e) { setStatus(e.message, false); }
+      });
+      document.getElementById("btnClearRate")?.addEventListener("click", async () => {
+        try {
+          await api("/v1/admin/rate-limit/clear", { method: "POST", body: "{}" });
+          setStatus("Rate-Limit geleert", true);
+        } catch (e) { setStatus(e.message, false); }
+      });
+      window.WorkPassAuth.init({
+        onUnlock: () => {
+          const u = window.WorkPassAuth.getSessionUser?.();
+          if (u && u.role !== "admin") {
+            setStatus("Angemeldet, aber keine Admin-Rolle. WORKPASS_ADMIN_EMAIL setzen oder Platform-Role=admin.", false);
+          }
+          refresh();
+        },
+      });
+    </script>
+  </body>
+</html>

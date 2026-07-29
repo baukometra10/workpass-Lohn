@@ -102,6 +102,20 @@ body.auth-locked { overflow: hidden; }
 }
 .auth-submit:hover { filter: brightness(1.08); }
 .auth-foot { margin-top: 14px; text-align: center; font-size: 0.68rem; color: var(--wp-text-dim); }
+.auth-mode-tabs {
+  display: flex; gap: 6px; margin: 0 0 14px;
+}
+.auth-mode-tab {
+  flex: 1; border: 1px solid var(--wp-line); background: rgba(10, 16, 28, 0.85);
+  color: var(--wp-text-dim); border-radius: 10px; padding: 8px 10px;
+  font: inherit; font-size: 0.78rem; font-weight: 600; cursor: pointer;
+}
+.auth-mode-tab.active {
+  color: #fff; border-color: rgba(59, 158, 255, 0.55);
+  background: rgba(59, 158, 255, 0.16);
+  box-shadow: 0 0 0 1px rgba(59, 158, 255, 0.2);
+}
+#authPlatformFields label + input { margin-bottom: 10px; }
 
 #workpassApp,
 #lohnApp.lohn-shell {

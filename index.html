@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="verdienst-sheet.css?v=1" />
     <link rel="stylesheet" href="annual-certificate.css?v=3" />
     <link rel="stylesheet" href="documents-bw.css?v=1" />
-    <link rel="stylesheet" href="workpass-theme.css?v=4" />
+    <link rel="stylesheet" href="workpass-theme.css?v=5" />
   </head>
   <body class="lexware-app workpass-hub auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
@@ -39,17 +39,29 @@
         </div>
         <h1 id="authTitle">WorkPass Lohn entsperren</h1>
         <p class="auth-hint" id="authHint">Geschützter Buchhaltungszugang · Suppix AI</p>
+        <div class="auth-mode-tabs" id="authModeTabs" hidden>
+          <button type="button" class="auth-mode-tab active" id="authTabPlatform">Plattform-Konto</button>
+          <button type="button" class="auth-mode-tab" id="authTabPin">Geräte-PIN</button>
+        </div>
         <form id="authForm">
-          <label for="authPin">PIN</label>
-          <input id="authPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" placeholder="••••" required />
-          <div id="authConfirmWrap" hidden>
-            <label for="authPinConfirm">PIN bestätigen</label>
-            <input id="authPinConfirm" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8" placeholder="••••" />
+          <div id="authPlatformFields">
+            <label for="authEmail">E-Mail (WorkPass)</label>
+            <input id="authEmail" type="email" autocomplete="username" placeholder="name@firma.de" />
+            <label for="authPassword">Passwort</label>
+            <input id="authPassword" type="password" autocomplete="current-password" placeholder="••••••••" />
+          </div>
+          <div id="authPinFields" hidden>
+            <label for="authPin">PIN</label>
+            <input id="authPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" placeholder="••••" />
+            <div id="authConfirmWrap" hidden>
+              <label for="authPinConfirm">PIN bestätigen</label>
+              <input id="authPinConfirm" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8" placeholder="••••" />
+            </div>
           </div>
           <p class="auth-error" id="authError" role="alert"></p>
           <button type="submit" class="auth-submit" id="authSubmit">Anmelden</button>
         </form>
-        <p class="auth-foot">Lokaler Schutz · Sitzung sperrt bei Inaktivität</p>
+        <p class="auth-foot">Plattform-Passwort oder Geräte-PIN · Sitzung sperrt bei Inaktivität</p>
       </div>
     </div>
 
@@ -79,6 +91,7 @@
       <div class="lex-appbar-right wp-appbar-actions">
         <span class="lex-appbar-mandant" id="lexAppbarMandant">Mandant: Standard-Mandant</span>
         <a href="lohn.html" class="wp-lock-btn" style="text-decoration:none">Lohn</a>
+        <a href="admin.html" class="wp-lock-btn" style="text-decoration:none" title="Accounting Admin">Admin</a>
         <button type="button" class="wp-lock-btn" id="btnLock" title="Sofort sperren">Sperren</button>
       </div>
       <div class="lex-menu-portal" id="lexMenuPortal" hidden></div>
@@ -1625,7 +1638,7 @@
     <script src="elster-export.js?v=1"></script>
     <script src="datev-sheet.js?v=41"></script>
     <script src="payroll-core.js?v=17"></script>
-    <script src="auth-gate.js?v=3"></script>
+    <script src="auth-gate.js?v=4"></script>
     <script src="workpass-hub.js?v=1"></script>
     <script src="templates.js?v=1" defer></script>
     <script src="signature-engine.js?v=4"></script>

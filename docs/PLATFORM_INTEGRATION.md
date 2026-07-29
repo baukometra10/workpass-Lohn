@@ -88,6 +88,26 @@ SDK: `client.activateCompany(payload)`
 
 احتياط: أول `payroll/invoice ingest` ينشئ الحساب أيضاً إن نُسي التفعيل.
 
+### تسجيل الدخول (منصة / أدمن)
+
+| Endpoint | وصف |
+|----------|-----|
+| `GET /v1/auth/config` | أوضاع الدخول المتاحة (عام) |
+| `POST /v1/auth/login` | `{ email, password }` → Session |
+| `GET /v1/auth/me` | المستخدم الحالي (`X-WorkPass-Session`) |
+| `GET /v1/admin/overview` | لوحة أدمن المحاسبة |
+
+**المفضّل:** `WORKPASS_PLATFORM_AUTH_URL` على المنصة يتحقق من نفس كلمة سر WorkPass.  
+**احتياط حتى تجهز المنصة:** `WORKPASS_ADMIN_EMAIL` + `WORKPASS_ADMIN_PASSWORD` على Railway.
+
+عقد المنصة المقترح:
+
+`POST WORKPASS_PLATFORM_AUTH_URL`  
+Body: `{ "kind":"platform.auth.verify.v1", "email", "password", "audience":"accounting" }`  
+Response: `{ "ok": true, "user": { "id", "email", "name", "role": "admin"|"accountant" } }`
+
+واجهة الأدمن: `/admin.html`
+
 ---
 
 ## العربية — ما الذي اكتمل من جهة المحاسبة؟

@@ -39,6 +39,12 @@ import { createBackup, listBackups, startBackupScheduler } from "./backup/backup
 import { PLATFORM_DOMAIN, PLATFORM_ORIGINS, platformWebhookUrl } from "./platform-config.mjs";
 import { tryServeStatic } from "./static.mjs";
 import { logDataPaths } from "./paths.mjs";
+import {
+  authPublicConfig,
+  loginWithPassword,
+  sessionFromRequest,
+} from "./auth-session.mjs";
+import { clearRateLimitState } from "./security/rate-limit.mjs";
 
 const PORT = Number(process.env.WORKPASS_API_PORT || process.env.PORT || 8787);
 const HOST = process.env.WORKPASS_API_HOST || (process.env.PORT ? "0.0.0.0" : "127.0.0.1");
@@ -100,7 +106,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "1.7.1",
+      version: "1.8.0",
       multiTenant: true,
       platform: {
         domain: PLATFORM_DOMAIN,
@@ -156,11 +162,50 @@ async function handler(req, res) {
     return reply(404, { ok: false, error: "Datei nicht gefunden" });
   }
 
+  // --- Public auth (no API key) ---
+  if (req.method === "GET" && path === "/v1/auth/config") {
+    return reply(200, authPublicConfig());
+  }
+
+  if (req.method === "POST" && path === "/v1/auth/login") {
+    const body = await readBodyLimited(req);
+    const result = await loginWithPassword(body?.email, body?.password, req);
+    return reply(result.status || (result.ok ? 200 : 401), result);
+  }
+
+  if (req.method === "GET" && path === "/v1/auth/me") {
+    const s = sessionFromRequest(req);
+    if (!s.ok) return reply(401, { ok: false, error: s.error });
+    return reply(200, { ok: true, user: s.user });
+  }
+
   if (path !== "/health") {
-    const auth = authorizeRequest(req);
-    if (!auth.ok) {
-      if (auth.retryAfterMs) res.setHeader("Retry-After", String(Math.ceil(auth.retryAfterMs / 1000)));
-      return reply(auth.status || 401, { ok: false, error: auth.error });
+    const sess = sessionFromRequest(req);
+    const sessionPathsOk =
+      path.startsWith("/v1/admin")
+      || path === "/v1/companies"
+      || path.startsWith("/v1/company/")
+      || path === "/v1/inbox"
+      || path.startsWith("/v1/payroll/")
+      || path.startsWith("/v1/invoice/")
+      || path.startsWith("/v1/delivery/");
+    if (sess.ok && sessionPathsOk) {
+      req._workpassSession = sess.user;
+      const needsAdmin =
+        path.startsWith("/v1/admin")
+        || path === "/v1/company/activate"
+        || path === "/v1/company/provision"
+        || path === "/v1/company/deactivate";
+      if (needsAdmin && sess.user.role !== "admin") {
+        return reply(403, { ok: false, error: "Nur Accounting-Admin" });
+      }
+    } else {
+      const auth = authorizeRequest(req);
+      if (!auth.ok) {
+        if (auth.retryAfterMs) res.setHeader("Retry-After", String(Math.ceil(auth.retryAfterMs / 1000)));
+        return reply(auth.status || 401, { ok: false, error: auth.error });
+      }
+      req._workpassSession = null;
     }
   }
 
@@ -189,7 +234,40 @@ async function handler(req, res) {
     }
 
     if (req.method === "GET" && path === "/v1/admin/backups") {
-      return reply( 200, { ok: true, backups: listBackups() });
+      return reply(200, { ok: true, backups: listBackups() });
+    }
+
+    if (req.method === "POST" && path === "/v1/admin/rate-limit/clear") {
+      clearRateLimitState();
+      audit({ type: "admin.rateclear", outcome: "ok", ip, path });
+      return reply(200, { ok: true, cleared: true });
+    }
+
+    if (req.method === "GET" && path === "/v1/admin/overview") {
+      const companies = listCompanies();
+      return reply(200, {
+        ok: true,
+        admin: req._workpassSession || { via: "api-key" },
+        health: {
+          version: "1.8.0",
+          ...syncHealth(),
+        },
+        companies: {
+          count: companies.length,
+          active: companies.filter((c) => c.meta?.accountingEnabled).length,
+          items: companies.map(companyWorkspaceView),
+        },
+        backup: { scheduler: backupSched, backups: listBackups().slice(0, 10) },
+        auth: authPublicConfig(),
+        rights: {
+          activateCompany: true,
+          deactivateCompany: true,
+          backups: true,
+          sync: true,
+          clearRateLimit: true,
+          viewAllCompanies: true,
+        },
+      });
     }
 
     // --- Companies ---
