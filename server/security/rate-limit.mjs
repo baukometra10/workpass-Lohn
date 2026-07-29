@@ -46,6 +46,11 @@ export function noteAuthFailure(ip) {
   return { failures: b.count, lockedUntil: b.lockedUntil || 0 };
 }
 
+/** Clear auth lockout after a successful API-key check. */
+export function noteAuthSuccess(ip) {
+  buckets.delete(keyFor(ip, "auth-fail"));
+}
+
 export function isAuthLocked(ip) {
   const b = buckets.get(keyFor(ip, "auth-fail"));
   if (!b?.lockedUntil) return false;

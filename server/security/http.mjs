@@ -3,7 +3,7 @@
  */
 import { secureCompare, securityPosture } from "./crypto.mjs";
 import { audit } from "./audit.mjs";
-import { rateLimit, noteAuthFailure, isAuthLocked, clientIp } from "./rate-limit.mjs";
+import { rateLimit, noteAuthFailure, noteAuthSuccess, isAuthLocked, clientIp } from "./rate-limit.mjs";
 import { PLATFORM_ORIGINS, isAllowedOrigin, PLATFORM_DOMAIN } from "../platform-config.mjs";
 
 const MAX_BODY = Number(process.env.WORKPASS_MAX_BODY_BYTES || 1_500_000); // ~1.5 MB
@@ -33,7 +33,7 @@ export function uiSecurityHeaders(extra = {}) {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",
     "img-src 'self' data: blob:",
-    "connect-src 'self'",
+    "connect-src 'self' https://cdnjs.cloudflare.com",
     "worker-src 'self' blob:",
     "child-src 'self' blob:",
     "object-src 'none'",
@@ -104,9 +104,10 @@ export function authorizeRequest(req) {
       path: req.url,
       detail: { failures: fail.failures },
     });
-    return { ok: false, status: 401, error: "Unauthorized – Header X-WorkPass-Key erforderlich" };
+    return { ok: false, status: 401, error: "Unauthorized – Header X-WorkPass-Key erforderlich (API-Key prüfen)" };
   }
 
+  noteAuthSuccess(ip);
   return { ok: true, ip };
 }
 

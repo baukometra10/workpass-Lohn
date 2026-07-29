@@ -737,13 +737,24 @@
       "X-WorkPass-Key": key,
       ...(options.headers || {}),
     };
-    if (companyId) headers["X-WorkPass-Company-Id"] = companyId;
+    const useTenant = options.skipTenant ? "" : companyId;
+    if (useTenant) headers["X-WorkPass-Company-Id"] = useTenant;
+    const { skipTenant: _skip, headers: _h, ...fetchOpts } = options;
     const res = await fetch(`${base}${path}`, {
-      ...options,
+      ...fetchOpts,
       headers,
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
+      if (res.status === 429) {
+        throw new Error(
+          data.error
+          || "Zu viele Fehlversuche – IP vorübergehend gesperrt. Railway-Service neu starten oder ~15 Min warten. API-Key prüfen."
+        );
+      }
+      if (res.status === 401) {
+        throw new Error("API-Key falsch – exakt WORKPASS_API_KEY aus Railway Variables eintragen (nicht den PIN).");
+      }
       throw new Error(data.error || data.errors?.join?.(" · ") || `HTTP ${res.status}`);
     }
     return data;
@@ -881,23 +892,32 @@
     setModePill("Firma", nameHint || companyId);
     setStatus(`Abteilung aktiv: ${companyId}`, true);
     toast(`Firma gewählt: ${nameHint || companyId}`, "ok");
-    loadPlatformCompanies();
+    document.querySelectorAll(".api-company-item").forEach((el) => {
+      el.classList.toggle("active", el.getAttribute("data-company-id") === companyId);
+    });
     loadApiInbox();
   }
 
+  let companiesLoadPromise = null;
   async function loadPlatformCompanies() {
-    try {
-      loadApiConfigIntoForm();
-      const data = await apiFetch("/v1/companies");
-      renderPlatformCompanies(data);
-      const n = data.companies?.length || 0;
-      const active = (data.workspaces || []).filter((w) => w.accountingEnabled).length;
-      setStatus(`Firmenregister: ${n} · aktiv ${active}`, true);
-    } catch (e) {
-      setStatus(`Firmen-Fehler: ${e.message}`, false);
-      const host = $("apiCompanyList");
-      if (host) host.innerHTML = `<p class="section-hint">Firmen konnten nicht geladen werden: ${esc(e.message)}</p>`;
-    }
+    if (companiesLoadPromise) return companiesLoadPromise;
+    companiesLoadPromise = (async () => {
+      try {
+        loadApiConfigIntoForm();
+        const data = await apiFetch("/v1/companies", { skipTenant: true });
+        renderPlatformCompanies(data);
+        const n = data.companies?.length || 0;
+        const active = (data.workspaces || []).filter((w) => w.accountingEnabled).length;
+        setStatus(`Firmenregister: ${n} · aktiv ${active}`, true);
+      } catch (e) {
+        setStatus(`Firmen-Fehler: ${e.message}`, false);
+        const host = $("apiCompanyList");
+        if (host) host.innerHTML = `<p class="section-hint">Firmen konnten nicht geladen werden: ${esc(e.message)}</p>`;
+      } finally {
+        companiesLoadPromise = null;
+      }
+    })();
+    return companiesLoadPromise;
   }
 
   async function openApiPayrollJob(jobId) {

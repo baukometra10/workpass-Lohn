@@ -26,6 +26,7 @@ import { initDb, syncHealth, flushSyncOutbox } from "./db/repository.mjs";
 import { postgresConfigured } from "./db/postgres.mjs";
 import {
   securityHeaders,
+  uiSecurityHeaders,
   corsHeaders,
   authorizeRequest,
   readBodyLimited,
@@ -99,7 +100,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "1.7.0",
+      version: "1.7.1",
       multiTenant: true,
       platform: {
         domain: PLATFORM_DOMAIN,
@@ -136,6 +137,23 @@ async function handler(req, res) {
   // UI (Rechnung / Lohn) – öffentlich, ohne API-Key
   if (SERVE_UI && tryServeStatic(req, res, path === "/" ? "/index.html" : path)) {
     return;
+  }
+
+  // Missing browser assets must NOT hit API auth (favicon was causing 401 → IP lockout → 429)
+  if (
+    SERVE_UI
+    && (req.method === "GET" || req.method === "HEAD")
+    && path !== "/health"
+    && !path.startsWith("/v1")
+  ) {
+    if (path === "/favicon.ico") {
+      res.writeHead(204, {
+        "Cache-Control": "public, max-age=86400",
+        ...uiSecurityHeaders(),
+      });
+      return res.end();
+    }
+    return reply(404, { ok: false, error: "Datei nicht gefunden" });
   }
 
   if (path !== "/health") {

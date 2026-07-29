@@ -24,12 +24,14 @@ function assert(cond, msg) {
   }
 }
 
+const demoId = `demo-activate-${Date.now().toString(36)}`;
+
 console.log("\n=== Company activate: create workspace ===");
 const first = activateCompany({
   kind: "platform.company.activate.v1",
   event: "company.accounting.activated",
   company: {
-    id: "demo-activate-co",
+    id: demoId,
     name: "Demo Activate GmbH",
     city: "Berlin",
   },
@@ -41,38 +43,39 @@ const first = activateCompany({
 });
 assert(first.ok, "activate ok");
 assert(first.created === true, "created on first activate");
-assert(first.company?.id === "demo-activate-co", "company id set");
+assert(first.company?.id === demoId, "company id set");
 assert(first.company?.meta?.accountingEnabled === true, "accountingEnabled");
 assert(first.company?.meta?.workspaceStatus === "active", "workspace active");
-assert(first.workspace?.section?.id === "ws:demo-activate-co", "section id");
+assert(first.workspace?.section?.id === `ws:${demoId}`, "section id");
 assert(first.workspace?.section?.title === "Demo Activate GmbH", "section title");
 
 console.log("\n=== Company activate: idempotent ===");
 const second = activateCompany({
-  company: { id: "demo-activate-co", name: "Demo Activate GmbH" },
+  company: { id: demoId, name: "Demo Activate GmbH" },
   connection: { accountingEnabled: true },
 });
 assert(second.ok && second.created === false, "second activate not created");
-assert(loadCompany("demo-activate-co")?.meta?.section?.id === "ws:demo-activate-co", "section retained");
+assert(loadCompany(demoId)?.meta?.section?.id === `ws:${demoId}`, "section retained");
 
 console.log("\n=== List workspaces ===");
 const listed = listCompanies();
-assert(listed.some((c) => c.id === "demo-activate-co"), "in registry");
-const view = companyWorkspaceView(loadCompany("demo-activate-co"));
+assert(listed.some((c) => c.id === demoId), "in registry");
+const view = companyWorkspaceView(loadCompany(demoId));
 assert(view?.accountingEnabled === true, "workspace view enabled");
 
 console.log("\n=== Deactivate soft ===");
-const off = deactivateCompany("demo-activate-co");
+const off = deactivateCompany(demoId);
 assert(off.ok && off.company?.meta?.accountingEnabled === false, "deactivated");
 assert(off.workspace?.workspaceStatus === "inactive", "inactive status");
-assert(loadCompany("demo-activate-co"), "data retained");
+assert(loadCompany(demoId), "data retained");
 
 console.log("\n=== Ensure from ingest fallback ===");
+const ingestId = `ingest-fallback-${Date.now().toString(36)}`;
 const ensured = ensureCompanyFromPayload({
-  company: { id: "ingest-fallback-co", name: "Ingest Fallback AG" },
+  company: { id: ingestId, name: "Ingest Fallback AG" },
 });
 assert(ensured.ok && ensured.company?.meta?.accountingEnabled === true, "ingest ensure activates");
-assert(ensured.company?.meta?.section?.id === "ws:ingest-fallback-co", "ingest section");
+assert(ensured.company?.meta?.section?.id === `ws:${ingestId}`, "ingest section");
 
 console.log("\n=== Reject without id ===");
 const bad = activateCompany({ company: { name: "No Id GmbH" } });
