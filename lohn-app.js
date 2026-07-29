@@ -623,6 +623,15 @@
     return h === "localhost" || h === "127.0.0.1" || h === "" || location.protocol === "file:";
   }
 
+  function isLocalBridgeUrl(url) {
+    try {
+      const u = new URL(String(url || ""), location.href);
+      return u.hostname === "localhost" || u.hostname === "127.0.0.1";
+    } catch {
+      return /127\.0\.0\.1|localhost/i.test(String(url || ""));
+    }
+  }
+
   /** Same origin on Railway/hosted UI; localhost only for local bridge. */
   function defaultApiBase() {
     if (isLocalHostPage()) return "http://127.0.0.1:8787";
@@ -631,6 +640,33 @@
 
   function defaultApiKey() {
     return isLocalHostPage() ? "workpass-dev-key" : "";
+  }
+
+  /**
+   * Resolve bridge base. On Railway always same-origin (relative ""),
+   * so CSP connect-src 'self' works and localhost leftovers cannot break fetch.
+   */
+  function resolveApiBase() {
+    const baseEl = $("apiBaseUrl");
+    let raw = String(baseEl?.value || "").trim().replace(/\/+$/, "");
+    if (!raw) raw = defaultApiBase();
+
+    if (!isLocalHostPage()) {
+      if (isLocalBridgeUrl(raw)) {
+        raw = defaultApiBase();
+        if (baseEl) baseEl.value = raw;
+      }
+      try {
+        const u = new URL(raw, location.href);
+        if (u.origin === location.origin) {
+          if (baseEl && baseEl.value.trim() !== location.origin) baseEl.value = location.origin;
+          return ""; // relative → /health, /v1/...
+        }
+      } catch {
+        /* keep raw */
+      }
+    }
+    return raw.replace(/\/+$/, "");
   }
 
   function loadApiConfigIntoForm() {
@@ -643,8 +679,22 @@
     const baseEl = $("apiBaseUrl");
     const keyEl = $("apiKey");
     const companyEl = $("apiCompanyId");
-    if (baseEl && !baseEl.value.trim()) {
-      baseEl.value = (saved?.base && String(saved.base).trim()) || defaultApiBase();
+
+    let savedBase = saved?.base ? String(saved.base).trim().replace(/\/+$/, "") : "";
+    if (!isLocalHostPage() && savedBase && isLocalBridgeUrl(savedBase)) {
+      savedBase = "";
+      try {
+        localStorage.removeItem(API_CFG_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    if (baseEl) {
+      const current = baseEl.value.trim();
+      if (!current || (!isLocalHostPage() && isLocalBridgeUrl(current))) {
+        baseEl.value = savedBase || defaultApiBase();
+      }
     }
     if (keyEl && !keyEl.value.trim()) {
       keyEl.value = (saved?.key && String(saved.key).trim()) || defaultApiKey();
@@ -655,7 +705,9 @@
   }
 
   function persistApiConfig() {
-    const { base, key, companyId } = apiConfig();
+    const base = resolveApiBase() || defaultApiBase();
+    const key = String($("apiKey")?.value || defaultApiKey());
+    const companyId = String($("apiCompanyId")?.value || "").trim();
     try {
       localStorage.setItem(API_CFG_KEY, JSON.stringify({ base, key, companyId }));
     } catch {
@@ -664,7 +716,7 @@
   }
 
   function apiConfig() {
-    const base = String($("apiBaseUrl")?.value || defaultApiBase()).replace(/\/+$/, "");
+    const base = resolveApiBase();
     const key = String($("apiKey")?.value || defaultApiKey());
     const companyId = String($("apiCompanyId")?.value || "").trim();
     return { base, key, companyId };
@@ -695,19 +747,20 @@
 
   async function checkApiHealth() {
     loadApiConfigIntoForm();
+    const base = resolveApiBase();
+    const probe = `${base || location.origin}/health`;
     persistApiConfig();
     try {
-      const { base } = apiConfig();
-      const res = await fetch(`${base}/health`);
+      const res = await fetch(`${base}/health`, { cache: "no-store" });
       const data = await res.json();
       if (!data.ok) throw new Error("Health fehlgeschlagen");
       setStatus(`Bridge online · ${data.service} ${data.version || ""}`, true);
-      window.alert(`Server erreichbar:\n${base}\n${data.service} ${data.version || ""}`);
+      window.alert(`Server erreichbar:\n${probe}\n${data.service} ${data.version || ""}`);
     } catch (e) {
       setStatus(`Bridge offline: ${e.message}`, false);
       const tip = isLocalHostPage()
         ? "Bitte zuerst lokal starten: npm start"
-        : "API-URL sollte die Railway-Adresse sein (gleiche Seite, ohne /lohn.html).\nAPI-Key = WORKPASS_API_KEY aus Railway Variables.";
+        : `Geprüfte URL: ${probe}\nFeld API-URL leer lassen oder exakt ${location.origin} eintragen.\nDann Seite hart neu laden (Strg+F5).\nAPI-Key nur für Inbox nötig (WORKPASS_API_KEY).`;
       window.alert(`Bridge nicht erreichbar.\n${tip}\n\n${e.message}`);
     }
   }
