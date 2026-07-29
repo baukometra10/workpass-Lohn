@@ -27,11 +27,7 @@ function fromB64url(s) {
 
 export function authPublicConfig() {
   const platformUrl = String(process.env.WORKPASS_PLATFORM_AUTH_URL || "").trim();
-  const hasLocalAdmin = Boolean(
-    process.env.WORKPASS_ADMIN_EMAIL
-    && process.env.WORKPASS_ADMIN_PASSWORD
-    && String(process.env.WORKPASS_ADMIN_PASSWORD).length >= 10
-  );
+  const hasLocalAdmin = hasLocalAdminConfigured();
   const requirePlatform = process.env.WORKPASS_REQUIRE_PLATFORM_AUTH === "1";
   return {
     ok: true,
@@ -40,11 +36,13 @@ export function authPublicConfig() {
     requirePlatformLogin: requirePlatform,
     devicePinAllowed: process.env.WORKPASS_DEVICE_PIN_ALLOWED !== "0",
     sessionTtlHours: Math.round(SESSION_TTL_MS / 3600000),
-    hint: platformUrl
+    hint: platformUrl && !hasLocalAdmin
       ? "Anmeldung mit WorkPass-Plattform-Konto"
       : hasLocalAdmin
-        ? "Anmeldung mit Admin-Konto (Bridge-Env)"
-        : "Nur Geräte-PIN (Platform-Auth noch nicht konfiguriert)",
+        ? (platformUrl
+          ? "Plattform-Konto oder Admin-E-Mail aus Railway Variables"
+          : "Anmeldung mit Admin-Konto (Bridge-Env)")
+        : "Nur Geräte-PIN (Platform-Auth / Admin noch nicht konfiguriert)",
   };
 }
 
@@ -168,6 +166,12 @@ async function verifyWithPlatform(email, password) {
   }
 }
 
+function hasLocalAdminConfigured() {
+  const wantEmail = String(process.env.WORKPASS_ADMIN_EMAIL || "").trim();
+  const wantPass = String(process.env.WORKPASS_ADMIN_PASSWORD || "");
+  return Boolean(wantEmail && wantPass.length >= 10);
+}
+
 function verifyLocalAdmin(email, password) {
   const wantEmail = String(process.env.WORKPASS_ADMIN_EMAIL || "").trim().toLowerCase();
   const wantPass = String(process.env.WORKPASS_ADMIN_PASSWORD || "");
@@ -176,7 +180,7 @@ function verifyLocalAdmin(email, password) {
   }
   const mail = String(email || "").trim().toLowerCase();
   if (!secureCompare(mail, wantEmail) || !secureCompare(password, wantPass)) {
-    return { ok: false, error: "E-Mail oder Passwort falsch." };
+    return { ok: false, error: "E-Mail oder Passwort falsch (Admin-Konto)." };
   }
   return {
     ok: true,
@@ -213,20 +217,33 @@ export async function loginWithPassword(email, password, req) {
   }
 
   let result = await verifyWithPlatform(mail, pass);
+  const allowLocalFallback = process.env.WORKPASS_AUTH_FALLBACK_LOCAL !== "0";
+
   if (result === null) {
+    // No platform URL configured
     result = verifyLocalAdmin(mail, pass);
-  } else if (!result.ok) {
-    // Platform configured but rejected – do not silently fall back unless allowed
-    if (process.env.WORKPASS_AUTH_FALLBACK_LOCAL === "1") {
-      const local = verifyLocalAdmin(mail, pass);
-      if (local.ok) result = local;
+  } else if (!result.ok && allowLocalFallback && hasLocalAdminConfigured()) {
+    // Platform URL exists but rejected/unreachable → try Railway admin account
+    const local = verifyLocalAdmin(mail, pass);
+    if (local.ok) {
+      result = local;
+    } else {
+      result = {
+        ok: false,
+        error: `${result.error || "Platform-Login fehlgeschlagen"} · Local: ${local.error}`,
+      };
     }
   }
 
   if (!result?.ok) {
     noteAuthFailure(ip);
     audit({ type: "auth.login.fail", outcome: "deny", ip, detail: { email: mail } });
-    return { ok: false, status: 401, error: result?.error || "Anmeldung fehlgeschlagen." };
+    return {
+      ok: false,
+      status: 401,
+      error: result?.error
+        || "Anmeldung fehlgeschlagen. Prüfen: WORKPASS_ADMIN_EMAIL/PASSWORD oder Platform-Auth.",
+    };
   }
 
   const role = result.user.role === "admin" ? "admin" : resolveRole(result.user.email);

@@ -249,7 +249,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "1.8.0",
+          version: "1.8.1",
           ...syncHealth(),
         },
         companies: {
