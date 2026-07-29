@@ -616,15 +616,66 @@
     }
   }
 
+  const API_CFG_KEY = "workpass.lohn.apiConfig.v1";
+
+  function isLocalHostPage() {
+    const h = String(location.hostname || "");
+    return h === "localhost" || h === "127.0.0.1" || h === "" || location.protocol === "file:";
+  }
+
+  /** Same origin on Railway/hosted UI; localhost only for local bridge. */
+  function defaultApiBase() {
+    if (isLocalHostPage()) return "http://127.0.0.1:8787";
+    return String(location.origin || "").replace(/\/+$/, "");
+  }
+
+  function defaultApiKey() {
+    return isLocalHostPage() ? "workpass-dev-key" : "";
+  }
+
+  function loadApiConfigIntoForm() {
+    let saved = null;
+    try {
+      saved = JSON.parse(localStorage.getItem(API_CFG_KEY) || "null");
+    } catch {
+      saved = null;
+    }
+    const baseEl = $("apiBaseUrl");
+    const keyEl = $("apiKey");
+    const companyEl = $("apiCompanyId");
+    if (baseEl && !baseEl.value.trim()) {
+      baseEl.value = (saved?.base && String(saved.base).trim()) || defaultApiBase();
+    }
+    if (keyEl && !keyEl.value.trim()) {
+      keyEl.value = (saved?.key && String(saved.key).trim()) || defaultApiKey();
+    }
+    if (companyEl && !companyEl.value.trim() && saved?.companyId) {
+      companyEl.value = String(saved.companyId);
+    }
+  }
+
+  function persistApiConfig() {
+    const { base, key, companyId } = apiConfig();
+    try {
+      localStorage.setItem(API_CFG_KEY, JSON.stringify({ base, key, companyId }));
+    } catch {
+      /* ignore quota */
+    }
+  }
+
   function apiConfig() {
-    const base = String($("apiBaseUrl")?.value || "http://127.0.0.1:8787").replace(/\/+$/, "");
-    const key = String($("apiKey")?.value || "workpass-dev-key");
+    const base = String($("apiBaseUrl")?.value || defaultApiBase()).replace(/\/+$/, "");
+    const key = String($("apiKey")?.value || defaultApiKey());
     const companyId = String($("apiCompanyId")?.value || "").trim();
     return { base, key, companyId };
   }
 
   async function apiFetch(path, options = {}) {
     const { base, key, companyId } = apiConfig();
+    if (!key) {
+      throw new Error("API-Key fehlt – in den API-Einstellungen den Railway-Key (WORKPASS_API_KEY) eintragen.");
+    }
+    persistApiConfig();
     const headers = {
       "Content-Type": "application/json",
       "X-WorkPass-Key": key,
@@ -643,16 +694,21 @@
   }
 
   async function checkApiHealth() {
+    loadApiConfigIntoForm();
+    persistApiConfig();
     try {
       const { base } = apiConfig();
       const res = await fetch(`${base}/health`);
       const data = await res.json();
       if (!data.ok) throw new Error("Health fehlgeschlagen");
       setStatus(`Bridge online · ${data.service} ${data.version || ""}`, true);
-      window.alert(`Server erreichbar:\n${base}\n${data.service}`);
+      window.alert(`Server erreichbar:\n${base}\n${data.service} ${data.version || ""}`);
     } catch (e) {
       setStatus(`Bridge offline: ${e.message}`, false);
-      window.alert(`Bridge nicht erreichbar.\nBitte zuerst starten: npm start\n\n${e.message}`);
+      const tip = isLocalHostPage()
+        ? "Bitte zuerst lokal starten: npm start"
+        : "API-URL sollte die Railway-Adresse sein (gleiche Seite, ohne /lohn.html).\nAPI-Key = WORKPASS_API_KEY aus Railway Variables.";
+      window.alert(`Bridge nicht erreichbar.\n${tip}\n\n${e.message}`);
     }
   }
 
@@ -706,6 +762,7 @@
 
   async function loadApiInbox() {
     try {
+      loadApiConfigIntoForm();
       const { companyId } = apiConfig();
       const q = companyId ? `?companyId=${encodeURIComponent(companyId)}` : "";
       const data = await apiFetch(`/v1/inbox${q}`);
@@ -1033,6 +1090,10 @@
     $("btnExportCsv")?.addEventListener("click", exportCsv);
     $("btnChangePin")?.addEventListener("click", changePin);
     $("btnPasteApply")?.addEventListener("click", applyPasteInbox);
+    loadApiConfigIntoForm();
+    ["apiBaseUrl", "apiKey", "apiCompanyId"].forEach((id) => {
+      $(id)?.addEventListener("change", persistApiConfig);
+    });
     $("btnApiInbox")?.addEventListener("click", loadApiInbox);
     $("btnApiHealth")?.addEventListener("click", checkApiHealth);
     $("importPlatformInput").addEventListener("change", (e) => {
