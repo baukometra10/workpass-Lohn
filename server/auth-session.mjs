@@ -6,6 +6,7 @@ import crypto from "node:crypto";
 import { secureCompare } from "./security/crypto.mjs";
 import { rateLimit, noteAuthFailure, noteAuthSuccess, clientIp, clearRateLimitState } from "./security/rate-limit.mjs";
 import { audit } from "./security/audit.mjs";
+import { verifyCompanyLogin, companyLoginDomain } from "./company-service.mjs";
 
 const SESSION_TTL_MS = Number(process.env.WORKPASS_SESSION_TTL_MS || 8 * 60 * 60 * 1000); // 8h
 const ADMIN_PASSWORD_MIN = 8;
@@ -63,11 +64,11 @@ export function authPublicConfig() {
     setupGaps: gaps,
     sessionTtlHours: Math.round(SESSION_TTL_MS / 3600000),
     hint: setupIncomplete
-      ? (platformUrl
-        ? "Platform-Auth optional – Geräte-PIN ODER WORKPASS_ADMIN_EMAIL/PASSWORD in Railway"
-        : "In Railway WORKPASS_ADMIN_EMAIL + WORKPASS_ADMIN_PASSWORD setzen (min. 8 Zeichen), sonst Geräte-PIN")
-      : "Ein Login reicht – Admin-Konto wird zuerst geprüft (auch wenn Platform-Auth URL gesetzt ist)",
+      ? "WORKPASS_ADMIN_EMAIL/PASSWORD setzen ODER Firmen-Login nach activate (name@firma.de + PIN)"
+      : "Admin-Konto ODER Firmen-Login (z. B. luf@firma.de + 4-stellige PIN)",
     localAdminFirst: true,
+    companyLoginDomain: String(process.env.WORKPASS_COMPANY_LOGIN_DOMAIN || "firma.de"),
+    companyPasswordMin: 4,
     platformAuthTimeoutMs: Number(process.env.WORKPASS_PLATFORM_AUTH_TIMEOUT_MS || 2500),
   };
 }
@@ -79,6 +80,7 @@ export function createSession(user) {
     email: String(user.email || "").toLowerCase(),
     name: String(user.name || user.email || ""),
     role: user.role === "admin" ? "admin" : "accountant",
+    companyId: user.companyId ? String(user.companyId) : "",
     iat: now,
     exp: now + SESSION_TTL_MS,
   };
@@ -92,6 +94,7 @@ export function createSession(user) {
       email: payload.email,
       name: payload.name,
       role: payload.role,
+      companyId: payload.companyId || null,
     },
   };
 }
@@ -119,6 +122,7 @@ export function verifySessionToken(token) {
       email: payload.email,
       name: payload.name,
       role: payload.role === "admin" ? "admin" : "accountant",
+      companyId: payload.companyId || null,
     },
     payload,
   };
@@ -239,8 +243,10 @@ function verifyLocalAdmin(email, password) {
 }
 
 /**
- * Login: local admin first (fast), then optional platform auth.
- * Platform URL may stay configured without blocking accounting login.
+ * Login order:
+ * 1) Railway admin (fast)
+ * 2) Company login from registry (name@firma.de + PIN 4+)
+ * 3) Optional platform auth URL
  */
 export async function loginWithPassword(email, password, req) {
   const ip = clientIp(req);
@@ -261,23 +267,26 @@ export async function loginWithPassword(email, password, req) {
 
   const mail = String(email || "").trim().toLowerCase();
   const pass = String(password || "");
-  if (!mail || !pass || pass.length < 8) {
-    return { ok: false, status: 422, error: "E-Mail und Passwort (min. 8 Zeichen) erforderlich." };
+  if (!mail || !pass || pass.length < 4) {
+    return {
+      ok: false,
+      status: 422,
+      error: "E-Mail und Passwort/PIN erforderlich (Firmen-PIN ab 4 Zeichen).",
+    };
   }
 
-  // 1) Fast path: Railway admin account (even if platform URL is set)
+  // 1) Fast path: Railway admin account
   let local = null;
   if (hasLocalAdminConfigured()) {
     local = verifyLocalAdmin(mail, pass);
     if (local.ok) {
-      const role = "admin";
-      const session = createSession({ ...local.user, role });
+      const session = createSession({ ...local.user, role: "admin" });
       noteAuthSuccess(ip);
       audit({
         type: "auth.login.ok",
         outcome: "ok",
         ip,
-        detail: { email: session.user.email, role, via: "local-admin-first" },
+        detail: { email: session.user.email, role: "admin", via: "local-admin-first" },
       });
       return {
         ok: true,
@@ -290,20 +299,47 @@ export async function loginWithPassword(email, password, req) {
     }
   }
 
-  // 2) Platform auth (short timeout) – only if local admin did not match
+  // 2) Company login (platform firm accounts synced via activate)
+  const companyLogin = verifyCompanyLogin(mail, pass);
+  if (companyLogin.ok) {
+    const session = createSession(companyLogin.user);
+    noteAuthSuccess(ip);
+    audit({
+      type: "auth.login.ok",
+      outcome: "ok",
+      ip,
+      detail: {
+        email: session.user.email,
+        role: session.user.role,
+        companyId: session.user.companyId,
+        via: "company-login",
+      },
+    });
+    return {
+      ok: true,
+      status: 200,
+      session: session.token,
+      expiresAt: session.expiresAt,
+      user: session.user,
+      via: "company-login",
+      companyId: session.user.companyId,
+    };
+  }
+
+  // 3) Optional platform auth URL
   let result = await verifyWithPlatform(mail, pass);
   if (result === null) {
-    result = local || { ok: false, error: "Kein Login möglich." };
+    result = {
+      ok: false,
+      error: companyLogin.error
+        || local?.error
+        || `Kein Login. Domain für Firmen: @${companyLoginDomain()}`,
+    };
   } else if (!result.ok) {
-    // Prefer clear local-admin hint; hide noisy 405 when admin account exists
-    if (local && !local.ok && hasLocalAdminConfigured()) {
-      result = {
-        ok: false,
-        error: local.error,
-      };
-    } else {
-      result = { ok: false, error: result.error };
-    }
+    result = {
+      ok: false,
+      error: companyLogin.error || local?.error || result.error,
+    };
   }
 
   if (!result?.ok) {

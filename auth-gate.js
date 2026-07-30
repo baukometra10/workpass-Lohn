@@ -319,8 +319,8 @@
     const err = document.getElementById("authError");
     const email = String(document.getElementById("authEmail")?.value || "").trim();
     const password = String(document.getElementById("authPassword")?.value || "");
-    if (!email || password.length < 8) {
-      if (err) err.textContent = "E-Mail und Passwort (min. 8 Zeichen) erforderlich.";
+    if (!email || password.length < 4) {
+      if (err) err.textContent = "E-Mail und Passwort/PIN (min. 4 Zeichen) erforderlich.";
       return false;
     }
     if (err) err.textContent = "Anmelden…";
@@ -341,6 +341,15 @@
         user: data.user,
         via: data.via,
       });
+      try {
+        if (data.user?.companyId && typeof localStorage !== "undefined") {
+          const prev = JSON.parse(localStorage.getItem("workpass.lohn.apiConfig.v1") || "{}");
+          localStorage.setItem("workpass.lohn.apiConfig.v1", JSON.stringify({
+            ...prev,
+            companyId: data.user.companyId,
+          }));
+        }
+      } catch { /* ignore */ }
       // Align UI session with server token lifetime (login once)
       const expMs = data.expiresAt ? Date.parse(data.expiresAt) - Date.now() : IDLE_MS;
       touchSession(Math.max(expMs, 60 * 60 * 1000));

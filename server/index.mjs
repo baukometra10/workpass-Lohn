@@ -20,6 +20,7 @@ import {
   loadCompany,
   listCompanies,
   companyWorkspaceView,
+  setCompanyLogin,
 } from "./company-service.mjs";
 import { tenantFromRequest, assertSameTenant, normalizeCompanyId } from "./tenant.mjs";
 import { initDb, syncHealth, flushSyncOutbox } from "./db/repository.mjs";
@@ -99,7 +100,7 @@ async function handler(req, res) {
 
   const url = new URL(req.url || "/", `http://${HOST}:${PORT}`);
   const path = url.pathname.replace(/\/+$/, "") || "/";
-  const tenantScope = tenantFromRequest(req, url);
+  let tenantScope = tenantFromRequest(req, url);
   const ip = clientIp(req);
 
   if (req.method === "GET" && path === "/health") {
@@ -107,7 +108,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "1.8.3",
+      version: "1.9.0",
       multiTenant: true,
       platform: {
         domain: PLATFORM_DOMAIN,
@@ -203,11 +204,15 @@ async function handler(req, res) {
       || path.startsWith("/v1/delivery/");
     if (sess.ok && sessionPathsOk) {
       req._workpassSession = sess.user;
+      if (!tenantScope && sess.user.companyId) {
+        tenantScope = normalizeCompanyId(sess.user.companyId);
+      }
       const needsAdmin =
         path.startsWith("/v1/admin")
         || path === "/v1/company/activate"
         || path === "/v1/company/provision"
-        || path === "/v1/company/deactivate";
+        || path === "/v1/company/deactivate"
+        || path.endsWith("/login-credentials");
       if (needsAdmin && sess.user.role !== "admin") {
         return reply(403, { ok: false, error: "Nur Accounting-Admin" });
       }
@@ -261,7 +266,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "1.8.3",
+          version: "1.9.0",
           ...syncHealth(),
         },
         companies: {
@@ -323,6 +328,22 @@ async function handler(req, res) {
         companyId: id,
       });
       return reply(result.ok ? 200 : 404, result);
+    }
+
+    if (req.method === "POST" && path.endsWith("/login-credentials") && path.startsWith("/v1/company/")) {
+      const id = normalizeCompanyId(decodeURIComponent(path.slice("/v1/company/".length, -"/login-credentials".length)));
+      const body = await readBodyLimited(req);
+      const scopeCheck = assertSameTenant(tenantScope, id, "Company-Login");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const result = setCompanyLogin(id, body?.login || body || {});
+      audit({
+        type: "company.login.set",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId: id,
+      });
+      return reply(result.ok ? 200 : 422, result);
     }
 
     if (req.method === "POST" && (path === "/v1/company" || path === "/v1/company/upsert")) {

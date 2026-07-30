@@ -2,10 +2,24 @@
  * Company / Mandant registry – local SQLite first, optional Postgres sync.
  * Activation from platform creates account + workspace section immediately.
  */
+import crypto from "node:crypto";
 import { saveCompany, loadCompany as repoLoad, listCompanies as repoList, initDb } from "./db/repository.mjs";
 import { extractCompany, requireCompanyId, normalizeCompanyId } from "./tenant.mjs";
+import { secureCompare } from "./security/crypto.mjs";
 
 initDb();
+
+const COMPANY_PASSWORD_MIN = 4;
+
+export function companyLoginDomain() {
+  return String(process.env.WORKPASS_COMPANY_LOGIN_DOMAIN || "firma.de").trim().toLowerCase() || "firma.de";
+}
+
+export function defaultCompanyLoginEmail(companyId) {
+  const id = normalizeCompanyId(companyId);
+  if (!id) return "";
+  return `${id}@${companyLoginDomain()}`;
+}
 
 function buildWorkspace(companyId, companyName, prevWorkspace, activatedAt) {
   const id = `ws:${normalizeCompanyId(companyId)}`;
@@ -30,6 +44,24 @@ function mergeConnection(prev = {}, incoming = {}, activatedAt) {
   };
 }
 
+function hashCompanyPassword(password, saltB64) {
+  const salt = saltB64
+    ? Buffer.from(saltB64, "base64url")
+    : crypto.randomBytes(16);
+  const hash = crypto.scryptSync(String(password), salt, 32, { N: 16384, r: 8, p: 1 });
+  return {
+    algo: "scrypt",
+    salt: salt.toString("base64url"),
+    hash: Buffer.from(hash).toString("base64url"),
+  };
+}
+
+function verifyCompanyPassword(password, auth) {
+  if (!auth?.hash || !auth?.salt) return false;
+  const next = hashCompanyPassword(password, auth.salt);
+  return secureCompare(next.hash, auth.hash);
+}
+
 /**
  * Normalize activate/upsert body: accepts flat company, { company }, or activate envelope.
  */
@@ -38,6 +70,7 @@ export function normalizeCompanyPayload(payload = {}) {
     return {
       company: payload.company,
       connection: payload.connection && typeof payload.connection === "object" ? payload.connection : {},
+      login: payload.login || payload.credentials || payload.company?.login || null,
       event: payload.event || "",
       kind: payload.kind || "",
     };
@@ -45,6 +78,7 @@ export function normalizeCompanyPayload(payload = {}) {
   return {
     company: payload,
     connection: payload.connection && typeof payload.connection === "object" ? payload.connection : {},
+    login: payload.login || payload.credentials || null,
     event: payload.event || "",
     kind: payload.kind || "",
   };
@@ -53,6 +87,7 @@ export function normalizeCompanyPayload(payload = {}) {
 export function companyWorkspaceView(company) {
   if (!company) return null;
   const meta = company.meta && typeof company.meta === "object" ? company.meta : {};
+  const auth = meta.auth && typeof meta.auth === "object" ? meta.auth : null;
   return {
     id: company.id,
     name: company.name,
@@ -60,8 +95,108 @@ export function companyWorkspaceView(company) {
     workspaceStatus: meta.workspaceStatus || (meta.accountingEnabled ? "active" : "inactive"),
     section: meta.section || null,
     connection: meta.connection || null,
+    loginEmail: auth?.email || defaultCompanyLoginEmail(company.id),
+    hasLoginPassword: Boolean(auth?.hash),
     createdAt: company.createdAt,
     updatedAt: company.updatedAt,
+  };
+}
+
+/**
+ * Attach/update firm login (email + password from platform). Password min 4 chars/digits.
+ */
+export function setCompanyLogin(companyId, login = {}) {
+  const id = normalizeCompanyId(companyId);
+  if (!id) return { ok: false, error: "company.id fehlt" };
+  const company = repoLoad(id);
+  if (!company) return { ok: false, error: "Firma nicht gefunden" };
+
+  const password = String(login.password ?? login.pin ?? login.passwort ?? "");
+  if (password.length < COMPANY_PASSWORD_MIN) {
+    return {
+      ok: false,
+      error: `Firmen-Passwort min. ${COMPANY_PASSWORD_MIN} Zeichen (auch 4 Ziffern erlaubt)`,
+    };
+  }
+
+  let email = String(login.email || login.username || "").trim().toLowerCase();
+  if (!email) email = defaultCompanyLoginEmail(id);
+  if (!email.includes("@")) email = `${email}@${companyLoginDomain()}`;
+
+  const hashed = hashCompanyPassword(password);
+  const now = new Date().toISOString();
+  company.meta = {
+    ...(company.meta || {}),
+    auth: {
+      email,
+      ...hashed,
+      updatedAt: now,
+      source: login.source || "platform",
+    },
+  };
+  company.updatedAt = now;
+  saveCompany(company);
+  return {
+    ok: true,
+    companyId: id,
+    loginEmail: email,
+    workspace: companyWorkspaceView(company),
+  };
+}
+
+/**
+ * Find active company by login email (exact or {id}@domain).
+ */
+export function findCompanyByLoginEmail(email) {
+  const mail = String(email || "").trim().toLowerCase();
+  if (!mail) return null;
+  const domain = companyLoginDomain();
+  const companies = repoList();
+  for (const c of companies) {
+    if (c.meta?.accountingEnabled === false) continue;
+    const authEmail = String(c.meta?.auth?.email || "").trim().toLowerCase();
+    if (authEmail && authEmail === mail) return c;
+    if (defaultCompanyLoginEmail(c.id) === mail) return c;
+    const local = mail.split("@")[0];
+    const mailDomain = mail.split("@")[1] || "";
+    if (mailDomain === domain && normalizeCompanyId(local) === c.id) return c;
+  }
+  return null;
+}
+
+/**
+ * Verify firm portal login (platform company email + PIN/password).
+ */
+export function verifyCompanyLogin(email, password) {
+  const company = findCompanyByLoginEmail(email);
+  if (!company) {
+    return { ok: false, error: "Keine Firma für diese E-Mail (Firma zuerst per activate anlegen)." };
+  }
+  if (company.meta?.accountingEnabled === false) {
+    return { ok: false, error: "Firma ist deaktiviert." };
+  }
+  const auth = company.meta?.auth;
+  if (!auth?.hash) {
+    return {
+      ok: false,
+      error: `Firma ${company.id} hat noch kein Passwort – Plattform muss login.password bei activate senden.`,
+    };
+  }
+  if (!verifyCompanyPassword(password, auth)) {
+    return { ok: false, error: "Firmen-Passwort falsch." };
+  }
+  const loginEmail = auth.email || defaultCompanyLoginEmail(company.id);
+  return {
+    ok: true,
+    user: {
+      id: `company:${company.id}`,
+      email: loginEmail,
+      name: company.name || company.id,
+      role: "accountant",
+      companyId: company.id,
+    },
+    company,
+    via: "company-login",
   };
 }
 
@@ -100,13 +235,12 @@ export function upsertCompany(payload) {
  * Platform activates accounting for a company → create account + section immediately.
  */
 export function activateCompany(rawPayload = {}) {
-  const { company: companyBody, connection: connIn } = normalizeCompanyPayload(rawPayload);
+  const { company: companyBody, connection: connIn, login: loginIn } = normalizeCompanyPayload(rawPayload);
   const check = requireCompanyId(companyBody?.id ? companyBody : rawPayload);
   if (!check.ok) {
     return { ok: false, errors: [check.error], company: null, workspace: null, created: false };
   }
 
-  const now = new Date().toISOString();
   const prev = repoLoad(check.company.id);
   const created = !prev;
 
@@ -123,6 +257,7 @@ export function activateCompany(rawPayload = {}) {
   if (!upsert.ok) return { ...upsert, workspace: null };
 
   const company = upsert.company;
+  const now = new Date().toISOString();
   const activatedAt = connIn.activatedAt || now;
   const connection = mergeConnection(company.meta?.connection, connIn, activatedAt);
   const section = buildWorkspace(
@@ -146,18 +281,45 @@ export function activateCompany(rawPayload = {}) {
 
   saveCompany(company);
 
+  let loginResult = null;
+  const loginPayload = loginIn || rawPayload.login || rawPayload.credentials || null;
+  const password = loginPayload
+    ? String(loginPayload.password ?? loginPayload.pin ?? loginPayload.passwort ?? "")
+    : "";
+  if (password) {
+    loginResult = setCompanyLogin(company.id, {
+      email: loginPayload.email || loginPayload.username || defaultCompanyLoginEmail(company.id),
+      password,
+      source: "platform-activate",
+    });
+  } else if (!company.meta?.auth?.hash) {
+    company.meta.auth = {
+      ...(company.meta.auth || {}),
+      email: defaultCompanyLoginEmail(company.id),
+      pendingPassword: true,
+    };
+    saveCompany(company);
+  }
+
+  const fresh = repoLoad(company.id) || company;
   return {
     ok: true,
-    errors: [],
+    errors: loginResult && !loginResult.ok ? [loginResult.error] : [],
     created: created || upsert.created,
-    company,
-    workspace: companyWorkspaceView(company),
+    company: fresh,
+    workspace: companyWorkspaceView(fresh),
+    login: loginResult?.ok
+      ? { email: loginResult.loginEmail, ready: true }
+      : {
+          email: fresh.meta?.auth?.email || defaultCompanyLoginEmail(fresh.id),
+          ready: Boolean(fresh.meta?.auth?.hash),
+          hint: fresh.meta?.auth?.hash
+            ? undefined
+            : "Passwort/PIN bei activate unter login.password mitsenden",
+        },
   };
 }
 
-/**
- * Soft-disable accounting link without deleting company data.
- */
 export function deactivateCompany(companyId, opts = {}) {
   const id = normalizeCompanyId(companyId);
   if (!id) return { ok: false, errors: ["company.id fehlt"], company: null };
@@ -191,10 +353,6 @@ export function listCompanies(filter = {}) {
   return repoList(filter);
 }
 
-/**
- * Ensure company exists from payroll/invoice payload.
- * First sighting also provisions an active workspace (fallback if platform skipped activate).
- */
 export function ensureCompanyFromPayload(payload) {
   const check = requireCompanyId(payload);
   if (!check.ok) return check;

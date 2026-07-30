@@ -81,6 +81,17 @@ Alle Firmenfelder (Adresse, Steuernummer, DATEV-Nrn., …) werden über die API 
 
 النتيجة: سجل Mandant + مساحة عمل (`meta.section`) مع `accountingEnabled: true` — تظهر في واجهة Lohn حتى قبل أول كشف.
 
+مع بيانات دخول الشركة (اختياري لكن موصى به):
+
+```json
+"login": { "email": "luf@firma.de", "password": "4821" }
+```
+
+إن لم يُرسل `email` يُستخدم `{company.id}@firma.de` (متغير `WORKPASS_COMPANY_LOGIN_DOMAIN`).  
+كلمة السر/PIN من **4 أحرف/أرقام** فأكثر. تُخزَّن مشفّرة (scrypt).
+
+بعدها تفتح المحاسبة بـ `luf@firma.de` + `4821` (دور accountant، معزول على نفس الشركة).
+
 مثال: `examples/platform-company.activate.v1.json`  
 SDK: `client.activateCompany(payload)`
 

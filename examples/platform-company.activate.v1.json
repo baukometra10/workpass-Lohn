@@ -2,7 +2,7 @@
   "kind": "platform.company.activate.v1",
   "event": "company.accounting.activated",
   "company": {
-    "id": "lufthansa",
+    "id": "luf",
     "name": "Deutsche Lufthansa AG",
     "street": "Venloer Str. 151–153",
     "zip": "50672",
@@ -13,6 +13,10 @@
     "datevConsultantNo": "12345",
     "email": "buchhaltung@example.lufthansa",
     "phone": "+49 69 6960"
+  },
+  "login": {
+    "email": "luf@firma.de",
+    "password": "4821"
   },
   "connection": {
     "accountingEnabled": true,
