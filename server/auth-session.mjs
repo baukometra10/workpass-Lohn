@@ -28,13 +28,13 @@ function fromB64url(s) {
 
 function hasLocalAdminConfigured() {
   const wantEmail = String(process.env.WORKPASS_ADMIN_EMAIL || "").trim();
-  const wantPass = String(process.env.WORKPASS_ADMIN_PASSWORD || "");
+  const wantPass = String(process.env.WORKPASS_ADMIN_PASSWORD || "").trim();
   return Boolean(wantEmail && wantPass.length >= ADMIN_PASSWORD_MIN);
 }
 
 function adminSetupGaps() {
   const email = String(process.env.WORKPASS_ADMIN_EMAIL || "").trim();
-  const pass = String(process.env.WORKPASS_ADMIN_PASSWORD || "");
+  const pass = String(process.env.WORKPASS_ADMIN_PASSWORD || "").trim();
   const gaps = [];
   if (!email) gaps.push("WORKPASS_ADMIN_EMAIL fehlt");
   if (!pass) gaps.push("WORKPASS_ADMIN_PASSWORD fehlt");
@@ -205,7 +205,7 @@ async function verifyWithPlatform(email, password) {
 
 function verifyLocalAdmin(email, password) {
   const wantEmail = String(process.env.WORKPASS_ADMIN_EMAIL || "").trim().toLowerCase();
-  const wantPass = String(process.env.WORKPASS_ADMIN_PASSWORD || "");
+  const wantPass = String(process.env.WORKPASS_ADMIN_PASSWORD || "").trim();
   if (!wantEmail || wantPass.length < ADMIN_PASSWORD_MIN) {
     return {
       ok: false,
@@ -213,10 +213,17 @@ function verifyLocalAdmin(email, password) {
     };
   }
   const mail = String(email || "").trim().toLowerCase();
-  if (!secureCompare(mail, wantEmail) || !secureCompare(password, wantPass)) {
+  const pass = String(password || "");
+  if (!secureCompare(mail, wantEmail)) {
     return {
       ok: false,
-      error: `E-Mail/Passwort falsch. Erwartet genau WORKPASS_ADMIN_EMAIL (${wantEmail}).`,
+      error: `E-Mail falsch. Bitte genau eingeben: ${wantEmail}`,
+    };
+  }
+  if (!secureCompare(pass, wantPass)) {
+    return {
+      ok: false,
+      error: "Passwort falsch – exakt WORKPASS_ADMIN_PASSWORD aus Railway Variables (ohne Leerzeichen).",
     };
   }
   return {
@@ -283,17 +290,20 @@ export async function loginWithPassword(email, password, req) {
     }
   }
 
-  // 2) Platform auth (short timeout) – optional enhancement
+  // 2) Platform auth (short timeout) – only if local admin did not match
   let result = await verifyWithPlatform(mail, pass);
   if (result === null) {
-    result = local || verifyLocalAdmin(mail, pass);
+    result = local || { ok: false, error: "Kein Login möglich." };
   } else if (!result.ok) {
-    result = {
-      ok: false,
-      error: local?.error
-        ? `${result.error} | ${local.error}`
-        : result.error,
-    };
+    // Prefer clear local-admin hint; hide noisy 405 when admin account exists
+    if (local && !local.ok && hasLocalAdminConfigured()) {
+      result = {
+        ok: false,
+        error: local.error,
+      };
+    } else {
+      result = { ok: false, error: result.error };
+    }
   }
 
   if (!result?.ok) {
