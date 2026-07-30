@@ -64,11 +64,11 @@ export function authPublicConfig() {
     sessionTtlHours: Math.round(SESSION_TTL_MS / 3600000),
     hint: setupIncomplete
       ? (platformUrl
-        ? "Platform-Auth noch nicht nutzbar – Geräte-PIN verwenden ODER in Railway WORKPASS_ADMIN_EMAIL + WORKPASS_ADMIN_PASSWORD setzen"
+        ? "Platform-Auth optional – Geräte-PIN ODER WORKPASS_ADMIN_EMAIL/PASSWORD in Railway"
         : "In Railway WORKPASS_ADMIN_EMAIL + WORKPASS_ADMIN_PASSWORD setzen (min. 8 Zeichen), sonst Geräte-PIN")
-      : platformUrl
-        ? "Plattform-Konto oder Admin-E-Mail aus Railway Variables"
-        : "Anmeldung mit Admin-Konto (Bridge-Env)",
+      : "Ein Login reicht – Admin-Konto wird zuerst geprüft (auch wenn Platform-Auth URL gesetzt ist)",
+    localAdminFirst: true,
+    platformAuthTimeoutMs: Number(process.env.WORKPASS_PLATFORM_AUTH_TIMEOUT_MS || 2500),
   };
 }
 
@@ -152,8 +152,9 @@ async function verifyWithPlatform(email, password) {
   const url = String(process.env.WORKPASS_PLATFORM_AUTH_URL || "").trim();
   if (!url) return null;
   const key = process.env.WORKPASS_PLATFORM_WEBHOOK_KEY || process.env.WORKPASS_API_KEY || "";
+  const timeoutMs = Number(process.env.WORKPASS_PLATFORM_AUTH_TIMEOUT_MS || 2500);
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 12000);
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -190,7 +191,13 @@ async function verifyWithPlatform(email, password) {
       via: "platform",
     };
   } catch (e) {
-    return { ok: false, error: `Platform-Auth nicht erreichbar: ${e.message || e}` };
+    const aborted = e?.name === "AbortError";
+    return {
+      ok: false,
+      error: aborted
+        ? `Platform-Auth Timeout (${timeoutMs}ms) – lokales Admin-Konto wird bevorzugt`
+        : `Platform-Auth nicht erreichbar: ${e.message || e}`,
+    };
   } finally {
     clearTimeout(t);
   }
@@ -225,7 +232,8 @@ function verifyLocalAdmin(email, password) {
 }
 
 /**
- * Login with platform password (preferred) or local admin fallback.
+ * Login: local admin first (fast), then optional platform auth.
+ * Platform URL may stay configured without blocking accounting login.
  */
 export async function loginWithPassword(email, password, req) {
   const ip = clientIp(req);
@@ -250,21 +258,42 @@ export async function loginWithPassword(email, password, req) {
     return { ok: false, status: 422, error: "E-Mail und Passwort (min. 8 Zeichen) erforderlich." };
   }
 
-  let result = await verifyWithPlatform(mail, pass);
-  const allowLocalFallback = process.env.WORKPASS_AUTH_FALLBACK_LOCAL !== "0";
-
-  if (result === null) {
-    result = verifyLocalAdmin(mail, pass);
-  } else if (!result.ok && allowLocalFallback) {
-    const local = verifyLocalAdmin(mail, pass);
+  // 1) Fast path: Railway admin account (even if platform URL is set)
+  let local = null;
+  if (hasLocalAdminConfigured()) {
+    local = verifyLocalAdmin(mail, pass);
     if (local.ok) {
-      result = local;
-    } else {
-      result = {
-        ok: false,
-        error: `${result.error} | ${local.error}`,
+      const role = "admin";
+      const session = createSession({ ...local.user, role });
+      noteAuthSuccess(ip);
+      audit({
+        type: "auth.login.ok",
+        outcome: "ok",
+        ip,
+        detail: { email: session.user.email, role, via: "local-admin-first" },
+      });
+      return {
+        ok: true,
+        status: 200,
+        session: session.token,
+        expiresAt: session.expiresAt,
+        user: session.user,
+        via: "local-admin",
       };
     }
+  }
+
+  // 2) Platform auth (short timeout) – optional enhancement
+  let result = await verifyWithPlatform(mail, pass);
+  if (result === null) {
+    result = local || verifyLocalAdmin(mail, pass);
+  } else if (!result.ok) {
+    result = {
+      ok: false,
+      error: local?.error
+        ? `${result.error} | ${local.error}`
+        : result.error,
+    };
   }
 
   if (!result?.ok) {
@@ -273,8 +302,7 @@ export async function loginWithPassword(email, password, req) {
     return {
       ok: false,
       status: 401,
-      error: result?.error
-        || "Anmeldung fehlgeschlagen.",
+      error: result?.error || "Anmeldung fehlgeschlagen.",
       setupGaps: adminSetupGaps(),
     };
   }

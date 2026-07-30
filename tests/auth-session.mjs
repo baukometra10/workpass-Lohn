@@ -6,6 +6,9 @@ process.env.WORKPASS_ADMIN_EMAIL = "admin@example.test";
 process.env.WORKPASS_ADMIN_PASSWORD = "super-secret-admin-pass";
 process.env.WORKPASS_SESSION_SECRET = "test-session-secret-32chars-min";
 process.env.WORKPASS_API_KEY = "test-api-key-not-used-here-xxxx";
+// Simulate broken/slow platform auth – local admin must still win immediately
+process.env.WORKPASS_PLATFORM_AUTH_URL = "http://127.0.0.1:9/does-not-exist";
+process.env.WORKPASS_PLATFORM_AUTH_TIMEOUT_MS = "800";
 
 const {
   authPublicConfig,
@@ -34,19 +37,24 @@ const req = { headers: {}, socket: { remoteAddress: "127.0.0.1" } };
 console.log("\n=== Auth config ===");
 const cfg = authPublicConfig();
 assert(cfg.localAdminFallback === true, "local admin fallback visible");
-assert(cfg.platformAuthConfigured === false, "platform auth off by default");
+assert(cfg.platformAuthConfigured === true, "platform url may stay configured");
+assert(cfg.localAdminFirst === true, "local admin first");
 
-console.log("\n=== Local admin login ===");
-const bad = await loginWithPassword("admin@example.test", "wrong-password-xx", req);
-assert(!bad.ok && bad.status === 401, "reject wrong password");
-
+console.log("\n=== Local admin first (even with platform URL) ===");
+const t0 = Date.now();
 const ok = await loginWithPassword("admin@example.test", "super-secret-admin-pass", req);
+const dt = Date.now() - t0;
 assert(ok.ok && ok.session, "login ok");
+assert(ok.via === "local-admin", "via local-admin (not waiting for platform)");
+assert(dt < 1500, `fast login (${dt}ms < 1500ms)`);
 assert(ok.user.role === "admin", "role admin");
-assert(ok.via === "local-admin", "via local-admin");
 
 const verified = verifySessionToken(ok.session);
 assert(verified.ok && verified.user.email === "admin@example.test", "session verifies");
+
+console.log("\n=== Wrong password ===");
+const bad = await loginWithPassword("admin@example.test", "wrong-password-xx", req);
+assert(!bad.ok && bad.status === 401, "reject wrong password");
 
 console.log("\n=== Session forge rejected ===");
 const forged = verifySessionToken(`${ok.session}tampered`);

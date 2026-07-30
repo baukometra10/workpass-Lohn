@@ -5,9 +5,12 @@
  */
 (function () {
   const STORE_KEY = "workpassLohnAuthV1";
-  const SESSION_KEY = "workpassLohnSessionV1";
-  const PLATFORM_SESSION_KEY = "workpassPlatformSessionV1";
-  const IDLE_MS = 12 * 60 * 1000;
+  const SESSION_KEY = "workpassLohnSessionV2"; // localStorage – login once
+  const PLATFORM_SESSION_KEY = "workpassPlatformSessionV2";
+  const LEGACY_SESSION_KEY = "workpassLohnSessionV1";
+  const LEGACY_PLATFORM_KEY = "workpassPlatformSessionV1";
+  // Long-lived UI session (default 8h, aligned with bridge token TTL)
+  let IDLE_MS = 8 * 60 * 60 * 1000;
   const TEST_BYPASS = "workpassLohnE2E";
 
   let idleTimer = null;
@@ -25,6 +28,27 @@
     return String(location.origin || "").replace(/\/+$/, "");
   }
 
+  function storageGet(key) {
+    try {
+      return localStorage.getItem(key) || sessionStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+
+  function storageSet(key, value) {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      try { sessionStorage.setItem(key, value); } catch { /* ignore */ }
+    }
+  }
+
+  function storageRemove(key) {
+    try { localStorage.removeItem(key); } catch { /* ignore */ }
+    try { sessionStorage.removeItem(key); } catch { /* ignore */ }
+  }
+
   function loadStore() {
     try {
       return JSON.parse(localStorage.getItem(STORE_KEY) || "null");
@@ -39,18 +63,21 @@
 
   function loadPlatformSession() {
     try {
-      return JSON.parse(sessionStorage.getItem(PLATFORM_SESSION_KEY) || "null");
+      const raw = storageGet(PLATFORM_SESSION_KEY) || storageGet(LEGACY_PLATFORM_KEY);
+      return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
     }
   }
 
   function savePlatformSession(data) {
-    sessionStorage.setItem(PLATFORM_SESSION_KEY, JSON.stringify(data));
+    storageSet(PLATFORM_SESSION_KEY, JSON.stringify(data));
+    try { sessionStorage.removeItem(LEGACY_PLATFORM_KEY); } catch { /* ignore */ }
   }
 
   function clearPlatformSession() {
-    sessionStorage.removeItem(PLATFORM_SESSION_KEY);
+    storageRemove(PLATFORM_SESSION_KEY);
+    storageRemove(LEGACY_PLATFORM_KEY);
   }
 
   async function sha256(text) {
@@ -91,9 +118,10 @@
   }
 
   function sessionActive() {
-    if (sessionStorage.getItem(TEST_BYPASS) === "1") return true;
+    if (storageGet(TEST_BYPASS) === "1" || sessionStorage.getItem(TEST_BYPASS) === "1") return true;
     try {
-      const s = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
+      const raw = storageGet(SESSION_KEY) || storageGet(LEGACY_SESSION_KEY);
+      const s = raw ? JSON.parse(raw) : null;
       if (!s?.until) return false;
       return Date.now() < s.until;
     } catch {
@@ -107,29 +135,49 @@
     return Date.now() < Date.parse(s.expiresAt);
   }
 
-  function touchSession() {
-    const until = Date.now() + IDLE_MS;
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ until }));
+  /** One successful login (Konto oder PIN) keeps the app open. */
+  function isUnlocked() {
+    if (storageGet(TEST_BYPASS) === "1" || sessionStorage.getItem(TEST_BYPASS) === "1") return true;
+    return sessionActive() || platformSessionActive();
+  }
+
+  function touchSession(extraMs) {
+    const ttl = Number(extraMs) > 0 ? Number(extraMs) : IDLE_MS;
+    const until = Date.now() + ttl;
+    storageSet(SESSION_KEY, JSON.stringify({ until, touchedAt: new Date().toISOString() }));
+    try { sessionStorage.removeItem(LEGACY_SESSION_KEY); } catch { /* ignore */ }
     resetIdleWatch();
   }
 
   function clearSession() {
-    sessionStorage.removeItem(SESSION_KEY);
+    storageRemove(SESSION_KEY);
+    storageRemove(LEGACY_SESSION_KEY);
   }
 
   function resetIdleWatch() {
     clearTimeout(idleTimer);
-    if (!sessionActive()) return;
+    if (!isUnlocked()) return;
+    const s = (() => {
+      try {
+        const raw = storageGet(SESSION_KEY) || storageGet(LEGACY_SESSION_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch {
+        return null;
+      }
+    })();
+    const remaining = s?.until ? Math.max(1000, s.until - Date.now()) : IDLE_MS;
     idleTimer = setTimeout(() => {
       clearSession();
-      showGate("Sitzung abgelaufen – bitte erneut anmelden.");
-    }, IDLE_MS);
+      clearPlatformSession();
+      showGate("Sitzung abgelaufen – bitte einmal erneut anmelden.");
+    }, remaining);
   }
 
   function bindActivity() {
     ["pointerdown", "keydown", "mousemove", "scroll"].forEach((ev) => {
       window.addEventListener(ev, () => {
-        if (sessionActive()) touchSession();
+        // Keep session alive while working – do not force re-login
+        if (isUnlocked()) touchSession();
       }, { passive: true });
     });
   }
@@ -251,6 +299,8 @@
     try {
       const res = await fetch(`${apiOrigin()}/v1/auth/config`, { cache: "no-store" });
       authConfig = await res.json();
+      const hours = Number(authConfig?.sessionTtlHours);
+      if (hours > 0) IDLE_MS = Math.round(hours * 60 * 60 * 1000);
     } catch {
       authConfig = {
         ok: false,
@@ -258,6 +308,7 @@
         localAdminFallback: false,
         requirePlatformLogin: false,
         devicePinAllowed: true,
+        setupIncomplete: true,
         hint: "Bridge offline – Geräte-PIN nutzen",
       };
     }
@@ -272,6 +323,7 @@
       if (err) err.textContent = "E-Mail und Passwort (min. 8 Zeichen) erforderlich.";
       return false;
     }
+    if (err) err.textContent = "Anmelden…";
     try {
       const res = await fetch(`${apiOrigin()}/v1/auth/login`, {
         method: "POST",
@@ -289,7 +341,9 @@
         user: data.user,
         via: data.via,
       });
-      touchSession();
+      // Align UI session with server token lifetime (login once)
+      const expMs = data.expiresAt ? Date.parse(data.expiresAt) - Date.now() : IDLE_MS;
+      touchSession(Math.max(expMs, 60 * 60 * 1000));
       hideGate();
       onUnlockCb?.();
       return true;
@@ -369,7 +423,7 @@
 
   function lock() {
     clearSession();
-    if (authConfig?.requirePlatformLogin) clearPlatformSession();
+    clearPlatformSession();
     showGate("");
   }
 
@@ -413,11 +467,8 @@
     });
     document.getElementById("btnLock")?.addEventListener("click", lock);
 
-    const requirePlat = Boolean(authConfig?.requirePlatformLogin);
-    const hasPlatSession = platformSessionActive();
-    const unlocked = sessionActive() && (!requirePlat || hasPlatSession);
-
-    if (unlocked) {
+    // One unlock is enough across Hub / Lohn / Admin (localStorage)
+    if (isUnlocked()) {
       hideGate();
       touchSession();
       onUnlockCb?.();
@@ -432,7 +483,7 @@
     lock,
     unlock: submit,
     changePin,
-    isUnlocked: sessionActive,
+    isUnlocked,
     getSessionToken,
     getSessionUser,
     getAuthConfig: () => authConfig,
