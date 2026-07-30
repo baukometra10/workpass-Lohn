@@ -12,13 +12,34 @@ initDb();
 const COMPANY_PASSWORD_MIN = 4;
 
 export function companyLoginDomain() {
-  return String(process.env.WORKPASS_COMPANY_LOGIN_DOMAIN || "firma.de").trim().toLowerCase() || "firma.de";
+  // Accept "firma.de" or mistaken "@firma.de" from env
+  const raw = String(process.env.WORKPASS_COMPANY_LOGIN_DOMAIN || "firma.de")
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, "")
+    .replace(/\/+$/, "");
+  return raw || "firma.de";
 }
 
 export function defaultCompanyLoginEmail(companyId) {
   const id = normalizeCompanyId(companyId);
   if (!id) return "";
   return `${id}@${companyLoginDomain()}`;
+}
+
+/** Normalize login mails; fixes accidental @@ from env "@firma.de". */
+export function normalizeLoginEmail(email) {
+  let mail = String(email || "").trim().toLowerCase();
+  if (!mail) return "";
+  mail = mail.replace(/@{2,}/g, "@");
+  if (!mail.includes("@")) {
+    return `${normalizeCompanyId(mail) || mail}@${companyLoginDomain()}`;
+  }
+  const at = mail.indexOf("@");
+  const local = mail.slice(0, at).replace(/@/g, "");
+  let domain = mail.slice(at + 1).replace(/^@+/, "").replace(/@{2,}/g, "");
+  if (!domain) domain = companyLoginDomain();
+  return `${local}@${domain}`;
 }
 
 function buildWorkspace(companyId, companyName, prevWorkspace, activatedAt) {
@@ -95,7 +116,7 @@ export function companyWorkspaceView(company) {
     workspaceStatus: meta.workspaceStatus || (meta.accountingEnabled ? "active" : "inactive"),
     section: meta.section || null,
     connection: meta.connection || null,
-    loginEmail: auth?.email || defaultCompanyLoginEmail(company.id),
+    loginEmail: normalizeLoginEmail(auth?.email || "") || defaultCompanyLoginEmail(company.id),
     hasLoginPassword: Boolean(auth?.hash),
     createdAt: company.createdAt,
     updatedAt: company.updatedAt,
@@ -119,9 +140,8 @@ export function setCompanyLogin(companyId, login = {}) {
     };
   }
 
-  let email = String(login.email || login.username || "").trim().toLowerCase();
-  if (!email) email = defaultCompanyLoginEmail(id);
-  if (!email.includes("@")) email = `${email}@${companyLoginDomain()}`;
+  let email = normalizeLoginEmail(login.email || login.username || "")
+    || defaultCompanyLoginEmail(id);
 
   const hashed = hashCompanyPassword(password);
   const now = new Date().toISOString();
@@ -148,7 +168,7 @@ export function setCompanyLogin(companyId, login = {}) {
  * Find company by login email (auth.email, company.email, {id}@domain, name slug).
  */
 export function findCompanyByLoginEmail(email) {
-  const mail = String(email || "").trim().toLowerCase();
+  const mail = normalizeLoginEmail(email);
   if (!mail) return null;
   const domain = companyLoginDomain();
   const local = mail.split("@")[0] || "";
@@ -158,8 +178,8 @@ export function findCompanyByLoginEmail(email) {
 
   for (const c of companies) {
     if (c.meta?.accountingEnabled === false) continue;
-    const authEmail = String(c.meta?.auth?.email || "").trim().toLowerCase();
-    const companyEmail = String(c.email || "").trim().toLowerCase();
+    const authEmail = normalizeLoginEmail(c.meta?.auth?.email || "");
+    const companyEmail = normalizeLoginEmail(c.email || "");
     const nameSlug = normalizeCompanyId(c.name || "");
 
     if (authEmail && authEmail === mail) return c;
@@ -171,7 +191,7 @@ export function findCompanyByLoginEmail(email) {
 
   // Also search inactive last (clearer error later)
   for (const c of companies) {
-    const authEmail = String(c.meta?.auth?.email || "").trim().toLowerCase();
+    const authEmail = normalizeLoginEmail(c.meta?.auth?.email || "");
     if (authEmail === mail || defaultCompanyLoginEmail(c.id) === mail) return c;
   }
   return null;
@@ -187,8 +207,8 @@ export function verifyCompanyLogin(email, password) {
       ok: false,
       error:
         "Keine Firma in der Buchhaltung für diese E-Mail. "
-        + "Die Plattform muss einmal POST /v1/company/login-sync (oder activate inkl. login) an die Accounting-URL senden – "
-        + "Aktivierung nur in der Plattform reicht nicht.",
+        + `Nutze die Login-Adresse aus Admin (Spalte Login), meist {firma-id}@${companyLoginDomain()} + PIN. `
+        + "Oder einmal Login-Sync im Admin speichern – Aktivierung nur in der Plattform reicht nicht.",
       code: "company_not_synced",
     };
   }

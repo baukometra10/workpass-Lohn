@@ -67,7 +67,7 @@ export function authPublicConfig() {
       ? "WORKPASS_ADMIN_EMAIL/PASSWORD setzen ODER Firmen-Login nach activate (name@firma.de + PIN)"
       : "Admin-Konto ODER Firmen-Login (z. B. luf@firma.de + 4-stellige PIN)",
     localAdminFirst: true,
-    companyLoginDomain: String(process.env.WORKPASS_COMPANY_LOGIN_DOMAIN || "firma.de"),
+    companyLoginDomain: companyLoginDomain(),
     companyPasswordMin: 4,
     platformAuthTimeoutMs: Number(process.env.WORKPASS_PLATFORM_AUTH_TIMEOUT_MS || 2500),
   };
