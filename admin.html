@@ -177,9 +177,30 @@
               <td>${c.name || "—"}</td>
               <td><code>${c.id || ""}</code></td>
               <td>${c.loginEmail || "—"} ${c.hasLoginPassword ? "· PIN ✓" : "· kein PIN"}</td>
-              <td><span class="badge ${c.accountingEnabled ? "badge-on" : "badge-off"}">${c.accountingEnabled ? "Aktiv" : "Inaktiv"}</span></td>
+              <td>
+                <span class="badge ${c.accountingEnabled ? "badge-on" : "badge-off"}">${c.accountingEnabled ? "Aktiv" : "Inaktiv"}</span>
+                <button type="button" class="btn-delete-company" data-id="${c.id || ""}" data-name="${(c.name || c.id || "").replace(/"/g, "&quot;")}" style="margin-left:8px;padding:4px 8px;font-size:0.72rem;border-radius:6px;border:1px solid rgba(220,80,80,0.45);background:rgba(120,30,30,0.35);color:#ffc9c9;cursor:pointer">Löschen</button>
+              </td>
             </tr>`).join("");
           document.getElementById("adminCompanies").innerHTML = rows || `<tr><td colspan="4">Noch keine Firmen – oben „Login-Sync“ nutzen oder Plattform syncen.</td></tr>`;
+          document.querySelectorAll(".btn-delete-company").forEach((btn) => {
+            btn.addEventListener("click", async () => {
+              const id = btn.getAttribute("data-id");
+              const name = btn.getAttribute("data-name") || id;
+              if (!id) return;
+              if (!confirm(`Firma „${name}“ (${id}) wirklich aus WorkPass Lohn löschen?`)) return;
+              try {
+                await api("/v1/company/delete", {
+                  method: "POST",
+                  body: JSON.stringify({ companyId: id, event: "company.deleted", deletedBy: "admin-ui" }),
+                });
+                setStatus(`Firma ${id} entfernt`, true);
+                refresh();
+              } catch (e) {
+                setStatus(e.message, false);
+              }
+            });
+          });
           const backups = data.backup?.backups || [];
           document.getElementById("adminBackups").innerHTML = backups.length
             ? `<ul>${backups.map((b) => `<li>${b.fileName || b.name || JSON.stringify(b)}</li>`).join("")}</ul>`

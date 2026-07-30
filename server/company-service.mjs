@@ -3,7 +3,7 @@
  * Activation from platform creates account + workspace section immediately.
  */
 import crypto from "node:crypto";
-import { saveCompany, loadCompany as repoLoad, listCompanies as repoList, initDb } from "./db/repository.mjs";
+import { saveCompany, loadCompany as repoLoad, listCompanies as repoList, deleteCompany as repoDelete, initDb } from "./db/repository.mjs";
 import { extractCompany, requireCompanyId, normalizeCompanyId } from "./tenant.mjs";
 import { secureCompare } from "./security/crypto.mjs";
 
@@ -430,6 +430,46 @@ export function deactivateCompany(companyId, opts = {}) {
   };
   saveCompany(company);
   return { ok: true, errors: [], company, workspace: companyWorkspaceView(company) };
+}
+
+/**
+ * Hard-delete when platform removes the company.
+ * Removes Mandant + related payroll/invoice/delivery rows from accounting.
+ */
+export function deleteCompany(companyIdOrPayload = {}, opts = {}) {
+  const payload = typeof companyIdOrPayload === "string"
+    ? { id: companyIdOrPayload }
+    : (companyIdOrPayload || {});
+  const id = normalizeCompanyId(
+    payload.company?.id || payload.id || payload.companyId || ""
+  );
+  if (!id) {
+    return { ok: false, deleted: false, errors: ["company.id fehlt"], companyId: null };
+  }
+
+  const hard = opts.hard !== false
+    && payload.hard !== false
+    && payload.purge !== false;
+
+  if (!hard) {
+    return deactivateCompany(id, {
+      deactivatedBy: payload.deletedBy || payload.deactivatedBy || opts.deletedBy || "platform",
+    });
+  }
+
+  const result = repoDelete(id, {});
+  return {
+    ok: true,
+    deleted: Boolean(result.deleted),
+    alreadyGone: Boolean(result.alreadyGone),
+    errors: [],
+    companyId: result.companyId,
+    name: result.name || id,
+    purged: result.purged,
+    message: result.deleted
+      ? "Firma aus WorkPass Lohn entfernt"
+      : "Firma war bereits nicht mehr in WorkPass Lohn",
+  };
 }
 
 export function loadCompany(id) {

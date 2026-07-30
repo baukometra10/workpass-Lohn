@@ -55,6 +55,27 @@ function removeOutbox(id) {
   sqliteExec(`DELETE FROM sync_outbox WHERE id = ?`, [id]);
 }
 
+async function deleteRemote(entity, entityId) {
+  if (entity === "company") {
+    await pgQuery(`DELETE FROM payroll_jobs WHERE company_id = $1`, [entityId]);
+    await pgQuery(`DELETE FROM invoice_jobs WHERE company_id = $1`, [entityId]);
+    await pgQuery(`DELETE FROM deliveries WHERE company_id = $1`, [entityId]);
+    await pgQuery(`DELETE FROM companies WHERE id = $1`, [entityId]);
+    return;
+  }
+  if (entity === "payroll") {
+    await pgQuery(`DELETE FROM payroll_jobs WHERE job_id = $1`, [entityId]);
+    return;
+  }
+  if (entity === "invoice") {
+    await pgQuery(`DELETE FROM invoice_jobs WHERE id = $1`, [entityId]);
+    return;
+  }
+  if (entity === "delivery") {
+    await pgQuery(`DELETE FROM deliveries WHERE delivery_id = $1`, [entityId]);
+  }
+}
+
 async function upsertRemote(entity, payload) {
   const syncedAt = now();
   if (entity === "company") {
@@ -181,16 +202,20 @@ export async function flushSyncOutbox(limit = 50) {
     try {
       const payload = unpackOutbox(row.payload_json);
       if (!payload) throw new Error("Outbox payload unreadable");
-      await upsertRemote(row.entity, payload);
-      // mark local synced_at
-      if (row.entity === "company") {
-        sqliteExec(`UPDATE companies SET synced_at = ? WHERE id = ?`, [now(), row.entity_id]);
-      } else if (row.entity === "payroll") {
-        sqliteExec(`UPDATE payroll_jobs SET synced_at = ? WHERE job_id = ?`, [now(), row.entity_id]);
-      } else if (row.entity === "invoice") {
-        sqliteExec(`UPDATE invoice_jobs SET synced_at = ? WHERE id = ?`, [now(), row.entity_id]);
-      } else if (row.entity === "delivery") {
-        sqliteExec(`UPDATE deliveries SET synced_at = ? WHERE delivery_id = ?`, [now(), row.entity_id]);
+      if (row.op === "delete") {
+        await deleteRemote(row.entity, row.entity_id);
+      } else {
+        await upsertRemote(row.entity, payload);
+        // mark local synced_at
+        if (row.entity === "company") {
+          sqliteExec(`UPDATE companies SET synced_at = ? WHERE id = ?`, [now(), row.entity_id]);
+        } else if (row.entity === "payroll") {
+          sqliteExec(`UPDATE payroll_jobs SET synced_at = ? WHERE job_id = ?`, [now(), row.entity_id]);
+        } else if (row.entity === "invoice") {
+          sqliteExec(`UPDATE invoice_jobs SET synced_at = ? WHERE id = ?`, [now(), row.entity_id]);
+        } else if (row.entity === "delivery") {
+          sqliteExec(`UPDATE deliveries SET synced_at = ? WHERE delivery_id = ?`, [now(), row.entity_id]);
+        }
       }
       removeOutbox(row.id);
       flushed += 1;

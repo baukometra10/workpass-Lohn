@@ -143,6 +143,71 @@ export function listCompanies(filter = {}) {
   return rows.map((r) => unpackPayload(r.payload_json)).filter(Boolean);
 }
 
+/**
+ * Hard-delete company + all local payroll/invoice/delivery rows for that tenant.
+ * Platform company delete must call this (soft deactivate alone leaves the firm visible).
+ */
+export function deleteCompany(companyId, opts = {}) {
+  ensure(opts);
+  const id = normalizeCompanyId(companyId);
+  if (!id) throw new Error("company.id fehlt");
+  const existing = loadCompany(id);
+  if (!existing) {
+    return {
+      ok: true,
+      deleted: false,
+      alreadyGone: true,
+      companyId: id,
+      purged: { payrollJobs: 0, invoiceJobs: 0, deliveries: 0 },
+    };
+  }
+
+  const payroll = sqliteGet(
+    `SELECT COUNT(*) AS c FROM payroll_jobs WHERE company_id = ?`,
+    [id]
+  );
+  const invoices = sqliteGet(
+    `SELECT COUNT(*) AS c FROM invoice_jobs WHERE company_id = ?`,
+    [id]
+  );
+  const deliveries = sqliteGet(
+    `SELECT COUNT(*) AS c FROM deliveries WHERE company_id = ?`,
+    [id]
+  );
+
+  sqliteExec(`DELETE FROM payroll_jobs WHERE company_id = ?`, [id]);
+  sqliteExec(`DELETE FROM invoice_jobs WHERE company_id = ?`, [id]);
+  sqliteExec(`DELETE FROM deliveries WHERE company_id = ?`, [id]);
+  sqliteExec(`DELETE FROM companies WHERE id = ?`, [id]);
+  // Drop stale company upserts; keep a single delete op for remote Postgres
+  sqliteExec(
+    `DELETE FROM sync_outbox WHERE entity = 'company' AND entity_id = ? AND op = 'upsert'`,
+    [id]
+  );
+
+  if (!opts.skipSync) {
+    enqueueSync("company", id, {
+      id,
+      deleted: true,
+      deletedAt: now(),
+      name: existing?.name || id,
+    }, "delete");
+    scheduleSyncFlush();
+  }
+
+  return {
+    ok: true,
+    deleted: true,
+    companyId: id,
+    name: existing?.name || id,
+    purged: {
+      payrollJobs: Number(payroll?.c || 0),
+      invoiceJobs: Number(invoices?.c || 0),
+      deliveries: Number(deliveries?.c || 0),
+    },
+  };
+}
+
 // --- Payroll ---
 
 export function savePayrollJob(job, opts = {}) {

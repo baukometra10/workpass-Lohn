@@ -85,6 +85,17 @@ export class WorkPassAccountingClient {
     return this.request("POST", "/v1/company/deactivate", body);
   }
 
+  /**
+   * Hard-delete company from accounting when removed on the platform.
+   * Purges Mandant + related payroll/invoice/delivery rows.
+   */
+  deleteCompany(companyIdOrPayload) {
+    const body = typeof companyIdOrPayload === "string"
+      ? { id: companyIdOrPayload, event: "company.deleted" }
+      : { event: "company.deleted", ...companyIdOrPayload };
+    return this.request("POST", "/v1/company/delete", body);
+  }
+
   getCompany(id) {
     return this.request("GET", `/v1/company/${encodeURIComponent(id)}`);
   }

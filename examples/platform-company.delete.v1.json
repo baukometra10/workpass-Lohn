@@ -1,0 +1,8 @@
+{
+  "kind": "platform.company.delete.v1",
+  "event": "company.deleted",
+  "company": {
+    "id": "luf"
+  },
+  "deletedBy": "platform"
+}

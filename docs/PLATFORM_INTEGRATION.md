@@ -111,7 +111,22 @@ Header: `X-WorkPass-Key: <WORKPASS_API_KEY>`
 مثال: `examples/platform-company.activate.v1.json`  
 SDK: `client.activateCompany(payload)` / `client.syncCompanyLogin(payload)`
 
-إعادة الاستدعاء آمنة (idempotent). إلغاء ناعم: `POST /v1/company/deactivate`.
+إعادة الاستدعاء آمنة (idempotent).  
+- إلغاء ناعم (الربط فقط): `POST /v1/company/deactivate`  
+- **حذف الشركة من المنصة → حذف فوري من المحاسبة:** `POST /v1/company/delete`  
+  (مرادف: `POST /v1/company/purge` أو `DELETE /v1/company/:id`)
+
+```json
+{
+  "kind": "platform.company.delete.v1",
+  "event": "company.deleted",
+  "company": { "id": "luf" },
+  "deletedBy": "platform"
+}
+```
+
+يحذف الـ Mandant + payroll/invoice/delivery المرتبطة. مثال: `examples/platform-company.delete.v1.json`  
+SDK: `client.deleteCompany(idOrPayload)`
 
 احتياط: أول `payroll/invoice ingest` ينشئ الحساب أيضاً إن نُسي التفعيل.
 
@@ -218,7 +233,10 @@ const rel = await client.releasePayroll(job.jobId);
 | GET | `/health` | Liveness |
 | POST | `/v1/company/activate` | Firma aktivieren → Konto + Workspace sofort |
 | POST | `/v1/company/provision` | Alias für activate |
-| POST | `/v1/company/deactivate` | Accounting-Link soft-off |
+| POST | `/v1/company/deactivate` | Accounting-Link soft-off (Daten bleiben) |
+| POST | `/v1/company/delete` | Firma hard-löschen (Plattform gelöscht) |
+| POST | `/v1/company/purge` | Alias für delete |
+| DELETE | `/v1/company/:id` | Alias für delete |
 | POST | `/v1/company/upsert` | Firma anlegen/aktualisieren |
 | GET | `/v1/companies` | Firmenliste (+ workspaces) |
 | GET | `/v1/company/:id` | Eine Firma + workspace |
@@ -243,6 +261,7 @@ Auth: Header `X-WorkPass-Key`.
 |------|----------|
 | `platform.payroll.v1` | Platform → Accounting |
 | `platform.company.activate.v1` | Platform → Accounting (تفعيل فوري) |
+| `platform.company.delete.v1` | Platform → Accounting (حذف فوري عند حذف الشركة) |
 | `platform.payslip.v1` | Accounting → Platform |
 | `platform.invoice.v1` | Platform ↔ Accounting |
 | `platform.employee.delivery.v1` | Accounting → Platform (nach Freigabe) |

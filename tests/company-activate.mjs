@@ -1,10 +1,12 @@
 /**
  * Company activate → account + workspace section immediately.
+ * Hard delete when platform removes company.
  * Run: node tests/company-activate.mjs
  */
 import {
   activateCompany,
   deactivateCompany,
+  deleteCompany,
   listCompanies,
   loadCompany,
   companyWorkspaceView,
@@ -69,6 +71,21 @@ assert(off.ok && off.company?.meta?.accountingEnabled === false, "deactivated");
 assert(off.workspace?.workspaceStatus === "inactive", "inactive status");
 assert(loadCompany(demoId), "data retained");
 
+console.log("\n=== Hard delete (platform company deleted) ===");
+const gone = deleteCompany({
+  kind: "platform.company.delete.v1",
+  event: "company.deleted",
+  company: { id: demoId },
+  deletedBy: "test",
+});
+assert(gone.ok && gone.deleted === true, "hard delete ok");
+assert(!loadCompany(demoId), "company gone from registry");
+assert(!listCompanies().some((c) => c.id === demoId), "not in list");
+
+console.log("\n=== Delete idempotent ===");
+const again = deleteCompany({ companyId: demoId });
+assert(again.ok && again.alreadyGone === true, "second delete alreadyGone");
+
 console.log("\n=== Ensure from ingest fallback ===");
 const ingestId = `ingest-fallback-${Date.now().toString(36)}`;
 const ensured = ensureCompanyFromPayload({
@@ -76,10 +93,13 @@ const ensured = ensureCompanyFromPayload({
 });
 assert(ensured.ok && ensured.company?.meta?.accountingEnabled === true, "ingest ensure activates");
 assert(ensured.company?.meta?.section?.id === `ws:${ingestId}`, "ingest section");
+deleteCompany({ id: ingestId });
 
 console.log("\n=== Reject without id ===");
 const bad = activateCompany({ company: { name: "No Id GmbH" } });
 assert(!bad.ok, "reject without company.id");
+const badDel = deleteCompany({});
+assert(!badDel.ok, "delete rejects without id");
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);

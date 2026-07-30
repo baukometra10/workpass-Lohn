@@ -17,6 +17,7 @@ import {
   upsertCompany,
   activateCompany,
   deactivateCompany,
+  deleteCompany,
   loadCompany,
   listCompanies,
   companyWorkspaceView,
@@ -109,7 +110,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "1.9.2",
+      version: "1.9.3",
       multiTenant: true,
       platform: {
         domain: PLATFORM_DOMAIN,
@@ -213,10 +214,20 @@ async function handler(req, res) {
         || path === "/v1/company/activate"
         || path === "/v1/company/provision"
         || path === "/v1/company/deactivate"
+        || path === "/v1/company/delete"
+        || path === "/v1/company/purge"
         || path === "/v1/company/login-sync"
         || path === "/v1/company/ensure-login"
         || path.endsWith("/login-credentials");
       if (needsAdmin && sess.user.role !== "admin") {
+        return reply(403, { ok: false, error: "Nur Accounting-Admin" });
+      }
+      // DELETE /v1/company/:id also admin-only for session users
+      if (
+        req.method === "DELETE"
+        && path.startsWith("/v1/company/")
+        && sess.user.role !== "admin"
+      ) {
         return reply(403, { ok: false, error: "Nur Accounting-Admin" });
       }
     } else {
@@ -269,7 +280,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "1.9.2",
+          version: "1.9.3",
           ...syncHealth(),
         },
         companies: {
@@ -282,6 +293,7 @@ async function handler(req, res) {
         rights: {
           activateCompany: true,
           deactivateCompany: true,
+          deleteCompany: true,
           backups: true,
           sync: true,
           clearRateLimit: true,
@@ -341,6 +353,19 @@ async function handler(req, res) {
         audit({ type: "tenant.deny", outcome: "deny", ip, path, companyId: tenantScope });
         return reply(403, { ok: false, error: scopeCheck.error });
       }
+      // Platform may send hard:true on deactivate when the firm is fully removed
+      if (body?.hard === true || body?.purge === true || body?.event === "company.deleted") {
+        const result = deleteCompany(body || { id });
+        audit({
+          type: "company.delete",
+          outcome: result.ok ? "ok" : "error",
+          ip,
+          path,
+          companyId: id,
+          detail: { via: "deactivate-hard", purged: result.purged },
+        });
+        return reply(result.ok ? 200 : 422, result);
+      }
       const result = deactivateCompany(id, { deactivatedBy: body?.deactivatedBy || "platform" });
       audit({
         type: "company.deactivate",
@@ -350,6 +375,44 @@ async function handler(req, res) {
         companyId: id,
       });
       return reply(result.ok ? 200 : 404, result);
+    }
+
+    if (
+      (req.method === "POST" && (path === "/v1/company/delete" || path === "/v1/company/purge"))
+      || (req.method === "DELETE" && /^\/v1\/company\/[^/]+$/.test(path)
+        && !["/v1/company/upsert", "/v1/company/activate", "/v1/company/provision",
+          "/v1/company/deactivate", "/v1/company/delete", "/v1/company/purge",
+          "/v1/company/login-sync", "/v1/company/ensure-login"].includes(path))
+    ) {
+      let body = {};
+      if (req.method === "POST") {
+        body = (await readBodyLimited(req)) || {};
+      }
+      const idFromPath = req.method === "DELETE"
+        ? normalizeCompanyId(decodeURIComponent(path.slice("/v1/company/".length)))
+        : "";
+      const id = normalizeCompanyId(
+        body?.company?.id || body?.id || body?.companyId || idFromPath || ""
+      );
+      const scopeCheck = assertSameTenant(tenantScope, id, "Company-Delete");
+      if (!scopeCheck.ok) {
+        audit({ type: "tenant.deny", outcome: "deny", ip, path, companyId: tenantScope });
+        return reply(403, { ok: false, error: scopeCheck.error });
+      }
+      const result = deleteCompany({
+        ...body,
+        id,
+        deletedBy: body?.deletedBy || body?.deactivatedBy || "platform",
+      });
+      audit({
+        type: "company.delete",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId: id,
+        detail: { purged: result.purged, alreadyGone: result.alreadyGone },
+      });
+      return reply(result.ok ? 200 : 422, result);
     }
 
     if (req.method === "POST" && path.endsWith("/login-credentials") && path.startsWith("/v1/company/")) {
@@ -394,7 +457,16 @@ async function handler(req, res) {
     if (
       req.method === "GET"
       && path.startsWith("/v1/company/")
-      && !["/v1/company/upsert", "/v1/company/activate", "/v1/company/provision", "/v1/company/deactivate"].includes(path)
+      && ![
+        "/v1/company/upsert",
+        "/v1/company/activate",
+        "/v1/company/provision",
+        "/v1/company/deactivate",
+        "/v1/company/delete",
+        "/v1/company/purge",
+        "/v1/company/login-sync",
+        "/v1/company/ensure-login",
+      ].includes(path)
     ) {
       const id = normalizeCompanyId(decodeURIComponent(path.slice("/v1/company/".length)));
       const scopeCheck = assertSameTenant(tenantScope, id, "Company");
