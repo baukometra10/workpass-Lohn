@@ -109,7 +109,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "1.9.1",
+      version: "1.9.2",
       multiTenant: true,
       platform: {
         domain: PLATFORM_DOMAIN,
@@ -213,6 +213,8 @@ async function handler(req, res) {
         || path === "/v1/company/activate"
         || path === "/v1/company/provision"
         || path === "/v1/company/deactivate"
+        || path === "/v1/company/login-sync"
+        || path === "/v1/company/ensure-login"
         || path.endsWith("/login-credentials");
       if (needsAdmin && sess.user.role !== "admin") {
         return reply(403, { ok: false, error: "Nur Accounting-Admin" });
@@ -267,7 +269,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "1.9.1",
+          version: "1.9.2",
           ...syncHealth(),
         },
         companies: {

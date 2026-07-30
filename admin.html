@@ -96,10 +96,34 @@
         <ul class="admin-rights" id="adminRights"></ul>
       </div>
       <div class="admin-panel">
+        <h2>Firma aus Plattform hier anlegen (Login-Sync)</h2>
+        <p class="section-hint" style="margin-top:0;color:#9bb0c9;font-size:0.84rem;line-height:1.45">
+          Wenn in der Plattform „Abrechnungen an WorkPass Lohn senden“ aktiv ist, die Firma aber beim Login fehlt:
+          hier einmal anlegen. Später soll die Plattform das automatisch per <code>POST /v1/company/login-sync</code> machen.
+        </p>
+        <div class="field-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+          <label style="display:block;font-size:0.72rem;color:#9bb0c9">Firma-ID (company.id)
+            <input id="syncCompanyId" type="text" placeholder="z. B. luf oder cmp-…" style="width:100%;margin-top:4px;padding:8px;border-radius:8px;border:1px solid rgba(90,140,200,0.3);background:#0a101c;color:#fff" />
+          </label>
+          <label style="display:block;font-size:0.72rem;color:#9bb0c9">Firmenname
+            <input id="syncCompanyName" type="text" placeholder="Anzeigename" style="width:100%;margin-top:4px;padding:8px;border-radius:8px;border:1px solid rgba(90,140,200,0.3);background:#0a101c;color:#fff" />
+          </label>
+          <label style="display:block;font-size:0.72rem;color:#9bb0c9">Login-E-Mail
+            <input id="syncLoginEmail" type="email" placeholder="luf@firma.de" style="width:100%;margin-top:4px;padding:8px;border-radius:8px;border:1px solid rgba(90,140,200,0.3);background:#0a101c;color:#fff" />
+          </label>
+          <label style="display:block;font-size:0.72rem;color:#9bb0c9">Passwort / PIN (min. 4)
+            <input id="syncLoginPassword" type="text" placeholder="4821" autocomplete="off" style="width:100%;margin-top:4px;padding:8px;border-radius:8px;border:1px solid rgba(90,140,200,0.3);background:#0a101c;color:#fff" />
+          </label>
+        </div>
+        <div class="admin-actions" style="margin-top:12px;margin-bottom:0">
+          <button type="button" class="primary" id="btnSyncLogin">Firma + Login speichern</button>
+        </div>
+      </div>
+      <div class="admin-panel">
         <h2>Firmen / Abteilungen</h2>
         <table class="admin-table">
           <thead>
-            <tr><th>Firma</th><th>ID</th><th>Status</th><th>Abteilung</th></tr>
+            <tr><th>Firma</th><th>ID</th><th>Login</th><th>Status</th></tr>
           </thead>
           <tbody id="adminCompanies"></tbody>
         </table>
@@ -152,10 +176,10 @@
             <tr>
               <td>${c.name || "—"}</td>
               <td><code>${c.id || ""}</code></td>
+              <td>${c.loginEmail || "—"} ${c.hasLoginPassword ? "· PIN ✓" : "· kein PIN"}</td>
               <td><span class="badge ${c.accountingEnabled ? "badge-on" : "badge-off"}">${c.accountingEnabled ? "Aktiv" : "Inaktiv"}</span></td>
-              <td>${c.section?.title || c.section?.id || "—"}</td>
             </tr>`).join("");
-          document.getElementById("adminCompanies").innerHTML = rows || `<tr><td colspan="4">Noch keine Firmen – Plattform muss activate senden.</td></tr>`;
+          document.getElementById("adminCompanies").innerHTML = rows || `<tr><td colspan="4">Noch keine Firmen – oben „Login-Sync“ nutzen oder Plattform syncen.</td></tr>`;
           const backups = data.backup?.backups || [];
           document.getElementById("adminBackups").innerHTML = backups.length
             ? `<ul>${backups.map((b) => `<li>${b.fileName || b.name || JSON.stringify(b)}</li>`).join("")}</ul>`
@@ -178,6 +202,31 @@
           await api("/v1/admin/rate-limit/clear", { method: "POST", body: "{}" });
           setStatus("Rate-Limit geleert", true);
         } catch (e) { setStatus(e.message, false); }
+      });
+      document.getElementById("btnSyncLogin")?.addEventListener("click", async () => {
+        const companyId = String(document.getElementById("syncCompanyId")?.value || "").trim();
+        const name = String(document.getElementById("syncCompanyName")?.value || "").trim();
+        const email = String(document.getElementById("syncLoginEmail")?.value || "").trim();
+        const password = String(document.getElementById("syncLoginPassword")?.value || "");
+        if (!companyId || password.length < 4) {
+          setStatus("Firma-ID und Passwort/PIN (min. 4) sind Pflicht.", false);
+          return;
+        }
+        try {
+          const data = await api("/v1/company/login-sync", {
+            method: "POST",
+            body: JSON.stringify({
+              companyId,
+              name: name || companyId,
+              login: { email: email || undefined, password },
+            }),
+          });
+          setStatus(`Gespeichert: ${data.login?.email || email || companyId} – jetzt in Lohn anmelden.`, true);
+          document.getElementById("syncLoginPassword").value = "";
+          refresh();
+        } catch (e) {
+          setStatus(e.message, false);
+        }
       });
       window.WorkPassAuth.init({
         onUnlock: () => {
