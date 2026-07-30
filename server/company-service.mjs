@@ -145,21 +145,34 @@ export function setCompanyLogin(companyId, login = {}) {
 }
 
 /**
- * Find active company by login email (exact or {id}@domain).
+ * Find company by login email (auth.email, company.email, {id}@domain, name slug).
  */
 export function findCompanyByLoginEmail(email) {
   const mail = String(email || "").trim().toLowerCase();
   if (!mail) return null;
   const domain = companyLoginDomain();
+  const local = mail.split("@")[0] || "";
+  const mailDomain = mail.split("@")[1] || "";
+  const localNorm = normalizeCompanyId(local);
   const companies = repoList();
+
   for (const c of companies) {
     if (c.meta?.accountingEnabled === false) continue;
     const authEmail = String(c.meta?.auth?.email || "").trim().toLowerCase();
+    const companyEmail = String(c.email || "").trim().toLowerCase();
+    const nameSlug = normalizeCompanyId(c.name || "");
+
     if (authEmail && authEmail === mail) return c;
+    if (companyEmail && companyEmail === mail) return c;
     if (defaultCompanyLoginEmail(c.id) === mail) return c;
-    const local = mail.split("@")[0];
-    const mailDomain = mail.split("@")[1] || "";
-    if (mailDomain === domain && normalizeCompanyId(local) === c.id) return c;
+    if (mailDomain === domain && localNorm && localNorm === c.id) return c;
+    if (mailDomain === domain && nameSlug && localNorm === nameSlug) return c;
+  }
+
+  // Also search inactive last (clearer error later)
+  for (const c of companies) {
+    const authEmail = String(c.meta?.auth?.email || "").trim().toLowerCase();
+    if (authEmail === mail || defaultCompanyLoginEmail(c.id) === mail) return c;
   }
   return null;
 }
@@ -170,20 +183,32 @@ export function findCompanyByLoginEmail(email) {
 export function verifyCompanyLogin(email, password) {
   const company = findCompanyByLoginEmail(email);
   if (!company) {
-    return { ok: false, error: "Keine Firma für diese E-Mail (Firma zuerst per activate anlegen)." };
+    return {
+      ok: false,
+      error:
+        "Keine Firma in der Buchhaltung für diese E-Mail. "
+        + "Die Plattform muss einmal POST /v1/company/login-sync (oder activate inkl. login) an die Accounting-URL senden – "
+        + "Aktivierung nur in der Plattform reicht nicht.",
+      code: "company_not_synced",
+    };
   }
   if (company.meta?.accountingEnabled === false) {
-    return { ok: false, error: "Firma ist deaktiviert." };
+    return { ok: false, error: "Firma ist deaktiviert.", code: "company_inactive" };
   }
   const auth = company.meta?.auth;
   if (!auth?.hash) {
     return {
       ok: false,
-      error: `Firma ${company.id} hat noch kein Passwort – Plattform muss login.password bei activate senden.`,
+      error:
+        `Firma „${company.name || company.id}“ ist in der Buchhaltung, hat aber noch kein Passwort. `
+        + "Plattform muss login.password per /v1/company/login-sync senden.",
+      code: "company_password_missing",
+      companyId: company.id,
+      suggestedEmail: defaultCompanyLoginEmail(company.id),
     };
   }
   if (!verifyCompanyPassword(password, auth)) {
-    return { ok: false, error: "Firmen-Passwort falsch." };
+    return { ok: false, error: "Firmen-Passwort falsch.", code: "bad_password" };
   }
   const loginEmail = auth.email || defaultCompanyLoginEmail(company.id);
   return {
@@ -197,6 +222,68 @@ export function verifyCompanyLogin(email, password) {
     },
     company,
     via: "company-login",
+  };
+}
+
+/**
+ * Platform sync: ensure company exists + set login email/password in one call.
+ * Use when company is already active on the platform but accounting has no login yet.
+ */
+export function syncCompanyLogin(payload = {}) {
+  const companyPart = payload.company && typeof payload.company === "object"
+    ? payload.company
+    : {
+        id: payload.companyId || payload.id,
+        name: payload.name || payload.companyName || payload.companyId || payload.id,
+        email: payload.email,
+      };
+  const loginPart = payload.login || payload.credentials || {
+    email: payload.loginEmail || payload.email,
+    password: payload.password ?? payload.pin,
+  };
+
+  const id = normalizeCompanyId(companyPart.id || payload.companyId || "");
+  if (!id) return { ok: false, error: "company.id / companyId fehlt", errors: ["company.id fehlt"] };
+
+  const password = String(loginPart.password ?? loginPart.pin ?? "");
+  if (password.length < COMPANY_PASSWORD_MIN) {
+    return {
+      ok: false,
+      error: `Passwort/PIN min. ${COMPANY_PASSWORD_MIN} Zeichen`,
+      errors: [`Passwort min. ${COMPANY_PASSWORD_MIN}`],
+    };
+  }
+
+  const existing = repoLoad(id);
+  const activated = activateCompany({
+    kind: "platform.company.activate.v1",
+    event: existing ? "company.login.synced" : "company.accounting.activated",
+    company: {
+      ...companyPart,
+      id,
+      name: companyPart.name || existing?.name || id,
+      email: companyPart.email || loginPart.email || existing?.email || "",
+    },
+    login: {
+      email: loginPart.email || companyPart.email || defaultCompanyLoginEmail(id),
+      password,
+      source: "platform-login-sync",
+    },
+    connection: {
+      accountingEnabled: true,
+      activatedBy: "platform-login-sync",
+      ...(payload.connection || {}),
+    },
+  });
+
+  if (!activated.ok) return activated;
+  return {
+    ok: true,
+    created: activated.created,
+    company: activated.company,
+    workspace: activated.workspace,
+    login: activated.login,
+    message: "Firma + Login in Buchhaltung synchronisiert – Anmeldung jetzt möglich",
   };
 }
 

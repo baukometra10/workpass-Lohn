@@ -92,8 +92,24 @@ Alle Firmenfelder (Adresse, Steuernummer, DATEV-Nrn., …) werden über die API 
 
 بعدها تفتح المحاسبة بـ `luf@firma.de` + `4821` (دور accountant، معزول على نفس الشركة).
 
+**مهم:** تفعيل الشركة داخل المنصة وحدها لا يكفي. المنصة يجب أن تستدعي Accounting مرة واحدة على الأقل:
+
+`POST https://workpass-lohn.up.railway.app/v1/company/login-sync`
+
+```json
+{
+  "companyId": "luf",
+  "name": "Lufthansa",
+  "login": { "email": "luf@firma.de", "password": "4821" }
+}
+```
+
+Header: `X-WorkPass-Key: <WORKPASS_API_KEY>`
+
+أو نفس البيانات مع `POST /v1/company/activate`.
+
 مثال: `examples/platform-company.activate.v1.json`  
-SDK: `client.activateCompany(payload)`
+SDK: `client.activateCompany(payload)` / `client.syncCompanyLogin(payload)`
 
 إعادة الاستدعاء آمنة (idempotent). إلغاء ناعم: `POST /v1/company/deactivate`.
 

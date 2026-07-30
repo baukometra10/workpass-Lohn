@@ -69,6 +69,14 @@ export class WorkPassAccountingClient {
     return this.request("POST", "/v1/company/activate", payload);
   }
 
+  /**
+   * Sync firm login when company is already active on the platform.
+   * Creates/updates Mandant + email/PIN in accounting.
+   */
+  syncCompanyLogin(payload) {
+    return this.request("POST", "/v1/company/login-sync", payload);
+  }
+
   /** Soft-disable accounting link (data retained). */
   deactivateCompany(companyIdOrPayload) {
     const body = typeof companyIdOrPayload === "string"

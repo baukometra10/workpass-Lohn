@@ -21,6 +21,7 @@ import {
   listCompanies,
   companyWorkspaceView,
   setCompanyLogin,
+  syncCompanyLogin,
 } from "./company-service.mjs";
 import { tenantFromRequest, assertSameTenant, normalizeCompanyId } from "./tenant.mjs";
 import { initDb, syncHealth, flushSyncOutbox } from "./db/repository.mjs";
@@ -108,7 +109,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "1.9.0",
+      version: "1.9.1",
       multiTenant: true,
       platform: {
         domain: PLATFORM_DOMAIN,
@@ -266,7 +267,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "1.9.0",
+          version: "1.9.1",
           ...syncHealth(),
         },
         companies: {
@@ -288,6 +289,25 @@ async function handler(req, res) {
     }
 
     // --- Companies ---
+    if (req.method === "POST" && (path === "/v1/company/login-sync" || path === "/v1/company/ensure-login")) {
+      const body = await readBodyLimited(req);
+      const companyIdHint = body?.company?.id || body?.companyId || body?.id;
+      const scopeCheck = assertSameTenant(tenantScope, companyIdHint, "Company-Login-Sync");
+      if (!scopeCheck.ok) {
+        audit({ type: "tenant.deny", outcome: "deny", ip, path, companyId: tenantScope });
+        return reply(403, { ok: false, error: scopeCheck.error });
+      }
+      const result = syncCompanyLogin(body || {});
+      audit({
+        type: "company.login.sync",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId: result.company?.id || companyIdHint,
+      });
+      return reply(result.ok ? 200 : 422, result);
+    }
+
     if (
       req.method === "POST"
       && (path === "/v1/company/activate" || path === "/v1/company/provision")

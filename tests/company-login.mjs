@@ -2,7 +2,7 @@
  * Company login (name@firma.de + PIN) tests
  * Run: node tests/company-login.mjs
  */
-import { activateCompany, verifyCompanyLogin, setCompanyLogin } from "../server/company-service.mjs";
+import { activateCompany, verifyCompanyLogin, setCompanyLogin, syncCompanyLogin } from "../server/company-service.mjs";
 import { loginWithPassword } from "../server/auth-session.mjs";
 import { clearRateLimitState } from "../server/security/rate-limit.mjs";
 
@@ -54,6 +54,17 @@ const upd = setCompanyLogin(id, { email, password: "9999" });
 assert(upd.ok, "setCompanyLogin");
 assert(verifyCompanyLogin(email, "9999").ok, "new pin works");
 assert(!verifyCompanyLogin(email, pin).ok, "old pin rejected");
+
+console.log("\n=== login-sync for existing platform firm ===");
+const syncId = `sy${Date.now().toString(36)}`;
+const syncMail = `${syncId}@firma.de`;
+const syn = syncCompanyLogin({
+  companyId: syncId,
+  name: "Sync Firma",
+  login: { email: syncMail, password: "1234" },
+});
+assert(syn.ok && syn.login?.ready, "login-sync ok");
+assert(verifyCompanyLogin(syncMail, "1234").ok, "login after sync");
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);

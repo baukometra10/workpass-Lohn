@@ -12,6 +12,7 @@ export const accountingConnect = {
     health: "GET /health",
     companyActivate: "POST /v1/company/activate",
     companyProvision: "POST /v1/company/provision",
+    companyLoginSync: "POST /v1/company/login-sync",
     companyDeactivate: "POST /v1/company/deactivate",
     companyUpsert: "POST /v1/company/upsert",
     companiesList: "GET /v1/companies",
