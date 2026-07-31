@@ -16,6 +16,7 @@
     "test:e2e": "node tests/e2e-lohn.mjs",
     "test:api": "node tests/api-bridge.mjs",
     "test:tenant": "node tests/tenant-isolation.mjs",
+    "test:tenant-scope": "node tests/tenant-scope.mjs",
     "test:company": "node tests/company-activate.mjs",
     "test:company-login": "node tests/company-login.mjs",
     "test:auth": "node tests/auth-session.mjs",

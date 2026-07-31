@@ -141,6 +141,21 @@ body { margin: 0; font-family: "Barlow", "Segoe UI", sans-serif; color: #121518;
     window.WorkPassAuth?.init({
       onUnlock: () => {
         document.body.classList.remove("auth-locked");
+        const companyUser = window.WorkPassAuth?.isCompanyPortalUser?.();
+        document.body.classList.toggle("company-portal", Boolean(companyUser));
+        document.querySelectorAll('a[href="admin.html"]').forEach((a) => {
+          a.hidden = Boolean(companyUser);
+        });
+        const user = window.WorkPassAuth?.getSessionUser?.();
+        const badge = document.getElementById("hubCompanyBadge");
+        if (badge) {
+          if (companyUser) {
+            badge.hidden = false;
+            badge.textContent = `Firma · ${user.companyId}`;
+          } else {
+            badge.hidden = true;
+          }
+        }
         renderInvoiceArchive();
       },
     });

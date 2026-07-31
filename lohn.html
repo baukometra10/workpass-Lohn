@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=5" />
-    <link rel="stylesheet" href="lohn.css?v=40" />
+    <link rel="stylesheet" href="lohn.css?v=41" />
   </head>
   <body class="auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
@@ -94,6 +94,8 @@
         </div>
       </header>
 
+      <div id="companyPortalBanner" class="company-portal-banner" hidden></div>
+
       <div class="lohn-layout">
         <aside class="lohn-form" id="lohnForm">
           <div class="lohn-form-sticky">
@@ -118,7 +120,7 @@
               <span class="step-num">1</span>
               <h2>Empfang</h2>
             </div>
-            <p class="section-hint">Datei, Inbox oder manuell – auch ohne Plattform.</p>
+            <p class="section-hint" id="recvSectionHint">Datei, Inbox oder manuell – auch ohne Plattform.</p>
             <div class="recv-modes" role="tablist">
               <button type="button" class="recv-mode active" data-recv="file" id="recvFile">Datei</button>
               <button type="button" class="recv-mode" data-recv="paste" id="recvPaste">Inbox / Paste</button>
@@ -139,7 +141,7 @@
               </div>
             </div>
             <div class="recv-panel" id="panelApi" hidden>
-              <p class="section-hint">Bridge-Server empfängt Monatsdaten von der Plattform. Auf Railway: API-URL = diese Website (wird automatisch gesetzt). API-Key = <code>WORKPASS_API_KEY</code> aus Railway Variables. Multi-Tenant: Firma-ID filtert die Inbox.</p>
+              <p class="section-hint" id="apiBridgeHint">Bridge-Server empfängt Monatsdaten von der Plattform. Auf Railway: API-URL = diese Website (wird automatisch gesetzt). API-Key = <code>WORKPASS_API_KEY</code> aus Railway Variables. Multi-Tenant: Firma-ID filtert die Inbox.</p>
               <div class="field-grid">
                 <div class="full">
                   <label for="apiBaseUrl">API-URL</label>
@@ -454,10 +456,10 @@
     <script src="datev-import.js?v=2"></script>
     <script src="templates.js?v=1"></script>
     <script src="datev-sheet.js?v=42"></script>
-    <script src="payroll-core.js?v=20"></script>
-    <script src="auth-gate.js?v=7"></script>
+    <script src="payroll-core.js?v=21"></script>
+    <script src="auth-gate.js?v=8"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="lohn-app.js?v=33"></script>
+    <script src="lohn-app.js?v=34"></script>
   </body>
 </html>

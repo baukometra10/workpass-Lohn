@@ -134,7 +134,7 @@
       </div>
     </div>
 
-    <script src="auth-gate.js?v=7"></script>
+    <script src="auth-gate.js?v=8"></script>
     <script>
       function origin() {
         const h = location.hostname;
@@ -253,7 +253,9 @@
         onUnlock: () => {
           const u = window.WorkPassAuth.getSessionUser?.();
           if (u && u.role !== "admin") {
-            setStatus("Angemeldet, aber keine Admin-Rolle. WORKPASS_ADMIN_EMAIL setzen oder Platform-Role=admin.", false);
+            setStatus("Firmen-Login hat keinen Admin-Zugang. Bitte Admin-Konto nutzen.", false);
+            window.location.href = "lohn.html";
+            return;
           }
           refresh();
         },

@@ -494,8 +494,16 @@
     return saveArchive(archive);
   }
 
-  function listArchiveEntries() {
-    return Object.values(loadArchive()).sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+  function listArchiveEntries(filter = {}) {
+    const want = String(filter.companyId || filter.mandantId || "").trim().toLowerCase();
+    let list = Object.values(loadArchive()).sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+    if (want) {
+      list = list.filter((e) => {
+        const mid = String(e.mandantId || e.draft?.mandantId || e.draft?.meta?.companyId || "").trim().toLowerCase();
+        return mid === want;
+      });
+    }
+    return list;
   }
 
   function loadArchiveEntry(key) {

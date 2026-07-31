@@ -24,7 +24,7 @@ import {
   setCompanyLogin,
   syncCompanyLogin,
 } from "./company-service.mjs";
-import { tenantFromRequest, assertSameTenant, normalizeCompanyId } from "./tenant.mjs";
+import { tenantFromRequest, assertSameTenant, normalizeCompanyId, resolveTenantScope } from "./tenant.mjs";
 import { initDb, syncHealth, flushSyncOutbox } from "./db/repository.mjs";
 import { postgresConfigured } from "./db/postgres.mjs";
 import {
@@ -110,7 +110,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "1.9.4",
+      version: "1.9.5",
       multiTenant: true,
       platform: {
         domain: PLATFORM_DOMAIN,
@@ -191,7 +191,29 @@ async function handler(req, res) {
   if (req.method === "GET" && path === "/v1/auth/me") {
     const s = sessionFromRequest(req);
     if (!s.ok) return reply(401, { ok: false, error: s.error });
-    return reply(200, { ok: true, user: s.user });
+    const out = { ok: true, user: s.user };
+    if (s.user?.companyId && s.user.role !== "admin") {
+      const company = loadCompany(s.user.companyId);
+      out.workspace = companyWorkspaceView(company);
+      out.companyLocked = true;
+      if (company) {
+        out.company = {
+          id: company.id,
+          name: company.name,
+          street: company.street,
+          zip: company.zip,
+          city: company.city,
+          address: company.address,
+          taxNumber: company.taxNumber,
+          vatId: company.vatId,
+          email: company.email,
+          phone: company.phone,
+          datevClientNo: company.datevClientNo,
+          datevConsultantNo: company.datevConsultantNo,
+        };
+      }
+    }
+    return reply(200, out);
   }
 
   if (path !== "/health") {
@@ -206,9 +228,19 @@ async function handler(req, res) {
       || path.startsWith("/v1/delivery/");
     if (sess.ok && sessionPathsOk) {
       req._workpassSession = sess.user;
-      if (!tenantScope && sess.user.companyId) {
-        tenantScope = normalizeCompanyId(sess.user.companyId);
+      const scoped = resolveTenantScope(tenantScope, sess.user);
+      if (!scoped.ok) {
+        audit({
+          type: "tenant.deny",
+          outcome: "deny",
+          ip,
+          path,
+          companyId: sess.user.companyId,
+          detail: { requested: tenantScope },
+        });
+        return reply(scoped.status || 403, { ok: false, error: scoped.error });
       }
+      tenantScope = scoped.tenantScope;
       const needsAdmin =
         path.startsWith("/v1/admin")
         || path === "/v1/company/activate"
@@ -280,7 +312,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "1.9.4",
+          version: "1.9.5",
           ...syncHealth(),
         },
         companies: {

@@ -111,3 +111,40 @@ export function invoiceDocumentId(companyId, number) {
   if (!c) throw new Error("invoiceDocumentId: companyId fehlt");
   return `${c}::${n}`;
 }
+
+/**
+ * Company users (role accountant + companyId) may only access their own tenant.
+ * Admins / API-key callers keep optional header/query scope.
+ */
+export function resolveTenantScope(headerOrQueryScope, sessionUser = null) {
+  const requested = normalizeCompanyId(headerOrQueryScope || "");
+  const sessionCompanyId = normalizeCompanyId(sessionUser?.companyId || "");
+  const isCompanyUser = Boolean(
+    sessionUser
+    && sessionCompanyId
+    && sessionUser.role !== "admin"
+  );
+
+  if (isCompanyUser) {
+    if (requested && requested !== sessionCompanyId) {
+      return {
+        ok: false,
+        status: 403,
+        error: "Nur Zugriff auf die eigene Firma",
+        tenantScope: sessionCompanyId,
+        locked: true,
+      };
+    }
+    return {
+      ok: true,
+      tenantScope: sessionCompanyId,
+      locked: true,
+    };
+  }
+
+  return {
+    ok: true,
+    tenantScope: requested || "",
+    locked: false,
+  };
+}

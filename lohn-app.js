@@ -16,6 +16,19 @@
   let recvMode = "file";
   /** Während Laden (Demo/Import/Archiv) keine Frozen-Werte verwerfen */
   let suppressExitFreeze = false;
+  let companyPortalId = "";
+  let inboxPollTimer = null;
+
+  function sessionCompanyId() {
+    const u = window.WorkPassAuth?.getSessionUser?.();
+    if (!u?.companyId) return "";
+    if (u.role === "admin") return "";
+    return String(u.companyId).trim().toLowerCase();
+  }
+
+  function isCompanyPortal() {
+    return Boolean(sessionCompanyId());
+  }
 
   const FIELD_IDS = [
     "seller", "note", "taxNumber", "datevClientNo", "datevConsultantNo",
@@ -384,17 +397,21 @@
   function renderArchiveBoard() {
     const board = $("archiveBoard");
     if (!board) return;
-    const entries = PayrollCore.listArchiveEntries();
+    const entries = PayrollCore.listArchiveEntries(
+      companyPortalId ? { companyId: companyPortalId } : {}
+    );
     const current = PayrollCore.archiveKey(state);
     if (!entries.length) {
-      board.innerHTML = '<p class="section-hint">Noch keine gespeicherten Abrechnungen.</p>';
+      board.innerHTML = companyPortalId
+        ? '<p class="section-hint">Noch keine Abrechnungen für Ihre Firma. Sobald die Plattform Daten sendet, erscheinen sie unter „Meine Abrechnungen“.</p>'
+        : '<p class="section-hint">Noch keine gespeicherten Abrechnungen.</p>';
       return;
     }
     board.innerHTML = entries.slice(0, 24).map((e) => `
       <button type="button" class="archive-item${e.key === current ? " active" : ""}" data-key="${esc(e.key)}">
         <div>
-          <strong>${esc(e.companyName || "Firma")}</strong>
-          <span>${esc(e.employeeName || "MA")} · ${esc(e.payrollMonth || "—")}</span>
+          <strong>${esc(companyPortalId ? (e.employeeName || "Mitarbeiter") : (e.companyName || "Firma"))}</strong>
+          <span>${esc(companyPortalId ? (e.payrollMonth || "—") : `${e.employeeName || "MA"} · ${e.payrollMonth || "—"}`)}</span>
         </div>
       </button>`).join("");
     board.querySelectorAll(".archive-item").forEach((btn) => {
@@ -415,14 +432,18 @@
   function refreshCompanySelect() {
     if (!companySelect) return;
     refreshingArchive = true;
-    const entries = PayrollCore.listArchiveEntries();
+    const entries = PayrollCore.listArchiveEntries(
+      companyPortalId ? { companyId: companyPortalId } : {}
+    );
     const currentKey = PayrollCore.archiveKey(state);
     const opts = ['<option value="">— aktuelle Abrechnung (jetzt bearbeiten) —</option>'];
     entries.forEach((e) => {
       const firma = e.companyName || e.mandantId || "Ohne Firmenname";
       const ma = e.employeeName || "ohne Mitarbeiter";
       const mon = e.payrollMonth || "ohne Monat";
-      const label = `${firma} · ${ma} · ${mon}`;
+      const label = companyPortalId
+        ? `${ma} · ${mon}`
+        : `${firma} · ${ma} · ${mon}`;
       opts.push(`<option value="${esc(e.key)}"${e.key === currentKey ? " selected" : ""}>${esc(label)}</option>`);
     });
     companySelect.innerHTML = opts.join("");
@@ -725,7 +746,8 @@
   function apiConfig() {
     const base = resolveApiBase();
     const key = String($("apiKey")?.value || defaultApiKey());
-    const companyId = String($("apiCompanyId")?.value || "").trim();
+    const locked = sessionCompanyId();
+    const companyId = locked || String($("apiCompanyId")?.value || "").trim();
     return { base, key, companyId };
   }
 
@@ -791,14 +813,16 @@
     const payroll = payload?.payroll || [];
     const invoices = payload?.invoices || [];
     if (!payroll.length && !invoices.length) {
-      host.innerHTML = '<p class="section-hint">Keine Jobs in der Inbox.</p>';
+      host.innerHTML = companyPortalId
+        ? '<div class="company-empty-inbox"><strong>Noch keine Abrechnungen</strong><p>Sobald die Plattform Lohn oder Rechnungen für Ihre Firma sendet, erscheinen sie hier automatisch.</p></div>'
+        : '<p class="section-hint">Keine Jobs in der Inbox.</p>';
       return;
     }
     const payHtml = payroll.slice(0, 30).map((j) => `
       <div class="api-inbox-item" data-type="payroll" data-id="${esc(j.jobId)}">
         <div>
           <strong>${esc(j.employee?.name || j.employee?.id || "MA")}</strong>
-          <span>${esc(j.company?.id || "")} · ${esc(j.company?.name || "")} · ${esc(j.period || "")} · ${esc(j.status || "")}</span>
+          <span>${companyPortalId ? "" : `${esc(j.company?.id || "")} · ${esc(j.company?.name || "")} · `}${esc(j.period || "")} · ${esc(j.status || "")}</span>
           <span>Netto ${j.net != null ? PayrollCore.formatAmount(j.net) : "—"}</span>
         </div>
         <div class="api-inbox-actions">
@@ -810,7 +834,7 @@
       <div class="api-inbox-item" data-type="invoice" data-id="${esc(j.id)}">
         <div>
           <strong>RE ${esc(j.number || j.id)}</strong>
-          <span>${esc(j.company?.id || "")} · ${esc(j.customer || "")} · ${esc(j.status || "")}</span>
+          <span>${companyPortalId ? "" : `${esc(j.company?.id || "")} · `}${esc(j.customer || "")} · ${esc(j.status || "")}</span>
           <span>${j.gross != null ? Number(j.gross).toLocaleString("de-DE", { minimumFractionDigits: 2 }) : ""}</span>
         </div>
         <div class="api-inbox-actions">
@@ -818,8 +842,8 @@
         </div>
       </div>`).join("");
     host.innerHTML = `
-      ${payroll.length ? `<h3 class="api-inbox-title">Lohn (${payroll.length})</h3>${payHtml}` : ""}
-      ${invoices.length ? `<h3 class="api-inbox-title">Rechnungen (${invoices.length})</h3>${invHtml}` : ""}
+      ${payroll.length ? `<h3 class="api-inbox-title">${companyPortalId ? "Meine Lohnabrechnungen" : "Lohn"} (${payroll.length})</h3>${payHtml}` : ""}
+      ${invoices.length ? `<h3 class="api-inbox-title">${companyPortalId ? "Meine Rechnungen" : "Rechnungen"} (${invoices.length})</h3>${invHtml}` : ""}
     `;
 
     host.querySelectorAll(".api-open").forEach((btn) => {
@@ -833,7 +857,7 @@
     });
   }
 
-  async function loadApiInbox() {
+  async function loadApiInbox(silent = false) {
     try {
       loadApiConfigIntoForm();
       const { companyId } = apiConfig();
@@ -841,10 +865,16 @@
       const data = await apiFetch(`/v1/inbox${q}`);
       renderApiInbox(data);
       const scope = companyId ? ` · Firma ${companyId}` : " · alle Firmen (kein Filter)";
-      setStatus(`API-Inbox: ${data.payroll?.length || 0} Lohn · ${data.invoices?.length || 0} Rechnungen${scope}`, true);
+      if (!silent) {
+        setStatus(`API-Inbox: ${data.payroll?.length || 0} Lohn · ${data.invoices?.length || 0} Rechnungen${scope}`, true);
+      }
+      return data;
     } catch (e) {
-      setStatus(`Inbox-Fehler: ${e.message}`, false);
-      window.alert(`Inbox konnte nicht geladen werden.\n${e.message}`);
+      if (!silent) {
+        setStatus(`Inbox-Fehler: ${e.message}`, false);
+        window.alert(`Inbox konnte nicht geladen werden.\n${e.message}`);
+      }
+      return null;
     }
   }
 
@@ -856,6 +886,17 @@
     const wsById = Object.fromEntries(workspaces.map((w) => [w.id, w]));
     if (!companies.length) {
       host.innerHTML = '<p class="section-hint">Keine Firmen im Bridge-Register. Plattform muss <code>POST /v1/company/activate</code> senden.</p>';
+      return;
+    }
+    if (companyPortalId) {
+      const c = companies.find((x) => String(x.id).toLowerCase() === companyPortalId) || companies[0];
+      const ws = wsById[c.id] || {};
+      host.innerHTML = `
+        <div class="company-portal-card">
+          <strong>${esc(c.name || c.id)}</strong>
+          <span>Nur Ihre Firma · ${esc(c.id)}</span>
+          <span>${ws.accountingEnabled || c.meta?.accountingEnabled ? "Accounting aktiv" : "Accounting inaktiv"}</span>
+        </div>`;
       return;
     }
     const activeId = String($("apiCompanyId")?.value || "").trim().toLowerCase();
@@ -886,6 +927,10 @@
 
   function selectPlatformCompany(companyId) {
     if (!companyId) return;
+    if (companyPortalId && String(companyId).toLowerCase() !== companyPortalId) {
+      toast("Nur Ihre eigene Firma ist freigeschaltet.", "error");
+      return;
+    }
     loadApiConfigIntoForm();
     if ($("apiCompanyId")) $("apiCompanyId").value = companyId;
     if ($("mandantId")) $("mandantId").value = companyId;
@@ -909,11 +954,19 @@
     companiesLoadPromise = (async () => {
       try {
         loadApiConfigIntoForm();
-        const data = await apiFetch("/v1/companies", { skipTenant: true });
+        // Company users must NOT skip tenant – server returns only their firm
+        const data = await apiFetch("/v1/companies", {
+          skipTenant: !isCompanyPortal(),
+        });
         renderPlatformCompanies(data);
         const n = data.companies?.length || 0;
         const active = (data.workspaces || []).filter((w) => w.accountingEnabled).length;
-        setStatus(`Firmenregister: ${n} · aktiv ${active}`, true);
+        setStatus(
+          companyPortalId
+            ? `Ihre Firma geladen · ${data.companies?.[0]?.name || companyPortalId}`
+            : `Firmenregister: ${n} · aktiv ${active}`,
+          true
+        );
       } catch (e) {
         setStatus(`Firmen-Fehler: ${e.message}`, false);
         const host = $("apiCompanyList");
@@ -923,6 +976,142 @@
       }
     })();
     return companiesLoadPromise;
+  }
+
+  async function applyCompanyPortalMode() {
+    companyPortalId = sessionCompanyId();
+    document.body.classList.toggle("company-portal", Boolean(companyPortalId));
+    document.querySelectorAll('a[href="admin.html"]').forEach((a) => {
+      a.hidden = Boolean(companyPortalId);
+    });
+
+    const banner = $("companyPortalBanner");
+    if (!companyPortalId) {
+      if (banner) banner.hidden = true;
+      if (inboxPollTimer) {
+        clearInterval(inboxPollTimer);
+        inboxPollTimer = null;
+      }
+      return;
+    }
+
+    loadApiConfigIntoForm();
+    if ($("apiCompanyId")) {
+      $("apiCompanyId").value = companyPortalId;
+      $("apiCompanyId").readOnly = true;
+    }
+    if ($("mandantId")) {
+      $("mandantId").value = companyPortalId;
+      $("mandantId").readOnly = true;
+    }
+    if ($("apiKey")) {
+      const wrap = $("apiKey")?.closest(".full") || $("apiKey")?.parentElement;
+      if (wrap) wrap.hidden = true;
+    }
+    if ($("apiBaseUrl")) {
+      const wrap = $("apiBaseUrl")?.closest(".full") || $("apiBaseUrl")?.parentElement;
+      if (wrap) wrap.hidden = true;
+    }
+    $("btnApiCompanies")?.setAttribute("hidden", "hidden");
+    $("btnNewCompany")?.setAttribute("hidden", "hidden");
+
+    const hint = $("recvSectionHint") || document.querySelector("#secEmpfang .section-hint");
+    if (hint) {
+      hint.innerHTML = "<strong>Firmen-Portal:</strong> Automatische Abrechnungen Ihrer Mitarbeiter erscheinen hier.";
+    }
+    const apiHint = $("apiBridgeHint");
+    if (apiHint) {
+      apiHint.textContent = "Hier sehen Sie nur Abrechnungen Ihrer Firma. Öffnen → prüfen → freigeben an die Plattform.";
+    }
+
+    const flowHint = document.querySelector("#companyFlow .section-hint");
+    if (flowHint) {
+      flowHint.innerHTML = "<strong>Firmen-Portal:</strong> Nur Ihre Firma und Ihre Mitarbeiter. Automatische Abrechnungen von der Plattform erscheinen unter „Meine Abrechnungen“.";
+    }
+
+    const recvApiTab = $("recvApi");
+    if (recvApiTab) {
+      recvApiTab.textContent = "Meine Abrechnungen";
+    }
+
+    persistApiConfig();
+
+    let companyName = "";
+    try {
+      const me = await apiFetch("/v1/auth/me", { skipTenant: true });
+      const c = me.company || {};
+      companyName = c.name || me.workspace?.name || companyPortalId;
+      if (banner) {
+        banner.hidden = false;
+        banner.innerHTML = `
+          <div class="company-portal-banner-inner">
+            <div>
+              <span class="eyebrow">Firmen-Portal</span>
+              <strong>${esc(companyName)}</strong>
+              <small>Nur Ihre Daten · Login ${esc(me.user?.email || "")}</small>
+            </div>
+            <button type="button" class="primary" id="btnPortalRefreshInbox">Abrechnungen aktualisieren</button>
+          </div>`;
+        $("btnPortalRefreshInbox")?.addEventListener("click", () => loadApiInbox());
+      }
+      if ($("companyName") && (!$("companyName").value.trim() || String(state.mandantId || "").toLowerCase() !== companyPortalId)) {
+        $("companyName").value = companyName;
+      }
+      if (c.taxNumber && $("taxNumber") && !$("taxNumber").value.trim()) $("taxNumber").value = c.taxNumber;
+      if ((c.street || c.city || c.address) && $("seller") && !$("seller").value.trim()) {
+        $("seller").value = c.address || [c.name || companyName, c.street, [c.zip, c.city].filter(Boolean).join(" ")].filter(Boolean).join("\n");
+      }
+      if (c.datevClientNo && $("datevClientNo") && !$("datevClientNo").value.trim()) {
+        $("datevClientNo").value = c.datevClientNo;
+      }
+      if (c.datevConsultantNo && $("datevConsultantNo") && !$("datevConsultantNo").value.trim()) {
+        $("datevConsultantNo").value = c.datevConsultantNo;
+      }
+    } catch {
+      if (banner) {
+        banner.hidden = false;
+        banner.innerHTML = `
+          <div class="company-portal-banner-inner">
+            <div>
+              <span class="eyebrow">Firmen-Portal</span>
+              <strong>${esc(companyPortalId)}</strong>
+              <small>Nur Ihre Firmen-Daten</small>
+            </div>
+          </div>`;
+      }
+    }
+
+    // Drop foreign draft left in this browser from another firm/admin session
+    const currentMandant = String(state.mandantId || state.meta?.companyId || "").trim().toLowerCase();
+    if (currentMandant && currentMandant !== companyPortalId) {
+      withFreezeGuard(() => {
+        state = PayrollCore.defaultState();
+        state.mandantId = companyPortalId;
+        state.companyName = companyName || companyPortalId;
+        state.payrollMonth = currentMonth();
+        useReferenceDisplay = false;
+        writeForm();
+        refreshNow();
+      });
+    } else if (!currentMandant) {
+      if ($("mandantId")) $("mandantId").value = companyPortalId;
+      state.mandantId = companyPortalId;
+      if (companyName) state.companyName = companyName;
+    }
+
+    setModePill("Firmen-Portal", companyName || companyPortalId);
+    setRecvMode("api");
+    await loadPlatformCompanies();
+    await loadApiInbox(true);
+    refreshCompanySelect();
+    renderArchiveBoard();
+
+    if (inboxPollTimer) clearInterval(inboxPollTimer);
+    inboxPollTimer = setInterval(() => {
+      if (document.visibilityState === "visible") loadApiInbox(true);
+    }, 45000);
+
+    toast(`Angemeldet als Firma · ${companyName || companyPortalId}`, "ok");
   }
 
   async function openApiPayrollJob(jobId) {
@@ -1284,6 +1473,7 @@
   function startApp() {
     if (appReady) {
       refreshNow();
+      applyCompanyPortalMode();
       return;
     }
     fillCatalogs();
@@ -1304,8 +1494,9 @@
       appReady = true;
       resetNew(false);
     }
-    setRecvMode("file");
+    setRecvMode(isCompanyPortal() ? "api" : "file");
     renderArchiveBoard();
+    applyCompanyPortalMode();
   }
 
   function init() {

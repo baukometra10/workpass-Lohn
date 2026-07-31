@@ -341,6 +341,10 @@
         user: data.user,
         via: data.via,
       });
+      document.body.classList.toggle(
+        "company-portal",
+        Boolean(data.user?.companyId && data.user?.role !== "admin")
+      );
       try {
         if (data.user?.companyId && typeof localStorage !== "undefined") {
           const prev = JSON.parse(localStorage.getItem("workpass.lohn.apiConfig.v1") || "{}");
@@ -461,6 +465,11 @@
     return loadPlatformSession()?.user || null;
   }
 
+  function isCompanyPortalUser() {
+    const u = getSessionUser();
+    return Boolean(u?.companyId && u.role !== "admin");
+  }
+
   async function init(options) {
     onUnlockCb = options?.onUnlock || null;
     bindActivity();
@@ -480,6 +489,7 @@
     if (isUnlocked()) {
       hideGate();
       touchSession();
+      document.body.classList.toggle("company-portal", isCompanyPortalUser());
       onUnlockCb?.();
       return true;
     }
@@ -495,8 +505,10 @@
     isUnlocked,
     getSessionToken,
     getSessionUser,
+    isCompanyPortalUser,
     getAuthConfig: () => authConfig,
     STORE_KEY,
+  };
     SESSION_KEY,
     PLATFORM_SESSION_KEY,
     TEST_BYPASS,
