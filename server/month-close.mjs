@@ -7,11 +7,44 @@ import { ingestPayrollBatch, releasePayrollJob } from "./payroll-service.mjs";
 import { normalizeCompanyId } from "./tenant.mjs";
 import { notifyPlatform } from "./notify.mjs";
 import { upsertPlatformMessage } from "./platform-messages.mjs";
+import { isDemoPayrollJob } from "./demo-detect.mjs";
 
 function currentPeriod(d = new Date()) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   return `${y}-${m}`;
+}
+
+function isMissingPlatformData(pull) {
+  const status = Number(pull?.status) || 0;
+  const raw = String(pull?.error || pull?.body?.error || pull?.body?.code || "").toLowerCase();
+  return status === 404
+    || raw === "not_found"
+    || raw.includes("not_found")
+    || raw.includes("not found")
+    || raw.includes("no data")
+    || raw.includes("keine daten");
+}
+
+function humanizePullError(pull, period) {
+  if (!pull || pull.skipped) {
+    return `Keine Monatsdaten für ${period}. Die Plattform muss Stunden/Löhne per POST /v1/payroll/batch senden.`;
+  }
+  if (isMissingPlatformData(pull)) {
+    return `Plattform meldet: keine Daten für ${period} (not_found). `
+      + `Bitte in der Plattform den Monat freigeben und an die Buchhaltung senden – `
+      + `oder den Export-Endpoint mit echten Mitarbeiterdaten befüllen.`;
+  }
+  const status = Number(pull.status) || 0;
+  if (status === 405) {
+    return `Plattform-Pull HTTP 405 – Methode nicht erlaubt. `
+      + `Setze WORKPASS_PLATFORM_PAYROLL_PULL_METHOD=GET oder lass die Plattform per Batch pushen.`;
+  }
+  return pull.error || `Keine Daten für ${period}`;
+}
+
+function realPeriodJobs(companyId, period) {
+  return listPayrollJobs({ companyId, period }).filter((j) => !isDemoPayrollJob(j));
 }
 
 /**
@@ -114,12 +147,13 @@ async function fetchPullOnce({ url, method, companyId, period, key, timeoutMs })
       body = null;
     }
     if (!res.ok) {
+      const code = body?.error || body?.code || `HTTP ${res.status}`;
       return {
         ok: false,
         skipped: false,
         status: res.status,
         method,
-        error: body?.error || `Plattform-Pull HTTP ${res.status}`,
+        error: String(code),
         body,
       };
     }
@@ -197,7 +231,7 @@ export async function runMonthClose(options = {}) {
     }
   }
 
-  const jobs = listPayrollJobs({ companyId, period });
+  const jobs = realPeriodJobs(companyId, period);
   const calculated = jobs.filter((j) => j.status === "calculated");
   const alreadyReleased = jobs.filter((j) => j.status === "released");
   const errored = jobs.filter((j) => j.status === "error");
@@ -218,24 +252,28 @@ export async function runMonthClose(options = {}) {
     }
   }
 
-  const after = listPayrollJobs({ companyId, period });
+  const after = realPeriodJobs(companyId, period);
   const hasWork = after.length > 0 || Boolean(batchIngest?.count);
+  const missingOnPlatform = !pull.skipped && !pull.ok && isMissingPlatformData(pull);
   const waitingForPlatform = !hasWork && (pull.skipped || !pull.ok);
   const ok = hasWork && releaseErrors.length === 0 && (!batchIngest || batchIngest.ok);
+  const pullHint = humanizePullError(pull, period);
 
   const result = {
     ok,
     waitingForPlatform,
+    missingOnPlatform,
     error: ok
       ? undefined
       : (!hasWork
-        ? (pull.skipped
-          ? `Keine Monatsdaten für ${period}. Die Plattform muss zuerst Stunden/Löhne senden (POST /v1/payroll/batch) oder WORKPASS_PLATFORM_PAYROLL_PULL_URL setzen.`
-          : (pull.error || `Keine Daten für ${period}`))
+        ? pullHint
         : (releaseErrors[0]?.error || batchIngest?.errors?.join?.(" · ") || "Monatsabschluss unvollständig")),
     period,
     companyId,
-    pull,
+    pull: {
+      ...pull,
+      humanError: pullHint,
+    },
     batch: batchIngest
       ? {
           ok: batchIngest.ok,
@@ -255,9 +293,9 @@ export async function runMonthClose(options = {}) {
     alreadyReleased: alreadyReleased.map((j) => j.jobId),
     errored: errored.map((j) => ({ jobId: j.jobId, errors: j.errors })),
     message: !hasWork
-      ? (pull.skipped
-        ? `Warte auf Plattform-Daten für ${period}. Noch keine Mitarbeiter-Stunden empfangen.`
-        : (pull.error || `Keine Daten für ${period}`))
+      ? (waitingForPlatform
+        ? `Warte auf echte Plattform-Daten für ${period}. ${missingOnPlatform ? "Export meldet not_found / keine Daten." : "Noch keine Mitarbeiter-Stunden empfangen."}`
+        : pullHint)
       : autoRelease
         ? `Monatsabschluss ${period}: ${released.length} Abrechnung(en) an Plattform/Mitarbeiter gesendet.`
         : `Monatsabschluss ${period}: ${calculated.length} Abrechnung(en) berechnet (noch nicht freigegeben).`,
@@ -283,9 +321,9 @@ export async function runMonthClose(options = {}) {
       period,
       title: `Monatsdaten fehlen · ${period}`,
       body:
-        `Die Buchhaltung wartet auf Lohn-/Stundendaten für ${period}.\n\n`
-        + `Bitte in der Plattform den Monat freigeben und per POST /v1/payroll/batch senden `
-        + `(oder WORKPASS_PLATFORM_PAYROLL_PULL_URL bereitstellen).`,
+        `Die Buchhaltung wartet auf echte Lohn-/Stundendaten für ${period}.\n\n`
+        + `${pullHint}\n\n`
+        + `Bitte in der Plattform den Monat freigeben und per POST /v1/payroll/batch an die Buchhaltung senden.`,
       code: "payroll_waiting",
       gaps: [{
         code: "payroll_waiting",

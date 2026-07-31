@@ -1,13 +1,11 @@
 /**
  * Month-close with local batch (no platform pull).
+ * Uses real employee identities (not Mustermann / Beispiel Anna).
  * Run: node tests/month-close.mjs
  */
 import { activateCompany, deleteCompany } from "../server/company-service.mjs";
 import { runMonthClose } from "../server/month-close.mjs";
 import { listPayrollJobs } from "../server/db/repository.mjs";
-import { readFileSync } from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
 
 let passed = 0;
 let failed = 0;
@@ -31,14 +29,46 @@ activateCompany({
   connection: { accountingEnabled: true },
 });
 
-const example = JSON.parse(
-  readFileSync(
-    path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "examples", "platform-payroll.batch.v1.json"),
-    "utf8"
-  )
-);
-example.company = { ...example.company, id, name: "Month Close Test GmbH" };
-example.period = period;
+const batch = {
+  kind: "platform.payroll.batch.v1",
+  period,
+  company: { id, name: "Month Close Test GmbH", taxNumber: "123/456/78901" },
+  note: "Echte Testmitarbeiter für Monatsabschluss",
+  employees: [
+    {
+      employee: {
+        id: "E-1001",
+        badgeId: "E-1001",
+        name: "Schmidt Laura",
+        taxClass: "I",
+        churchTaxRate: "9",
+        healthFund: "AOK",
+        healthPercent: "14.9",
+      },
+      attendance: { days: 21, hours: 168 },
+      wageItems: [
+        { code: "2000", label: "Gehalt", amount: 3500, taxFlag: "L", svFlag: "L" },
+      ],
+      bank: { name: "Bank", iban: "DE89370400440532013000" },
+    },
+    {
+      employee: {
+        id: "E-1002",
+        badgeId: "E-1002",
+        name: "Weber Tom",
+        taxClass: "I",
+        churchTaxRate: "0",
+        healthFund: "TK",
+        healthPercent: "14.6",
+      },
+      attendance: { days: 20, hours: 160 },
+      wageItems: [
+        { code: "2000", label: "Gehalt", amount: 2800, taxFlag: "L", svFlag: "L" },
+      ],
+      bank: { name: "Bank", iban: "DE89370400440532013000" },
+    },
+  ],
+};
 
 console.log("\n=== Month close with body batch + auto release ===");
 const result = await runMonthClose({
@@ -46,11 +76,10 @@ const result = await runMonthClose({
   period,
   pull: false,
   autoRelease: true,
-  batch: example,
+  batch,
   tenantScope: id,
 });
 assert(result.ok || result.waitingForPlatform || result.message, "month close responds");
-// with batch, should succeed
 assert(result.ok, "month close ok");
 assert(result.batch?.count === 2, "2 employees calculated");
 assert((result.newlyReleased?.length || 0) === 2, "2 released to platform queue");

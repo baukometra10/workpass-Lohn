@@ -69,6 +69,13 @@ export function monthOverview(companyId, opts = {}) {
     const released = jobs.filter((j) => j.status === "released").length;
     const calculated = jobs.filter((j) => j.status === "calculated").length;
     const error = jobs.filter((j) => j.status === "error").length;
+    const grossSum = jobs.reduce((s, j) => s + Number(j.payslip?.totals?.gross || 0), 0);
+    const netSum = jobs.reduce((s, j) => s + Number(j.payslip?.totals?.net || 0), 0);
+    const taxSum = jobs.reduce((s, j) => {
+      const t = j.payslip?.totals || {};
+      return s + Number(t.payrollTax || 0) + Number(t.solidarity || 0) + Number(t.churchTax || 0);
+    }, 0);
+    const svAnSum = jobs.reduce((s, j) => s + Number(j.payslip?.totals?.svTotal || 0), 0);
     let status = "empty";
     if (error) status = "error";
     else if (jobs.length && released === jobs.length) status = "released";
@@ -81,12 +88,17 @@ export function monthOverview(companyId, opts = {}) {
       released,
       calculated,
       error,
+      grossSum,
+      netSum,
+      taxSum,
+      svAnSum,
       employees: jobs.map((j) => ({
         id: j.employee?.id,
         name: j.employee?.name,
         status: j.status,
         jobId: j.jobId,
         net: j.payslip?.totals?.net ?? null,
+        gross: j.payslip?.totals?.gross ?? null,
       })),
     };
   });

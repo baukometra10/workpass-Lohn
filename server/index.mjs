@@ -28,6 +28,7 @@ import {
 } from "./platform-messages.mjs";
 import { ingestInvoice, releaseInvoiceJob } from "./invoice-service.mjs";
 import { listPayrollJobs, loadPayrollJob, listInvoiceJobs, loadInvoiceJob } from "./store.mjs";
+import { isDemoPayrollJob } from "./demo-detect.mjs";
 import { listPendingDeliveries, listAllDeliveries, ackDelivery } from "./delivery-queue.mjs";
 import { getLastWebhookStatus } from "./notify.mjs";
 import {
@@ -128,7 +129,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "2.3.2",
+      version: "2.4.0",
       multiTenant: true,
       monthCloseScheduler: monthCloseSched,
       autoMonthClose: autoMonthCloseConfig(),
@@ -378,7 +379,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "2.3.2",
+          version: "2.4.0",
           ...syncHealth(),
         },
         monthCloseScheduler: monthCloseSched,
@@ -665,19 +666,28 @@ async function handler(req, res) {
 
     if (req.method === "GET" && path.startsWith("/v1/payroll/") && path !== "/v1/payroll") {
       const jobId = decodeURIComponent(path.slice("/v1/payroll/".length));
-      if (jobId.includes("/")) return reply( 404, { ok: false, error: "Not found" });
+      if (jobId.includes("/")) return reply(404, { ok: false, error: "Not found" });
       const job = loadPayrollJob(jobId);
-      if (!job) return reply( 404, { ok: false, error: "Job nicht gefunden" });
+      if (!job) return reply(404, { ok: false, error: "Job nicht gefunden", code: "job_not_found" });
+      if (isDemoPayrollJob(job)) {
+        return reply(404, {
+          ok: false,
+          error: "Beispieldaten-Job – nicht verfügbar. Bitte echte Plattform-Daten laden.",
+          code: "demo_job_hidden",
+        });
+      }
       const scopeCheck = assertSameTenant(tenantScope, job.company?.id, "Payroll-Job");
-      if (!scopeCheck.ok) return reply( 403, { ok: false, error: scopeCheck.error });
-      return reply( 200, { ok: true, job });
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      return reply(200, { ok: true, job });
     }
 
     if (req.method === "GET" && path === "/v1/inbox") {
       const status = url.searchParams.get("status") || undefined;
       const period = url.searchParams.get("period") || undefined;
       const companyId = tenantScope || url.searchParams.get("companyId") || undefined;
-      const payroll = listPayrollJobs({ status, period, companyId }).map((j) => ({
+      const payroll = listPayrollJobs({ status, period, companyId })
+        .filter((j) => !isDemoPayrollJob(j))
+        .map((j) => ({
         type: "payroll",
         jobId: j.jobId,
         status: j.status,
@@ -859,7 +869,7 @@ async function handler(req, res) {
         kind: "platform.accounting.sync.v1",
         schemaVersion: 2,
         companyId: companyId || null,
-        accountingVersion: "2.3.1",
+        accountingVersion: "2.4.0",
         webhook: {
           configured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),
           urlSuggested: platformWebhookUrl(),
@@ -876,6 +886,7 @@ async function handler(req, res) {
           "Fehlende Daten: GET /v1/messages/pending → ergänzen → POST /v1/payroll/batch → POST /v1/messages/:id/ack",
           "Freigaben: Webhook empfangen oder GET /v1/delivery/pending → POST /v1/delivery/:id/ack",
           "Monatsabschluss: POST /v1/payroll/month-close { companyId, period }",
+          "not_found beim Pull = Monat auf der Plattform noch nicht freigegeben/exportiert – Push per Batch bevorzugen",
         ],
       });
     }

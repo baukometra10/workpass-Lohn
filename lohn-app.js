@@ -352,13 +352,79 @@
       demoPurgedOnce = true;
       await purgeDemoData({ silent: true, skipReload: true });
     }
-    const period = currentPayrollPeriod();
+    const periodInput = $("portalPeriod");
+    if (periodInput && !periodInput.value) periodInput.value = currentPayrollPeriod();
+    const period = (periodInput?.value && /^\d{4}-\d{2}$/.test(periodInput.value))
+      ? periodInput.value
+      : currentPayrollPeriod();
+    if ($("payrollMonth")) $("payrollMonth").value = period;
     try {
-      const [emps, month, arch] = await Promise.all([
+      const [emps, month, arch, msgs, sync] = await Promise.all([
         apiFetch(`/v1/portal/employees?period=${encodeURIComponent(period)}`),
         apiFetch(`/v1/portal/month?period=${encodeURIComponent(period)}&months=6`),
         apiFetch(`/v1/portal/archive?period=${encodeURIComponent(period)}`),
+        apiFetch("/v1/messages?status=open").catch(() => ({ messages: [] })),
+        apiFetch("/v1/platform/status").catch(() => null),
       ]);
+
+      const cur = month.current || {};
+      const kpiRow = $("portalKpiRow");
+      if (kpiRow) kpiRow.hidden = false;
+      if ($("portalKpiEmployees")) $("portalKpiEmployees").textContent = String(emps.count || 0);
+      if ($("portalKpiReleased")) $("portalKpiReleased").textContent = String(cur.released || arch.count || 0);
+      if ($("portalKpiGross")) {
+        $("portalKpiGross").textContent = cur.total
+          ? PayrollCore.formatAmount(cur.grossSum || 0)
+          : "—";
+      }
+      if ($("portalKpiNet")) {
+        $("portalKpiNet").textContent = cur.total
+          ? PayrollCore.formatAmount(cur.netSum || 0)
+          : "—";
+      }
+      if ($("portalKpiMessages")) $("portalKpiMessages").textContent = String((msgs.messages || []).length);
+      if ($("portalKpiSync")) {
+        const pending = Number(sync?.pending?.messages || 0) + Number(sync?.pending?.deliveries || 0);
+        $("portalKpiSync").textContent = pending ? `${pending} offen` : (sync?.webhook?.configured ? "OK" : "—");
+      }
+
+      const totalsCard = $("portalTotalsCard");
+      if (totalsCard) {
+        totalsCard.hidden = false;
+        if ($("portalTotalsPeriod")) $("portalTotalsPeriod").textContent = period;
+        if ($("portalTotalsHint")) {
+          $("portalTotalsHint").textContent = cur.total
+            ? `${cur.total} echte Abrechnung(en) · Status ${cur.status || "—"}`
+            : "Noch keine echten Abrechnungen in diesem Monat.";
+        }
+        if ($("portalTotalsGrid")) {
+          $("portalTotalsGrid").innerHTML = `
+            <div class="kpi"><span>Brutto</span><strong>${esc(PayrollCore.formatAmount(cur.grossSum || 0))}</strong></div>
+            <div class="kpi"><span>Netto</span><strong>${esc(PayrollCore.formatAmount(cur.netSum || 0))}</strong></div>
+            <div class="kpi"><span>Lohnsteuer</span><strong>${esc(PayrollCore.formatAmount(cur.taxSum || 0))}</strong></div>
+            <div class="kpi"><span>SV AN</span><strong>${esc(PayrollCore.formatAmount(cur.svAnSum || 0))}</strong></div>
+          `;
+        }
+      }
+
+      if ($("portalSyncHint")) {
+        $("portalSyncHint").textContent = emps.count
+          ? "Echte Mitarbeiter geladen. Monatsabschluss braucht Plattform-Daten für den Monat."
+          : "Warte auf echte Mitarbeiter/Löhne von der Plattform (kein Demo).";
+      }
+      if ($("portalSyncDetail")) {
+        const hints = sync?.hints || [
+          "Plattform: POST /v1/payroll/batch mit echten Mitarbeitern.",
+          "not_found = Monat auf der Plattform noch nicht exportierbar / freigegeben.",
+        ];
+        $("portalSyncDetail").innerHTML = `
+          <div class="api-inbox-item"><div><strong>Webhook</strong><span>${esc(sync?.webhook?.configured ? "konfiguriert" : "nicht gesetzt")}</span></div></div>
+          <div class="api-inbox-item"><div><strong>Pull-URL</strong><span>${esc(sync?.pullUrlConfigured ? "gesetzt" : "nicht gesetzt (Push empfohlen)")}</span></div></div>
+          <div class="api-inbox-item"><div><strong>Offen</strong><span>Messages ${Number(sync?.pending?.messages || 0)} · Deliveries ${Number(sync?.pending?.deliveries || 0)}</span></div></div>
+          ${hints.slice(0, 3).map((h) => `<div class="api-inbox-item"><div><span>${esc(h)}</span></div></div>`).join("")}
+        `;
+      }
+
       const empHost = $("portalEmployeeList");
       if (empHost) {
         const list = emps.employees || [];
@@ -374,7 +440,7 @@
                 <button type="button" class="api-open-emp primary" data-id="${esc(e.lastJobId || "")}">Öffnen</button>
               </div>
             </div>`).join("")
-          : '<div class="company-empty-inbox"><strong>Noch keine echten Mitarbeiter</strong><p>Die Plattform muss Mitarbeiter (Name + Badge-ID) bzw. den Monats-Lohnbatch senden. Beispieldaten wie Mustermann werden nicht angezeigt.</p></div>';
+          : '<div class="company-empty-inbox"><strong>Noch keine echten Mitarbeiter</strong><p>Die Plattform muss Mitarbeiter (Name + Badge-ID) bzw. den Monats-Lohnbatch senden. Beispieldaten werden nicht angezeigt.</p></div>';
         empHost.querySelectorAll(".api-open-emp").forEach((btn) => {
           btn.addEventListener("click", () => openApiPayrollJob(btn.dataset.id));
         });
@@ -389,6 +455,7 @@
         monthHost.querySelectorAll(".month-chip").forEach((btn) => {
           btn.addEventListener("click", () => {
             if ($("payrollMonth")) $("payrollMonth").value = btn.dataset.period;
+            if ($("portalPeriod")) $("portalPeriod").value = btn.dataset.period;
             loadPortalDashboard(true);
             loadApiInbox(true);
           });
@@ -572,16 +639,20 @@
     host.hidden = false;
     const tone = data.ok ? "ok" : (data.waitingForPlatform ? "wait" : "err");
     const jobs = data.jobs || {};
+    const detail = data.pull?.humanError || data.error || "";
+    const showDetail = detail && detail !== data.message;
     host.innerHTML = `
       <div class="month-status month-status-${tone}">
         <strong>${esc(data.ok ? "Abschluss bereit" : data.waitingForPlatform ? "Warte auf Plattform" : "Noch nicht fertig")}</strong>
         <p>${esc(data.message || data.error || "")}</p>
+        ${showDetail ? `<p class="section-hint">${esc(detail)}</p>` : ""}
         <div class="month-status-chips">
           <span>Monat ${esc(data.period || "—")}</span>
           <span>Jobs ${Number(jobs.total || 0)}</span>
           <span>Freigegeben ${Number(jobs.released || 0)}</span>
           <span>Offen ${Number(jobs.calculated || 0)}</span>
           <span>Fehler ${Number(jobs.error || 0)}</span>
+          ${data.missingOnPlatform ? "<span>Plattform: not_found</span>" : ""}
         </div>
       </div>`;
   }
@@ -950,20 +1021,11 @@
   }
 
   function loadReference() {
-    const ref = PayrollCore.referenceMustermannState();
-    if (!ref) {
-      window.alert("Referenz-Vorlage nicht gefunden.");
+    if (companyPortalId) {
+      toast("Beispieldaten sind im Firmenportal deaktiviert.", "info");
       return;
     }
-    withFreezeGuard(() => {
-      state = ref;
-      useReferenceDisplay = true;
-      writeForm();
-      window.DatevSheet?.setBackground("blank");
-      refreshNow();
-    });
-    setModePill("Demo", "Referenzwerte Mustermann – bei Bearbeitung wechselt die App auf Live-Berechnung");
-    setStatus("Demo Mustermann geladen – Live auf dem A4-Blatt.", true);
+    toast("Demo-Beispiele sind deaktiviert. Bitte echte Plattform-Daten verwenden.", "info");
   }
 
   function importPlatformFile(file) {
@@ -1537,7 +1599,10 @@
   }
 
   async function openApiPayrollJob(jobId) {
-    if (!jobId) return;
+    if (!jobId) {
+      toast("Kein Job – noch keine echte Abrechnung für diesen Mitarbeiter.", "info");
+      return;
+    }
     try {
       const data = await apiFetch(`/v1/payroll/${encodeURIComponent(jobId)}`);
       const jobState = data.job?.state;
@@ -1552,7 +1617,12 @@
       );
       setModePill("API-Job", "Vom Bridge-Server geöffnet – prüfen & freigeben");
     } catch (e) {
-      window.alert(`Job öffnen fehlgeschlagen:\n${e.message}`);
+      const msg = String(e.message || e);
+      if (/not_found|nicht gefunden|demo_job/i.test(msg)) {
+        toast("Datensatz nicht gefunden oder Beispieldaten – bitte echte Plattform-Daten laden.", "error");
+      } else {
+        toast(`Job öffnen: ${msg}`, "error");
+      }
     }
   }
 
@@ -1837,8 +1907,25 @@
     $("btnNew").addEventListener("click", () => {
       if (window.confirm("Neue leere Abrechnung starten?")) resetNew(true);
     });
-    $("btnReference").addEventListener("click", loadReference);
-    $("btnPreviewDemo")?.addEventListener("click", loadReference);
+    $("btnReference")?.addEventListener("click", () => {
+      toast("Demo-Beispiele sind deaktiviert. Bitte echte Plattform-Daten verwenden.", "info");
+    });
+    $("btnPreviewDemo")?.addEventListener("click", () => {
+      toast("Demo-Beispiele sind deaktiviert. Bitte echte Plattform-Daten verwenden.", "info");
+    });
+    $("btnPortalApplyPeriod")?.addEventListener("click", () => {
+      if ($("portalPeriod")?.value && $("payrollMonth")) {
+        $("payrollMonth").value = $("portalPeriod").value;
+      }
+      loadPortalDashboard();
+      loadApiInbox(true);
+      loadPlatformMessages(true);
+    });
+    $("portalPeriod")?.addEventListener("change", () => {
+      if ($("payrollMonth") && $("portalPeriod").value) {
+        $("payrollMonth").value = $("portalPeriod").value;
+      }
+    });
     $("btnPreviewEmpfang")?.addEventListener("click", () => {
       setRecvMode("file");
       $("secEmpfang")?.scrollIntoView({ behavior: "smooth", block: "start" });

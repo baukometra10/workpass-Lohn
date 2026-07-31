@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=5" />
-    <link rel="stylesheet" href="lohn.css?v=45" />
+    <link rel="stylesheet" href="lohn.css?v=46" />
   </head>
   <body class="auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
@@ -81,7 +81,6 @@
           <div class="lohn-actions-group">
             <button type="button" id="btnNew">Neu</button>
             <button type="button" id="btnExportJson">Export</button>
-            <button type="button" id="btnReference" class="btn-quiet" title="Demo Mustermann">Demo</button>
           </div>
           <div class="lohn-actions-group">
             <button type="button" id="btnPrint" class="primary">Drucken</button>
@@ -144,6 +143,33 @@
             <div class="recv-panel" id="panelApi" hidden>
               <p class="section-hint" id="apiBridgeHint">Bridge-Server empfängt Monatsdaten von der Plattform. Auf Railway: API-URL = diese Website (wird automatisch gesetzt). API-Key = <code>WORKPASS_API_KEY</code> aus Railway Variables. Multi-Tenant: Firma-ID filtert die Inbox.</p>
               <div id="portalDashboard" class="portal-dashboard" hidden>
+                <div class="portal-kpi-row" id="portalKpiRow" hidden>
+                  <div class="kpi"><span>Mitarbeiter</span><strong id="portalKpiEmployees">0</strong></div>
+                  <div class="kpi"><span>Freigegeben</span><strong id="portalKpiReleased">0</strong></div>
+                  <div class="kpi"><span>Brutto Monat</span><strong id="portalKpiGross">—</strong></div>
+                  <div class="kpi"><span>Netto Monat</span><strong id="portalKpiNet">—</strong></div>
+                  <div class="kpi"><span>Offene Aufträge</span><strong id="portalKpiMessages">0</strong></div>
+                  <div class="kpi"><span>Sync</span><strong id="portalKpiSync">—</strong></div>
+                </div>
+                <section class="month-close-card portal-dash-card" id="portalTotalsCard" hidden style="margin-bottom:12px">
+                  <strong>Monats-Summen <span id="portalTotalsPeriod"></span></strong>
+                  <p id="portalTotalsHint">Nur echte Abrechnungen (ohne Beispieldaten).</p>
+                  <div class="portal-totals-grid" id="portalTotalsGrid"></div>
+                </section>
+                <div class="field-grid" style="margin-bottom:12px">
+                  <div>
+                    <label for="portalPeriod">Abrechnungsmonat</label>
+                    <input id="portalPeriod" type="month" />
+                  </div>
+                  <div class="btn-row" style="align-items:flex-end">
+                    <button type="button" class="primary" id="btnPortalApplyPeriod">Monat laden</button>
+                  </div>
+                </div>
+                <section class="month-close-card portal-dash-card" id="portalSyncCard" style="margin-bottom:12px">
+                  <strong>Plattform-Sync</strong>
+                  <p id="portalSyncHint">Status der Verbindung zur Plattform.</p>
+                  <div id="portalSyncDetail" class="api-inbox-list"></div>
+                </section>
                 <div class="portal-dash-grid">
                   <section class="month-close-card portal-dash-card">
                     <strong>Mitarbeiter</strong>
@@ -161,8 +187,8 @@
                   <p>Freigegebene Abrechnungen öffnen und als PDF speichern.</p>
                   <div id="portalArchiveList" class="api-inbox-list"></div>
                   <div class="month-close-actions" style="margin-top:10px">
-                    <button type="button" id="btnPurgeDemo" class="primary">Beispieldaten entfernen</button>
-                    <button type="button" id="btnRefreshPortal">Portal aktualisieren</button>
+                    <button type="button" id="btnPurgeDemo">Beispieldaten entfernen</button>
+                    <button type="button" id="btnRefreshPortal" class="primary">Portal aktualisieren</button>
                   </div>
                 </section>
               </div>
@@ -278,7 +304,7 @@
             <div class="field-grid mt-block" id="employeeBlock">
               <div class="full">
                 <label for="employeeName">Name <span class="req">*</span></label>
-                <input id="employeeName" type="text" placeholder="Max Mustermann" />
+                <input id="employeeName" type="text" placeholder="Vorname Nachname" />
               </div>
               <div class="full">
                 <label for="employeeAddress">Adresse</label>
@@ -503,10 +529,9 @@
           <div class="preview-stage">
             <div id="previewEmpty" class="preview-empty" hidden>
               <strong>Noch keine Abrechnung geladen</strong>
-              <span>Demo laden, Datei empfangen oder manuell erfassen – das Blatt aktualisiert sich live.</span>
+              <span>Echte Daten von der Plattform empfangen, Datei importieren oder manuell erfassen.</span>
               <div class="preview-empty-actions">
-                <button type="button" class="primary glossy" id="btnPreviewDemo">Demo Mustermann</button>
-                <button type="button" class="glossy-secondary" id="btnPreviewEmpfang">Zum Empfang</button>
+                <button type="button" class="primary glossy" id="btnPreviewEmpfang">Zum Empfang</button>
               </div>
             </div>
             <div id="datevSheetHost" class="datev-sheet-host" aria-label="Abrechnungsvorschau"></div>
@@ -528,6 +553,6 @@
     <script src="auth-gate.js?v=8"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="lohn-app.js?v=39"></script>
+    <script src="lohn-app.js?v=41"></script>
   </body>
 </html>
