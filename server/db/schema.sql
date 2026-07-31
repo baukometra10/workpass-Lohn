@@ -107,3 +107,17 @@ CREATE INDEX IF NOT EXISTS idx_msg_company ON platform_messages(company_id);
 CREATE INDEX IF NOT EXISTS idx_msg_dedupe ON platform_messages(dedupe_key);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_msg_open_dedupe
   ON platform_messages(dedupe_key) WHERE status = 'open' AND dedupe_key != '';
+
+-- Firm employees (name + badge); badge is internal and must not print on payslips
+CREATE TABLE IF NOT EXISTS company_employees (
+  company_id TEXT NOT NULL,
+  badge_id TEXT NOT NULL,
+  name TEXT NOT NULL DEFAULT '',
+  personnel_number TEXT NOT NULL DEFAULT '',
+  meta_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (company_id, badge_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_emp_company ON company_employees(company_id);

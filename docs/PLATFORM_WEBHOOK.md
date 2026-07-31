@@ -54,7 +54,8 @@ Sync overview for the platform: `GET {ACCOUNTING}/v1/platform/status`
 |-------|---------|-----------------|
 | `payslip.released` | `examples/webhook-payslip.released.json` | Show payslip in employee app |
 | `invoice.released` | `examples/webhook-invoice.released.json` | Show invoice |
-| `accounting.message` | `examples/webhook-accounting.message.json` | Inbox: missing IBAN / Steuer-Nr. … → fix → resend payroll → ack |
+| `accounting.message` | `examples/webhook-accounting.message.json` | Inbox: **one** bundled gap message per employee → fix → resend → `POST /v1/messages/:id/ack` (accounting shows „Auftrag gesehen“) |
+| Employees import | `POST /v1/employees/import` + `examples/platform-employees.import.v1.json` | Name + **badgeId** (badge never printed on payslip; optional `personnelNumber` may print) |
 | `payroll.waiting` | `examples/webhook-payroll.waiting.json` | Prompt firm to send month batch |
 | `month.closed` | `examples/webhook-month.closed.json` | Mark month done / notify HR |
 | `month.close.failed` | — | Show errors / retry |

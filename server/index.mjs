@@ -14,6 +14,7 @@ import { runMonthClose, currentPeriod } from "./month-close.mjs";
 import { startMonthCloseScheduler, runAutoMonthCloseOnce, autoMonthCloseConfig } from "./month-scheduler.mjs";
 import { listCompanyEmployees, monthOverview, listReleasedArchive } from "./portal-service.mjs";
 import { buildDemoPayrollBatch } from "./demo-payroll.mjs";
+import { importEmployees, listEmployees } from "./employee-registry.mjs";
 import {
   listMessages,
   listPendingMessagesForPlatform,
@@ -21,6 +22,7 @@ import {
   upsertPlatformMessage,
   messageStats,
   loadMessage,
+  listSeenConfirmations,
 } from "./platform-messages.mjs";
 import { ingestInvoice, releaseInvoiceJob } from "./invoice-service.mjs";
 import { listPayrollJobs, loadPayrollJob, listInvoiceJobs, loadInvoiceJob } from "./store.mjs";
@@ -124,7 +126,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "2.2.0",
+      version: "2.3.0",
       multiTenant: true,
       monthCloseScheduler: monthCloseSched,
       autoMonthClose: autoMonthCloseConfig(),
@@ -243,6 +245,7 @@ async function handler(req, res) {
       || path.startsWith("/v1/invoice/")
       || path.startsWith("/v1/delivery/")
       || path.startsWith("/v1/messages")
+      || path.startsWith("/v1/employees")
       || path.startsWith("/v1/platform")
       || path.startsWith("/v1/sync")
       || path.startsWith("/v1/portal/")
@@ -373,7 +376,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "2.2.0",
+          version: "2.3.0",
           ...syncHealth(),
         },
         monthCloseScheduler: monthCloseSched,
@@ -702,9 +705,61 @@ async function handler(req, res) {
     if (req.method === "GET" && path === "/v1/portal/employees") {
       const companyId = tenantScope || url.searchParams.get("companyId") || "";
       const period = url.searchParams.get("period") || undefined;
-      const result = listCompanyEmployees(companyId, { period });
-      if (!result.ok) return reply(422, result);
-      return reply(200, result);
+      const fromJobs = listCompanyEmployees(companyId, { period });
+      if (!fromJobs.ok) return reply(422, fromJobs);
+      const registered = listEmployees(companyId);
+      const byBadge = new Map();
+      for (const e of registered) {
+        byBadge.set(e.badgeId, {
+          id: e.badgeId,
+          badgeId: e.badgeId,
+          name: e.name,
+          personnelNumber: e.personnelNumber || "",
+          source: "registry",
+          lastPeriod: null,
+          lastStatus: null,
+          net: null,
+          gross: null,
+        });
+      }
+      for (const e of (fromJobs.employees || [])) {
+        const prev = byBadge.get(e.id) || {};
+        byBadge.set(e.id, {
+          ...prev,
+          ...e,
+          badgeId: prev.badgeId || e.id,
+          personnelNumber: prev.personnelNumber || "",
+          source: prev.source || "payroll",
+        });
+      }
+      const employees = [...byBadge.values()].sort((a, b) =>
+        String(a.name).localeCompare(String(b.name), "de")
+      );
+      return reply(200, {
+        ok: true,
+        companyId,
+        period: period || null,
+        count: employees.length,
+        employees,
+      });
+    }
+
+    if (req.method === "POST" && (path === "/v1/employees/import" || path === "/v1/portal/employees/import")) {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(body.companyId || body.company?.id || tenantScope || "");
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Employee-Import");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const list = Array.isArray(body.employees) ? body.employees : (body.employee ? [body.employee] : []);
+      const result = importEmployees(companyId, list, { source: body.source || "api" });
+      audit({
+        type: "employees.import",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { count: result.count },
+      });
+      return reply(result.ok ? 200 : 422, result);
     }
 
     if (req.method === "GET" && path === "/v1/portal/month") {
@@ -770,7 +825,7 @@ async function handler(req, res) {
         kind: "platform.accounting.sync.v1",
         schemaVersion: 2,
         companyId: companyId || null,
-        accountingVersion: "2.2.0",
+        accountingVersion: "2.3.0",
         webhook: {
           configured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),
           urlSuggested: platformWebhookUrl(),
@@ -813,11 +868,29 @@ async function handler(req, res) {
         openOnly: !status,
         limit: 100,
       });
+      const seen = listSeenConfirmations({ companyId, sinceHours: 72, limit: 40 });
       return reply(200, {
         ok: true,
         count: messages.length,
         stats: messageStats(companyId),
         messages,
+        seenConfirmations: seen,
+        hint: "seenConfirmations = Aufträge, die die Plattform bereits gelesen hat.",
+      });
+    }
+
+    if (req.method === "GET" && (path === "/v1/messages/seen" || path === "/v1/platform/seen")) {
+      const companyId = tenantScope || url.searchParams.get("companyId") || undefined;
+      const seen = listSeenConfirmations({
+        companyId,
+        sinceHours: Number(url.searchParams.get("hours") || 72),
+        limit: 50,
+      });
+      return reply(200, {
+        ok: true,
+        kind: "platform.accounting.seen.list.v1",
+        count: seen.length,
+        confirmations: seen,
       });
     }
 

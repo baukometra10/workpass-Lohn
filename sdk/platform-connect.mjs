@@ -32,6 +32,8 @@ export const accountingConnect = {
     messagesList: "GET /v1/messages",
     messageAck: "POST /v1/messages/:messageId/ack",
     messageCreate: "POST /v1/messages",
+    employeesImport: "POST /v1/employees/import",
+    messagesSeen: "GET /v1/messages/seen",
     platformStatus: "GET /v1/platform/status",
     syncStatus: "GET /v1/sync/status",
     invoiceIngest: "POST /v1/invoice/ingest",

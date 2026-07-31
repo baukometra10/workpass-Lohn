@@ -233,7 +233,19 @@ export async function upsertPlatformMessage(input = {}, opts = {}) {
 
   const message = loadMessage(payload.messageId);
   let platformNotify = null;
-  if (opts.notify !== false && direction === "accounting_to_platform") {
+  const shouldNotify = opts.notify !== false
+    && direction === "accounting_to_platform"
+    && (
+      opts.forceNotify
+      || (opts.notifyOnce ? !existing : true)
+      || (!opts.notifyOnce && !existing)
+    );
+  // notifyOnce: only first create; never re-fire while same open bundle exists
+  const notifyNow = opts.notifyOnce
+    ? (!existing && opts.notify !== false && direction === "accounting_to_platform")
+    : shouldNotify && !existing;
+
+  if (notifyNow || (opts.forceNotify && direction === "accounting_to_platform")) {
     platformNotify = await notifyPlatform({
       event: "accounting.message",
       company: payload.company,
@@ -254,79 +266,126 @@ export async function upsertPlatformMessage(input = {}, opts = {}) {
       meta: {
         gapCodes: gaps.map((g) => g.code),
         severity: payload.severity,
+        notifyOnce: Boolean(opts.notifyOnce),
       },
     });
+    if (platformNotify && message) {
+      const stamped = {
+        ...message,
+        notifiedAt: ts,
+        notifiedOnce: true,
+      };
+      sqliteExec(
+        `UPDATE platform_messages SET payload_json = ?, updated_at = ? WHERE message_id = ?`,
+        [pack(stamped), ts, payload.messageId]
+      );
+    }
   }
 
   return {
     ok: true,
     created: !existing,
     updated: Boolean(existing),
-    message,
+    notified: Boolean(platformNotify),
+    message: loadMessage(payload.messageId),
     platformNotify,
   };
 }
 
 /**
- * From payroll state / validation texts → open messages + notify platform.
+ * From payroll state / validation texts → ONE bundled message per employee+period.
+ * Webhook to platform fires only once (when the open message is first created).
  */
 export async function notifyGapsForPayroll({ state, hard = [], soft = [], jobId, companyName } = {}) {
   const companyId = normalizeCompanyId(state?.mandantId || state?.meta?.companyId || "");
   if (!companyId) return { ok: false, error: "company.id fehlt", messages: [] };
 
+  const employeeId = normalizeEmployeeId(state?.employeeId || state?.badgeId || "");
+  const employeeName = String(state?.employeeName || "").trim();
+  const badgeId = String(state?.badgeId || state?.meta?.badgeId || employeeId).trim();
+  const period = String(state?.payrollMonth || "").trim();
+
   const hardGaps = gapsFromTexts(hard, "action_needed");
   const softGaps = gapsFromTexts(soft, "warning");
   const gaps = [...hardGaps, ...softGaps.filter((g) => !hardGaps.some((h) => h.code === g.code))];
+
   if (!gaps.length) {
-    // resolve previous open gap messages for this employee/period when data is complete
     const resolved = resolveOpenGaps({
       companyId,
-      employeeId: state?.employeeId,
-      period: state?.payrollMonth,
+      employeeId,
+      period,
       remainingCodes: [],
     });
     return { ok: true, messages: [], resolved, skipped: true };
   }
 
-  const results = [];
-  for (const gap of gaps) {
-    const r = await upsertPlatformMessage({
-      type: "data.gap",
-      severity: gap.severity,
-      company: { id: companyId, name: companyName || state?.companyName || "" },
-      employee: { id: state?.employeeId, name: state?.employeeName },
-      period: state?.payrollMonth,
-      jobId,
-      gaps: [gap],
-      title: `${gap.label}${state?.employeeName ? ` · ${state.employeeName}` : ""}`,
-      body:
-        `Die Buchhaltung (WorkPass Lohn) braucht fehlende Angaben, um die Abrechnung fertigzustellen.\n\n`
-        + `Feld: ${gap.field}\n`
-        + `Mitarbeiter: ${state?.employeeName || "—"} (${state?.employeeId || "—"})\n`
-        + `Monat: ${state?.payrollMonth || "—"}\n\n`
-        + `Bitte in der Plattform ergänzen. Danach erneut an die Buchhaltung senden – die Meldung verschwindet nach dem Lesen bzw. wenn die Daten vollständig sind.`,
-      source: "payroll-validate",
-    });
-    results.push(r);
-  }
+  const gapLabels = gaps.map((g) => g.label);
+  const severity = gaps.some((g) => g.severity === "action_needed") ? "action_needed" : "warning";
+  const title = `Fehlende Daten · ${employeeName || badgeId || "Mitarbeiter"}`;
+  const body =
+    `Die Buchhaltung (WorkPass Lohn) braucht fehlende Angaben für diesen Mitarbeiter.\n\n`
+    + `Mitarbeiter: ${employeeName || "—"}\n`
+    + (badgeId ? `Badge-ID (intern): ${badgeId}\n` : "")
+    + `Monat: ${period || "—"}\n\n`
+    + `Es fehlt:\n• ${gapLabels.join("\n• ")}\n\n`
+    + `Bitte in der Plattform ergänzen und die Lohn-/Stundendaten erneut senden.\n`
+    + `Sobald Sie diese Mitteilung gelesen haben, wird das im Steuerprogramm als „gesehen“ bestätigt.`;
 
-  // Resolve gaps that are no longer present
-  const resolved = resolveOpenGaps({
+  const result = await upsertPlatformMessage({
+    type: "data.gap",
+    severity,
+    company: { id: companyId, name: companyName || state?.companyName || "" },
+    employee: {
+      id: employeeId,
+      name: employeeName,
+      badgeId,
+    },
+    period,
+    jobId,
+    gaps,
+    code: "employee_gaps_bundle",
+    dedupeKey: dedupeKey({
+      companyId,
+      employeeId,
+      period,
+      code: "employee_gaps_bundle",
+      type: "data.gap",
+    }),
+    title,
+    body,
+    source: "payroll-validate",
+  }, {
+    // Only push webhook the first time this open bundle is created
+    notifyOnce: true,
+  });
+
+  // Close any legacy per-gap open messages for same employee/period
+  resolveOpenGaps({
     companyId,
-    employeeId: state?.employeeId,
-    period: state?.payrollMonth,
-    remainingCodes: gaps.map((g) => g.code),
+    employeeId,
+    period,
+    remainingCodes: ["employee_gaps_bundle"],
+    keepDedupeSuffix: "employee_gaps_bundle",
   });
 
   return {
     ok: true,
-    messages: results.map((r) => r.message).filter(Boolean),
-    created: results.filter((r) => r.created).length,
-    resolved,
+    messages: result.message ? [result.message] : [],
+    created: result.created ? 1 : 0,
+    updated: result.updated ? 1 : 0,
+    notified: Boolean(result.platformNotify && result.created),
+    platformNotify: result.platformNotify,
+    resolved: [],
   };
 }
 
-export function resolveOpenGaps({ companyId, employeeId, period, remainingCodes = [] }) {
+export function resolveOpenGaps({
+  companyId,
+  employeeId,
+  period,
+  remainingCodes = [],
+  keepDedupeSuffix = null,
+} = {}) {
   const cid = normalizeCompanyId(companyId);
   const eid = normalizeEmployeeId(employeeId);
   const per = String(period || "").trim();
@@ -348,8 +407,18 @@ export function resolveOpenGaps({ companyId, employeeId, period, remainingCodes 
   const ts = now();
   for (const row of rows) {
     const msg = rowToMessage(row);
-    const code = msg?.gaps?.[0]?.code || "other";
-    if (keep.has(code)) continue;
+    const code = msg?.gaps?.length > 1
+      ? "employee_gaps_bundle"
+      : (msg?.gaps?.[0]?.code || msg?.code || "other");
+    const isBundle = String(row.dedupe_key || "").endsWith("::employee_gaps_bundle")
+      || code === "employee_gaps_bundle";
+
+    // Keep the bundled message if gaps remain
+    if (isBundle && keep.has("employee_gaps_bundle")) continue;
+    if (!isBundle && keep.has(code)) continue;
+    // When resolving leftovers after bundling, drop legacy per-gap rows
+    if (keepDedupeSuffix && isBundle) continue;
+
     sqliteExec(
       `UPDATE platform_messages SET status = 'resolved', resolved_at = ?, updated_at = ?, payload_json = ? WHERE message_id = ?`,
       [
@@ -402,27 +471,88 @@ export function listPendingMessagesForPlatform(filter = {}) {
 
 /**
  * Platform marks message as read → disappears from pending inbox.
+ * Accounting (Steuerprogramm) treats this as „Auftrag gesehen“.
  */
 export function ackMessage(messageId, meta = {}) {
   const row = sqliteGet(`SELECT * FROM platform_messages WHERE message_id = ?`, [String(messageId || "")]);
   if (!row) return { ok: false, error: "Nachricht nicht gefunden" };
   const msg = rowToMessage(row);
   if (msg.status === "read" || msg.status === "resolved") {
-    return { ok: true, already: true, message: msg };
+    return {
+      ok: true,
+      already: true,
+      message: msg,
+      confirmation: {
+        kind: "platform.accounting.seen.v1",
+        messageId: msg.messageId,
+        seen: true,
+        seenAt: msg.readAt || msg.seenAt,
+        seenBy: msg.seenBy || msg.ackMeta?.readBy || "platform",
+        label: "Auftrag wurde von der Plattform gesehen",
+      },
+    };
   }
   const ts = now();
+  const seenBy = String(meta.readBy || meta.actor || meta.seenBy || "platform").trim();
   const next = {
     ...msg,
     status: "read",
     readAt: ts,
+    seenAt: ts,
+    seenBy,
+    seenConfirmed: true,
     updatedAt: ts,
     ackMeta: meta,
+    accountingConfirmation: {
+      kind: "platform.accounting.seen.v1",
+      messageId: msg.messageId,
+      seen: true,
+      seenAt: ts,
+      seenBy,
+      label: "Auftrag wurde von der Plattform gesehen",
+      employee: msg.employee,
+      period: msg.period,
+      title: msg.title,
+    },
   };
   sqliteExec(
     `UPDATE platform_messages SET status = 'read', read_at = ?, updated_at = ?, payload_json = ? WHERE message_id = ?`,
     [ts, ts, pack(next), row.message_id]
   );
-  return { ok: true, already: false, message: loadMessage(row.message_id) };
+  const message = loadMessage(row.message_id);
+  return {
+    ok: true,
+    already: false,
+    message,
+    confirmation: message.accountingConfirmation,
+  };
+}
+
+/** Recently seen by platform – for Steuerprogramm confirmation panel */
+export function listSeenConfirmations(filter = {}) {
+  const sinceHours = Number(filter.sinceHours) || 72;
+  const since = new Date(Date.now() - sinceHours * 3600 * 1000).toISOString();
+  let sql = `SELECT * FROM platform_messages WHERE status = 'read' AND read_at IS NOT NULL AND read_at >= ?`;
+  const params = [since];
+  if (filter.companyId) {
+    sql += ` AND company_id = ?`;
+    params.push(normalizeCompanyId(filter.companyId));
+  }
+  sql += ` ORDER BY read_at DESC LIMIT ?`;
+  params.push(Number(filter.limit) || 50);
+  return sqliteAll(sql, params).map(rowToMessage).filter(Boolean).map((m) => ({
+    kind: "platform.accounting.seen.v1",
+    messageId: m.messageId,
+    seen: true,
+    seenAt: m.readAt || m.seenAt,
+    seenBy: m.seenBy || m.ackMeta?.readBy || "platform",
+    label: "Auftrag wurde von der Plattform gesehen",
+    title: m.title,
+    employee: m.employee,
+    period: m.period,
+    gaps: m.gaps || [],
+    company: m.company,
+  }));
 }
 
 export function messageStats(companyId) {

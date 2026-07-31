@@ -33,7 +33,7 @@
   const FIELD_IDS = [
     "seller", "note", "taxNumber", "datevClientNo", "datevConsultantNo",
     "companyName", "mandantId",
-    "employeeName", "employeeAddress", "employeeId",
+    "employeeName", "employeeAddress", "employeeId", "personnelNumber",
     "employeeTaxId", "employeeInsuranceNo", "employeeBirthDate", "employeeEntryDate",
     "payrollMonth", "taxClass", "churchTaxRate", "churchConfession",
     "healthFund", "healthPercent", "healthAdditionalPercent",
@@ -168,6 +168,14 @@
       }
     }
     state.companyName = PayrollCore.companyDisplayName(state);
+    state.badgeId = String(state.employeeId || state.badgeId || "").trim();
+    state.hideBadgeOnPayslip = true;
+    state.meta = {
+      ...(state.meta || {}),
+      badgeId: state.badgeId,
+      personnelNumber: String(state.personnelNumber || "").trim(),
+      hideBadgeOnPayslip: true,
+    };
     if (useReferenceDisplay) state.meta.referenceDemo = "datev";
     else delete state.meta.referenceDemo;
     return state;
@@ -355,14 +363,14 @@
             <div class="api-inbox-item">
               <div>
                 <strong>${esc(e.name || e.id)}</strong>
-                <span>${esc(e.id)} · ${esc(e.lastPeriod || "—")} · ${esc(e.lastStatus || "—")}</span>
+                <span>Badge ${esc(e.badgeId || e.id)}${e.personnelNumber ? ` · Pers.-Nr. ${esc(e.personnelNumber)}` : ""} · ${esc(e.lastPeriod || "—")} · ${esc(e.lastStatus || "—")}</span>
                 <span>Netto ${e.net != null ? PayrollCore.formatAmount(e.net) : "—"}</span>
               </div>
               <div class="api-inbox-actions">
                 <button type="button" class="api-open-emp primary" data-id="${esc(e.lastJobId || "")}">Öffnen</button>
               </div>
             </div>`).join("")
-          : '<div class="company-empty-inbox"><strong>Noch keine Mitarbeiter</strong><p>Demo-Monat laden oder Plattform-Batch senden.</p></div>';
+          : '<div class="company-empty-inbox"><strong>Noch keine Mitarbeiter</strong><p>Import: Name + Badge-ID (Badge erscheint nicht auf der Abrechnung).</p></div>';
         empHost.querySelectorAll(".api-open-emp").forEach((btn) => {
           btn.addEventListener("click", () => openApiPayrollJob(btn.dataset.id));
         });
@@ -450,6 +458,7 @@
 
   async function loadPlatformMessages(silent = false) {
     const host = $("platformCommsList");
+    const seenHost = $("platformSeenList");
     const card = $("platformCommsCard");
     if (!companyPortalId) {
       if (card) card.hidden = true;
@@ -459,37 +468,35 @@
     try {
       const data = await apiFetch("/v1/messages?status=open");
       const messages = data.messages || [];
+      const seen = data.seenConfirmations || [];
+      if (seenHost) {
+        seenHost.innerHTML = seen.length
+          ? `<strong style="display:block;margin-bottom:8px">Von Plattform gesehen</strong>`
+            + seen.slice(0, 15).map((s) => `
+            <div class="api-inbox-item api-seen-item">
+              <div>
+                <strong>✓ ${esc(s.label || "Auftrag gesehen")}</strong>
+                <span>${esc(s.employee?.name || s.employee?.badgeId || s.employee?.id || "—")} · ${esc(s.period || "—")} · ${esc(s.seenAt || "").replace("T", " ").slice(0, 16)}</span>
+                <span>${esc(s.title || "")}</span>
+              </div>
+            </div>`).join("")
+          : `<div class="company-empty-inbox"><strong>Noch keine Lesebestätigung</strong><p>Sobald die Plattform eine Mitteilung öffnet, erscheint hier „Auftrag gesehen“.</p></div>`;
+      }
       if (!host) return data;
       if (!messages.length) {
-        host.innerHTML = '<div class="company-empty-inbox"><strong>Keine offenen Meldungen</strong><p>Sobald z. B. IBAN oder Steuer-Nr. fehlen, erscheint hier die Nachricht an die Plattform.</p></div>';
+        host.innerHTML = '<div class="company-empty-inbox"><strong>Keine offenen Aufträge an die Plattform</strong><p>Fehlende Daten (z. B. IBAN) werden einmal gebündelt pro Mitarbeiter gemeldet.</p></div>';
         return data;
       }
-      host.innerHTML = messages.slice(0, 40).map((m) => `
+      host.innerHTML = `<strong style="display:block;margin-bottom:8px">Offen – wartend auf Plattform</strong>`
+        + messages.slice(0, 40).map((m) => `
         <div class="api-inbox-item" data-message-id="${esc(m.messageId)}">
           <div>
             <strong>${esc(m.title || "Nachricht")}</strong>
-            <span>${esc(m.employee?.name || m.employee?.id || "—")} · ${esc(m.period || "—")} · ${esc(m.status || "open")}</span>
-            <span>${esc((m.gaps || []).map((g) => g.label).join(" · ") || m.body || "").slice(0, 160)}</span>
-          </div>
-          <div class="api-inbox-actions">
-            <button type="button" class="api-msg-ack" data-id="${esc(m.messageId)}">Als gelesen (Test)</button>
+            <span>${esc(m.employee?.name || m.employee?.id || "—")} · Badge ${esc(m.employee?.badgeId || m.employee?.id || "—")} · ${esc(m.period || "—")}</span>
+            <span>${esc((m.gaps || []).map((g) => g.label).join(" · ") || m.body || "").slice(0, 180)}</span>
           </div>
         </div>`).join("");
-      host.querySelectorAll(".api-msg-ack").forEach((btn) => {
-        btn.addEventListener("click", async () => {
-          try {
-            await apiFetch(`/v1/messages/${encodeURIComponent(btn.dataset.id)}/ack`, {
-              method: "POST",
-              body: JSON.stringify({ readBy: "accounting-ui" }),
-            });
-            toast("Nachricht als gelesen markiert", "ok");
-            loadPlatformMessages(true);
-          } catch (e) {
-            toast(e.message, "error");
-          }
-        });
-      });
-      if (!silent) setStatus(`Offene Plattform-Meldungen: ${messages.length}`, true);
+      if (!silent) setStatus(`Offene Plattform-Aufträge: ${messages.length} · Gesehen: ${seen.length}`, true);
       return data;
     } catch (e) {
       if (host) host.innerHTML = `<p class="section-hint">${esc(e.message)}</p>`;

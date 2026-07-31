@@ -8,6 +8,7 @@ import { buildEmployeeDelivery, notifyPlatform } from "./notify.mjs";
 import { enqueueDelivery } from "./delivery-queue.mjs";
 import { ensureCompanyFromPayload } from "./company-service.mjs";
 import { notifyGapsForPayroll } from "./platform-messages.mjs";
+import { upsertEmployee } from "./employee-registry.mjs";
 import {
   normalizeCompanyId,
   normalizeEmployeeId,
@@ -25,12 +26,16 @@ function buildPayslip(state, payroll, status, errors = []) {
   return {
     kind: "platform.payslip.v1",
     employee: {
-      id: String(state.employeeId || ""),
+      id: String(state.employeeId || state.badgeId || ""),
+      badgeId: String(state.badgeId || state.meta?.badgeId || state.employeeId || ""),
       name: String(state.employeeName || ""),
       address: String(state.employeeAddress || ""),
       taxId: String(state.employeeTaxId || ""),
       insuranceNo: String(state.employeeInsuranceNo || ""),
       taxClass: String(state.taxClass || ""),
+      // personnelNumber may appear on slip; badgeId must not
+      personnelNumber: String(state.personnelNumber || state.meta?.personnelNumber || ""),
+      printPersNr: String(state.personnelNumber || state.meta?.personnelNumber || ""),
     },
     company: {
       id: companyId,
@@ -111,6 +116,17 @@ export async function ingestPayroll(payload, options = {}) {
   const companyId = normalizeCompanyId(state.mandantId || state.meta?.companyId || companyCheck.company.id);
   state.mandantId = companyId;
   state.meta = { ...(state.meta || {}), companyId };
+  if (state.employeeName && (state.badgeId || state.employeeId)) {
+    try {
+      upsertEmployee({
+        companyId,
+        badgeId: state.badgeId || state.employeeId,
+        name: state.employeeName,
+        personnelNumber: state.personnelNumber || "",
+        source: "payroll-ingest",
+      });
+    } catch { /* ignore registry errors */ }
+  }
 
   const hard = [...(ingested.errors || []), ...PC.validate(state)];
   if (!companyId) hard.push("Firma-ID (company.id) fehlt");

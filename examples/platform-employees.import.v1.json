@@ -1,0 +1,8 @@
+{
+  "kind": "platform.employees.import.v1",
+  "company": { "id": "luf", "name": "Lufthansa" },
+  "employees": [
+    { "name": "Mustermann Max", "badgeId": "B-10042" },
+    { "name": "Beispiel Anna", "badgeId": "B-10043", "personnelNumber": "2043" }
+  ]
+}

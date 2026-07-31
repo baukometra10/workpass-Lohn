@@ -178,7 +178,8 @@
               </div>
               <div id="platformCommsCard" class="month-close-card" hidden>
                 <strong>Kommunikation mit Plattform</strong>
-                <p>Fehlende Daten (IBAN, Steuer-Nr., …) werden automatisch an die Plattform gemeldet. Nach Lesen/Klick verschwindet die Nachricht dort.</p>
+                <p>Pro Mitarbeiter geht <em>eine</em> Mitteilung an die Plattform (alle fehlenden Felder gebündelt). Wenn die Plattform die Nachricht liest, erscheint hier die Bestätigung „Auftrag gesehen“.</p>
+                <div id="platformSeenList" class="api-inbox-list" style="margin-bottom:12px" aria-live="polite"></div>
                 <div id="platformCommsList" class="api-inbox-list" aria-live="polite"></div>
                 <div class="month-close-actions" style="margin-top:10px">
                   <button type="button" id="btnRefreshMessages">Nachrichten aktualisieren</button>
@@ -284,8 +285,12 @@
                 <textarea id="employeeAddress" rows="2" placeholder="Straße&#10;PLZ Ort"></textarea>
               </div>
               <div>
-                <label for="employeeId">Pers.-Nr.</label>
-                <input id="employeeId" type="text" />
+                <label for="employeeId">Badge-ID <span class="req">*</span></label>
+                <input id="employeeId" type="text" placeholder="intern – erscheint nicht auf der Abrechnung" />
+              </div>
+              <div>
+                <label for="personnelNumber">Pers.-Nr. (optional auf Abrechnung)</label>
+                <input id="personnelNumber" type="text" placeholder="nur wenn auf Beleg gedruckt" />
               </div>
               <div>
                 <label for="employeeTaxId">Steuer-ID</label>

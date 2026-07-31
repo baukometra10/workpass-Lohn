@@ -17,7 +17,9 @@
     {
       "employee": {
         "id": "02006",
+        "badgeId": "02006",
         "name": "Mustermann Max",
+        "personnelNumber": "",
         "street": "Beispielweg 5",
         "zip": "80331",
         "city": "München",

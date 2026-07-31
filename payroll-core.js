@@ -277,6 +277,12 @@
     const net = pick("net", payroll.net);
     const wages = state.wageItems || [];
     const empId = String(state.employeeId || "").trim();
+    const badgeId = String(state.badgeId || state.meta?.badgeId || "").trim();
+    const personnelNumber = String(state.personnelNumber || state.meta?.personnelNumber || "").trim();
+    // Badge never on payslip; only optional personnel number
+    const printPersNr = personnelNumber
+      || (badgeId && empId && badgeId === empId ? "" : empId);
+    const hideBadge = state.hideBadgeOnPayslip !== false;
     const extraCosts = wages
       .filter((w) => w.taxFlag === "P")
       .reduce((s, w) => s + num(w.amount), 0);
@@ -302,7 +308,7 @@
       });
 
     const hasSheetContent = Boolean(
-      state.employeeName || empId || wageRows.length || String(state.seller || "").trim()
+      state.employeeName || printPersNr || wageRows.length || String(state.seller || "").trim()
     );
 
     return {
@@ -310,7 +316,8 @@
       usa: (state.seller || state.taxNumber || state.datevClientNo) ? buildDatevUsaLine(state) : "",
       headDate: hasSheetContent ? getPayrollMonthEndDate(state.payrollMonth) : "",
       headPage: hasSheetContent ? "Blatt: 1" : "",
-      persNr: empId,
+      persNr: hideBadge ? printPersNr : (printPersNr || empId),
+      badgeId: hideBadge ? "" : badgeId,
       birth: formatDateShortDatev(state.employeeBirthDate),
       stkl: (state.employeeName || empId) ? taxClassToDisplay(state.taxClass) : "",
       konf: (() => {
@@ -338,8 +345,8 @@
           : num(state.workHours).toLocaleString("de-DE", { maximumFractionDigits: 2 }))
         : "",
       sender: formatEmployerSenderLine(state.seller),
-      empMeta: empId
-        ? `*Pers.-Nr. ${empId}*  *Abt.-Nr. ${String(state.departmentNo || empId.replace(/\D/g, "").slice(0, 5) || "20000")}*`
+      empMeta: printPersNr
+        ? `*Pers.-Nr. ${printPersNr}*  *Abt.-Nr. ${String(state.departmentNo || printPersNr.replace(/\D/g, "").slice(0, 5) || "20000")}*`
         : "",
       empName: formatEmployeeSalutation(state.employeeName),
       empAddr: String(state.employeeAddress || "").trim(),
@@ -401,6 +408,9 @@
       employeeName: "",
       employeeAddress: "",
       employeeId: "",
+      badgeId: "",
+      personnelNumber: "",
+      hideBadgeOnPayslip: true,
       employeeTaxId: "",
       employeeInsuranceNo: "",
       employeeBirthDate: "",
@@ -589,6 +599,15 @@
       factor: num(w.factor ?? w.amount ?? w.betrag),
     }));
 
+    const badgeId = String(
+      employee.badgeId || employee.badge || employee.id || employee.employeeId || employee.persNr || ""
+    ).trim();
+    const personnelNumber = String(
+      employee.personnelNumber || employee.personnelNo || employee.persNrDisplay || ""
+    ).trim();
+    // Internal job key = badge (or id). Never print badge on payslip.
+    const employeeId = badgeId;
+
     const draft = {
       documentType: "payroll",
       payrollLayout: "datev",
@@ -603,7 +622,10 @@
       payroll: {
         employeeName: String(employee.name || employee.employeeName || "").trim(),
         employeeAddress: empAddress,
-        employeeId: String(employee.id || employee.employeeId || employee.persNr || "").trim(),
+        employeeId,
+        badgeId,
+        personnelNumber,
+        hideBadgeOnPayslip: true,
         employeeTaxId: String(employee.taxId || employee.steuerId || "").trim(),
         employeeInsuranceNo: String(employee.insuranceNo || employee.svNr || "").trim(),
         employeeBirthDate: String(employee.birthDate || employee.birth || "").trim(),
@@ -624,6 +646,9 @@
         source: "platform",
         platformKind: PLATFORM_KIND,
         companyId,
+        badgeId,
+        personnelNumber,
+        hideBadgeOnPayslip: true,
         importedAt: new Date().toISOString(),
         attendance,
         importedTotals: data.totals || null,
@@ -635,6 +660,7 @@
     if (!companyId) errors.push("Firma-ID (company.id) fehlt – Pflicht für Multi-Tenant / Plattform-API");
     if (!companyName && !seller) errors.push("Firma (company.name) fehlt");
     if (!state.employeeName) errors.push("Mitarbeitername fehlt");
+    if (!badgeId) errors.push("Badge-ID / Mitarbeiter-ID fehlt");
     if (!state.payrollMonth) errors.push("Abrechnungsmonat (period) fehlt");
     if (!(state.wageItems || []).some((w) => num(w.amount) > 0) && !num(state.grossSalary)) {
       errors.push("Lohnarten/Brutto fehlen");
@@ -667,6 +693,9 @@
       employeeName: p.employeeName ?? raw.employeeName ?? d.employeeName,
       employeeAddress: p.employeeAddress ?? raw.employeeAddress ?? d.employeeAddress,
       employeeId: p.employeeId ?? raw.employeeId ?? d.employeeId,
+      badgeId: p.badgeId ?? raw.badgeId ?? d.badgeId,
+      personnelNumber: p.personnelNumber ?? raw.personnelNumber ?? d.personnelNumber,
+      hideBadgeOnPayslip: p.hideBadgeOnPayslip ?? raw.hideBadgeOnPayslip ?? d.hideBadgeOnPayslip,
       employeeTaxId: p.employeeTaxId ?? raw.employeeTaxId ?? d.employeeTaxId,
       employeeInsuranceNo: p.employeeInsuranceNo ?? raw.employeeInsuranceNo ?? d.employeeInsuranceNo,
       employeeBirthDate: p.employeeBirthDate ?? raw.employeeBirthDate ?? d.employeeBirthDate,
@@ -727,7 +756,7 @@
   /** Zusätzliche Hinweise vor dem Druck (nicht blockierend) */
   function validatePrintHints(state) {
     const hints = [];
-    if (!String(state.employeeId || "").trim()) hints.push("Pers.-Nr. fehlt");
+    if (!String(state.employeeId || state.badgeId || "").trim()) hints.push("Badge-ID / Mitarbeiter-ID fehlt");
     if (!String(state.employeeBirthDate || "").trim()) hints.push("Geburtsdatum fehlt");
     if (!String(state.employeeInsuranceNo || "").trim()) hints.push("SV-Nummer fehlt");
     if (!String(state.taxClass || "").trim()) hints.push("Steuerklasse fehlt");

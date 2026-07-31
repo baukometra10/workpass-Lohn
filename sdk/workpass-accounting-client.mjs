@@ -161,6 +161,19 @@ export class WorkPassAccountingClient {
     });
   }
 
+  importEmployees(companyIdOrPayload, employees) {
+    const body = typeof companyIdOrPayload === "string"
+      ? { companyId: companyIdOrPayload, employees }
+      : companyIdOrPayload;
+    return this.request("POST", "/v1/employees/import", body);
+  }
+
+  listSeenConfirmations(companyId) {
+    return this.request("GET", "/v1/messages/seen", undefined, {
+      companyId: companyId || this.companyId,
+    });
+  }
+
   /** @param {object} payload platform.invoice.v1 – requires company.id */
   ingestInvoice(payload) {
     return this.request("POST", "/v1/invoice/ingest", payload);
