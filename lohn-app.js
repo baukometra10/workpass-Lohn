@@ -348,6 +348,10 @@
       return;
     }
     if (dash) dash.hidden = false;
+    if (!demoPurgedOnce) {
+      demoPurgedOnce = true;
+      await purgeDemoData({ silent: true, skipReload: true });
+    }
     const period = currentPayrollPeriod();
     try {
       const [emps, month, arch] = await Promise.all([
@@ -370,7 +374,7 @@
                 <button type="button" class="api-open-emp primary" data-id="${esc(e.lastJobId || "")}">Öffnen</button>
               </div>
             </div>`).join("")
-          : '<div class="company-empty-inbox"><strong>Noch keine Mitarbeiter</strong><p>Import: Name + Badge-ID (Badge erscheint nicht auf der Abrechnung).</p></div>';
+          : '<div class="company-empty-inbox"><strong>Noch keine echten Mitarbeiter</strong><p>Die Plattform muss Mitarbeiter (Name + Badge-ID) bzw. den Monats-Lohnbatch senden. Beispieldaten wie Mustermann werden nicht angezeigt.</p></div>';
         empHost.querySelectorAll(".api-open-emp").forEach((btn) => {
           btn.addEventListener("click", () => openApiPayrollJob(btn.dataset.id));
         });
@@ -423,19 +427,29 @@
   }
 
   async function seedDemoMonth() {
-    if (!companyPortalId) return;
-    const period = currentPayrollPeriod();
+    toast("Demo-Mitarbeiter sind im Firmenportal deaktiviert. Bitte echte Daten von der Plattform senden.", "info");
+  }
+
+  let demoPurgedOnce = false;
+
+  async function purgeDemoData(opts = {}) {
+    if (!companyPortalId) return null;
     try {
-      const data = await apiFetch("/v1/demo/seed-month", {
+      const data = await apiFetch("/v1/demo/purge", {
         method: "POST",
-        body: JSON.stringify({ companyId: companyPortalId, period }),
+        body: JSON.stringify({ companyId: companyPortalId }),
       });
-      toast(data.message || "Demo geladen", data.ok ? "ok" : "error");
-      await loadPortalDashboard(true);
-      await loadApiInbox(true);
-      await loadPlatformMessages(true);
+      if (!opts.silent) {
+        toast(data.message || "Beispieldaten entfernt", data.ok ? "ok" : "error");
+      }
+      if (!opts.skipReload) {
+        await loadPortalDashboard(true);
+        await loadApiInbox(true);
+      }
+      return data;
     } catch (e) {
-      toast(e.message, "error");
+      if (!opts.silent) toast(e.message, "error");
+      return null;
     }
   }
 
@@ -1845,8 +1859,12 @@
     $("btnMonthClose")?.addEventListener("click", () => runMonthClose({ pull: true, autoRelease: true }));
     $("btnMonthReleaseOnly")?.addEventListener("click", () => runMonthClose({ pull: false, autoRelease: true }));
     $("btnRefreshMessages")?.addEventListener("click", () => loadPlatformMessages());
-    $("btnRefreshPortal")?.addEventListener("click", () => loadPortalDashboard());
     $("btnSeedDemoMonth")?.addEventListener("click", () => seedDemoMonth());
+    $("btnPurgeDemo")?.addEventListener("click", () => purgeDemoData());
+    $("btnRefreshPortal")?.addEventListener("click", () => {
+      loadPortalDashboard();
+      loadPlatformMessages(true);
+    });
     $("btnApiCompanies")?.addEventListener("click", loadPlatformCompanies);
     $("btnApiHealth")?.addEventListener("click", checkApiHealth);
     $("importPlatformInput").addEventListener("change", (e) => {

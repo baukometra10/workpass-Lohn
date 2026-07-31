@@ -282,6 +282,14 @@ export function listPayrollJobs(filter = {}) {
   return sqliteAll(sql, params).map((r) => unpackPayload(r.payload_json)).filter(Boolean);
 }
 
+export function deletePayrollJob(jobId, opts = {}) {
+  ensure(opts);
+  const id = String(jobId || "");
+  if (!id) return { ok: false, error: "jobId fehlt" };
+  sqliteExec(`DELETE FROM payroll_jobs WHERE job_id = ?`, [id]);
+  return { ok: true, deleted: true, jobId: id };
+}
+
 // --- Invoices ---
 
 export function saveInvoiceJob(job, opts = {}) {

@@ -1,9 +1,11 @@
 /**
  * Firm-portal helpers: employees + month status overview.
+ * Demo/example employees (Mustermann, Beispiel Anna, Demo-Seed) are excluded by default.
  */
 import { listPayrollJobs } from "./db/repository.mjs";
 import { normalizeCompanyId, normalizeEmployeeId } from "./tenant.mjs";
 import { currentPeriod } from "./month-close.mjs";
+import { isDemoPayrollJob } from "./demo-detect.mjs";
 
 function periodsAround(center, count = 6) {
   const [y0, m0] = String(center).split("-").map(Number);
@@ -15,11 +17,16 @@ function periodsAround(center, count = 6) {
   return out;
 }
 
+function realJobs(jobs, includeDemo = false) {
+  if (includeDemo) return jobs || [];
+  return (jobs || []).filter((j) => !isDemoPayrollJob(j));
+}
+
 export function listCompanyEmployees(companyId, opts = {}) {
   const cid = normalizeCompanyId(companyId);
   if (!cid) return { ok: false, error: "companyId fehlt", employees: [] };
   const period = opts.period || undefined;
-  const jobs = listPayrollJobs({ companyId: cid, period });
+  const jobs = realJobs(listPayrollJobs({ companyId: cid, period }), opts.includeDemo);
   const byEmp = new Map();
   for (const j of jobs) {
     const eid = normalizeEmployeeId(j.employee?.id || j.state?.employeeId || "");
@@ -27,7 +34,9 @@ export function listCompanyEmployees(companyId, opts = {}) {
     const prev = byEmp.get(eid);
     const entry = {
       id: eid,
+      badgeId: j.state?.badgeId || j.employee?.badgeId || eid,
       name: j.employee?.name || j.state?.employeeName || eid,
+      personnelNumber: j.state?.personnelNumber || j.employee?.personnelNumber || "",
       lastPeriod: j.period || "",
       lastStatus: j.status || "",
       lastJobId: j.jobId,
@@ -35,6 +44,8 @@ export function listCompanyEmployees(companyId, opts = {}) {
       gross: j.payslip?.totals?.gross ?? j.payroll?.gross ?? null,
       updatedAt: j.updatedAt || j.releasedAt || "",
       jobCount: (prev?.jobCount || 0) + 1,
+      source: "platform",
+      demo: false,
     };
     if (!prev || String(j.updatedAt || "") > String(prev.updatedAt || "")) {
       byEmp.set(eid, entry);
@@ -54,7 +65,7 @@ export function monthOverview(companyId, opts = {}) {
   if (!cid) return { ok: false, error: "companyId fehlt", months: [] };
   const focus = String(opts.period || currentPeriod()).trim();
   const months = periodsAround(focus, Number(opts.months) || 6).map((period) => {
-    const jobs = listPayrollJobs({ companyId: cid, period });
+    const jobs = realJobs(listPayrollJobs({ companyId: cid, period }), opts.includeDemo);
     const released = jobs.filter((j) => j.status === "released").length;
     const calculated = jobs.filter((j) => j.status === "calculated").length;
     const error = jobs.filter((j) => j.status === "error").length;
@@ -91,23 +102,25 @@ export function monthOverview(companyId, opts = {}) {
 export function listReleasedArchive(companyId, opts = {}) {
   const cid = normalizeCompanyId(companyId);
   if (!cid) return { ok: false, error: "companyId fehlt", items: [] };
-  const jobs = listPayrollJobs({ companyId: cid, period: opts.period || undefined })
+  const jobs = realJobs(
+    listPayrollJobs({ companyId: cid, period: opts.period || undefined }),
+    opts.includeDemo
+  )
     .filter((j) => j.status === "released" || opts.includeAll)
     .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
   return {
     ok: true,
     companyId: cid,
     count: jobs.length,
-    items: jobs.slice(0, Number(opts.limit) || 80).map((j) => ({
+    items: jobs.map((j) => ({
       jobId: j.jobId,
       period: j.period,
-      status: j.status,
       employee: j.employee,
+      status: j.status,
       net: j.payslip?.totals?.net ?? null,
       gross: j.payslip?.totals?.gross ?? null,
       releasedAt: j.releasedAt,
       updatedAt: j.updatedAt,
-      hasPayslip: Boolean(j.payslip),
     })),
   };
 }

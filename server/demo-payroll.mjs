@@ -55,6 +55,8 @@ export function buildDemoPayrollBatch({ companyId, period, companyName } = {}) {
     ok: true,
     kind: "platform.payroll.batch.v1",
     period: per,
+    demo: true,
+    meta: { demo: true, source: "demo-seed" },
     company: {
       id: cid,
       name,

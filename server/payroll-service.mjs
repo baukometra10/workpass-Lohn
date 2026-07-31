@@ -114,9 +114,19 @@ export async function ingestPayroll(payload, options = {}) {
 
   const state = ingested.state;
   const companyId = normalizeCompanyId(state.mandantId || state.meta?.companyId || companyCheck.company.id);
+  const isDemo = Boolean(
+    options.demo
+    || payload?.demo
+    || payload?.meta?.demo
+    || /demo-batch|ohne echte plattform/i.test(String(payload?.note || ""))
+  );
   state.mandantId = companyId;
-  state.meta = { ...(state.meta || {}), companyId };
-  if (state.employeeName && (state.badgeId || state.employeeId)) {
+  state.meta = {
+    ...(state.meta || {}),
+    companyId,
+    ...(isDemo ? { demo: true, source: "demo-seed" } : {}),
+  };
+  if (!isDemo && state.employeeName && (state.badgeId || state.employeeId)) {
     try {
       upsertEmployee({
         companyId,
@@ -144,6 +154,7 @@ export async function ingestPayroll(payload, options = {}) {
   const job = {
     jobId: id,
     kind: "platform.payroll.job.v1",
+    demo: isDemo,
     status: status === "error" ? "error" : (options.autoRelease && !hard.length ? "released" : "calculated"),
     createdAt: prev?.createdAt || now,
     updatedAt: now,
@@ -157,6 +168,7 @@ export async function ingestPayroll(payload, options = {}) {
     employee: {
       id: payslip.employee.id,
       name: payslip.employee.name,
+      badgeId: payslip.employee.badgeId || payslip.employee.id,
     },
     period: payslip.period,
     inbound: payload,
@@ -245,6 +257,7 @@ export async function ingestPayrollBatch(batch, options = {}) {
       tenantScope: options.tenantScope,
       notifyGaps: options.notifyGaps,
       autoRelease: options.autoRelease,
+      demo: Boolean(options.demo || batch.demo || batch.meta?.demo),
     }));
   }
 

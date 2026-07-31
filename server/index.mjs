@@ -14,7 +14,9 @@ import { runMonthClose, currentPeriod } from "./month-close.mjs";
 import { startMonthCloseScheduler, runAutoMonthCloseOnce, autoMonthCloseConfig } from "./month-scheduler.mjs";
 import { listCompanyEmployees, monthOverview, listReleasedArchive } from "./portal-service.mjs";
 import { buildDemoPayrollBatch } from "./demo-payroll.mjs";
+import { purgeDemoPayroll } from "./demo-purge.mjs";
 import { importEmployees, listEmployees } from "./employee-registry.mjs";
+import { isDemoEmployeeRecord } from "./demo-detect.mjs";
 import {
   listMessages,
   listPendingMessagesForPlatform,
@@ -126,7 +128,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "2.3.0",
+      version: "2.3.1",
       multiTenant: true,
       monthCloseScheduler: monthCloseSched,
       autoMonthClose: autoMonthCloseConfig(),
@@ -376,7 +378,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "2.3.0",
+          version: "2.3.1",
           ...syncHealth(),
         },
         monthCloseScheduler: monthCloseSched,
@@ -707,7 +709,7 @@ async function handler(req, res) {
       const period = url.searchParams.get("period") || undefined;
       const fromJobs = listCompanyEmployees(companyId, { period });
       if (!fromJobs.ok) return reply(422, fromJobs);
-      const registered = listEmployees(companyId);
+      const registered = listEmployees(companyId).filter((e) => !isDemoEmployeeRecord(e));
       const byBadge = new Map();
       for (const e of registered) {
         byBadge.set(e.badgeId, {
@@ -727,9 +729,9 @@ async function handler(req, res) {
         byBadge.set(e.id, {
           ...prev,
           ...e,
-          badgeId: prev.badgeId || e.id,
-          personnelNumber: prev.personnelNumber || "",
-          source: prev.source || "payroll",
+          badgeId: prev.badgeId || e.badgeId || e.id,
+          personnelNumber: prev.personnelNumber || e.personnelNumber || "",
+          source: "platform",
         });
       }
       const employees = [...byBadge.values()].sort((a, b) =>
@@ -741,6 +743,10 @@ async function handler(req, res) {
         period: period || null,
         count: employees.length,
         employees,
+        onlyRealEmployees: true,
+        hint: employees.length
+          ? "Nur echte Mitarbeiter von der Plattform (keine Demo-/Beispieldaten)."
+          : "Noch keine echten Mitarbeiter. Die Plattform muss Name + Badge-ID / Lohnbatch senden.",
       });
     }
 
@@ -781,20 +787,30 @@ async function handler(req, res) {
       return reply(200, result);
     }
 
-    // Demo seed / pull without real platform
+    // Demo seed / pull without real platform (admin / explicit only – not firm portal default)
     if (req.method === "POST" && (path === "/v1/demo/seed-month" || path === "/v1/demo/payroll-export")) {
       const body = (await readBodyLimited(req)) || {};
       const companyId = normalizeCompanyId(body.companyId || body.company?.id || tenantScope || "");
       const scopeCheck = assertSameTenant(tenantScope, companyId, "Demo");
       if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
       if (!companyId) return reply(422, { ok: false, error: "companyId fehlt" });
+      const sess = req._workpassSession;
+      if (sess && sess.role !== "admin" && !body.confirmDemo) {
+        return reply(403, {
+          ok: false,
+          error: "Demo-Daten sind im Firmenportal deaktiviert. Nur echte Plattform-Mitarbeiter werden angezeigt.",
+        });
+      }
       const period = body.period || currentPeriod();
       const batch = buildDemoPayrollBatch({ companyId, period });
       if (!batch.ok) return reply(422, batch);
       if (path === "/v1/demo/payroll-export" || body.exportOnly) {
         return reply(200, batch);
       }
-      const ingested = await ingestPayrollBatch(batch, { tenantScope: tenantScope || companyId });
+      const ingested = await ingestPayrollBatch(batch, {
+        tenantScope: tenantScope || companyId,
+        demo: true,
+      });
       audit({
         type: "demo.seed_month",
         outcome: ingested.ok ? "ok" : "error",
@@ -810,9 +826,27 @@ async function handler(req, res) {
         batch,
         ingest: ingested,
         message: ingested.ok
-          ? `Demo-Monat ${period}: ${ingested.count} Mitarbeiter angelegt – jetzt Monatsabschluss möglich`
+          ? `Demo-Monat ${period}: ${ingested.count} Beispiel-Mitarbeiter (nicht in der echten Liste sichtbar)`
           : (ingested.errors?.join?.(" · ") || "Demo-Seed fehlgeschlagen"),
       });
+    }
+
+    if (req.method === "POST" && (path === "/v1/demo/purge" || path === "/v1/portal/purge-demo")) {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(body.companyId || body.company?.id || tenantScope || "");
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Demo-Purge");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      if (!companyId) return reply(422, { ok: false, error: "companyId fehlt" });
+      const result = purgeDemoPayroll(companyId);
+      audit({
+        type: "demo.purge",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { purgedJobs: result.purgedJobs, purgedEmployees: result.purgedEmployees },
+      });
+      return reply(result.ok ? 200 : 422, result);
     }
 
     // --- Platform sync status (messages + deliveries + last webhook) ---
@@ -825,7 +859,7 @@ async function handler(req, res) {
         kind: "platform.accounting.sync.v1",
         schemaVersion: 2,
         companyId: companyId || null,
-        accountingVersion: "2.3.0",
+        accountingVersion: "2.3.1",
         webhook: {
           configured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),
           urlSuggested: platformWebhookUrl(),
