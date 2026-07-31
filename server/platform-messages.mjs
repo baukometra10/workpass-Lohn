@@ -294,9 +294,18 @@ export async function upsertPlatformMessage(input = {}, opts = {}) {
 
 /**
  * From payroll state / validation texts → ONE bundled message per employee+period.
- * Webhook to platform fires only once (when the open message is first created).
+ * Webhook to platform fires only once (when the open message is first created),
+ * unless forceNotify is set (manual "Plattform fragen").
  */
-export async function notifyGapsForPayroll({ state, hard = [], soft = [], jobId, companyName } = {}) {
+export async function notifyGapsForPayroll({
+  state,
+  hard = [],
+  soft = [],
+  jobId,
+  companyName,
+  forceNotify = false,
+  requestEvent = false,
+} = {}) {
   const companyId = normalizeCompanyId(state?.mandantId || state?.meta?.companyId || "");
   if (!companyId) return { ok: false, error: "company.id fehlt", messages: [] };
 
@@ -328,7 +337,8 @@ export async function notifyGapsForPayroll({ state, hard = [], soft = [], jobId,
     + (badgeId ? `Badge-ID (intern): ${badgeId}\n` : "")
     + `Monat: ${period || "—"}\n\n`
     + `Es fehlt:\n• ${gapLabels.join("\n• ")}\n\n`
-    + `Bitte in der Plattform ergänzen und die Lohn-/Stundendaten erneut senden.\n`
+    + `Bitte in der Plattform ergänzen und die Lohn-/Stundendaten erneut senden `
+    + `(auch teilweise Daten sind willkommen).\n`
     + `Sobald Sie diese Mitteilung gelesen haben, wird das im Steuerprogramm als „gesehen“ bestätigt.`;
 
   const result = await upsertPlatformMessage({
@@ -353,10 +363,11 @@ export async function notifyGapsForPayroll({ state, hard = [], soft = [], jobId,
     }),
     title,
     body,
-    source: "payroll-validate",
+    source: forceNotify ? "payroll-request" : "payroll-validate",
   }, {
-    // Only push webhook the first time this open bundle is created
-    notifyOnce: true,
+    // Push webhook on first create, or whenever the firm explicitly asks again
+    notifyOnce: !forceNotify,
+    forceNotify: Boolean(forceNotify),
   });
 
   // Close any legacy per-gap open messages for same employee/period
@@ -368,13 +379,35 @@ export async function notifyGapsForPayroll({ state, hard = [], soft = [], jobId,
     keepDedupeSuffix: "employee_gaps_bundle",
   });
 
+  let requestNotify = null;
+  if (requestEvent || forceNotify || result.created) {
+    requestNotify = await notifyPlatform({
+      event: "employee.data.requested",
+      company: { id: companyId, name: companyName || state?.companyName || "" },
+      message: result.message,
+      meta: {
+        employeeId,
+        badgeId,
+        employeeName,
+        period,
+        jobId: jobId || null,
+        gaps,
+        reason: forceNotify ? "manual_request" : "payslip_create",
+        allowIncomplete: true,
+      },
+      idempotencyKey: forceNotify
+        ? `emp-req:${companyId}:${employeeId}:${period}:${Date.now()}`
+        : `emp-req:${companyId}:${employeeId}:${period}`,
+    });
+  }
+
   return {
     ok: true,
     messages: result.message ? [result.message] : [],
     created: result.created ? 1 : 0,
     updated: result.updated ? 1 : 0,
-    notified: Boolean(result.platformNotify && result.created),
-    platformNotify: result.platformNotify,
+    notified: Boolean((result.platformNotify && result.created) || requestNotify?.ok),
+    platformNotify: requestNotify || result.platformNotify,
     resolved: [],
   };
 }

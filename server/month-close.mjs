@@ -1,12 +1,15 @@
 /**
  * Month-close: pull payroll batch from platform (optional), calculate all employees,
  * auto-release payslips back to platform for employee delivery.
+ *
+ * Incomplete platform data is accepted: we ingest what exists and ask the platform
+ * for missing fields per employee.
  */
 import { listPayrollJobs } from "./db/repository.mjs";
 import { ingestPayrollBatch, releasePayrollJob } from "./payroll-service.mjs";
-import { normalizeCompanyId } from "./tenant.mjs";
+import { normalizeCompanyId, normalizeEmployeeId } from "./tenant.mjs";
 import { notifyPlatform } from "./notify.mjs";
-import { upsertPlatformMessage } from "./platform-messages.mjs";
+import { upsertPlatformMessage, gapsFromTexts, notifyGapsForPayroll } from "./platform-messages.mjs";
 import { isDemoPayrollJob } from "./demo-detect.mjs";
 
 function currentPeriod(d = new Date()) {
@@ -48,16 +51,83 @@ function realPeriodJobs(companyId, period) {
 }
 
 /**
+ * Accept many platform shapes – including incomplete employee rows.
+ * Returns null only when no employee-like payload is present at all.
+ */
+export function normalizePlatformBatch(body, { companyId, period } = {}) {
+  if (body == null) return null;
+  if (typeof body === "string") {
+    try { body = JSON.parse(body); } catch { return null; }
+  }
+  if (typeof body !== "object") return null;
+
+  const roots = [
+    body.batch,
+    body.data?.batch,
+    body.payload?.batch,
+    body.result?.batch,
+    body.export?.batch,
+    body.data,
+    body.payload,
+    body.result,
+    body.export,
+    body.payroll,
+    body.month,
+    body,
+  ].filter((x) => x && typeof x === "object");
+
+  const pickList = (obj) => {
+    if (Array.isArray(obj)) return obj;
+    const keys = ["employees", "items", "workers", "staff", "payrolls", "entries", "list", "rows", "records"];
+    for (const k of keys) {
+      if (Array.isArray(obj[k]) && obj[k].length) return obj[k];
+    }
+    // single employee object
+    if (obj.employee || obj.badgeId || obj.wageItems || (obj.name && (obj.id || obj.personnelNumber))) {
+      return [obj];
+    }
+    return null;
+  };
+
+  for (const root of roots) {
+    const list = pickList(root);
+    if (!list || !list.length) continue;
+    const company = root.company || body.company || { id: companyId };
+    if (!company.id && companyId) company.id = companyId;
+    return {
+      kind: "platform.payroll.batch.v1",
+      period: String(root.period || body.period || period || "").trim(),
+      company,
+      employees: list,
+      note: root.note || body.note || "",
+      incomplete: Boolean(
+        root.incomplete
+        || root.partial
+        || body.incomplete
+        || body.partial
+        || body.ok === false
+      ),
+      meta: {
+        ...(typeof root.meta === "object" ? root.meta : {}),
+        ...(typeof body.meta === "object" ? body.meta : {}),
+        source: "platform-pull",
+        acceptedIncomplete: true,
+      },
+    };
+  }
+  return null;
+}
+
+/**
  * Pull month payroll export from the WorkPass platform.
- * Platform endpoint should return platform.payroll.batch.v1
- * (or { ok, batch } / { employees }).
+ * Accepts incomplete batches (missing fields per employee are OK).
  *
  * Env:
  *   WORKPASS_PLATFORM_PAYROLL_PULL_URL
  *   WORKPASS_PLATFORM_PAYROLL_PULL_METHOD = auto | GET | POST  (default auto)
  *   On HTTP 405, auto retries with the other method.
  */
-export async function pullPlatformPayrollBatch({ companyId, period }) {
+export async function pullPlatformPayrollBatch({ companyId, period, employeeId } = {}) {
   const url = String(process.env.WORKPASS_PLATFORM_PAYROLL_PULL_URL || "").trim();
   if (!url) {
     return {
@@ -89,6 +159,7 @@ export async function pullPlatformPayrollBatch({ companyId, period }) {
       method,
       companyId,
       period,
+      employeeId,
       key,
       timeoutMs,
     });
@@ -108,33 +179,42 @@ export async function pullPlatformPayrollBatch({ companyId, period }) {
   };
 }
 
-async function fetchPullOnce({ url, method, companyId, period, key, timeoutMs }) {
+async function fetchPullOnce({ url, method, companyId, period, employeeId, key, timeoutMs }) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const headers = {
       "X-WorkPass-Key": key,
       "X-WorkPass-Company-Id": companyId,
-      "X-WorkPass-Event": "payroll.month.pull",
+      "X-WorkPass-Event": employeeId ? "payroll.employee.pull" : "payroll.month.pull",
       Accept: "application/json",
     };
 
     let requestUrl = url;
     const init = { method, headers, signal: ctrl.signal };
+    const eid = normalizeEmployeeId(employeeId || "");
 
     if (method === "GET") {
       const u = new URL(url);
       u.searchParams.set("companyId", companyId);
       u.searchParams.set("period", period);
-      u.searchParams.set("kind", "platform.payroll.pull.v1");
+      u.searchParams.set("kind", eid ? "platform.payroll.employee.pull.v1" : "platform.payroll.pull.v1");
+      u.searchParams.set("allowIncomplete", "1");
+      if (eid) {
+        u.searchParams.set("employeeId", eid);
+        u.searchParams.set("badgeId", eid);
+      }
       requestUrl = u.toString();
     } else {
       headers["Content-Type"] = "application/json";
       init.body = JSON.stringify({
-        kind: "platform.payroll.pull.v1",
-        event: "payroll.month.requested",
+        kind: eid ? "platform.payroll.employee.pull.v1" : "platform.payroll.pull.v1",
+        event: eid ? "payroll.employee.requested" : "payroll.month.requested",
         companyId,
         period,
+        employeeId: eid || undefined,
+        badgeId: eid || undefined,
+        allowIncomplete: true,
       });
     }
 
@@ -146,6 +226,25 @@ async function fetchPullOnce({ url, method, companyId, period, key, timeoutMs })
     } catch {
       body = null;
     }
+
+    // Prefer any employee payload even on non-2xx / ok:false / incomplete
+    const batch = normalizePlatformBatch(body, { companyId, period });
+    if (batch?.employees?.length) {
+      if (!batch.company) batch.company = { id: companyId };
+      if (!batch.company.id) batch.company.id = companyId;
+      if (!batch.period) batch.period = period;
+      if (!batch.kind) batch.kind = "platform.payroll.batch.v1";
+      return {
+        ok: true,
+        skipped: false,
+        status: res.status,
+        method,
+        batch,
+        incomplete: Boolean(batch.incomplete || !res.ok),
+        httpOk: res.ok,
+      };
+    }
+
     if (!res.ok) {
       const code = body?.error || body?.code || `HTTP ${res.status}`;
       return {
@@ -158,28 +257,14 @@ async function fetchPullOnce({ url, method, companyId, period, key, timeoutMs })
       };
     }
 
-    const batch =
-      body?.batch
-      || (body?.kind === "platform.payroll.batch.v1" ? body : null)
-      || (Array.isArray(body?.employees) ? body : null);
-
-    if (!batch || !Array.isArray(batch.employees || batch.items)) {
-      return {
-        ok: false,
-        skipped: false,
-        status: res.status,
-        method,
-        error: "Plattform-Antwort ohne employees[] / platform.payroll.batch.v1",
-        body,
-      };
-    }
-
-    if (!batch.company) batch.company = { id: companyId };
-    if (!batch.company.id) batch.company.id = companyId;
-    if (!batch.period) batch.period = period;
-    if (!batch.kind) batch.kind = "platform.payroll.batch.v1";
-
-    return { ok: true, skipped: false, status: res.status, method, batch };
+    return {
+      ok: false,
+      skipped: false,
+      status: res.status,
+      method,
+      error: "Plattform-Antwort ohne Mitarbeiterdaten – auch unvollständige employees[] wären ok",
+      body,
+    };
   } catch (e) {
     return {
       ok: false,
@@ -193,9 +278,83 @@ async function fetchPullOnce({ url, method, companyId, period, key, timeoutMs })
 }
 
 /**
+ * Ask the platform for missing fields of one employee (and optionally re-pull).
+ */
+export async function requestEmployeeDataFromPlatform(options = {}) {
+  const companyId = normalizeCompanyId(options.companyId || options.company?.id || "");
+  const employeeId = normalizeEmployeeId(options.employeeId || options.badgeId || "");
+  const period = String(options.period || currentPeriod()).trim();
+  const company = {
+    id: companyId,
+    name: options.companyName || options.company?.name || "",
+  };
+  if (!companyId) return { ok: false, error: "companyId fehlt" };
+  if (!employeeId && !options.employeeName) {
+    return { ok: false, error: "employeeId / Badge fehlt" };
+  }
+
+  const hard = Array.isArray(options.gaps) ? options.gaps.map((g) => (typeof g === "string" ? g : g.label)).filter(Boolean) : [];
+  const soft = Array.isArray(options.softGaps) ? options.softGaps : [];
+  const gapObjs = hard.length || soft.length
+    ? [...gapsFromTexts(hard, "action_needed"), ...gapsFromTexts(soft, "warning")]
+    : (options.gapObjects || [{
+      code: "employee_data_requested",
+      field: "employee",
+      label: "Mitarbeiterdaten unvollständig / nachfordern",
+      severity: "action_needed",
+    }]);
+
+  const state = {
+    mandantId: companyId,
+    companyName: company.name,
+    employeeId,
+    badgeId: options.badgeId || employeeId,
+    employeeName: options.employeeName || "",
+    payrollMonth: period,
+  };
+
+  const gaps = await notifyGapsForPayroll({
+    state,
+    hard: gapObjs.map((g) => g.label),
+    soft: [],
+    jobId: options.jobId,
+    companyName: company.name,
+    forceNotify: options.forceNotify !== false,
+    requestEvent: true,
+  });
+
+  let pull = { skipped: true };
+  if (options.pull !== false) {
+    pull = await pullPlatformPayrollBatch({ companyId, period, employeeId });
+  }
+
+  let ingest = null;
+  if (pull.ok && pull.batch) {
+    ingest = await ingestPayrollBatch(pull.batch, {
+      tenantScope: options.tenantScope || companyId,
+      notifyGaps: true,
+    });
+  }
+
+  return {
+    ok: true,
+    companyId,
+    employeeId,
+    period,
+    gaps,
+    pull,
+    ingest,
+    platformNotify: gaps?.platformNotify || null,
+    message: ingest?.count
+      ? `Plattform geliefert: ${ingest.count} Datensatz/Datensätze (auch unvollständig übernommen).`
+      : `Plattform nach Daten für ${options.employeeName || employeeId} gefragt.`,
+  };
+}
+
+/**
  * Full month run for one company:
- * 1) optional pull from platform
- * 2) ingest/calculate each employee
+ * 1) optional pull from platform (accepts incomplete)
+ * 2) ingest/calculate each employee (gaps → ask platform)
  * 3) auto-release successful payslips → platform → employee app
  */
 export async function runMonthClose(options = {}) {
@@ -252,17 +411,53 @@ export async function runMonthClose(options = {}) {
     }
   }
 
+  // Ask platform again only for hard-error employees (soft gaps already notified on ingest)
+  const dataRequests = [];
+  if (options.notify !== false) {
+    const needAsk = jobs.filter((j) => j.status === "error" || (Array.isArray(j.errors) && j.errors.length));
+    for (const job of needAsk) {
+      try {
+        dataRequests.push(await requestEmployeeDataFromPlatform({
+          companyId,
+          companyName: job.company?.name || options.company?.name || "",
+          employeeId: job.employee?.id || job.employee?.badgeId,
+          badgeId: job.employee?.badgeId || job.employee?.id,
+          employeeName: job.employee?.name || "",
+          period,
+          gaps: [...(job.errors || []), ...(job.printHints || [])],
+          jobId: job.jobId,
+          tenantScope,
+          pull: false, // already pulled month; avoid N+1
+          forceNotify: true,
+          reason: "month_close_incomplete",
+        }));
+      } catch {
+        /* continue */
+      }
+    }
+  }
+
   const after = realPeriodJobs(companyId, period);
   const hasWork = after.length > 0 || Boolean(batchIngest?.count);
+  const softGapJobs = after.filter((j) => (j.printHints || []).length > 0).length;
+  const partial = Boolean(
+    (batchIngest && batchIngest.count > 0 && !batchIngest.ok)
+    || after.some((j) => j.status === "error")
+    || softGapJobs > 0
+    || (batchIngest?.results || []).some((r) => (r.printHints || []).length > 0)
+  );
   const missingOnPlatform = !pull.skipped && !pull.ok && isMissingPlatformData(pull);
   const waitingForPlatform = !hasWork && (pull.skipped || !pull.ok);
-  const ok = hasWork && releaseErrors.length === 0 && (!batchIngest || batchIngest.ok);
+  // Partial success is OK: incomplete employees stay as error + platform asked
+  const ok = hasWork && releaseErrors.length === 0 && (!batchIngest || batchIngest.count > 0);
   const pullHint = humanizePullError(pull, period);
 
   const result = {
     ok,
+    partial,
     waitingForPlatform,
     missingOnPlatform,
+    incompleteAccepted: Boolean(pull.incomplete || partial),
     error: ok
       ? undefined
       : (!hasWork
@@ -290,15 +485,22 @@ export async function runMonthClose(options = {}) {
     },
     newlyReleased: released,
     releaseErrors,
+    dataRequests: dataRequests.map((r) => ({
+      employeeId: r.employeeId,
+      message: r.message,
+      notified: Boolean(r.platformNotify?.ok),
+    })),
     alreadyReleased: alreadyReleased.map((j) => j.jobId),
     errored: errored.map((j) => ({ jobId: j.jobId, errors: j.errors })),
     message: !hasWork
       ? (waitingForPlatform
         ? `Warte auf echte Plattform-Daten für ${period}. ${missingOnPlatform ? "Export meldet not_found / keine Daten." : "Noch keine Mitarbeiter-Stunden empfangen."}`
         : pullHint)
-      : autoRelease
-        ? `Monatsabschluss ${period}: ${released.length} Abrechnung(en) an Plattform/Mitarbeiter gesendet.`
-        : `Monatsabschluss ${period}: ${calculated.length} Abrechnung(en) berechnet (noch nicht freigegeben).`,
+      : partial
+        ? `Teilweise übernommen (${period}): ${released.length} freigegeben, ${after.filter((j) => j.status === "error").length} mit Lücken – Plattform nach fehlenden Daten gefragt.`
+        : autoRelease
+          ? `Monatsabschluss ${period}: ${released.length} Abrechnung(en) an Plattform/Mitarbeiter gesendet.`
+          : `Monatsabschluss ${period}: ${calculated.length} Abrechnung(en) berechnet (noch nicht freigegeben).`,
   };
 
   const company = { id: companyId, name: options.company?.name || "" };
@@ -308,6 +510,7 @@ export async function runMonthClose(options = {}) {
     period,
     waitingForPlatform,
     ok,
+    partial,
     jobs: result.jobs,
     newlyReleasedCount: released.length,
     message: result.message,
@@ -323,7 +526,8 @@ export async function runMonthClose(options = {}) {
       body:
         `Die Buchhaltung wartet auf echte Lohn-/Stundendaten für ${period}.\n\n`
         + `${pullHint}\n\n`
-        + `Bitte in der Plattform den Monat freigeben und per POST /v1/payroll/batch an die Buchhaltung senden.`,
+        + `Bitte in der Plattform den Monat freigeben und per POST /v1/payroll/batch an die Buchhaltung senden `
+        + `(auch unvollständige Daten sind willkommen – fehlende Felder werden nachgefragt).`,
       code: "payroll_waiting",
       gaps: [{
         code: "payroll_waiting",
@@ -341,12 +545,13 @@ export async function runMonthClose(options = {}) {
     });
   } else if (options.notify !== false) {
     result.platformNotify = await notifyPlatform({
-      event: ok ? "month.closed" : "month.close.failed",
+      event: ok ? (partial ? "month.close.partial" : "month.closed") : "month.close.failed",
       company,
       monthClose: monthClosePayload,
       meta: {
         released: released.map((r) => r.deliveryId).filter(Boolean),
         releaseErrors,
+        dataRequests: result.dataRequests,
       },
     });
   }

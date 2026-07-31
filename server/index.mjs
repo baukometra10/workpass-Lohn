@@ -10,7 +10,7 @@
 import http from "node:http";
 import { URL } from "node:url";
 import { ingestPayroll, ingestPayrollBatch, releasePayrollJob } from "./payroll-service.mjs";
-import { runMonthClose, currentPeriod } from "./month-close.mjs";
+import { runMonthClose, currentPeriod, requestEmployeeDataFromPlatform } from "./month-close.mjs";
 import { startMonthCloseScheduler, runAutoMonthCloseOnce, autoMonthCloseConfig } from "./month-scheduler.mjs";
 import { listCompanyEmployees, monthOverview, listReleasedArchive } from "./portal-service.mjs";
 import { buildDemoPayrollBatch } from "./demo-payroll.mjs";
@@ -129,7 +129,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "2.4.0",
+      version: "2.5.0",
       multiTenant: true,
       monthCloseScheduler: monthCloseSched,
       autoMonthClose: autoMonthCloseConfig(),
@@ -379,7 +379,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "2.4.0",
+          version: "2.5.0",
           ...syncHealth(),
         },
         monthCloseScheduler: monthCloseSched,
@@ -595,7 +595,46 @@ async function handler(req, res) {
       const body = await readBodyLimited(req);
       const result = await ingestPayrollBatch(body, { tenantScope });
       audit({ type: "payroll.batch", outcome: result.ok ? "ok" : "error", ip, path, companyId: result.company?.id });
-      return reply( result.ok ? 200 : 422, result);
+      // Partial batches (some employees incomplete) still return 200 so platform sync continues
+      const status = result.count > 0 ? 200 : (result.ok ? 200 : 422);
+      return reply(status, { ...result, incompleteAccepted: result.count > 0 && !result.ok });
+    }
+
+    if (
+      req.method === "POST"
+      && (path === "/v1/payroll/request-data" || path === "/v1/payroll/ask-platform")
+    ) {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(
+        body.companyId || body.company?.id || tenantScope || ""
+      );
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Daten-Anfrage");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      if (!companyId) return reply(422, { ok: false, error: "companyId fehlt" });
+      const result = await requestEmployeeDataFromPlatform({
+        companyId,
+        companyName: body.companyName || body.company?.name || "",
+        employeeId: body.employeeId || body.badgeId || body.employee?.id,
+        badgeId: body.badgeId || body.employee?.badgeId || body.employeeId,
+        employeeName: body.employeeName || body.employee?.name || "",
+        period: body.period || currentPeriod(),
+        gaps: body.gaps || body.errors || [],
+        softGaps: body.softGaps || [],
+        jobId: body.jobId,
+        tenantScope: tenantScope || companyId,
+        pull: body.pull !== false,
+        forceNotify: true,
+        reason: body.reason || "manual_request",
+      });
+      audit({
+        type: "payroll.request_data",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { employeeId: result.employeeId, period: result.period },
+      });
+      return reply(result.ok ? 200 : 422, result);
     }
 
     if (
@@ -869,7 +908,7 @@ async function handler(req, res) {
         kind: "platform.accounting.sync.v1",
         schemaVersion: 2,
         companyId: companyId || null,
-        accountingVersion: "2.4.0",
+        accountingVersion: "2.5.0",
         webhook: {
           configured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),
           urlSuggested: platformWebhookUrl(),
@@ -883,10 +922,10 @@ async function handler(req, res) {
         messages: pendingMessages,
         deliveries: pendingDeliveries,
         hints: [
-          "Fehlende Daten: GET /v1/messages/pending → ergänzen → POST /v1/payroll/batch → POST /v1/messages/:id/ack",
+          "Fehlende Daten: Buchhaltung fragt per employee.data.requested → Plattform ergänzt → POST /v1/payroll/batch (unvollständig OK)",
           "Freigaben: Webhook empfangen oder GET /v1/delivery/pending → POST /v1/delivery/:id/ack",
-          "Monatsabschluss: POST /v1/payroll/month-close { companyId, period }",
-          "not_found beim Pull = Monat auf der Plattform noch nicht freigegeben/exportiert – Push per Batch bevorzugen",
+          "Monatsabschluss: POST /v1/payroll/month-close { companyId, period } – zieht auch unvollständige Daten",
+          "Manuell nachfragen: POST /v1/payroll/request-data { companyId, employeeId, period }",
         ],
       });
     }

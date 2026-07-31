@@ -318,13 +318,68 @@
         panel.innerHTML = "";
       } else {
         panel.hidden = false;
+        const canAsk = Boolean(companyPortalId || apiConfig().companyId);
         panel.innerHTML = `
           <div class="missing-head">${hardErrors?.length ? "Pflichtfelder fehlen" : "Empfohlene Angaben"}</div>
           <ul>${items.map((i) => `<li class="missing-${i.level}">${esc(i.text)}</li>`).join("")}</ul>
+          ${canAsk ? `
+            <div class="btn-row" style="margin-top:10px">
+              <button type="button" class="primary" id="btnAskPlatformData">Plattform nach dieser Person fragen</button>
+            </div>
+            <p class="section-hint">Wir holen vorhandene Daten (auch unvollständig) und melden der Plattform genau die Lücken.</p>
+          ` : ""}
         `;
+        $("btnAskPlatformData")?.addEventListener("click", () => askPlatformForCurrentEmployee(hardErrors || [], soft));
       }
     }
     highlightMissing(hardErrors || [], soft);
+  }
+
+  async function askPlatformForCurrentEmployee(hard = [], soft = []) {
+    const companyId = companyPortalId || apiConfig().companyId || state.mandantId;
+    const employeeId = state.badgeId || state.employeeId || state.meta?.badgeId;
+    if (!companyId) {
+      toast("Keine Firma – bitte anmelden.", "error");
+      return;
+    }
+    if (!employeeId && !state.employeeName) {
+      toast("Mitarbeiter / Badge fehlt noch.", "error");
+      return;
+    }
+    try {
+      setStatus("Frage Plattform nach Mitarbeiterdaten…", true);
+      const data = await apiFetch("/v1/payroll/request-data", {
+        method: "POST",
+        body: JSON.stringify({
+          companyId,
+          companyName: state.companyName || "",
+          employeeId,
+          badgeId: state.badgeId || employeeId,
+          employeeName: state.employeeName || "",
+          period: state.payrollMonth || currentPayrollPeriod(),
+          gaps: hard,
+          softGaps: soft,
+          jobId: state.meta?.jobId || undefined,
+          pull: true,
+          reason: "payslip_create",
+        }),
+      });
+      if (data.ingest?.count) {
+        const first = data.ingest.results?.[0];
+        if (first?.jobId) {
+          await openApiPayrollJob(first.jobId);
+        }
+        toast(data.message || "Daten übernommen (auch unvollständig).", "ok");
+      } else {
+        toast(data.message || "Plattform wurde nach fehlenden Daten gefragt.", "info");
+      }
+      setStatus(data.message || "Anfrage gesendet", true);
+      await loadPlatformMessages?.(true);
+      await loadPortalDashboard?.(true);
+    } catch (e) {
+      toast(`Anfrage fehlgeschlagen: ${e.message || e}`, "error");
+      setStatus(String(e.message || e), false);
+    }
   }
 
   function isPortalEditingDraft(state) {
@@ -409,8 +464,8 @@
 
       if ($("portalSyncHint")) {
         $("portalSyncHint").textContent = emps.count
-          ? "Echte Mitarbeiter geladen. Monatsabschluss braucht Plattform-Daten für den Monat."
-          : "Warte auf echte Mitarbeiter/Löhne von der Plattform (kein Demo).";
+          ? "Ihre Lohnzentrale ist bereit: vorhandene Daten werden gezogen – Lücken fragt das System automatisch bei der Plattform nach."
+          : "Bereit für echte Mitarbeiter. Sobald die Plattform sendet (auch unvollständig), starten wir die Abrechnung.";
       }
       if ($("portalSyncDetail")) {
         const hints = sync?.hints || [
@@ -1573,7 +1628,8 @@
       }
       if ($("monthCloseHint")) {
         $("monthCloseHint").textContent =
-          `Zieht die Mitarbeiter-Daten für ${period} von der Plattform, erstellt je eine Abrechnung und sendet sie zurück – damit die Plattform sie an die Mitarbeiter zustellen kann.`;
+          `Zieht vorhandene Daten für ${period} von der Plattform – auch unvollständig. `
+          + `Fertige Abrechnungen werden freigegeben; bei Lücken fragt das System die Plattform gezielt nach dieser Person.`;
       }
     }
 
