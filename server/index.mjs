@@ -10,7 +10,7 @@
 import http from "node:http";
 import { URL } from "node:url";
 import { ingestPayroll, ingestPayrollBatch, releasePayrollJob } from "./payroll-service.mjs";
-import { runMonthClose, currentPeriod, requestEmployeeDataFromPlatform } from "./month-close.mjs";
+import { runMonthClose, currentPeriod, requestEmployeeDataFromPlatform, resolvePlatformPullUrls } from "./month-close.mjs";
 import { startMonthCloseScheduler, runAutoMonthCloseOnce, autoMonthCloseConfig } from "./month-scheduler.mjs";
 import { listCompanyEmployees, monthOverview, listReleasedArchive } from "./portal-service.mjs";
 import { buildDemoPayrollBatch } from "./demo-payroll.mjs";
@@ -129,7 +129,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "2.5.0",
+      version: "2.5.1",
       multiTenant: true,
       monthCloseScheduler: monthCloseSched,
       autoMonthClose: autoMonthCloseConfig(),
@@ -379,7 +379,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "2.5.0",
+          version: "2.5.1",
           ...syncHealth(),
         },
         monthCloseScheduler: monthCloseSched,
@@ -908,13 +908,14 @@ async function handler(req, res) {
         kind: "platform.accounting.sync.v1",
         schemaVersion: 2,
         companyId: companyId || null,
-        accountingVersion: "2.5.0",
+        accountingVersion: "2.5.1",
         webhook: {
           configured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),
           urlSuggested: platformWebhookUrl(),
           last: getLastWebhookStatus(),
         },
-        pullUrlConfigured: Boolean(String(process.env.WORKPASS_PLATFORM_PAYROLL_PULL_URL || "").trim()),
+        pullUrlConfigured: resolvePlatformPullUrls().length > 0,
+        pullUrls: resolvePlatformPullUrls().slice(0, 5),
         pending: {
           messages: pendingMessages.length,
           deliveries: pendingDeliveries.length,
@@ -924,8 +925,8 @@ async function handler(req, res) {
         hints: [
           "Fehlende Daten: Buchhaltung fragt per employee.data.requested → Plattform ergänzt → POST /v1/payroll/batch (unvollständig OK)",
           "Freigaben: Webhook empfangen oder GET /v1/delivery/pending → POST /v1/delivery/:id/ack",
-          "Monatsabschluss: POST /v1/payroll/month-close { companyId, period } – zieht auch unvollständige Daten",
-          "Manuell nachfragen: POST /v1/payroll/request-data { companyId, employeeId, period }",
+          "Monatsabschluss: Pull GET+POST auf Export-URLs, sonst Push / Erneut versuchen",
+          "Railway: WORKPASS_PLATFORM_PAYROLL_PULL_URL oder WORKPASS_PLATFORM_BASE_URL=https://suppix-ai-workpass.com",
         ],
       });
     }

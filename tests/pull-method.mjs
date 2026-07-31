@@ -54,7 +54,7 @@ process.env.WORKPASS_PLATFORM_PAYROLL_PULL_METHOD = "auto";
 console.log("\n=== Pull auto: POST 405 → GET ok ===");
 const r = await pullPlatformPayrollBatch({ companyId: "c1", period: "2026-07" });
 assert(r.ok, "pull ok");
-assert(r.method === "GET", `used GET after 405 (got ${r.method})`);
+assert(r.method === "GET", `used GET (got ${r.method})`);
 assert(r.batch?.employees?.length === 1, "employees from GET");
 
 process.env.WORKPASS_PLATFORM_PAYROLL_PULL_METHOD = "POST";

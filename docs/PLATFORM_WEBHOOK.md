@@ -57,7 +57,11 @@ Sync overview for the platform: `GET {ACCOUNTING}/v1/platform/status`
 | `accounting.message` | `examples/webhook-accounting.message.json` | Inbox: **one** bundled gap message per employee → fix → resend → `POST /v1/messages/:id/ack` (accounting shows „Auftrag gesehen“) |
 | Employees import | `POST /v1/employees/import` + `examples/platform-employees.import.v1.json` | Name + **badgeId** (badge never printed on payslip; optional `personnelNumber` may print) |
 | `employee.data.requested` | — | Firm asked for missing fields of **one** employee; platform should fill gaps and resend (incomplete OK) |
+| `payroll.month.requested` | — | Accounting asks platform to push/export the month now |
+| `payroll.waiting` | `examples/webhook-payroll.waiting.json` | Month still empty – prompt firm/platform to send batch |
+| `month.closed` | `examples/webhook-month.closed.json` | Mark month done / notify HR |
 | `month.close.partial` | — | Month closed with some employees incomplete; platform was asked for gaps |
+| `month.close.failed` | — | Show errors / retry |
 
 `delivery.kind` for documents: `platform.employee.delivery.v1`  
 `message.kind` for gaps: `platform.accounting.message.v1`

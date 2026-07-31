@@ -696,6 +696,17 @@
     const jobs = data.jobs || {};
     const detail = data.pull?.humanError || data.error || "";
     const showDetail = detail && detail !== data.message;
+    const actions = data.waitingForPlatform || data.canRetry
+      ? `
+        <div class="btn-row" style="margin-top:12px">
+          <button type="button" class="primary" id="btnMonthRetryPull">Erneut versuchen</button>
+          <button type="button" id="btnMonthPingPlatform">Plattform anstoßen</button>
+        </div>
+        ${(data.nextActions || []).length
+          ? `<ul class="section-hint" style="margin-top:8px">${data.nextActions.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>`
+          : ""}
+      `
+      : "";
     host.innerHTML = `
       <div class="month-status month-status-${tone}">
         <strong>${esc(data.ok ? "Abschluss bereit" : data.waitingForPlatform ? "Warte auf Plattform" : "Noch nicht fertig")}</strong>
@@ -707,18 +718,91 @@
           <span>Freigegeben ${Number(jobs.released || 0)}</span>
           <span>Offen ${Number(jobs.calculated || 0)}</span>
           <span>Fehler ${Number(jobs.error || 0)}</span>
-          ${data.missingOnPlatform ? "<span>Plattform: not_found</span>" : ""}
+          ${data.missingOnPlatform ? "<span>Plattform: keine Monatsdaten</span>" : ""}
+          ${data.pull?.skipped ? "<span>Pull-URL fehlt/ungeklärt</span>" : ""}
         </div>
+        ${actions}
       </div>`;
+    $("btnMonthRetryPull")?.addEventListener("click", () => runMonthClose({ pull: true, autoRelease: true }));
+    $("btnMonthPingPlatform")?.addEventListener("click", () => pingPlatformForMonth());
   }
 
-  async function runMonthClose({ pull = true, autoRelease = true } = {}) {
+  async function pingPlatformForMonth() {
+    const companyId = companyPortalId || apiConfig().companyId;
+    if (!companyId) return;
+    const period = currentPayrollPeriod();
+    try {
+      setStatus("Plattform wird aufgefordert, Monatsdaten zu senden…", true);
+      const data = await apiFetch("/v1/payroll/month-close", {
+        method: "POST",
+        body: JSON.stringify({
+          companyId,
+          period,
+          pull: true,
+          autoRelease: false,
+        }),
+      });
+      renderMonthCloseStatus(data);
+      toast(data.message || "Plattform benachrichtigt", data.ok ? "ok" : "info");
+      if (data.waitingForPlatform) startMonthWaitRetry(period);
+    } catch (e) {
+      toast(String(e.message || e), "error");
+    }
+  }
+
+  let monthWaitRetryTimer = null;
+  let monthWaitRetryLeft = 0;
+
+  function stopMonthWaitRetry() {
+    clearTimeout(monthWaitRetryTimer);
+    monthWaitRetryTimer = null;
+    monthWaitRetryLeft = 0;
+  }
+
+  function startMonthWaitRetry(period) {
+    stopMonthWaitRetry();
+    monthWaitRetryLeft = 3;
+    const tick = async () => {
+      if (monthWaitRetryLeft <= 0) {
+        const host = $("monthCloseProgress");
+        if (host) {
+          host.dataset.keep = "1";
+          renderMonthProgress("pull", {
+            percent: 30,
+            title: "Warten beendet – bitte erneut versuchen oder Daten in der Plattform senden",
+            states: { pull: "active", calc: "todo", release: "todo", done: "todo" },
+          });
+        }
+        return;
+      }
+      const left = monthWaitRetryLeft;
+      monthWaitRetryLeft -= 1;
+      renderMonthProgress("pull", {
+        percent: 35 + (3 - left) * 10,
+        title: `Warte auf Plattform… Auto-Retry in 8s (${left}×)`,
+        states: { pull: "active", calc: "skip", release: "skip", done: "todo" },
+      });
+      monthWaitRetryTimer = setTimeout(async () => {
+        const data = await runMonthClose({ pull: true, autoRelease: true, fromAutoRetry: true });
+        if (data?.ok) {
+          stopMonthWaitRetry();
+          return;
+        }
+        if (data?.waitingForPlatform) tick();
+        else stopMonthWaitRetry();
+      }, 8000);
+    };
+    tick();
+  }
+
+  async function runMonthClose({ pull = true, autoRelease = true, fromAutoRetry = false } = {}) {
     const companyId = companyPortalId || apiConfig().companyId;
     if (!companyId) {
       window.alert("Keine Firma-ID – bitte als Firma anmelden.");
       return null;
     }
     const period = currentPayrollPeriod();
+    if (!fromAutoRetry) stopMonthWaitRetry();
     const btn = $("btnMonthClose");
     const btnPortal = $("btnPortalMonthClose");
     const busyButtons = [btn, btnPortal].filter(Boolean);
@@ -761,17 +845,25 @@
       });
       clearInterval(stepTimer);
 
-      const states = {
-        pull: pull ? (data.waitingForPlatform && data.pull?.skipped ? "skip" : "done") : "skip",
-        calc: data.jobs?.total > 0 || data.batch?.count > 0 ? "done" : (data.waitingForPlatform ? "skip" : "done"),
-        release: data.ok ? "done" : (data.waitingForPlatform ? "skip" : "todo"),
-        done: data.ok ? "done" : (data.waitingForPlatform ? "active" : "todo"),
-      };
-      renderMonthProgress(data.ok ? "done" : (data.waitingForPlatform ? "done" : "release"), {
-        percent: data.ok ? 100 : (data.waitingForPlatform ? 55 : 70),
-        title: data.ok ? "Fertig" : (data.waitingForPlatform ? "Warte auf Plattform-Daten" : "Teilweise"),
-        states,
-      });
+      if (data.waitingForPlatform) {
+        renderMonthProgress("pull", {
+          percent: 40,
+          title: "Keine Daten bisher – Plattform wurde gefragt",
+          states: { pull: "active", calc: "skip", release: "skip", done: "todo" },
+        });
+      } else {
+        const states = {
+          pull: pull ? "done" : "skip",
+          calc: data.jobs?.total > 0 || data.batch?.count > 0 ? "done" : "todo",
+          release: data.ok ? "done" : (data.partial ? "active" : "todo"),
+          done: data.ok && !data.partial ? "done" : "todo",
+        };
+        renderMonthProgress(data.ok && !data.partial ? "done" : "release", {
+          percent: data.ok ? (data.partial ? 85 : 100) : 70,
+          title: data.ok ? (data.partial ? "Teilweise fertig" : "Fertig") : "Noch nicht fertig",
+          states,
+        });
+      }
 
       await loadApiInbox(true);
       await loadPlatformMessages(true);
@@ -786,23 +878,28 @@
           : msg,
         data.ok ? "ok" : (data.waitingForPlatform ? "info" : "error")
       );
-      if (progressHost) progressHost.dataset.keep = data.ok ? "0" : "1";
-      if (data.ok) hideMonthProgressSoon(1800);
+      if (progressHost) progressHost.dataset.keep = data.ok && !data.waitingForPlatform ? "0" : "1";
+      if (data.ok && !data.waitingForPlatform) hideMonthProgressSoon(1800);
+      if (data.waitingForPlatform && !fromAutoRetry) startMonthWaitRetry(period);
+      if (data.ok) stopMonthWaitRetry();
       return data;
     } catch (e) {
       clearInterval(stepTimer);
-      renderMonthProgress("release", {
-        percent: 40,
+      stopMonthWaitRetry();
+      renderMonthProgress("pull", {
+        percent: 20,
         title: "Fehler",
-        states: { pull: "done", calc: "todo", release: "todo", done: "todo" },
+        states: { pull: "active", calc: "todo", release: "todo", done: "todo" },
       });
       renderMonthCloseStatus({
         ok: false,
         waitingForPlatform: false,
+        canRetry: true,
         period,
         error: e.message,
         message: e.message,
         jobs: {},
+        nextActions: ["Erneut versuchen", "API-URL / Anmeldung prüfen"],
       });
       setStatus(`Monatsabschluss: ${e.message}`, false);
       toast(e.message, "error");

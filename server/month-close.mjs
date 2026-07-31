@@ -11,6 +11,7 @@ import { normalizeCompanyId, normalizeEmployeeId } from "./tenant.mjs";
 import { notifyPlatform } from "./notify.mjs";
 import { upsertPlatformMessage, gapsFromTexts, notifyGapsForPayroll } from "./platform-messages.mjs";
 import { isDemoPayrollJob } from "./demo-detect.mjs";
+import { listEmployees } from "./employee-registry.mjs";
 
 function currentPeriod(d = new Date()) {
   const y = d.getFullYear();
@@ -121,21 +122,54 @@ export function normalizePlatformBatch(body, { companyId, period } = {}) {
 /**
  * Pull month payroll export from the WorkPass platform.
  * Accepts incomplete batches (missing fields per employee are OK).
+ * Tries several URL candidates and both GET+POST until data is found.
  *
  * Env:
- *   WORKPASS_PLATFORM_PAYROLL_PULL_URL
+ *   WORKPASS_PLATFORM_PAYROLL_PULL_URL   (optional; otherwise derived)
+ *   WORKPASS_PLATFORM_BASE_URL           e.g. https://suppix-ai-workpass.com
  *   WORKPASS_PLATFORM_PAYROLL_PULL_METHOD = auto | GET | POST  (default auto)
- *   On HTTP 405, auto retries with the other method.
  */
+export function resolvePlatformPullUrls() {
+  const explicit = String(process.env.WORKPASS_PLATFORM_PAYROLL_PULL_URL || "").trim();
+  const base = String(
+    process.env.WORKPASS_PLATFORM_BASE_URL
+    || process.env.WORKPASS_PLATFORM_URL
+    || ""
+  ).trim().replace(/\/$/, "");
+  const webhook = String(process.env.WORKPASS_PLATFORM_WEBHOOK_URL || "").trim();
+  let hostBase = base;
+  if (!hostBase && webhook) {
+    try {
+      const u = new URL(webhook);
+      hostBase = `${u.protocol}//${u.host}`;
+    } catch { /* ignore */ }
+  }
+
+  const urls = [];
+  const add = (u) => {
+    const s = String(u || "").trim();
+    if (s && !urls.includes(s)) urls.push(s);
+  };
+  add(explicit);
+  if (hostBase) {
+    add(`${hostBase}/api/workpass/payroll/export`);
+    add(`${hostBase}/api/workpass/payroll/pull`);
+    add(`${hostBase}/api/workpass/accounting/payroll/export`);
+    add(`${hostBase}/api/workpass/accounting/payroll/pull`);
+    add(`${hostBase}/api/workpass/lohn/export`);
+  }
+  return urls;
+}
+
 export async function pullPlatformPayrollBatch({ companyId, period, employeeId } = {}) {
-  const url = String(process.env.WORKPASS_PLATFORM_PAYROLL_PULL_URL || "").trim();
-  if (!url) {
+  const urls = resolvePlatformPullUrls();
+  if (!urls.length) {
     return {
       ok: false,
       skipped: true,
       error:
-        "Kein WORKPASS_PLATFORM_PAYROLL_PULL_URL – Plattform muss Monatsdaten per POST /v1/payroll/batch senden "
-        + "oder diese Pull-URL setzen.",
+        "Kein Pull-Endpoint – setze WORKPASS_PLATFORM_PAYROLL_PULL_URL oder WORKPASS_PLATFORM_BASE_URL, "
+        + "oder lass die Plattform Monatsdaten per POST /v1/payroll/batch senden.",
     };
   }
 
@@ -150,32 +184,42 @@ export async function pullPlatformPayrollBatch({ companyId, period, employeeId }
 
   const methods = methodPref === "GET" || methodPref === "POST"
     ? [methodPref]
-    : ["POST", "GET"]; // auto: POST first, then GET on 405
+    : ["GET", "POST"]; // prefer GET first – many platforms only expose export via GET
 
   let last = null;
-  for (const method of methods) {
-    const result = await fetchPullOnce({
-      url,
-      method,
-      companyId,
-      period,
-      employeeId,
-      key,
-      timeoutMs,
-    });
-    last = result;
-    if (result.ok) return result;
-    // Only auto-fallback on Method Not Allowed
-    if (result.status !== 405) return result;
+  const attempts = [];
+  for (const url of urls) {
+    for (const method of methods) {
+      const result = await fetchPullOnce({
+        url,
+        method,
+        companyId,
+        period,
+        employeeId,
+        key,
+        timeoutMs,
+      });
+      attempts.push({
+        url,
+        method,
+        ok: result.ok,
+        status: result.status || null,
+        error: result.error || null,
+      });
+      last = { ...result, url, attempts };
+      if (result.ok) return last;
+    }
   }
 
+  // Prefer a human not_found message if that was the dominant answer
+  const notFound = attempts.find((a) => /not_found|404/i.test(String(a.error || a.status || "")));
   return {
     ...last,
-    error:
-      (last?.error || "Plattform-Pull fehlgeschlagen")
-      + " – HTTP 405: Die Pull-URL erlaubt diese Methode nicht. "
-      + "Setze WORKPASS_PLATFORM_PAYROLL_PULL_METHOD=GET (oder POST) passend zur Plattform, "
-      + "oder lass die Plattform den Monat per POST /v1/payroll/batch an die Buchhaltung senden.",
+    skipped: false,
+    attempts,
+    error: notFound
+      ? String(notFound.error || "not_found")
+      : (last?.error || "Plattform-Pull ohne Mitarbeiterdaten"),
   };
 }
 
@@ -390,6 +434,28 @@ export async function runMonthClose(options = {}) {
     }
   }
 
+  // If month pull empty: notify platform for known employees (no N× pull storm)
+  if ((!batchIngest || !batchIngest.count) && options.notify !== false) {
+    const known = listEmployees(companyId).filter((e) => e?.badgeId && e?.name);
+    for (const emp of known.slice(0, 25)) {
+      try {
+        await requestEmployeeDataFromPlatform({
+          companyId,
+          companyName: options.company?.name || "",
+          employeeId: emp.badgeId,
+          badgeId: emp.badgeId,
+          employeeName: emp.name,
+          period,
+          gaps: ["Brutto / Lohnarten fehlen"],
+          tenantScope,
+          pull: false,
+          forceNotify: true,
+          reason: "month_close_registry_fallback",
+        });
+      } catch { /* continue */ }
+    }
+  }
+
   const jobs = realPeriodJobs(companyId, period);
   const calculated = jobs.filter((j) => j.status === "calculated");
   const alreadyReleased = jobs.filter((j) => j.status === "released");
@@ -494,13 +560,21 @@ export async function runMonthClose(options = {}) {
     errored: errored.map((j) => ({ jobId: j.jobId, errors: j.errors })),
     message: !hasWork
       ? (waitingForPlatform
-        ? `Warte auf echte Plattform-Daten für ${period}. ${missingOnPlatform ? "Export meldet not_found / keine Daten." : "Noch keine Mitarbeiter-Stunden empfangen."}`
+        ? `Noch keine Monatsdaten für ${period}. Die Plattform wurde aufgefordert zu senden – bitte „Erneut versuchen“ oder in der Plattform den Monat an die Buchhaltung pushen.`
         : pullHint)
       : partial
         ? `Teilweise übernommen (${period}): ${released.length} freigegeben, ${after.filter((j) => j.status === "error").length} mit Lücken – Plattform nach fehlenden Daten gefragt.`
         : autoRelease
           ? `Monatsabschluss ${period}: ${released.length} Abrechnung(en) an Plattform/Mitarbeiter gesendet.`
           : `Monatsabschluss ${period}: ${calculated.length} Abrechnung(en) berechnet (noch nicht freigegeben).`,
+    canRetry: Boolean(waitingForPlatform || !ok),
+    nextActions: waitingForPlatform
+      ? [
+          "Erneut versuchen (Pull)",
+          "In der Plattform Monat freigeben / an Buchhaltung senden (POST /v1/payroll/batch)",
+          "Railway: WORKPASS_PLATFORM_PAYROLL_PULL_URL oder WORKPASS_PLATFORM_BASE_URL prüfen",
+        ]
+      : [],
   };
 
   const company = { id: companyId, name: options.company?.name || "" };
@@ -536,8 +610,19 @@ export async function runMonthClose(options = {}) {
         severity: "action_needed",
       }],
       source: "month-close",
-    }, { notify: true });
+    }, { notify: true, forceNotify: true });
     result.platformNotify = await notifyPlatform({
+      event: "payroll.month.requested",
+      company,
+      monthClose: monthClosePayload,
+      meta: {
+        reason: pull.error || "no_data",
+        allowIncomplete: true,
+        pullAttempts: pull.attempts || [],
+      },
+      idempotencyKey: `month-req:${companyId}:${period}:${Date.now()}`,
+    });
+    await notifyPlatform({
       event: "payroll.waiting",
       company,
       monthClose: monthClosePayload,
