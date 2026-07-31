@@ -171,8 +171,19 @@ export async function runMonthClose(options = {}) {
       || (batchIngest && batchIngest.count > 0));
 
   const hasWork = after.length > 0 || Boolean(batchIngest?.count);
+  const waitingForPlatform = !hasWork && (pull.skipped || !pull.ok);
+  const ok = hasWork && releaseErrors.length === 0 && (!batchIngest || batchIngest.ok);
+
   return {
-    ok: hasWork && releaseErrors.length === 0 && (!batchIngest || batchIngest.ok),
+    ok,
+    waitingForPlatform,
+    error: ok
+      ? undefined
+      : (!hasWork
+        ? (pull.skipped
+          ? `Keine Monatsdaten für ${period}. Die Plattform muss zuerst Stunden/Löhne senden (POST /v1/payroll/batch) oder WORKPASS_PLATFORM_PAYROLL_PULL_URL setzen.`
+          : (pull.error || `Keine Daten für ${period}`))
+        : (releaseErrors[0]?.error || batchIngest?.errors?.join?.(" · ") || "Monatsabschluss unvollständig")),
     period,
     companyId,
     pull,
@@ -196,7 +207,7 @@ export async function runMonthClose(options = {}) {
     errored: errored.map((j) => ({ jobId: j.jobId, errors: j.errors })),
     message: !hasWork
       ? (pull.skipped
-        ? `Keine Monatsdaten für ${period}. Plattform muss Batch senden oder WORKPASS_PLATFORM_PAYROLL_PULL_URL setzen.`
+        ? `Warte auf Plattform-Daten für ${period}. Noch keine Mitarbeiter-Stunden empfangen.`
         : (pull.error || `Keine Daten für ${period}`))
       : autoRelease
         ? `Monatsabschluss ${period}: ${released.length} Abrechnung(en) an Plattform/Mitarbeiter gesendet.`

@@ -382,6 +382,31 @@
     }
   }
 
+  function renderMonthCloseStatus(data) {
+    const host = $("monthCloseStatus");
+    if (!host) return;
+    if (!data) {
+      host.hidden = true;
+      host.innerHTML = "";
+      return;
+    }
+    host.hidden = false;
+    const tone = data.ok ? "ok" : (data.waitingForPlatform ? "wait" : "err");
+    const jobs = data.jobs || {};
+    host.innerHTML = `
+      <div class="month-status month-status-${tone}">
+        <strong>${esc(data.ok ? "Abschluss bereit" : data.waitingForPlatform ? "Warte auf Plattform" : "Noch nicht fertig")}</strong>
+        <p>${esc(data.message || data.error || "")}</p>
+        <div class="month-status-chips">
+          <span>Monat ${esc(data.period || "—")}</span>
+          <span>Jobs ${Number(jobs.total || 0)}</span>
+          <span>Freigegeben ${Number(jobs.released || 0)}</span>
+          <span>Offen ${Number(jobs.calculated || 0)}</span>
+          <span>Fehler ${Number(jobs.error || 0)}</span>
+        </div>
+      </div>`;
+  }
+
   async function runMonthClose({ pull = true, autoRelease = true } = {}) {
     const companyId = companyPortalId || apiConfig().companyId;
     if (!companyId) {
@@ -389,6 +414,12 @@
       return null;
     }
     const period = currentPayrollPeriod();
+    const btn = $("btnMonthClose");
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add("is-busy");
+      btn.textContent = "Läuft…";
+    }
     setStatus(`Monatsabschluss ${period} läuft…`, true);
     try {
       const data = await apiFetch("/v1/payroll/month-close", {
@@ -402,25 +433,35 @@
       });
       await loadApiInbox(true);
       await loadPlatformMessages(true);
+      renderMonthCloseStatus(data);
       const n = data.newlyReleased?.length || 0;
-      const msg = data.message || `Monatsabschluss ${period}`;
-      setStatus(msg, Boolean(data.ok));
+      const msg = data.message || data.error || `Monatsabschluss ${period}`;
+      setStatus(msg, Boolean(data.ok || data.waitingForPlatform));
       toast(
         data.ok
-          ? `${n} Abrechnung(en) → Plattform/Mitarbeiter (${period})`
-          : (data.pull?.error || data.error || msg),
-        data.ok ? "ok" : "error"
+          ? `${n} Abrechnung(en) → Plattform (${period})`
+          : msg,
+        data.ok ? "ok" : (data.waitingForPlatform ? "info" : "error")
       );
-      if (!data.ok && data.pull?.skipped) {
-        window.alert(
-          `${msg}\n\nDamit es automatisch zieht, auf Railway setzen:\nWORKPASS_PLATFORM_PAYROLL_PULL_URL=<Plattform-Export-URL>\n\nOder die Plattform sendet POST /v1/payroll/batch für ${period}.`
-        );
-      }
       return data;
     } catch (e) {
-      setStatus(`Monatsabschluss fehlgeschlagen: ${e.message}`, false);
-      window.alert(`Monatsabschluss fehlgeschlagen:\n${e.message}`);
+      renderMonthCloseStatus({
+        ok: false,
+        waitingForPlatform: false,
+        period,
+        error: e.message,
+        message: e.message,
+        jobs: {},
+      });
+      setStatus(`Monatsabschluss: ${e.message}`, false);
+      toast(e.message, "error");
       return null;
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove("is-busy");
+        btn.textContent = "Monatsabschluss jetzt";
+      }
     }
   }
 
@@ -902,7 +943,12 @@
       if (res.status === 401) {
         throw new Error("Nicht autorisiert – API-Key oder Plattform-Login prüfen.");
       }
-      throw new Error(data.error || data.errors?.join?.(" · ") || `HTTP ${res.status}`);
+      throw new Error(
+        data.error
+        || data.message
+        || data.errors?.join?.(" · ")
+        || `HTTP ${res.status}`
+      );
     }
     return data;
   }
@@ -1165,18 +1211,21 @@
         banner.hidden = false;
         banner.innerHTML = `
           <div class="company-portal-banner-inner">
-            <div>
-              <span class="eyebrow">Firmen-Portal</span>
+            <div class="portal-brand-block">
+              <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> Firmen-Portal live</span>
               <strong>${esc(companyName)}</strong>
-              <small>Nur Ihre Daten · Login ${esc(me.user?.email || "")} · Monat ${esc(currentPayrollPeriod())}</small>
+              <small>Nur Ihre Daten · ${esc(me.user?.email || "")} · Monat ${esc(currentPayrollPeriod())}</small>
             </div>
             <div class="month-close-actions">
-              <button type="button" class="primary" id="btnPortalMonthClose">Monatsabschluss</button>
+              <button type="button" class="primary glossy" id="btnPortalMonthClose">Monatsabschluss</button>
               <button type="button" id="btnPortalRefreshInbox">Inbox</button>
             </div>
           </div>`;
         $("btnPortalMonthClose")?.addEventListener("click", () => runMonthClose({ pull: true, autoRelease: true }));
-        $("btnPortalRefreshInbox")?.addEventListener("click", () => loadApiInbox());
+        $("btnPortalRefreshInbox")?.addEventListener("click", () => {
+          loadApiInbox();
+          loadPlatformMessages();
+        });
       }
       if ($("companyName") && (!$("companyName").value.trim() || String(state.mandantId || "").toLowerCase() !== companyPortalId)) {
         $("companyName").value = companyName;

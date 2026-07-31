@@ -49,10 +49,30 @@ const result = await runMonthClose({
   batch: example,
   tenantScope: id,
 });
+assert(result.ok || result.waitingForPlatform || result.message, "month close responds");
+// with batch, should succeed
 assert(result.ok, "month close ok");
 assert(result.batch?.count === 2, "2 employees calculated");
 assert((result.newlyReleased?.length || 0) === 2, "2 released to platform queue");
 assert(listPayrollJobs({ companyId: id, period }).every((j) => j.status === "released"), "all released");
+
+console.log("\n=== Waiting state without data ===");
+const idleId = `idle${Date.now().toString(36)}`;
+activateCompany({
+  company: { id: idleId, name: "Idle GmbH" },
+  login: { password: "4821" },
+  connection: { accountingEnabled: true },
+});
+const wait = await runMonthClose({
+  companyId: idleId,
+  period: "2026-07",
+  pull: false,
+  autoRelease: true,
+  tenantScope: idleId,
+});
+assert(!wait.ok && wait.waitingForPlatform, "waiting for platform");
+assert(Boolean(wait.message || wait.error), "has guidance message");
+deleteCompany({ id: idleId });
 
 deleteCompany({ id });
 console.log(`\n${passed} passed, ${failed} failed\n`);

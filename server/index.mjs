@@ -119,7 +119,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "1.9.7",
+      version: "1.9.8",
       multiTenant: true,
       platform: {
         domain: PLATFORM_DOMAIN,
@@ -322,7 +322,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "1.9.7",
+          version: "1.9.8",
           ...syncHealth(),
         },
         companies: {
@@ -565,7 +565,7 @@ async function handler(req, res) {
       });
       audit({
         type: "payroll.month_close",
-        outcome: result.ok ? "ok" : "error",
+        outcome: result.ok ? "ok" : (result.waitingForPlatform ? "wait" : "error"),
         ip,
         path,
         companyId,
@@ -573,9 +573,12 @@ async function handler(req, res) {
           period: result.period,
           released: result.newlyReleased?.length || 0,
           pullSkipped: result.pull?.skipped,
+          waitingForPlatform: result.waitingForPlatform,
         },
       });
-      return reply(result.ok ? 200 : 422, result);
+      // Waiting for platform data is not a hard failure – UI shows guidance (HTTP 200)
+      const status = result.ok || result.waitingForPlatform ? 200 : 422;
+      return reply(status, result);
     }
 
     if (req.method === "GET" && path.startsWith("/v1/payroll/") && path.endsWith("/payslip")) {
