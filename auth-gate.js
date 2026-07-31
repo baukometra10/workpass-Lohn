@@ -508,7 +508,6 @@
     isCompanyPortalUser,
     getAuthConfig: () => authConfig,
     STORE_KEY,
-  };
     SESSION_KEY,
     PLATFORM_SESSION_KEY,
     TEST_BYPASS,
