@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=5" />
-    <link rel="stylesheet" href="lohn.css?v=44" />
+    <link rel="stylesheet" href="lohn.css?v=45" />
   </head>
   <body class="auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
@@ -91,6 +91,7 @@
           </div>
           <a href="admin.html" class="btn btn-link" title="Accounting Admin">Admin</a>
           <a href="index.html" class="btn btn-link" title="WorkPass Hub">Hub</a>
+          <button type="button" id="btnThemeToggle" class="btn btn-link" title="Hell/Dunkel">Theme</button>
         </div>
       </header>
 
@@ -142,6 +143,29 @@
             </div>
             <div class="recv-panel" id="panelApi" hidden>
               <p class="section-hint" id="apiBridgeHint">Bridge-Server empfängt Monatsdaten von der Plattform. Auf Railway: API-URL = diese Website (wird automatisch gesetzt). API-Key = <code>WORKPASS_API_KEY</code> aus Railway Variables. Multi-Tenant: Firma-ID filtert die Inbox.</p>
+              <div id="portalDashboard" class="portal-dashboard" hidden>
+                <div class="portal-dash-grid">
+                  <section class="month-close-card portal-dash-card">
+                    <strong>Mitarbeiter</strong>
+                    <p>Nur Ihre Mitarbeiter aus empfangenen Abrechnungen.</p>
+                    <div id="portalEmployeeList" class="api-inbox-list"></div>
+                  </section>
+                  <section class="month-close-card portal-dash-card">
+                    <strong>Monatsübersicht</strong>
+                    <p>Status je Monat: leer · berechnet · freigegeben.</p>
+                    <div id="portalMonthOverview" class="month-overview"></div>
+                  </section>
+                </div>
+                <section class="month-close-card portal-dash-card" style="margin-top:12px">
+                  <strong>PDF-Archiv</strong>
+                  <p>Freigegebene Abrechnungen öffnen und als PDF speichern.</p>
+                  <div id="portalArchiveList" class="api-inbox-list"></div>
+                  <div class="month-close-actions" style="margin-top:10px">
+                    <button type="button" id="btnSeedDemoMonth" class="primary">Demo-Monat laden (Test ohne Plattform)</button>
+                    <button type="button" id="btnRefreshPortal">Portal aktualisieren</button>
+                  </div>
+                </section>
+              </div>
               <div id="monthCloseCard" class="month-close-card" hidden>
                 <strong id="monthCloseTitle">Monatsabschluss</strong>
                 <p id="monthCloseHint">Zieht Mitarbeiter-Daten von der Plattform, erstellt je eine Abrechnung und sendet sie zurück an die Plattform (Mitarbeiter-App).</p>
@@ -478,6 +502,6 @@
     <script src="auth-gate.js?v=8"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="lohn-app.js?v=38"></script>
+    <script src="lohn-app.js?v=39"></script>
   </body>
 </html>

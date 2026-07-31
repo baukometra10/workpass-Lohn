@@ -68,6 +68,7 @@ if (existsSync(companyEx) && companies.status === 200) {
 }
 
 const activateEx = path.join(root, "examples", "platform-company.activate.v1.json");
+let companyId = "";
 if (existsSync(activateEx) && companies.status === 200) {
   const body = JSON.parse(readFileSync(activateEx, "utf8"));
   const res = await fetch(`${base}/v1/company/activate`, {
@@ -77,10 +78,34 @@ if (existsSync(activateEx) && companies.status === 200) {
   });
   const data = await res.json().catch(() => ({}));
   if (res.ok && data.ok && data.workspace?.accountingEnabled) {
-    pass(`POST /v1/company/activate (${data.company?.id}) workspace=${data.workspace?.section?.id || "?"}`);
+    companyId = data.company?.id || body.company?.id || "";
+    pass(`POST /v1/company/activate (${companyId}) workspace=${data.workspace?.section?.id || "?"}`);
   } else {
     fail(`company activate → ${res.status} ${data.error || data.errors?.[0] || ""}`);
   }
+}
+
+if (companyId) {
+  const seed = await fetch(`${base}/v1/demo/seed-month`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-WorkPass-Key": apiKey,
+      "X-WorkPass-Company-Id": companyId,
+    },
+    body: JSON.stringify({ companyId }),
+  });
+  const seedData = await seed.json().catch(() => ({}));
+  if (seed.ok && seedData.ok) pass(`POST /v1/demo/seed-month (${seedData.ingest?.count || "?"} MA)`);
+  else fail(`demo seed → ${seed.status} ${seedData.error || seedData.message || ""}`);
+
+  const portal = await get(`/v1/portal/month?companyId=${encodeURIComponent(companyId)}`, { auth: true });
+  if (portal.status === 200 && portal.json?.ok) pass("GET /v1/portal/month");
+  else fail(`portal/month → ${portal.status}`);
+
+  const msgs = await get("/v1/messages/pending", { auth: true });
+  if (msgs.status === 200 && msgs.json?.ok) pass(`GET /v1/messages/pending (${msgs.json.count || 0})`);
+  else fail(`messages/pending → ${msgs.status}`);
 }
 
 console.log(process.exitCode ? "\nFAILED – fix before go-live\n" : "\nOK – bridge ready for platform link\n");

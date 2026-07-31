@@ -332,6 +332,121 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   }
 
+  async function loadPortalDashboard(silent = false) {
+    const dash = $("portalDashboard");
+    if (!companyPortalId) {
+      if (dash) dash.hidden = true;
+      return;
+    }
+    if (dash) dash.hidden = false;
+    const period = currentPayrollPeriod();
+    try {
+      const [emps, month, arch] = await Promise.all([
+        apiFetch(`/v1/portal/employees?period=${encodeURIComponent(period)}`),
+        apiFetch(`/v1/portal/month?period=${encodeURIComponent(period)}&months=6`),
+        apiFetch(`/v1/portal/archive?period=${encodeURIComponent(period)}`),
+      ]);
+      const empHost = $("portalEmployeeList");
+      if (empHost) {
+        const list = emps.employees || [];
+        empHost.innerHTML = list.length
+          ? list.map((e) => `
+            <div class="api-inbox-item">
+              <div>
+                <strong>${esc(e.name || e.id)}</strong>
+                <span>${esc(e.id)} · ${esc(e.lastPeriod || "—")} · ${esc(e.lastStatus || "—")}</span>
+                <span>Netto ${e.net != null ? PayrollCore.formatAmount(e.net) : "—"}</span>
+              </div>
+              <div class="api-inbox-actions">
+                <button type="button" class="api-open-emp primary" data-id="${esc(e.lastJobId || "")}">Öffnen</button>
+              </div>
+            </div>`).join("")
+          : '<div class="company-empty-inbox"><strong>Noch keine Mitarbeiter</strong><p>Demo-Monat laden oder Plattform-Batch senden.</p></div>';
+        empHost.querySelectorAll(".api-open-emp").forEach((btn) => {
+          btn.addEventListener("click", () => openApiPayrollJob(btn.dataset.id));
+        });
+      }
+      const monthHost = $("portalMonthOverview");
+      if (monthHost) {
+        monthHost.innerHTML = (month.months || []).map((m) => `
+          <button type="button" class="month-chip status-${esc(m.status)}${m.period === period ? " active" : ""}" data-period="${esc(m.period)}">
+            <strong>${esc(m.period)}</strong>
+            <span>${esc(m.status)} · ${m.released}/${m.total}</span>
+          </button>`).join("") || "<p class='section-hint'>Keine Monate</p>";
+        monthHost.querySelectorAll(".month-chip").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            if ($("payrollMonth")) $("payrollMonth").value = btn.dataset.period;
+            loadPortalDashboard(true);
+            loadApiInbox(true);
+          });
+        });
+      }
+      const archHost = $("portalArchiveList");
+      if (archHost) {
+        const items = arch.items || [];
+        archHost.innerHTML = items.length
+          ? items.map((it) => `
+            <div class="api-inbox-item">
+              <div>
+                <strong>${esc(it.employee?.name || it.employee?.id || "MA")}</strong>
+                <span>${esc(it.period)} · ${esc(it.status)} · Netto ${it.net != null ? PayrollCore.formatAmount(it.net) : "—"}</span>
+              </div>
+              <div class="api-inbox-actions">
+                <button type="button" class="api-arch-open" data-id="${esc(it.jobId)}">Öffnen</button>
+                <button type="button" class="api-arch-pdf primary" data-id="${esc(it.jobId)}">PDF</button>
+              </div>
+            </div>`).join("")
+          : '<div class="company-empty-inbox"><strong>Archiv leer</strong><p>Nach Freigabe erscheinen hier die Abrechnungen.</p></div>';
+        archHost.querySelectorAll(".api-arch-open").forEach((btn) => {
+          btn.addEventListener("click", () => openApiPayrollJob(btn.dataset.id));
+        });
+        archHost.querySelectorAll(".api-arch-pdf").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            await openApiPayrollJob(btn.dataset.id);
+            setTimeout(() => exportPdf(), 400);
+          });
+        });
+      }
+      if (!silent) setStatus(`Portal · ${emps.count || 0} MA · Monat ${period}`, true);
+    } catch (e) {
+      if (!silent) setStatus(`Portal: ${e.message}`, false);
+    }
+  }
+
+  async function seedDemoMonth() {
+    if (!companyPortalId) return;
+    const period = currentPayrollPeriod();
+    try {
+      const data = await apiFetch("/v1/demo/seed-month", {
+        method: "POST",
+        body: JSON.stringify({ companyId: companyPortalId, period }),
+      });
+      toast(data.message || "Demo geladen", data.ok ? "ok" : "error");
+      await loadPortalDashboard(true);
+      await loadApiInbox(true);
+      await loadPlatformMessages(true);
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  }
+
+  function initThemeToggle() {
+    const key = "workpass.lohn.theme";
+    const apply = (mode) => {
+      document.body.classList.toggle("theme-light", mode === "light");
+      document.body.classList.toggle("theme-dark", mode !== "light");
+      try { localStorage.setItem(key, mode); } catch { /* ignore */ }
+      const btn = $("btnThemeToggle");
+      if (btn) btn.textContent = mode === "light" ? "Dunkel" : "Hell";
+    };
+    let mode = "dark";
+    try { mode = localStorage.getItem(key) || "dark"; } catch { /* ignore */ }
+    apply(mode);
+    $("btnThemeToggle")?.addEventListener("click", () => {
+      apply(document.body.classList.contains("theme-light") ? "dark" : "light");
+    });
+  }
+
   async function loadPlatformMessages(silent = false) {
     const host = $("platformCommsList");
     const card = $("platformCommsCard");
@@ -512,6 +627,7 @@
 
       await loadApiInbox(true);
       await loadPlatformMessages(true);
+      await loadPortalDashboard(true);
       renderMonthCloseStatus(data);
       const n = data.newlyReleased?.length || 0;
       const msg = data.message || data.error || `Monatsabschluss ${period}`;
@@ -1382,6 +1498,7 @@
     await loadPlatformCompanies();
     await loadApiInbox(true);
     await loadPlatformMessages(true);
+    await loadPortalDashboard(true);
     refreshCompanySelect();
     renderArchiveBoard();
 
@@ -1390,6 +1507,7 @@
       if (document.visibilityState === "visible") {
         loadApiInbox(true);
         loadPlatformMessages(true);
+        loadPortalDashboard(true);
       }
     }, 45000);
 
@@ -1719,6 +1837,8 @@
     $("btnMonthClose")?.addEventListener("click", () => runMonthClose({ pull: true, autoRelease: true }));
     $("btnMonthReleaseOnly")?.addEventListener("click", () => runMonthClose({ pull: false, autoRelease: true }));
     $("btnRefreshMessages")?.addEventListener("click", () => loadPlatformMessages());
+    $("btnRefreshPortal")?.addEventListener("click", () => loadPortalDashboard());
+    $("btnSeedDemoMonth")?.addEventListener("click", () => seedDemoMonth());
     $("btnApiCompanies")?.addEventListener("click", loadPlatformCompanies);
     $("btnApiHealth")?.addEventListener("click", checkApiHealth);
     $("importPlatformInput").addEventListener("change", (e) => {
@@ -1761,6 +1881,7 @@
       applyCompanyPortalMode();
       return;
     }
+    initThemeToggle();
     fillCatalogs();
     window.DatevSheet?.init("datevSheetHost");
     window.DatevSheet?.setBackground("blank");

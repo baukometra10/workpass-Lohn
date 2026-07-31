@@ -11,6 +11,9 @@ import http from "node:http";
 import { URL } from "node:url";
 import { ingestPayroll, ingestPayrollBatch, releasePayrollJob } from "./payroll-service.mjs";
 import { runMonthClose, currentPeriod } from "./month-close.mjs";
+import { startMonthCloseScheduler, runAutoMonthCloseOnce, autoMonthCloseConfig } from "./month-scheduler.mjs";
+import { listCompanyEmployees, monthOverview, listReleasedArchive } from "./portal-service.mjs";
+import { buildDemoPayrollBatch } from "./demo-payroll.mjs";
 import {
   listMessages,
   listPendingMessagesForPlatform,
@@ -47,7 +50,7 @@ import {
 import { assertProductionSecurity } from "./security/crypto.mjs";
 import { audit } from "./security/audit.mjs";
 import { clientIp } from "./security/rate-limit.mjs";
-import { createBackup, listBackups, startBackupScheduler } from "./backup/backup.mjs";
+import { createBackup, listBackups, restoreBackup, startBackupScheduler } from "./backup/backup.mjs";
 import { PLATFORM_DOMAIN, PLATFORM_ORIGINS, platformWebhookUrl } from "./platform-config.mjs";
 import { tryServeStatic } from "./static.mjs";
 import { logDataPaths } from "./paths.mjs";
@@ -79,6 +82,7 @@ try {
 }
 
 const backupSched = startBackupScheduler();
+const monthCloseSched = startMonthCloseScheduler();
 
 function sendJson(res, status, body, req) {
   const json = JSON.stringify(body, null, 2);
@@ -119,8 +123,10 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "1.9.9",
+      version: "2.0.0",
       multiTenant: true,
+      monthCloseScheduler: monthCloseSched,
+      autoMonthClose: autoMonthCloseConfig(),
       platform: {
         domain: PLATFORM_DOMAIN,
         corsOrigins: PLATFORM_ORIGINS,
@@ -235,7 +241,9 @@ async function handler(req, res) {
       || path.startsWith("/v1/payroll/")
       || path.startsWith("/v1/invoice/")
       || path.startsWith("/v1/delivery/")
-      || path.startsWith("/v1/messages");
+      || path.startsWith("/v1/messages")
+      || path.startsWith("/v1/portal/")
+      || path.startsWith("/v1/demo/");
     if (sess.ok && sessionPathsOk) {
       req._workpassSession = sess.user;
       const scoped = resolveTenantScope(tenantScope, sess.user);
@@ -310,6 +318,46 @@ async function handler(req, res) {
       return reply(200, { ok: true, backups: listBackups() });
     }
 
+    if (req.method === "POST" && path === "/v1/admin/backup/restore") {
+      const body = (await readBodyLimited(req)) || {};
+      const fileName = String(body.fileName || body.file || "").trim();
+      if (!fileName) return reply(422, { ok: false, error: "fileName fehlt" });
+      if (body.confirm !== true) {
+        return reply(422, {
+          ok: false,
+          error: "Bestätigung nötig: { confirm: true, fileName }",
+        });
+      }
+      const match = listBackups().find((b) => b.fileName === fileName || b.path === fileName);
+      if (!match) return reply(404, { ok: false, error: "Backup nicht gefunden" });
+      try {
+        const result = restoreBackup(match.path);
+        audit({
+          type: "admin.backup.restore",
+          outcome: "ok",
+          ip,
+          path,
+          detail: { fileName: match.fileName },
+        });
+        return reply(200, { ok: true, ...result, fileName: match.fileName });
+      } catch (e) {
+        audit({ type: "admin.backup.restore", outcome: "error", ip, path, detail: { error: e.message } });
+        return reply(422, { ok: false, error: e.message });
+      }
+    }
+
+    if (req.method === "POST" && path === "/v1/admin/month-close/run") {
+      const body = (await readBodyLimited(req)) || {};
+      const result = await runAutoMonthCloseOnce({
+        force: true,
+        period: body.period,
+        pull: body.pull,
+        autoRelease: body.autoRelease,
+      });
+      audit({ type: "admin.month_close", outcome: result.ok ? "ok" : "error", ip, path });
+      return reply(200, result);
+    }
+
     if (req.method === "POST" && path === "/v1/admin/rate-limit/clear") {
       clearRateLimitState();
       audit({ type: "admin.rateclear", outcome: "ok", ip, path });
@@ -322,9 +370,11 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "1.9.9",
+          version: "2.0.0",
           ...syncHealth(),
         },
+        monthCloseScheduler: monthCloseSched,
+        autoMonthClose: autoMonthCloseConfig(),
         companies: {
           count: companies.length,
           active: companies.filter((c) => c.meta?.accountingEnabled).length,
@@ -643,6 +693,68 @@ async function handler(req, res) {
         releasedAt: j.releasedAt,
       }));
       return reply( 200, { ok: true, companyId: companyId || null, payroll, invoices });
+    }
+
+    // --- Firm portal (employees / month / archive) ---
+    if (req.method === "GET" && path === "/v1/portal/employees") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const period = url.searchParams.get("period") || undefined;
+      const result = listCompanyEmployees(companyId, { period });
+      if (!result.ok) return reply(422, result);
+      return reply(200, result);
+    }
+
+    if (req.method === "GET" && path === "/v1/portal/month") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const period = url.searchParams.get("period") || currentPeriod();
+      const result = monthOverview(companyId, { period, months: Number(url.searchParams.get("months") || 6) });
+      if (!result.ok) return reply(422, result);
+      return reply(200, result);
+    }
+
+    if (req.method === "GET" && path === "/v1/portal/archive") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const period = url.searchParams.get("period") || undefined;
+      const result = listReleasedArchive(companyId, {
+        period,
+        includeAll: url.searchParams.get("all") === "1",
+      });
+      if (!result.ok) return reply(422, result);
+      return reply(200, result);
+    }
+
+    // Demo seed / pull without real platform
+    if (req.method === "POST" && (path === "/v1/demo/seed-month" || path === "/v1/demo/payroll-export")) {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(body.companyId || body.company?.id || tenantScope || "");
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Demo");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      if (!companyId) return reply(422, { ok: false, error: "companyId fehlt" });
+      const period = body.period || currentPeriod();
+      const batch = buildDemoPayrollBatch({ companyId, period });
+      if (!batch.ok) return reply(422, batch);
+      if (path === "/v1/demo/payroll-export" || body.exportOnly) {
+        return reply(200, batch);
+      }
+      const ingested = await ingestPayrollBatch(batch, { tenantScope: tenantScope || companyId });
+      audit({
+        type: "demo.seed_month",
+        outcome: ingested.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { period, count: ingested.count },
+      });
+      return reply(ingested.ok ? 200 : 422, {
+        ok: ingested.ok,
+        period,
+        companyId,
+        batch,
+        ingest: ingested,
+        message: ingested.ok
+          ? `Demo-Monat ${period}: ${ingested.count} Mitarbeiter angelegt – jetzt Monatsabschluss möglich`
+          : (ingested.errors?.join?.(" · ") || "Demo-Seed fehlgeschlagen"),
+      });
     }
 
     // --- Platform ↔ Accounting messages ---

@@ -1276,3 +1276,83 @@ body.company-portal .lohn-preview .preview-toolbar {
   border-color: rgba(140, 190, 255, 0.22);
   background: rgba(16, 28, 48, 0.7);
 }
+
+/* Portal dashboard + light theme */
+.portal-dashboard { margin-bottom: 12px; }
+.portal-dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 900px) {
+  .portal-dash-grid { grid-template-columns: 1fr; }
+}
+.month-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.month-chip {
+  text-align: left;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(140, 190, 255, 0.25);
+  background: rgba(8, 18, 34, 0.55);
+  color: #c5d4e8;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.month-chip:hover { transform: translateY(-1px); border-color: rgba(120, 190, 255, 0.5); }
+.month-chip.active { border-color: #5db4ff; box-shadow: inset 0 0 0 1px rgba(93, 180, 255, 0.25); }
+.month-chip strong { display: block; color: #fff; font-size: 0.85rem; }
+.month-chip span { display: block; margin-top: 4px; font-size: 0.68rem; color: #9bb0c9; }
+.month-chip.status-released { border-color: rgba(125, 222, 162, 0.45); }
+.month-chip.status-partial { border-color: rgba(251, 191, 36, 0.4); }
+.month-chip.status-error { border-color: rgba(248, 113, 113, 0.45); }
+.month-chip.status-empty { opacity: 0.75; }
+
+body.theme-light {
+  --bg: #eef3fb;
+  --bg-elev: #f7f9fd;
+  --panel: #ffffff;
+  --panel-solid: #ffffff;
+  --border: rgba(40, 70, 120, 0.16);
+  --text: #152033;
+  --muted: #5b6b82;
+  --accent: #1d6fd8;
+  --accent-soft: rgba(29, 111, 216, 0.1);
+  color: var(--text);
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(29, 111, 216, 0.12), transparent 55%),
+    linear-gradient(180deg, #f4f7fc 0%, #e8eef8 100%);
+}
+body.theme-light .lohn-appbar,
+body.theme-light .lohn-form,
+body.theme-light .form-section,
+body.theme-light .month-close-card,
+body.theme-light .company-portal-banner,
+body.theme-light .api-inbox-item,
+body.theme-light .kpi {
+  background: #fff;
+  color: var(--text);
+  border-color: rgba(40, 70, 120, 0.14);
+}
+body.theme-light .lohn-form {
+  background: linear-gradient(180deg, #ffffff, #f7f9fd);
+}
+body.theme-light .section-hint,
+body.theme-light .month-close-card p,
+body.theme-light .company-portal-banner small,
+body.theme-light .api-inbox-item span {
+  color: var(--muted);
+}
+body.theme-light .month-chip {
+  background: #f3f7fd;
+  color: var(--text);
+}
+body.theme-light .month-chip strong { color: var(--text); }
+body.theme-light .lohn-status.ok { color: #0f7a4c; }
+body.theme-light .auth-gate {
+  background: radial-gradient(ellipse at 50% 0%, rgba(29, 111, 216, 0.12), transparent 50%), #eef3fb;
+}

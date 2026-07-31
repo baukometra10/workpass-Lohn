@@ -21,6 +21,7 @@
     "test:company-login": "node tests/company-login.mjs",
     "test:month-close": "node tests/month-close.mjs",
     "test:messages": "node tests/platform-messages.mjs",
+    "test:portal": "node tests/portal-overview.mjs",
     "test:auth": "node tests/auth-session.mjs",
     "test:db": "node tests/db-local.mjs",
     "test:security": "node tests/security.mjs",
