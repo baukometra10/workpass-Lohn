@@ -164,12 +164,6 @@ export async function runMonthClose(options = {}) {
   }
 
   const after = listPayrollJobs({ companyId, period });
-  const ok =
-    (batchIngest ? batchIngest.ok : true)
-    && releaseErrors.length === 0
-    && (after.some((j) => j.status === "released" || j.status === "calculated")
-      || (batchIngest && batchIngest.count > 0));
-
   const hasWork = after.length > 0 || Boolean(batchIngest?.count);
   const waitingForPlatform = !hasWork && (pull.skipped || !pull.ok);
   const ok = hasWork && releaseErrors.length === 0 && (!batchIngest || batchIngest.ok);

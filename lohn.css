@@ -957,3 +957,193 @@ body.company-portal .month-close-actions {
 @media (max-width: 980px) {
   body.company-portal .lohn-layout { grid-template-columns: 1fr; }
 }
+
+/* —— Portal polish: dynamic, calmer, wider workspace —— */
+body.company-portal {
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(59, 158, 255, 0.16), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 0%, rgba(125, 222, 162, 0.12), transparent 50%),
+    linear-gradient(180deg, #070d18 0%, #060b16 40%, #08101c 100%);
+}
+body.company-portal #lohnApp.lohn-shell {
+  animation: portalFadeIn 0.45s ease both;
+}
+@keyframes portalFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+body.company-portal .lohn-appbar {
+  backdrop-filter: blur(10px);
+  background: rgba(8, 14, 26, 0.82);
+  border-bottom: 1px solid rgba(90, 140, 200, 0.18);
+}
+body.company-portal .lohn-layout {
+  grid-template-columns: minmax(460px, 1.25fr) minmax(0, 1fr);
+  gap: 0;
+}
+body.company-portal .lohn-form {
+  padding: 0 20px 36px;
+  gap: 14px;
+  background:
+    linear-gradient(180deg, rgba(11, 18, 32, 0.92), rgba(10, 16, 28, 0.88));
+}
+body.company-portal .lohn-form-sticky {
+  padding: 14px 0 12px;
+}
+body.company-portal .lohn-status {
+  border-radius: 12px;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+body.company-portal .kpi-strip {
+  gap: 10px;
+}
+body.company-portal .kpi {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(20, 36, 58, 0.9), rgba(12, 20, 34, 0.95));
+  border: 1px solid rgba(90, 140, 200, 0.2);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+body.company-portal .kpi:hover {
+  transform: translateY(-1px);
+  border-color: rgba(93, 180, 255, 0.45);
+}
+body.company-portal .form-jump a {
+  border-radius: 8px;
+  padding: 8px 4px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+body.company-portal .form-section {
+  border-radius: 16px;
+  border: 1px solid rgba(90, 140, 200, 0.16);
+  background: rgba(12, 20, 34, 0.55);
+  padding: 14px 14px 16px;
+  animation: portalCardIn 0.4s ease both;
+}
+@keyframes portalCardIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+body.company-portal #secEmpfang { animation-delay: 0.04s; }
+body.company-portal #secFirma { animation-delay: 0.08s; }
+body.company-portal #secLohnarten { animation-delay: 0.12s; }
+
+body.company-portal .company-portal-banner {
+  margin: 12px 18px 4px;
+  overflow: hidden;
+  position: relative;
+  animation: portalCardIn 0.35s ease both;
+}
+body.company-portal .company-portal-banner::before {
+  content: "";
+  position: absolute;
+  inset: -40% auto auto -20%;
+  width: 55%;
+  height: 160%;
+  background: radial-gradient(circle, rgba(125, 222, 162, 0.18), transparent 65%);
+  pointer-events: none;
+  animation: portalGlow 6s ease-in-out infinite alternate;
+}
+@keyframes portalGlow {
+  from { transform: translateX(0); opacity: 0.7; }
+  to { transform: translateX(18%); opacity: 1; }
+}
+body.company-portal .pulse-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #7ddea2;
+  box-shadow: 0 0 0 0 rgba(125, 222, 162, 0.55);
+  animation: pulseDot 1.6s ease-out infinite;
+  vertical-align: middle;
+}
+@keyframes pulseDot {
+  0% { box-shadow: 0 0 0 0 rgba(125, 222, 162, 0.55); }
+  70% { box-shadow: 0 0 0 8px rgba(125, 222, 162, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(125, 222, 162, 0); }
+}
+body.company-portal .portal-brand-block strong {
+  letter-spacing: -0.02em;
+}
+body.company-portal .month-close-card {
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+body.company-portal .month-close-card:hover {
+  border-color: rgba(93, 180, 255, 0.45);
+  transform: translateY(-1px);
+}
+body.company-portal .month-close-status { margin: 10px 0 12px; }
+body.company-portal .month-status {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(90, 140, 200, 0.28);
+  background: rgba(8, 16, 28, 0.7);
+}
+body.company-portal .month-status strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #fff;
+}
+body.company-portal .month-status p {
+  margin: 0 0 10px;
+  color: #9bb0c9;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+body.company-portal .month-status-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+body.company-portal .month-status-chips span {
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(155, 176, 201, 0.25);
+  color: #c5d4e8;
+  background: rgba(255, 255, 255, 0.03);
+}
+body.company-portal .month-status-ok {
+  border-color: rgba(125, 222, 162, 0.4);
+  background: rgba(18, 48, 36, 0.45);
+}
+body.company-portal .month-status-ok strong { color: #7ddea2; }
+body.company-portal .month-status-wait {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(48, 36, 12, 0.4);
+}
+body.company-portal .month-status-wait strong { color: #fbbf24; }
+body.company-portal .month-status-err {
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(48, 18, 18, 0.4);
+}
+body.company-portal .month-status-err strong { color: #fca5a5; }
+body.company-portal button.primary.is-busy,
+body.company-portal #btnMonthClose.is-busy {
+  opacity: 0.75;
+  cursor: wait;
+}
+body.company-portal .api-inbox-item {
+  transition: border-color 0.2s ease, transform 0.15s ease, background 0.2s ease;
+}
+body.company-portal .api-inbox-item:hover {
+  border-color: rgba(93, 180, 255, 0.4);
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.045);
+}
+body.company-portal .lohn-preview {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(59, 158, 255, 0.08), transparent 45%),
+    rgba(6, 11, 22, 0.4);
+}
+@media (max-width: 1100px) {
+  body.company-portal .lohn-layout {
+    grid-template-columns: minmax(380px, 1fr) minmax(0, 1fr);
+  }
+}
