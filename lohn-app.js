@@ -382,6 +382,48 @@
     }
   }
 
+  const MONTH_STEPS = [
+    { id: "pull", label: "Daten von Plattform holen" },
+    { id: "calc", label: "Abrechnungen berechnen" },
+    { id: "release", label: "An Plattform / Mitarbeiter senden" },
+    { id: "done", label: "Abschluss" },
+  ];
+
+  function renderMonthProgress(activeId, opts = {}) {
+    const host = $("monthCloseProgress");
+    if (!host) return;
+    const states = opts.states || {};
+    host.hidden = false;
+    const activeIdx = Math.max(0, MONTH_STEPS.findIndex((s) => s.id === activeId));
+    const pct = opts.percent != null
+      ? opts.percent
+      : Math.round(((activeIdx + (opts.partial || 0)) / MONTH_STEPS.length) * 100);
+    host.innerHTML = `
+      <div class="month-progress-head">
+        <span>${esc(opts.title || "Monatsabschluss läuft")}</span>
+        <strong>${pct}%</strong>
+      </div>
+      <div class="month-progress-track" aria-hidden="true">
+        <div class="month-progress-bar" style="width:${Math.min(100, Math.max(0, pct))}%"></div>
+      </div>
+      <ol class="month-progress-steps">
+        ${MONTH_STEPS.map((step, i) => {
+          const st = states[step.id] || (i < activeIdx ? "done" : (i === activeIdx ? "active" : "todo"));
+          const mark = st === "done" ? "✓" : st === "active" ? "●" : st === "skip" ? "–" : "○";
+          return `<li class="mp-step mp-${st}"><span class="mp-mark">${mark}</span><span>${esc(step.label)}</span></li>`;
+        }).join("")}
+      </ol>`;
+  }
+
+  function hideMonthProgressSoon(ms = 2200) {
+    const host = $("monthCloseProgress");
+    if (!host) return;
+    clearTimeout(hideMonthProgressSoon._t);
+    hideMonthProgressSoon._t = setTimeout(() => {
+      if (host.dataset.keep !== "1") host.hidden = true;
+    }, ms);
+  }
+
   function renderMonthCloseStatus(data) {
     const host = $("monthCloseStatus");
     if (!host) return;
@@ -415,12 +457,35 @@
     }
     const period = currentPayrollPeriod();
     const btn = $("btnMonthClose");
-    if (btn) {
-      btn.disabled = true;
-      btn.classList.add("is-busy");
-      btn.textContent = "Läuft…";
-    }
+    const btnPortal = $("btnPortalMonthClose");
+    const busyButtons = [btn, btnPortal].filter(Boolean);
+    busyButtons.forEach((b) => {
+      b.disabled = true;
+      b.classList.add("is-busy");
+      if (b.id === "btnMonthClose") b.textContent = "Läuft…";
+      if (b.id === "btnPortalMonthClose") b.textContent = "Läuft…";
+    });
+    document.body.classList.add("month-close-running");
+
+    const progressHost = $("monthCloseProgress");
+    if (progressHost) progressHost.dataset.keep = "1";
+
+    const tick = (id, partial = 0.35, title) => {
+      renderMonthProgress(id, { partial, title: title || `Schritt ${period}` });
+    };
+
+    tick(pull ? "pull" : "calc", 0.2, `Start ${period}`);
     setStatus(`Monatsabschluss ${period} läuft…`, true);
+
+    let stepTimer = null;
+    let stepIdx = pull ? 0 : 1;
+    stepTimer = setInterval(() => {
+      if (stepIdx < 2) {
+        stepIdx += 1;
+        tick(MONTH_STEPS[stepIdx].id, 0.45);
+      }
+    }, 900);
+
     try {
       const data = await apiFetch("/v1/payroll/month-close", {
         method: "POST",
@@ -431,6 +496,20 @@
           autoRelease,
         }),
       });
+      clearInterval(stepTimer);
+
+      const states = {
+        pull: pull ? (data.waitingForPlatform && data.pull?.skipped ? "skip" : "done") : "skip",
+        calc: data.jobs?.total > 0 || data.batch?.count > 0 ? "done" : (data.waitingForPlatform ? "skip" : "done"),
+        release: data.ok ? "done" : (data.waitingForPlatform ? "skip" : "todo"),
+        done: data.ok ? "done" : (data.waitingForPlatform ? "active" : "todo"),
+      };
+      renderMonthProgress(data.ok ? "done" : (data.waitingForPlatform ? "done" : "release"), {
+        percent: data.ok ? 100 : (data.waitingForPlatform ? 55 : 70),
+        title: data.ok ? "Fertig" : (data.waitingForPlatform ? "Warte auf Plattform-Daten" : "Teilweise"),
+        states,
+      });
+
       await loadApiInbox(true);
       await loadPlatformMessages(true);
       renderMonthCloseStatus(data);
@@ -443,8 +522,16 @@
           : msg,
         data.ok ? "ok" : (data.waitingForPlatform ? "info" : "error")
       );
+      if (progressHost) progressHost.dataset.keep = data.ok ? "0" : "1";
+      if (data.ok) hideMonthProgressSoon(1800);
       return data;
     } catch (e) {
+      clearInterval(stepTimer);
+      renderMonthProgress("release", {
+        percent: 40,
+        title: "Fehler",
+        states: { pull: "done", calc: "todo", release: "todo", done: "todo" },
+      });
       renderMonthCloseStatus({
         ok: false,
         waitingForPlatform: false,
@@ -455,13 +542,17 @@
       });
       setStatus(`Monatsabschluss: ${e.message}`, false);
       toast(e.message, "error");
+      if (progressHost) progressHost.dataset.keep = "1";
       return null;
     } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.classList.remove("is-busy");
-        btn.textContent = "Monatsabschluss jetzt";
-      }
+      clearInterval(stepTimer);
+      document.body.classList.remove("month-close-running");
+      busyButtons.forEach((b) => {
+        b.disabled = false;
+        b.classList.remove("is-busy");
+        if (b.id === "btnMonthClose") b.textContent = "Monatsabschluss jetzt";
+        if (b.id === "btnPortalMonthClose") b.textContent = "Monatsabschluss";
+      });
     }
   }
 

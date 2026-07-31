@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=5" />
-    <link rel="stylesheet" href="lohn.css?v=43" />
+    <link rel="stylesheet" href="lohn.css?v=44" />
   </head>
   <body class="auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
@@ -145,6 +145,7 @@
               <div id="monthCloseCard" class="month-close-card" hidden>
                 <strong id="monthCloseTitle">Monatsabschluss</strong>
                 <p id="monthCloseHint">Zieht Mitarbeiter-Daten von der Plattform, erstellt je eine Abrechnung und sendet sie zurück an die Plattform (Mitarbeiter-App).</p>
+                <div id="monthCloseProgress" class="month-progress" hidden aria-live="polite"></div>
                 <div id="monthCloseStatus" class="month-close-status" hidden></div>
                 <div class="month-close-actions">
                   <button type="button" class="primary" id="btnMonthClose">Monatsabschluss jetzt</button>
@@ -477,6 +478,6 @@
     <script src="auth-gate.js?v=8"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="lohn-app.js?v=37"></script>
+    <script src="lohn-app.js?v=38"></script>
   </body>
 </html>

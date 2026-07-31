@@ -1147,3 +1147,132 @@ body.company-portal .lohn-preview {
     grid-template-columns: minmax(380px, 1fr) minmax(0, 1fr);
   }
 }
+
+/* —— Brighter portal + month-close progress motion —— */
+body.company-portal {
+  --portal-sky: rgba(120, 190, 255, 0.22);
+  --portal-mint: rgba(110, 230, 180, 0.16);
+  background:
+    radial-gradient(ellipse 90% 55% at 8% -8%, var(--portal-sky), transparent 58%),
+    radial-gradient(ellipse 70% 45% at 95% 5%, var(--portal-mint), transparent 52%),
+    linear-gradient(180deg, #0a1424 0%, #0b1526 45%, #0c1830 100%);
+}
+body.company-portal .lohn-form {
+  background: linear-gradient(180deg, rgba(16, 28, 48, 0.94), rgba(12, 22, 38, 0.9));
+}
+body.company-portal .form-section {
+  background: linear-gradient(165deg, rgba(22, 38, 62, 0.72), rgba(14, 24, 40, 0.62));
+  border-color: rgba(140, 190, 255, 0.22);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+}
+body.company-portal .kpi {
+  background: linear-gradient(160deg, rgba(36, 64, 104, 0.95), rgba(18, 34, 56, 0.95));
+  border-color: rgba(140, 190, 255, 0.28);
+}
+body.company-portal .kpi strong {
+  color: #f2f7ff;
+  text-shadow: 0 0 18px rgba(120, 190, 255, 0.25);
+}
+body.company-portal .company-portal-banner {
+  border-color: rgba(140, 210, 255, 0.35);
+  background:
+    linear-gradient(125deg, rgba(28, 58, 92, 0.95), rgba(16, 40, 58, 0.92) 55%, rgba(18, 48, 42, 0.9)),
+    radial-gradient(circle at 80% 20%, rgba(120, 220, 180, 0.2), transparent 45%);
+}
+body.company-portal .month-close-card {
+  background: linear-gradient(160deg, rgba(24, 44, 72, 0.88), rgba(14, 28, 48, 0.82));
+  border-color: rgba(140, 190, 255, 0.32);
+}
+body.company-portal .recv-mode.active {
+  background: linear-gradient(180deg, #2a6db8 0%, #1a4f8a 100%);
+  box-shadow: var(--shine);
+}
+
+body.month-close-running .month-close-card {
+  border-color: rgba(120, 190, 255, 0.55);
+  box-shadow: 0 0 0 1px rgba(120, 190, 255, 0.2), 0 12px 32px rgba(30, 90, 180, 0.25);
+}
+.month-progress {
+  margin: 12px 0 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(140, 190, 255, 0.28);
+  background: rgba(8, 18, 34, 0.65);
+}
+.month-progress-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+  color: #c5d4e8;
+}
+.month-progress-head strong {
+  color: #9fd0ff;
+  font-variant-numeric: tabular-nums;
+}
+.month-progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.month-progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #3b9eff, #7ddea2 70%, #a7f3d0);
+  box-shadow: 0 0 16px rgba(125, 222, 162, 0.35);
+  transition: width 0.45s ease;
+  position: relative;
+}
+.month-progress-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+  animation: monthSheen 1.2s linear infinite;
+}
+@keyframes monthSheen {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+.month-progress-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.mp-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: #8a94a6;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+.mp-mark {
+  width: 1.1rem;
+  text-align: center;
+  font-size: 0.72rem;
+}
+.mp-step.mp-active {
+  color: #e8eef8;
+  transform: translateX(2px);
+}
+.mp-step.mp-active .mp-mark {
+  color: #5db4ff;
+  animation: pulseDot 1.2s ease-out infinite;
+}
+.mp-step.mp-done {
+  color: #9fe7c4;
+}
+.mp-step.mp-done .mp-mark { color: #7ddea2; }
+.mp-step.mp-skip { color: #7a8699; opacity: 0.85; }
+
+body.company-portal .lohn-preview .preview-toolbar {
+  border-color: rgba(140, 190, 255, 0.22);
+  background: rgba(16, 28, 48, 0.7);
+}
