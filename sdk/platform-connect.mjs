@@ -26,6 +26,7 @@ export const accountingConnect = {
     adminOverview: "GET /v1/admin/overview",
     payrollIngest: "POST /v1/payroll/ingest",
     payrollBatch: "POST /v1/payroll/batch",
+    payrollMonthClose: "POST /v1/payroll/month-close",
     payrollRelease: "POST /v1/payroll/:jobId/release",
     invoiceIngest: "POST /v1/invoice/ingest",
     invoiceRelease: "POST /v1/invoice/:id/release",

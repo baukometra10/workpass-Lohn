@@ -10,6 +10,7 @@
 import http from "node:http";
 import { URL } from "node:url";
 import { ingestPayroll, ingestPayrollBatch, releasePayrollJob } from "./payroll-service.mjs";
+import { runMonthClose, currentPeriod } from "./month-close.mjs";
 import { ingestInvoice, releaseInvoiceJob } from "./invoice-service.mjs";
 import { listPayrollJobs, loadPayrollJob, listInvoiceJobs, loadInvoiceJob } from "./store.mjs";
 import { listPendingDeliveries, listAllDeliveries, ackDelivery } from "./delivery-queue.mjs";
@@ -110,7 +111,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "1.9.5",
+      version: "1.9.6",
       multiTenant: true,
       platform: {
         domain: PLATFORM_DOMAIN,
@@ -312,7 +313,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "1.9.5",
+          version: "1.9.6",
           ...syncHealth(),
         },
         companies: {
@@ -527,6 +528,45 @@ async function handler(req, res) {
       const result = ingestPayrollBatch(body, { tenantScope });
       audit({ type: "payroll.batch", outcome: result.ok ? "ok" : "error", ip, path, companyId: result.company?.id });
       return reply( result.ok ? 200 : 422, result);
+    }
+
+    if (
+      req.method === "POST"
+      && (path === "/v1/payroll/month-close" || path === "/v1/payroll/auto-close")
+    ) {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(
+        body.companyId || body.company?.id || tenantScope || ""
+      );
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Month-Close");
+      if (!scopeCheck.ok) {
+        audit({ type: "tenant.deny", outcome: "deny", ip, path, companyId: tenantScope });
+        return reply(403, { ok: false, error: scopeCheck.error });
+      }
+      if (!companyId) {
+        return reply(422, { ok: false, error: "companyId fehlt für Monatsabschluss" });
+      }
+      const result = await runMonthClose({
+        companyId,
+        period: body.period || currentPeriod(),
+        autoRelease: body.autoRelease !== false,
+        pull: body.pull !== false,
+        batch: body.batch || null,
+        tenantScope: tenantScope || companyId,
+      });
+      audit({
+        type: "payroll.month_close",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: {
+          period: result.period,
+          released: result.newlyReleased?.length || 0,
+          pullSkipped: result.pull?.skipped,
+        },
+      });
+      return reply(result.ok ? 200 : 422, result);
     }
 
     if (req.method === "GET" && path.startsWith("/v1/payroll/") && path.endsWith("/payslip")) {

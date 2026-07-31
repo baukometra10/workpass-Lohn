@@ -125,6 +125,11 @@ export class WorkPassAccountingClient {
     return this.request("POST", `/v1/payroll/${encodeURIComponent(jobId)}/release`);
   }
 
+  /** Month close: pull → calculate → release to platform/employees */
+  monthClose(payload) {
+    return this.request("POST", "/v1/payroll/month-close", payload);
+  }
+
   /** @param {object} payload platform.invoice.v1 – requires company.id */
   ingestInvoice(payload) {
     return this.request("POST", "/v1/invoice/ingest", payload);

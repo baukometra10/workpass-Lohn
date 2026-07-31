@@ -242,6 +242,7 @@ const rel = await client.releasePayroll(job.jobId);
 | GET | `/v1/company/:id` | Eine Firma + workspace |
 | POST | `/v1/payroll/ingest` | `platform.payroll.v1` → Berechnung |
 | POST | `/v1/payroll/batch` | Monats-Batch |
+| POST | `/v1/payroll/month-close` | Monatsabschluss: Pull → berechnen → Freigabe an Plattform |
 | GET | `/v1/payroll/:jobId` | Job |
 | GET | `/v1/payroll/:jobId/payslip` | Payslip |
 | POST | `/v1/payroll/:jobId/release` | Freigabe + Delivery |

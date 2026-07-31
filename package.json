@@ -19,6 +19,7 @@
     "test:tenant-scope": "node tests/tenant-scope.mjs",
     "test:company": "node tests/company-activate.mjs",
     "test:company-login": "node tests/company-login.mjs",
+    "test:month-close": "node tests/month-close.mjs",
     "test:auth": "node tests/auth-session.mjs",
     "test:db": "node tests/db-local.mjs",
     "test:security": "node tests/security.mjs",

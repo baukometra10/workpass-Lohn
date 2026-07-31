@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=5" />
-    <link rel="stylesheet" href="lohn.css?v=41" />
+    <link rel="stylesheet" href="lohn.css?v=42" />
   </head>
   <body class="auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
@@ -142,6 +142,14 @@
             </div>
             <div class="recv-panel" id="panelApi" hidden>
               <p class="section-hint" id="apiBridgeHint">Bridge-Server empfängt Monatsdaten von der Plattform. Auf Railway: API-URL = diese Website (wird automatisch gesetzt). API-Key = <code>WORKPASS_API_KEY</code> aus Railway Variables. Multi-Tenant: Firma-ID filtert die Inbox.</p>
+              <div id="monthCloseCard" class="month-close-card" hidden>
+                <strong id="monthCloseTitle">Monatsabschluss</strong>
+                <p id="monthCloseHint">Zieht Mitarbeiter-Daten von der Plattform, erstellt je eine Abrechnung und sendet sie zurück an die Plattform (Mitarbeiter-App).</p>
+                <div class="month-close-actions">
+                  <button type="button" class="primary" id="btnMonthClose">Monatsabschluss jetzt</button>
+                  <button type="button" id="btnMonthReleaseOnly">Nur Freigabe offener Jobs</button>
+                </div>
+              </div>
               <div class="field-grid">
                 <div class="full">
                   <label for="apiBaseUrl">API-URL</label>
@@ -460,6 +468,6 @@
     <script src="auth-gate.js?v=8"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="lohn-app.js?v=34"></script>
+    <script src="lohn-app.js?v=35"></script>
   </body>
 </html>

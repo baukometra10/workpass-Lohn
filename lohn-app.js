@@ -276,6 +276,20 @@
     const box = $("printHints");
     const panel = $("missingPanel");
     const soft = PayrollCore.validatePrintHints?.(state) || [];
+    const portalIdle = Boolean(companyPortalId) && !isPortalEditingDraft(state);
+    document.body.classList.toggle("portal-editing", Boolean(companyPortalId) && !portalIdle);
+    if (portalIdle) {
+      if (box) {
+        box.hidden = true;
+        box.textContent = "";
+      }
+      if (panel) {
+        panel.hidden = true;
+        panel.innerHTML = "";
+      }
+      highlightMissing([], []);
+      return;
+    }
     if (box) {
       if (hardErrors?.length) {
         box.hidden = true;
@@ -302,6 +316,61 @@
       }
     }
     highlightMissing(hardErrors || [], soft);
+  }
+
+  function isPortalEditingDraft(state) {
+    const hasEmployee = Boolean(String(state?.employeeName || "").trim());
+    const hasWage = Array.isArray(state?.wageItems) && state.wageItems.some((w) => Number(w.amount) > 0);
+    const hasGross = Number(state?.grossSalary) > 0;
+    return hasEmployee || hasWage || hasGross || Boolean(state?.meta?.jobId);
+  }
+
+  function currentPayrollPeriod() {
+    const fromInput = String($("payrollMonth")?.value || "").trim();
+    if (/^\d{4}-\d{2}$/.test(fromInput)) return fromInput;
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  async function runMonthClose({ pull = true, autoRelease = true } = {}) {
+    const companyId = companyPortalId || apiConfig().companyId;
+    if (!companyId) {
+      window.alert("Keine Firma-ID – bitte als Firma anmelden.");
+      return null;
+    }
+    const period = currentPayrollPeriod();
+    setStatus(`Monatsabschluss ${period} läuft…`, true);
+    try {
+      const data = await apiFetch("/v1/payroll/month-close", {
+        method: "POST",
+        body: JSON.stringify({
+          companyId,
+          period,
+          pull,
+          autoRelease,
+        }),
+      });
+      await loadApiInbox(true);
+      const n = data.newlyReleased?.length || 0;
+      const msg = data.message || `Monatsabschluss ${period}`;
+      setStatus(msg, Boolean(data.ok));
+      toast(
+        data.ok
+          ? `${n} Abrechnung(en) → Plattform/Mitarbeiter (${period})`
+          : (data.pull?.error || data.error || msg),
+        data.ok ? "ok" : "error"
+      );
+      if (!data.ok && data.pull?.skipped) {
+        window.alert(
+          `${msg}\n\nDamit es automatisch zieht, auf Railway setzen:\nWORKPASS_PLATFORM_PAYROLL_PULL_URL=<Plattform-Export-URL>\n\nOder die Plattform sendet POST /v1/payroll/batch für ${period}.`
+        );
+      }
+      return data;
+    } catch (e) {
+      setStatus(`Monatsabschluss fehlgeschlagen: ${e.message}`, false);
+      window.alert(`Monatsabschluss fehlgeschlagen:\n${e.message}`);
+      return null;
+    }
   }
 
   function showMissingAlert(errors, soft = []) {
@@ -1048,10 +1117,14 @@
             <div>
               <span class="eyebrow">Firmen-Portal</span>
               <strong>${esc(companyName)}</strong>
-              <small>Nur Ihre Daten · Login ${esc(me.user?.email || "")}</small>
+              <small>Nur Ihre Daten · Login ${esc(me.user?.email || "")} · Monat ${esc(currentPayrollPeriod())}</small>
             </div>
-            <button type="button" class="primary" id="btnPortalRefreshInbox">Abrechnungen aktualisieren</button>
+            <div class="month-close-actions">
+              <button type="button" class="primary" id="btnPortalMonthClose">Monatsabschluss</button>
+              <button type="button" id="btnPortalRefreshInbox">Inbox</button>
+            </div>
           </div>`;
+        $("btnPortalMonthClose")?.addEventListener("click", () => runMonthClose({ pull: true, autoRelease: true }));
         $("btnPortalRefreshInbox")?.addEventListener("click", () => loadApiInbox());
       }
       if ($("companyName") && (!$("companyName").value.trim() || String(state.mandantId || "").toLowerCase() !== companyPortalId)) {
@@ -1097,6 +1170,20 @@
       if ($("mandantId")) $("mandantId").value = companyPortalId;
       state.mandantId = companyPortalId;
       if (companyName) state.companyName = companyName;
+    }
+
+    const period = currentPayrollPeriod();
+    if ($("payrollMonth") && !$("payrollMonth").value) $("payrollMonth").value = period;
+    const monthCard = $("monthCloseCard");
+    if (monthCard) {
+      monthCard.hidden = false;
+      if ($("monthCloseTitle")) {
+        $("monthCloseTitle").textContent = `Monatsabschluss ${period}`;
+      }
+      if ($("monthCloseHint")) {
+        $("monthCloseHint").textContent =
+          `Zieht die Mitarbeiter-Daten für ${period} von der Plattform, erstellt je eine Abrechnung und sendet sie zurück – damit die Plattform sie an die Mitarbeiter zustellen kann.`;
+      }
     }
 
     setModePill("Firmen-Portal", companyName || companyPortalId);
@@ -1434,6 +1521,8 @@
       $(id)?.addEventListener("change", persistApiConfig);
     });
     $("btnApiInbox")?.addEventListener("click", loadApiInbox);
+    $("btnMonthClose")?.addEventListener("click", () => runMonthClose({ pull: true, autoRelease: true }));
+    $("btnMonthReleaseOnly")?.addEventListener("click", () => runMonthClose({ pull: false, autoRelease: true }));
     $("btnApiCompanies")?.addEventListener("click", loadPlatformCompanies);
     $("btnApiHealth")?.addEventListener("click", checkApiHealth);
     $("importPlatformInput").addEventListener("change", (e) => {
