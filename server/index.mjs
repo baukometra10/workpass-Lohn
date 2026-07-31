@@ -11,6 +11,14 @@ import http from "node:http";
 import { URL } from "node:url";
 import { ingestPayroll, ingestPayrollBatch, releasePayrollJob } from "./payroll-service.mjs";
 import { runMonthClose, currentPeriod } from "./month-close.mjs";
+import {
+  listMessages,
+  listPendingMessagesForPlatform,
+  ackMessage,
+  upsertPlatformMessage,
+  messageStats,
+  loadMessage,
+} from "./platform-messages.mjs";
 import { ingestInvoice, releaseInvoiceJob } from "./invoice-service.mjs";
 import { listPayrollJobs, loadPayrollJob, listInvoiceJobs, loadInvoiceJob } from "./store.mjs";
 import { listPendingDeliveries, listAllDeliveries, ackDelivery } from "./delivery-queue.mjs";
@@ -111,7 +119,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "1.9.6",
+      version: "1.9.7",
       multiTenant: true,
       platform: {
         domain: PLATFORM_DOMAIN,
@@ -226,7 +234,8 @@ async function handler(req, res) {
       || path === "/v1/inbox"
       || path.startsWith("/v1/payroll/")
       || path.startsWith("/v1/invoice/")
-      || path.startsWith("/v1/delivery/");
+      || path.startsWith("/v1/delivery/")
+      || path.startsWith("/v1/messages");
     if (sess.ok && sessionPathsOk) {
       req._workpassSession = sess.user;
       const scoped = resolveTenantScope(tenantScope, sess.user);
@@ -313,7 +322,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "1.9.6",
+          version: "1.9.7",
           ...syncHealth(),
         },
         companies: {
@@ -512,7 +521,7 @@ async function handler(req, res) {
     // --- Payroll ---
     if (req.method === "POST" && path === "/v1/payroll/ingest") {
       const body = await readBodyLimited(req);
-      const result = ingestPayroll(body, { tenantScope });
+      const result = await ingestPayroll(body, { tenantScope });
       audit({
         type: "payroll.ingest",
         outcome: result.ok ? "ok" : "error",
@@ -525,7 +534,7 @@ async function handler(req, res) {
 
     if (req.method === "POST" && path === "/v1/payroll/batch") {
       const body = await readBodyLimited(req);
-      const result = ingestPayrollBatch(body, { tenantScope });
+      const result = await ingestPayrollBatch(body, { tenantScope });
       audit({ type: "payroll.batch", outcome: result.ok ? "ok" : "error", ip, path, companyId: result.company?.id });
       return reply( result.ok ? 200 : 422, result);
     }
@@ -631,6 +640,93 @@ async function handler(req, res) {
         releasedAt: j.releasedAt,
       }));
       return reply( 200, { ok: true, companyId: companyId || null, payroll, invoices });
+    }
+
+    // --- Platform ↔ Accounting messages ---
+    if (req.method === "GET" && path === "/v1/messages/pending") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || undefined;
+      const messages = listPendingMessagesForPlatform({ companyId, limit: 100 });
+      return reply(200, {
+        ok: true,
+        kind: "platform.accounting.messages.pending.v1",
+        count: messages.length,
+        messages,
+        hint: "Nach Lesen/Klick: POST /v1/messages/:messageId/ack – dann verschwindet die Nachricht.",
+      });
+    }
+
+    if (req.method === "GET" && path === "/v1/messages") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || undefined;
+      const status = url.searchParams.get("status") || undefined;
+      const messages = listMessages({
+        companyId,
+        status: status || undefined,
+        openOnly: !status,
+        limit: 100,
+      });
+      return reply(200, {
+        ok: true,
+        count: messages.length,
+        stats: messageStats(companyId),
+        messages,
+      });
+    }
+
+    if (req.method === "POST" && path === "/v1/messages") {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(body.company?.id || body.companyId || tenantScope || "");
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Message");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const result = await upsertPlatformMessage({
+        ...body,
+        companyId,
+        company: { id: companyId, name: body.company?.name || body.companyName },
+        direction: body.direction || "accounting_to_platform",
+      });
+      audit({
+        type: "message.create",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+      });
+      return reply(result.ok ? 200 : 422, result);
+    }
+
+    if (
+      req.method === "POST"
+      && path.startsWith("/v1/messages/")
+      && (path.endsWith("/ack") || path.endsWith("/read"))
+    ) {
+      const messageId = decodeURIComponent(
+        path.slice("/v1/messages/".length, path.endsWith("/ack") ? -"/ack".length : -"/read".length)
+      );
+      const existing = loadMessage(messageId);
+      if (!existing) return reply(404, { ok: false, error: "Nachricht nicht gefunden" });
+      const scopeCheck = assertSameTenant(tenantScope, existing.company?.id, "Message");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const body = (await readBodyLimited(req)) || {};
+      const result = ackMessage(messageId, {
+        readBy: body.readBy || body.actor || "platform",
+        note: body.note || "",
+      });
+      audit({
+        type: "message.ack",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId: existing.company?.id,
+      });
+      return reply(result.ok ? 200 : 404, result);
+    }
+
+    if (req.method === "GET" && path.startsWith("/v1/messages/") && path !== "/v1/messages/pending") {
+      const messageId = decodeURIComponent(path.slice("/v1/messages/".length));
+      const message = loadMessage(messageId);
+      if (!message) return reply(404, { ok: false, error: "Nachricht nicht gefunden" });
+      const scopeCheck = assertSameTenant(tenantScope, message.company?.id, "Message");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      return reply(200, { ok: true, message });
     }
 
     // --- Delivery ---

@@ -128,6 +128,24 @@ SDK: `client.activateCompany(payload)` / `client.syncCompanyLogin(payload)`
 يحذف الـ Mandant + payroll/invoice/delivery المرتبطة. مثال: `examples/platform-company.delete.v1.json`  
 SDK: `client.deleteCompany(idOrPayload)`
 
+### Kommunikation Buchhaltung ↔ Plattform (fehlende Daten)
+
+Wenn IBAN, Steuer-Nr., SV-Nummer usw. fehlen, erzeugt WorkPass Lohn eine Nachricht:
+
+1. Webhook-Event `accounting.message` an `WORKPASS_PLATFORM_WEBHOOK_URL`  
+   **oder** Plattform pollt `GET /v1/messages/pending`
+2. Plattform zeigt die Meldung im Firmen-UI
+3. Klick/Lesen → `POST /v1/messages/{messageId}/ack` → Nachricht verschwindet aus Pending  
+4. Wenn die Daten nachgeliefert werden, werden erledigte Gaps automatisch `resolved`
+
+Beispiel Ack:
+
+```http
+POST /v1/messages/msg:…/ack
+X-WorkPass-Key: …
+{ "readBy": "platform-user@…" }
+```
+
 احتياط: أول `payroll/invoice ingest` ينشئ الحساب أيضاً إن نُسي التفعيل.
 
 ### تسجيل الدخول (منصة / أدمن)
@@ -243,6 +261,8 @@ const rel = await client.releasePayroll(job.jobId);
 | POST | `/v1/payroll/ingest` | `platform.payroll.v1` → Berechnung |
 | POST | `/v1/payroll/batch` | Monats-Batch |
 | POST | `/v1/payroll/month-close` | Monatsabschluss: Pull → berechnen → Freigabe an Plattform |
+| GET | `/v1/messages/pending` | Offene Meldungen Buchhaltung → Plattform (fehlende Daten) |
+| POST | `/v1/messages/:id/ack` | Nachricht gelesen → verschwindet aus Pending |
 | GET | `/v1/payroll/:jobId` | Job |
 | GET | `/v1/payroll/:jobId/payslip` | Payslip |
 | POST | `/v1/payroll/:jobId/release` | Freigabe + Delivery |

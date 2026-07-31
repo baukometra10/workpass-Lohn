@@ -84,3 +84,26 @@ CREATE TABLE IF NOT EXISTS sync_outbox (
 );
 
 CREATE INDEX IF NOT EXISTS idx_outbox_created ON sync_outbox(created_at);
+
+-- Bidirectional messages: Accounting ↔ Platform (gaps, requests, replies)
+CREATE TABLE IF NOT EXISTS platform_messages (
+  message_id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL DEFAULT '',
+  employee_id TEXT NOT NULL DEFAULT '',
+  period TEXT NOT NULL DEFAULT '',
+  direction TEXT NOT NULL DEFAULT 'accounting_to_platform',
+  status TEXT NOT NULL DEFAULT 'open',
+  type TEXT NOT NULL DEFAULT 'data.gap',
+  dedupe_key TEXT NOT NULL DEFAULT '',
+  payload_json TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  read_at TEXT,
+  resolved_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_msg_status ON platform_messages(status);
+CREATE INDEX IF NOT EXISTS idx_msg_company ON platform_messages(company_id);
+CREATE INDEX IF NOT EXISTS idx_msg_dedupe ON platform_messages(dedupe_key);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_msg_open_dedupe
+  ON platform_messages(dedupe_key) WHERE status = 'open' AND dedupe_key != '';

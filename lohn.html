@@ -150,6 +150,14 @@
                   <button type="button" id="btnMonthReleaseOnly">Nur Freigabe offener Jobs</button>
                 </div>
               </div>
+              <div id="platformCommsCard" class="month-close-card" hidden>
+                <strong>Kommunikation mit Plattform</strong>
+                <p>Fehlende Daten (IBAN, Steuer-Nr., …) werden automatisch an die Plattform gemeldet. Nach Lesen/Klick verschwindet die Nachricht dort.</p>
+                <div id="platformCommsList" class="api-inbox-list" aria-live="polite"></div>
+                <div class="month-close-actions" style="margin-top:10px">
+                  <button type="button" id="btnRefreshMessages">Nachrichten aktualisieren</button>
+                </div>
+              </div>
               <div class="field-grid">
                 <div class="full">
                   <label for="apiBaseUrl">API-URL</label>
@@ -468,6 +476,6 @@
     <script src="auth-gate.js?v=8"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="lohn-app.js?v=35"></script>
+    <script src="lohn-app.js?v=36"></script>
   </body>
 </html>

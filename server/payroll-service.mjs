@@ -7,6 +7,7 @@ import { loadPayrollJob, savePayrollJob } from "./store.mjs";
 import { buildEmployeeDelivery, notifyPlatform } from "./notify.mjs";
 import { enqueueDelivery } from "./delivery-queue.mjs";
 import { ensureCompanyFromPayload } from "./company-service.mjs";
+import { notifyGapsForPayroll } from "./platform-messages.mjs";
 import {
   normalizeCompanyId,
   normalizeEmployeeId,
@@ -72,7 +73,7 @@ function buildPayslip(state, payroll, status, errors = []) {
   };
 }
 
-export function ingestPayroll(payload, options = {}) {
+export async function ingestPayroll(payload, options = {}) {
   const companyCheck = requireCompanyId(payload);
   if (!companyCheck.ok) {
     return { ok: false, errors: [companyCheck.error], job: null, payslip: null };
@@ -102,14 +103,15 @@ export function ingestPayroll(payload, options = {}) {
   state.mandantId = companyId;
   state.meta = { ...(state.meta || {}), companyId };
 
-  const errors = [...(ingested.errors || []), ...PC.validate(state)];
-  if (!companyId) errors.push("Firma-ID (company.id) fehlt");
+  const hard = [...(ingested.errors || []), ...PC.validate(state)];
+  if (!companyId) hard.push("Firma-ID (company.id) fehlt");
+  const soft = PC.validatePrintHints?.(state) || [];
 
   const payroll = PC.calculate(state);
   const employeeId = normalizeEmployeeId(state.employeeId);
   const id = options.jobId || payrollJobId(companyId, employeeId, state.payrollMonth);
-  const status = errors.length ? "error" : "calculated";
-  const payslip = buildPayslip(state, payroll, status, errors);
+  const status = hard.length ? "error" : "calculated";
+  const payslip = buildPayslip(state, payroll, status, hard);
   payslip.jobId = id;
 
   const now = new Date().toISOString();
@@ -117,10 +119,10 @@ export function ingestPayroll(payload, options = {}) {
   const job = {
     jobId: id,
     kind: "platform.payroll.job.v1",
-    status: status === "error" ? "error" : (options.autoRelease && !errors.length ? "released" : "calculated"),
+    status: status === "error" ? "error" : (options.autoRelease && !hard.length ? "released" : "calculated"),
     createdAt: prev?.createdAt || now,
     updatedAt: now,
-    releasedAt: options.autoRelease && !errors.length ? now : (prev?.releasedAt || null),
+    releasedAt: options.autoRelease && !hard.length ? now : (prev?.releasedAt || null),
     company: {
       id: companyId,
       name: payslip.company.name,
@@ -135,8 +137,9 @@ export function ingestPayroll(payload, options = {}) {
     inbound: payload,
     state,
     payroll: payslip.totals,
-    payslip: { ...payslip, status: options.autoRelease && !errors.length ? "released" : payslip.status },
-    errors,
+    payslip: { ...payslip, status: options.autoRelease && !hard.length ? "released" : payslip.status },
+    errors: hard,
+    printHints: soft,
   };
 
   if (job.status === "released") {
@@ -144,15 +147,33 @@ export function ingestPayroll(payload, options = {}) {
   }
 
   savePayrollJob(job);
+
+  let platformMessages = null;
+  if (options.notifyGaps !== false) {
+    try {
+      platformMessages = await notifyGapsForPayroll({
+        state,
+        hard,
+        soft,
+        jobId: id,
+        companyName: payslip.company.name,
+      });
+    } catch (e) {
+      platformMessages = { ok: false, error: e.message };
+    }
+  }
+
   return {
-    ok: errors.length === 0,
-    errors,
+    ok: hard.length === 0,
+    errors: hard,
+    printHints: soft,
     job,
     payslip: job.payslip,
+    platformMessages,
   };
 }
 
-export function ingestPayrollBatch(batch, options = {}) {
+export async function ingestPayrollBatch(batch, options = {}) {
   if (!batch || typeof batch !== "object") {
     return { ok: false, errors: ["Batch-Nutzlast fehlt"], results: [] };
   }
@@ -175,7 +196,8 @@ export function ingestPayrollBatch(batch, options = {}) {
 
   ensureCompanyFromPayload(batch);
 
-  const results = list.map((empPayload) => {
+  const results = [];
+  for (const empPayload of list) {
     const one = {
       kind: "platform.payroll.v1",
       company: empPayload.company || company,
@@ -194,8 +216,12 @@ export function ingestPayrollBatch(batch, options = {}) {
         ...empPayload,
       };
     }
-    return ingestPayroll(one, { tenantScope: options.tenantScope });
-  });
+    results.push(await ingestPayroll(one, {
+      tenantScope: options.tenantScope,
+      notifyGaps: options.notifyGaps,
+      autoRelease: options.autoRelease,
+    }));
+  }
 
   const ok = results.every((r) => r.ok);
   return {
@@ -210,8 +236,10 @@ export function ingestPayrollBatch(batch, options = {}) {
     results: results.map((r) => ({
       ok: r.ok,
       errors: r.errors,
+      printHints: r.printHints,
       jobId: r.job?.jobId,
       payslip: r.payslip,
+      messages: r.platformMessages?.messages?.map((m) => m.messageId) || [],
     })),
   };
 }

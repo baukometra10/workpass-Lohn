@@ -133,12 +133,12 @@ export async function runMonthClose(options = {}) {
         id: options.batch.company?.id || companyId,
       },
     };
-    batchIngest = ingestPayrollBatch(batch, { tenantScope });
+    batchIngest = await ingestPayrollBatch(batch, { tenantScope });
     pull = { ok: true, skipped: true, mode: "body-batch" };
   } else if (doPull) {
     pull = await pullPlatformPayrollBatch({ companyId, period });
     if (pull.ok && pull.batch) {
-      batchIngest = ingestPayrollBatch(pull.batch, { tenantScope });
+      batchIngest = await ingestPayrollBatch(pull.batch, { tenantScope });
     }
   }
 

@@ -130,6 +130,25 @@ export class WorkPassAccountingClient {
     return this.request("POST", "/v1/payroll/month-close", payload);
   }
 
+  listPendingMessages(companyId) {
+    const q = companyId ? `?companyId=${encodeURIComponent(companyId)}` : "";
+    return this.request("GET", `/v1/messages/pending${q}`, undefined, { companyId: companyId || this.companyId });
+  }
+
+  listMessages(query = {}) {
+    const q = new URLSearchParams();
+    if (query.status) q.set("status", query.status);
+    if (query.companyId) q.set("companyId", query.companyId);
+    const qs = q.toString();
+    return this.request("GET", `/v1/messages${qs ? `?${qs}` : ""}`, undefined, {
+      companyId: query.companyId !== undefined ? query.companyId : this.companyId,
+    });
+  }
+
+  ackMessage(messageId, meta = {}) {
+    return this.request("POST", `/v1/messages/${encodeURIComponent(messageId)}/ack`, meta);
+  }
+
   /** @param {object} payload platform.invoice.v1 – requires company.id */
   ingestInvoice(payload) {
     return this.request("POST", "/v1/invoice/ingest", payload);

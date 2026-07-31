@@ -332,6 +332,56 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   }
 
+  async function loadPlatformMessages(silent = false) {
+    const host = $("platformCommsList");
+    const card = $("platformCommsCard");
+    if (!companyPortalId) {
+      if (card) card.hidden = true;
+      return null;
+    }
+    if (card) card.hidden = false;
+    try {
+      const data = await apiFetch("/v1/messages?status=open");
+      const messages = data.messages || [];
+      if (!host) return data;
+      if (!messages.length) {
+        host.innerHTML = '<div class="company-empty-inbox"><strong>Keine offenen Meldungen</strong><p>Sobald z. B. IBAN oder Steuer-Nr. fehlen, erscheint hier die Nachricht an die Plattform.</p></div>';
+        return data;
+      }
+      host.innerHTML = messages.slice(0, 40).map((m) => `
+        <div class="api-inbox-item" data-message-id="${esc(m.messageId)}">
+          <div>
+            <strong>${esc(m.title || "Nachricht")}</strong>
+            <span>${esc(m.employee?.name || m.employee?.id || "—")} · ${esc(m.period || "—")} · ${esc(m.status || "open")}</span>
+            <span>${esc((m.gaps || []).map((g) => g.label).join(" · ") || m.body || "").slice(0, 160)}</span>
+          </div>
+          <div class="api-inbox-actions">
+            <button type="button" class="api-msg-ack" data-id="${esc(m.messageId)}">Als gelesen (Test)</button>
+          </div>
+        </div>`).join("");
+      host.querySelectorAll(".api-msg-ack").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          try {
+            await apiFetch(`/v1/messages/${encodeURIComponent(btn.dataset.id)}/ack`, {
+              method: "POST",
+              body: JSON.stringify({ readBy: "accounting-ui" }),
+            });
+            toast("Nachricht als gelesen markiert", "ok");
+            loadPlatformMessages(true);
+          } catch (e) {
+            toast(e.message, "error");
+          }
+        });
+      });
+      if (!silent) setStatus(`Offene Plattform-Meldungen: ${messages.length}`, true);
+      return data;
+    } catch (e) {
+      if (host) host.innerHTML = `<p class="section-hint">${esc(e.message)}</p>`;
+      if (!silent) setStatus(`Nachrichten-Fehler: ${e.message}`, false);
+      return null;
+    }
+  }
+
   async function runMonthClose({ pull = true, autoRelease = true } = {}) {
     const companyId = companyPortalId || apiConfig().companyId;
     if (!companyId) {
@@ -351,6 +401,7 @@
         }),
       });
       await loadApiInbox(true);
+      await loadPlatformMessages(true);
       const n = data.newlyReleased?.length || 0;
       const msg = data.message || `Monatsabschluss ${period}`;
       setStatus(msg, Boolean(data.ok));
@@ -1190,12 +1241,16 @@
     setRecvMode("api");
     await loadPlatformCompanies();
     await loadApiInbox(true);
+    await loadPlatformMessages(true);
     refreshCompanySelect();
     renderArchiveBoard();
 
     if (inboxPollTimer) clearInterval(inboxPollTimer);
     inboxPollTimer = setInterval(() => {
-      if (document.visibilityState === "visible") loadApiInbox(true);
+      if (document.visibilityState === "visible") {
+        loadApiInbox(true);
+        loadPlatformMessages(true);
+      }
     }, 45000);
 
     toast(`Angemeldet als Firma · ${companyName || companyPortalId}`, "ok");
@@ -1523,6 +1578,7 @@
     $("btnApiInbox")?.addEventListener("click", loadApiInbox);
     $("btnMonthClose")?.addEventListener("click", () => runMonthClose({ pull: true, autoRelease: true }));
     $("btnMonthReleaseOnly")?.addEventListener("click", () => runMonthClose({ pull: false, autoRelease: true }));
+    $("btnRefreshMessages")?.addEventListener("click", () => loadPlatformMessages());
     $("btnApiCompanies")?.addEventListener("click", loadPlatformCompanies);
     $("btnApiHealth")?.addEventListener("click", checkApiHealth);
     $("importPlatformInput").addEventListener("change", (e) => {

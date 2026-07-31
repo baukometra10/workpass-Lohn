@@ -1,0 +1,6 @@
+{
+  "kind": "platform.accounting.message.ack.v1",
+  "messageId": "msg:example",
+  "readBy": "platform-user@suppix-ai-workpass.com",
+  "note": "Gelesen – Daten werden ergänzt"
+}
