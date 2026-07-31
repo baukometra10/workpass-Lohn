@@ -5,6 +5,8 @@
 import { listPayrollJobs } from "./db/repository.mjs";
 import { ingestPayrollBatch, releasePayrollJob } from "./payroll-service.mjs";
 import { normalizeCompanyId } from "./tenant.mjs";
+import { notifyPlatform } from "./notify.mjs";
+import { upsertPlatformMessage } from "./platform-messages.mjs";
 
 function currentPeriod(d = new Date()) {
   const y = d.getFullYear();
@@ -168,7 +170,7 @@ export async function runMonthClose(options = {}) {
   const waitingForPlatform = !hasWork && (pull.skipped || !pull.ok);
   const ok = hasWork && releaseErrors.length === 0 && (!batchIngest || batchIngest.ok);
 
-  return {
+  const result = {
     ok,
     waitingForPlatform,
     error: ok
@@ -207,6 +209,58 @@ export async function runMonthClose(options = {}) {
         ? `Monatsabschluss ${period}: ${released.length} Abrechnung(en) an Plattform/Mitarbeiter gesendet.`
         : `Monatsabschluss ${period}: ${calculated.length} Abrechnung(en) berechnet (noch nicht freigegeben).`,
   };
+
+  const company = { id: companyId, name: options.company?.name || "" };
+  const monthClosePayload = {
+    companyId,
+    company,
+    period,
+    waitingForPlatform,
+    ok,
+    jobs: result.jobs,
+    newlyReleasedCount: released.length,
+    message: result.message,
+  };
+
+  if (waitingForPlatform && options.notify !== false) {
+    await upsertPlatformMessage({
+      type: "payroll.waiting",
+      severity: "action_needed",
+      company,
+      period,
+      title: `Monatsdaten fehlen · ${period}`,
+      body:
+        `Die Buchhaltung wartet auf Lohn-/Stundendaten für ${period}.\n\n`
+        + `Bitte in der Plattform den Monat freigeben und per POST /v1/payroll/batch senden `
+        + `(oder WORKPASS_PLATFORM_PAYROLL_PULL_URL bereitstellen).`,
+      code: "payroll_waiting",
+      gaps: [{
+        code: "payroll_waiting",
+        field: "payroll.batch",
+        label: "Monatsdaten fehlen",
+        severity: "action_needed",
+      }],
+      source: "month-close",
+    }, { notify: true });
+    result.platformNotify = await notifyPlatform({
+      event: "payroll.waiting",
+      company,
+      monthClose: monthClosePayload,
+      meta: { reason: pull.error || "no_data" },
+    });
+  } else if (options.notify !== false) {
+    result.platformNotify = await notifyPlatform({
+      event: ok ? "month.closed" : "month.close.failed",
+      company,
+      monthClose: monthClosePayload,
+      meta: {
+        released: released.map((r) => r.deliveryId).filter(Boolean),
+        releaseErrors,
+      },
+    });
+  }
+
+  return result;
 }
 
 export { currentPeriod };

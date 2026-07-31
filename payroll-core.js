@@ -158,6 +158,9 @@
       healthPercent: num(state.healthPercent),
       carePercent: num(state.carePercent),
       unemploymentPercent: num(state.unemploymentPercent),
+      employmentType: state.employmentType || "auto",
+      minijobRvExempt: Boolean(state.minijobRvExempt),
+      minijobTaxable: Boolean(state.minijobTaxable),
     };
   }
 

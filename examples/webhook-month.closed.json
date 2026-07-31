@@ -1,0 +1,21 @@
+{
+  "kind": "platform.accounting.event.v1",
+  "schemaVersion": 2,
+  "event": "month.closed",
+  "occurredAt": "2026-07-31T16:10:00.000Z",
+  "source": "workpass-accounting-bridge",
+  "idempotencyKey": "month:luf:2026-07:month.closed",
+  "company": { "id": "luf", "name": "Lufthansa" },
+  "monthClose": {
+    "companyId": "luf",
+    "period": "2026-07",
+    "waitingForPlatform": false,
+    "ok": true,
+    "jobs": { "total": 12, "calculated": 0, "released": 12, "error": 0 },
+    "newlyReleasedCount": 12,
+    "message": "Monatsabschluss 2026-07: 12 Abrechnung(en) an Plattform/Mitarbeiter gesendet."
+  },
+  "meta": {
+    "released": ["pay:luf::1001::2026-07"]
+  }
+}

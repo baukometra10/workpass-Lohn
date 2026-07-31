@@ -31,6 +31,9 @@ export const accountingConnect = {
     messagesPending: "GET /v1/messages/pending",
     messagesList: "GET /v1/messages",
     messageAck: "POST /v1/messages/:messageId/ack",
+    messageCreate: "POST /v1/messages",
+    platformStatus: "GET /v1/platform/status",
+    syncStatus: "GET /v1/sync/status",
     invoiceIngest: "POST /v1/invoice/ingest",
     invoiceRelease: "POST /v1/invoice/:id/release",
     inbox: "GET /v1/inbox",
@@ -49,7 +52,15 @@ export const accountingConnect = {
   webhookReceive: {
     url: "https://suppix-ai-workpass.com/api/workpass/webhooks/accounting",
     keyHeader: "X-WorkPass-Webhook-Key",
-    events: ["payslip.released", "invoice.released"],
+    idempotencyHeader: "X-WorkPass-Idempotency-Key",
+    events: [
+      "payslip.released",
+      "invoice.released",
+      "accounting.message",
+      "payroll.waiting",
+      "month.closed",
+      "month.close.failed",
+    ],
   },
   sdk: "../sdk/workpass-accounting-client.mjs",
 };

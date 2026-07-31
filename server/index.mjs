@@ -25,6 +25,7 @@ import {
 import { ingestInvoice, releaseInvoiceJob } from "./invoice-service.mjs";
 import { listPayrollJobs, loadPayrollJob, listInvoiceJobs, loadInvoiceJob } from "./store.mjs";
 import { listPendingDeliveries, listAllDeliveries, ackDelivery } from "./delivery-queue.mjs";
+import { getLastWebhookStatus } from "./notify.mjs";
 import {
   upsertCompany,
   activateCompany,
@@ -123,7 +124,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "2.0.0",
+      version: "2.2.0",
       multiTenant: true,
       monthCloseScheduler: monthCloseSched,
       autoMonthClose: autoMonthCloseConfig(),
@@ -242,6 +243,8 @@ async function handler(req, res) {
       || path.startsWith("/v1/invoice/")
       || path.startsWith("/v1/delivery/")
       || path.startsWith("/v1/messages")
+      || path.startsWith("/v1/platform")
+      || path.startsWith("/v1/sync")
       || path.startsWith("/v1/portal/")
       || path.startsWith("/v1/demo/");
     if (sess.ok && sessionPathsOk) {
@@ -370,7 +373,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "2.0.0",
+          version: "2.2.0",
           ...syncHealth(),
         },
         monthCloseScheduler: monthCloseSched,
@@ -754,6 +757,37 @@ async function handler(req, res) {
         message: ingested.ok
           ? `Demo-Monat ${period}: ${ingested.count} Mitarbeiter angelegt – jetzt Monatsabschluss möglich`
           : (ingested.errors?.join?.(" · ") || "Demo-Seed fehlgeschlagen"),
+      });
+    }
+
+    // --- Platform sync status (messages + deliveries + last webhook) ---
+    if (req.method === "GET" && (path === "/v1/platform/status" || path === "/v1/sync/status")) {
+      const companyId = tenantScope || url.searchParams.get("companyId") || undefined;
+      const pendingMessages = listPendingMessagesForPlatform({ companyId, limit: 100 });
+      const pendingDeliveries = listPendingDeliveries({ companyId });
+      return reply(200, {
+        ok: true,
+        kind: "platform.accounting.sync.v1",
+        schemaVersion: 2,
+        companyId: companyId || null,
+        accountingVersion: "2.2.0",
+        webhook: {
+          configured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),
+          urlSuggested: platformWebhookUrl(),
+          last: getLastWebhookStatus(),
+        },
+        pullUrlConfigured: Boolean(String(process.env.WORKPASS_PLATFORM_PAYROLL_PULL_URL || "").trim()),
+        pending: {
+          messages: pendingMessages.length,
+          deliveries: pendingDeliveries.length,
+        },
+        messages: pendingMessages,
+        deliveries: pendingDeliveries,
+        hints: [
+          "Fehlende Daten: GET /v1/messages/pending → ergänzen → POST /v1/payroll/batch → POST /v1/messages/:id/ack",
+          "Freigaben: Webhook empfangen oder GET /v1/delivery/pending → POST /v1/delivery/:id/ack",
+          "Monatsabschluss: POST /v1/payroll/month-close { companyId, period }",
+        ],
       });
     }
 

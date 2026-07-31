@@ -1,162 +1,143 @@
-# Webhook: المحاسبة → المنصة
+# Webhook: Accounting → Platform
 
-**المنصة تستقبل** على:
+**Platform receives** at:
 
 `POST https://suppix-ai-workpass.com/api/workpass/webhooks/accounting`
 
-**المحاسبة ترسل** بعد Freigabe (إعداد على سيرفر المحاسبة فقط):
+**Accounting sends** (Railway env):
 
 ```
 WORKPASS_PLATFORM_WEBHOOK_URL=https://suppix-ai-workpass.com/api/workpass/webhooks/accounting
-WORKPASS_PLATFORM_WEBHOOK_KEY=<نفس السر المتفق عليه>
+WORKPASS_PLATFORM_WEBHOOK_KEY=<shared secret>
+WORKPASS_WEBHOOK_RETRIES=3
+WORKPASS_WEBHOOK_TIMEOUT_MS=8000
 ```
 
+Sync overview for the platform: `GET {ACCOUNTING}/v1/platform/status`
+
 ---
 
-## 1) Headers الواردة من المحاسبة
+## 1) Incoming headers
 
-| Header | قيمة |
-|--------|------|
+| Header | Value |
+|--------|-------|
 | `Content-Type` | `application/json` |
-| `X-WorkPass-Webhook-Key` | السر المشترك (تحقق إلزامي) |
-| `X-WorkPass-Event` | `payslip.released` أو `invoice.released` |
-
-إن كان المفتاح خطأ → أرجع **401**.
+| `X-WorkPass-Webhook-Key` | shared secret (required → 401 if wrong) |
+| `X-WorkPass-Event` | see events below |
+| `X-WorkPass-Idempotency-Key` | stable id for dedupe |
+| `X-WorkPass-Company-Id` | tenant (when known) |
+| `X-WorkPass-Attempt` | retry counter 1…n |
 
 ---
 
-## 2) جسم الطلب (Envelope)
+## 2) Envelope (`schemaVersion: 2`)
 
 ```json
 {
   "kind": "platform.accounting.event.v1",
+  "schemaVersion": 2,
   "event": "payslip.released",
   "occurredAt": "2026-07-28T10:00:00.000Z",
   "source": "workpass-accounting-bridge",
-  "delivery": { }
+  "idempotencyKey": "pay:…",
+  "company": { "id": "luf", "name": "…" },
+  "delivery": { },
+  "message": null,
+  "monthClose": null,
+  "meta": null
 }
 ```
 
-`delivery.kind` دائماً: `platform.employee.delivery.v1`
+### Events
 
-### عند `payslip.released`
+| Event | Example | Platform action |
+|-------|---------|-----------------|
+| `payslip.released` | `examples/webhook-payslip.released.json` | Show payslip in employee app |
+| `invoice.released` | `examples/webhook-invoice.released.json` | Show invoice |
+| `accounting.message` | `examples/webhook-accounting.message.json` | Inbox: missing IBAN / Steuer-Nr. … → fix → resend payroll → ack |
+| `payroll.waiting` | `examples/webhook-payroll.waiting.json` | Prompt firm to send month batch |
+| `month.closed` | `examples/webhook-month.closed.json` | Mark month done / notify HR |
+| `month.close.failed` | — | Show errors / retry |
 
-انظر: `examples/webhook-payslip.released.json`
-
-حقول مهمة للمنصة:
-
-| حقل | استخدام |
-|-----|---------|
-| `delivery.deliveryId` | معرّف فريد للتسليم (idempotent) |
-| `delivery.company.id` | عزل الشركة (tenant) |
-| `delivery.employee.id` | الموظف المستلم |
-| `delivery.period` | الشهر |
-| `delivery.summary.net` | عرض سريع |
-| `delivery.document` | `platform.payslip.v1` كامل |
-| `delivery.appRoute` | مسار شاشة التطبيق |
-
-### عند `invoice.released`
-
-انظر: `examples/webhook-invoice.released.json`
+`delivery.kind` for documents: `platform.employee.delivery.v1`  
+`message.kind` for gaps: `platform.accounting.message.v1`
 
 ---
 
-## 3) ماذا تفعل المنصة عند الاستلام؟
+## 3) What the platform should do
 
-1. تحقق `X-WorkPass-Webhook-Key`
-2. تحقق `kind` و`event` و`delivery.deliveryId`
-3. إن وُجد `deliveryId` مسبقاً → أرجع 200 (idempotent، لا تكرر الإرسال للموظف)
-4. احفظ التسليم لـ `company.id` + `employee.id`
-5. أظهر الوثيقة في تطبيق الموظف
-6. (مستحسن) أكّد للمحاسبة:
-
-```
-POST {ACCOUNTING_API}/v1/delivery/{deliveryId}/ack
-Header: X-WorkPass-Key: …
-Header: X-WorkPass-Company-Id: {company.id}
-Body: { "employeeApp": "workpass", "deliveredAt": "…" }
-```
+1. Verify `X-WorkPass-Webhook-Key`
+2. Dedupe on `idempotencyKey` / `delivery.deliveryId` → return 200 if already processed
+3. Route by `event`
+4. Ack documents: `POST /v1/delivery/{deliveryId}/ack`
+5. Ack messages after user read / data fixed: `POST /v1/messages/{messageId}/ack`
+6. Poll fallback anytime: `GET /v1/platform/status` or `/v1/delivery/pending` + `/v1/messages/pending`
 
 ---
 
-## 4) استجابة المنصة المتوقعة
-
-**نجاح (2xx):**
+## 4) Expected response
 
 ```json
-{
-  "ok": true,
-  "accepted": true,
-  "deliveryId": "pay:muster-gmbh::02006::2025-07",
-  "employeeAppStatus": "queued"
-}
+{ "ok": true, "accepted": true, "deliveryId": "pay:…", "employeeAppStatus": "queued" }
 ```
 
-**فشل مفتاح:** `401`  
-**جسم ناقص:** `400`
-
-المحاسبة تعتبر أي غير-2xx فشلاً وتُبقي العنصر في طابور `/v1/delivery/pending` للسحب لاحقاً.
+Non-2xx → accounting retries (default 3×). Items stay in `/v1/delivery/pending` for pull.
 
 ---
 
-## 5) مثال كود للمنصة (Node / Express)
+## 5) Recommended platform handler
 
 ```js
 app.post("/api/workpass/webhooks/accounting", async (req, res) => {
-  const key = req.get("X-WorkPass-Webhook-Key");
-  if (key !== process.env.WORKPASS_PLATFORM_WEBHOOK_KEY) {
+  if (req.get("X-WorkPass-Webhook-Key") !== process.env.WORKPASS_PLATFORM_WEBHOOK_KEY) {
     return res.status(401).json({ ok: false, error: "Invalid webhook key" });
   }
-
   const envelope = req.body;
-  if (envelope?.kind !== "platform.accounting.event.v1" || !envelope.delivery?.deliveryId) {
+  if (envelope?.kind !== "platform.accounting.event.v1") {
     return res.status(400).json({ ok: false, error: "Invalid envelope" });
   }
-
-  const { event, delivery } = envelope;
-  // idempotent upsert by delivery.deliveryId
-  await saveEmployeeDelivery({
-    companyId: delivery.company.id,
-    employeeId: delivery.employee?.id,
-    event,
-    delivery,
-  });
-
-  // push to employee app inbox…
+  const key = envelope.idempotencyKey || envelope.delivery?.deliveryId;
+  if (await alreadyProcessed(key)) {
+    return res.status(200).json({ ok: true, accepted: true, duplicate: true });
+  }
+  switch (envelope.event) {
+    case "payslip.released":
+    case "invoice.released":
+      await saveEmployeeDelivery(envelope.delivery);
+      break;
+    case "accounting.message":
+    case "payroll.waiting":
+      await saveAccountingInbox(envelope.message || envelope);
+      break;
+    case "month.closed":
+    case "month.close.failed":
+      await saveMonthCloseStatus(envelope.monthClose);
+      break;
+  }
   return res.status(200).json({
     ok: true,
     accepted: true,
-    deliveryId: delivery.deliveryId,
-    employeeAppStatus: "queued",
+    deliveryId: envelope.delivery?.deliveryId || key,
   });
 });
 ```
 
 ---
 
-## 6) إعدادات على الجهتين
+## 6) Env on both sides
 
-### سيرفر المحاسبة (Railway)
+### Accounting (Railway)
 
 ```
 WORKPASS_PLATFORM_WEBHOOK_URL=https://suppix-ai-workpass.com/api/workpass/webhooks/accounting
-WORKPASS_PLATFORM_WEBHOOK_KEY=<سر طويل مشترك>
-WORKPASS_API_KEY=<مفتاح API المحاسبة>
+WORKPASS_PLATFORM_WEBHOOK_KEY=<long shared secret>
+WORKPASS_API_KEY=<api key>
 ```
 
-### المنصة
+### Platform
 
 ```
-WORKPASS_PLATFORM_WEBHOOK_KEY=<نفس السر>
-WORKPASS_ACCOUNTING_API_URL=https://<your-accounting>.up.railway.app
-WORKPASS_ACCOUNTING_API_KEY=<نفس WORKPASS_API_KEY>
+WORKPASS_ACCOUNTING_BASE_URL=https://workpass-lohn.up.railway.app
+WORKPASS_API_KEY=<same api key>
+WORKPASS_PLATFORM_WEBHOOK_KEY=<same webhook secret>
 ```
-
----
-
-## 7) اختبار سريع
-
-1. فعّل المسار على المنصة  
-2. من المحاسبة: Freigabe لراتب تجريبي  
-3. راقب لوج المنصة / inbox الموظف  
-4. أو اسحب: `GET /v1/delivery/pending` ثم `POST .../ack`

@@ -149,6 +149,18 @@ export class WorkPassAccountingClient {
     return this.request("POST", `/v1/messages/${encodeURIComponent(messageId)}/ack`, meta);
   }
 
+  /** Platform → Accounting note / reply */
+  createMessage(payload) {
+    return this.request("POST", "/v1/messages", payload);
+  }
+
+  /** Pending messages + deliveries + last webhook status */
+  platformStatus(companyId) {
+    return this.request("GET", "/v1/platform/status", undefined, {
+      companyId: companyId || this.companyId,
+    });
+  }
+
   /** @param {object} payload platform.invoice.v1 – requires company.id */
   ingestInvoice(payload) {
     return this.request("POST", "/v1/invoice/ingest", payload);

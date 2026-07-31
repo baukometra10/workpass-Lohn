@@ -380,6 +380,15 @@
                 </select>
               </div>
               <div>
+                <label for="employmentType">Beschäftigung</label>
+                <select id="employmentType">
+                  <option value="auto">Auto (nach SV-Brutto)</option>
+                  <option value="regular">Voll SV-pflichtig</option>
+                  <option value="midi">Midijob / Übergangsbereich</option>
+                  <option value="mini">Minijob (≤ 603 €)</option>
+                </select>
+              </div>
+              <div>
                 <label for="healthAdditionalPercent">KV-Zusatzbeitrag %</label>
                 <input id="healthAdditionalPercent" type="number" min="0" step="0.01" placeholder="z. B. 2,50" />
               </div>
@@ -405,6 +414,18 @@
                   PV-Zuschlag kinderlos (ab 23)
                 </label>
               </div>
+              <div class="full check-row">
+                <label class="check-label">
+                  <input id="minijobRvExempt" type="checkbox" />
+                  Minijob: RV-Befreiung (kein AN-Anteil RV)
+                </label>
+              </div>
+              <div class="full check-row">
+                <label class="check-label">
+                  <input id="minijobTaxable" type="checkbox" />
+                  Minijob: individuelle Lohnsteuer (statt Pauschale)
+                </label>
+              </div>
               <div class="full check-row tax-iv-only" id="taxIvBox" hidden>
                 <label class="check-label">
                   <input id="factorMethod" type="checkbox" />
@@ -414,7 +435,7 @@
                 <input id="factorValue" type="number" min="0" step="0.001" value="1" />
               </div>
             </div>
-            <p class="section-hint" id="calcMethodHint">Berechnung: BMF PAP 2026 + SGB IV (SV)</p>
+            <p class="section-hint" id="calcMethodHint">Berechnung: BMF PAP 2026 · SV SGB IV 2026 (BBG, Mini-/Midijob, AG/AN getrennt)</p>
           </section>
 
           <section class="form-section step" id="secAuszahlung">
@@ -492,7 +513,7 @@
     <div id="wpToastHost" class="wp-toast-host" aria-live="polite" aria-relevant="additions"></div>
 
     <script src="vendor/pap-standalone.js"></script>
-    <script src="payroll-bridge.js?v=1"></script>
+    <script src="payroll-bridge.js?v=2"></script>
     <script src="legal-config.js"></script>
     <script src="catalogs.js?v=1"></script>
     <script src="datev-import.js?v=2"></script>

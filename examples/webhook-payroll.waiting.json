@@ -1,0 +1,19 @@
+{
+  "kind": "platform.accounting.event.v1",
+  "schemaVersion": 2,
+  "event": "payroll.waiting",
+  "occurredAt": "2026-07-31T16:05:00.000Z",
+  "source": "workpass-accounting-bridge",
+  "idempotencyKey": "month:luf:2026-07:payroll.waiting",
+  "company": { "id": "luf", "name": "Lufthansa" },
+  "monthClose": {
+    "companyId": "luf",
+    "period": "2026-07",
+    "waitingForPlatform": true,
+    "ok": false,
+    "jobs": { "total": 0, "calculated": 0, "released": 0, "error": 0 },
+    "newlyReleasedCount": 0,
+    "message": "Warte auf Plattform-Daten für 2026-07."
+  },
+  "meta": { "reason": "no_data" }
+}

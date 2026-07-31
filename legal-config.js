@@ -25,7 +25,8 @@ const LEGAL_CONFIG = {
     care: {
       total: 3.6,
       employee: 1.8,
-      employeeChildless: 2.4, // +0,6 % Zuschlag kinderlos ab 23 J.
+      employeeChildless: 2.4, // +0,6 % Zuschlag kinderlos ab 23 J. – nur AN
+      employer: 1.8,
       label: "Pflegeversicherung (PV)",
     },
     unemployment: { total: 2.6, employee: 1.3, label: "Arbeitslosenversicherung (AV)" },
@@ -38,6 +39,28 @@ const LEGAL_CONFIG = {
       care: 5512.5,
       unemployment: 8050,
     },
+    // Geringfügig / Übergangsbereich 2026 (SGB IV)
+    minijob: {
+      ceiling: 603,
+      rvEmployee: 3.6,
+      employerKvFlat: 13,
+      employerRvFlat: 15,
+    },
+    midijob: {
+      lower: 603.01,
+      upper: 2000,
+      factorF: 0.6619,
+      beGesamtA: 1.145937223,
+      beGesamtB: 291.8744452,
+      beAnA: 1.431639227,
+      beAnB: 863.2784538,
+    },
+    umlagen: {
+      u1: 1.1,
+      u2: 0.49,
+      insolvency: 0.15,
+    },
+    regionDefault: "west",
   },
 
   tax: {
@@ -89,7 +112,7 @@ function getLegalEmployeeRates(options = {}) {
     unemploymentPercent: ss.unemployment.employee,
     employerPensionPercent: ss.pension.employee,
     employerHealthPercent: ss.health.employee + zusatz / 2,
-    employerCarePercent: childless ? ss.care.employeeChildless : ss.care.employee,
+    employerCarePercent: ss.care.employer || ss.care.employee,
     employerUnemploymentPercent: ss.unemployment.employee,
   };
 }
@@ -117,6 +140,9 @@ function buildPayrollOptions(options = {}) {
     svGross: options.svGross,
     allTaxFree: Boolean(options.allTaxFree),
     allSvFree: Boolean(options.allSvFree),
+    employmentType: options.employmentType || "auto",
+    minijobRvExempt: Boolean(options.minijobRvExempt),
+    minijobTaxable: Boolean(options.minijobTaxable),
   };
 }
 
@@ -136,6 +162,9 @@ function calculateLegalPayroll(gross, options = {}) {
   const care = careBase * (rates.carePercent / 100);
   const unemployment = unemploymentBase * (rates.unemploymentPercent / 100);
   const svTotal = pension + health + care + unemployment;
+  const employerCare = careBase * ((ss.care.employer || ss.care.employee) / 100);
+  const employerShare =
+    pension + health + employerCare + unemployment;
 
   return {
     gross,
@@ -148,7 +177,8 @@ function calculateLegalPayroll(gross, options = {}) {
     care,
     unemployment,
     svTotal,
-    employerShare: svTotal,
+    employerCare,
+    employerShare,
     payrollTax: 0,
     payrollTaxPercent: 0,
     solidarity: 0,

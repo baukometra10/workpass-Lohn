@@ -151,6 +151,7 @@ export async function upsertPlatformMessage(input = {}, opts = {}) {
 
   const payload = {
     kind: "platform.accounting.message.v1",
+    schemaVersion: 2,
     messageId: existing?.message_id || messageId(),
     direction,
     type,
@@ -176,6 +177,12 @@ export async function upsertPlatformMessage(input = {}, opts = {}) {
         route: employeeId
           ? `/company/${encodeURIComponent(companyId)}/employees/${encodeURIComponent(employeeId)}`
           : `/company/${encodeURIComponent(companyId)}`,
+      },
+      {
+        id: "resend_payroll",
+        label: "Lohn erneut senden",
+        method: "POST",
+        path: "/v1/payroll/ingest",
       },
       {
         id: "mark_read",
@@ -229,6 +236,8 @@ export async function upsertPlatformMessage(input = {}, opts = {}) {
   if (opts.notify !== false && direction === "accounting_to_platform") {
     platformNotify = await notifyPlatform({
       event: "accounting.message",
+      company: payload.company,
+      message,
       delivery: {
         kind: "platform.employee.delivery.v1",
         type: "message",
@@ -242,12 +251,17 @@ export async function upsertPlatformMessage(input = {}, opts = {}) {
         document: message,
         appRoute: `/company/${encodeURIComponent(companyId)}/messages/${encodeURIComponent(payload.messageId)}`,
       },
+      meta: {
+        gapCodes: gaps.map((g) => g.code),
+        severity: payload.severity,
+      },
     });
   }
 
   return {
     ok: true,
     created: !existing,
+    updated: Boolean(existing),
     message,
     platformNotify,
   };

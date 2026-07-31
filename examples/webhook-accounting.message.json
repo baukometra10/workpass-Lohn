@@ -1,0 +1,32 @@
+{
+  "kind": "platform.accounting.event.v1",
+  "schemaVersion": 2,
+  "event": "accounting.message",
+  "occurredAt": "2026-07-31T16:00:00.000Z",
+  "source": "workpass-accounting-bridge",
+  "idempotencyKey": "msg:msg:demo123",
+  "company": { "id": "luf", "name": "Lufthansa" },
+  "message": {
+    "kind": "platform.accounting.message.v1",
+    "schemaVersion": 2,
+    "messageId": "msg:demo123",
+    "type": "data.gap",
+    "severity": "action_needed",
+    "title": "IBAN fehlt · Max Mustermann",
+    "gaps": [
+      { "code": "iban_missing", "field": "bank.iban", "label": "IBAN fehlt", "severity": "action_needed" }
+    ]
+  },
+  "delivery": {
+    "kind": "platform.employee.delivery.v1",
+    "type": "message",
+    "deliveryId": "msg:msg:demo123",
+    "status": "action_needed",
+    "company": { "id": "luf", "name": "Lufthansa" },
+    "employee": { "id": "1001", "name": "Max Mustermann" },
+    "period": "2026-07",
+    "title": "IBAN fehlt · Max Mustermann",
+    "appRoute": "/company/luf/messages/msg:demo123"
+  },
+  "meta": { "gapCodes": ["iban_missing"], "severity": "action_needed" }
+}

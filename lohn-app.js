@@ -37,12 +37,13 @@
     "employeeTaxId", "employeeInsuranceNo", "employeeBirthDate", "employeeEntryDate",
     "payrollMonth", "taxClass", "churchTaxRate", "churchConfession",
     "healthFund", "healthPercent", "healthAdditionalPercent",
+    "employmentType",
     "taxAllowanceMonthly", "childAllowanceFactor", "factorValue",
     "netDeductions", "departmentNo",
     "workDays", "workHours", "bankName", "bankIban",
   ];
 
-  const CHECKBOX_IDS = ["childlessPvSurcharge", "factorMethod"];
+  const CHECKBOX_IDS = ["childlessPvSurcharge", "factorMethod", "minijobRvExempt", "minijobTaxable"];
 
   function toast(message, type = "info") {
     const host = $("wpToastHost");
