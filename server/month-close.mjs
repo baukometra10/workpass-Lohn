@@ -18,6 +18,11 @@ function currentPeriod(d = new Date()) {
  * Pull month payroll export from the WorkPass platform.
  * Platform endpoint should return platform.payroll.batch.v1
  * (or { ok, batch } / { employees }).
+ *
+ * Env:
+ *   WORKPASS_PLATFORM_PAYROLL_PULL_URL
+ *   WORKPASS_PLATFORM_PAYROLL_PULL_METHOD = auto | GET | POST  (default auto)
+ *   On HTTP 405, auto retries with the other method.
  */
 export async function pullPlatformPayrollBatch({ companyId, period }) {
   const url = String(process.env.WORKPASS_PLATFORM_PAYROLL_PULL_URL || "").trim();
@@ -36,26 +41,71 @@ export async function pullPlatformPayrollBatch({ companyId, period }) {
     || process.env.WORKPASS_API_KEY
     || "";
   const timeoutMs = Number(process.env.WORKPASS_PLATFORM_PULL_TIMEOUT_MS || 12000);
+  const methodPref = String(process.env.WORKPASS_PLATFORM_PAYROLL_PULL_METHOD || "auto")
+    .trim()
+    .toUpperCase();
 
+  const methods = methodPref === "GET" || methodPref === "POST"
+    ? [methodPref]
+    : ["POST", "GET"]; // auto: POST first, then GET on 405
+
+  let last = null;
+  for (const method of methods) {
+    const result = await fetchPullOnce({
+      url,
+      method,
+      companyId,
+      period,
+      key,
+      timeoutMs,
+    });
+    last = result;
+    if (result.ok) return result;
+    // Only auto-fallback on Method Not Allowed
+    if (result.status !== 405) return result;
+  }
+
+  return {
+    ...last,
+    error:
+      (last?.error || "Plattform-Pull fehlgeschlagen")
+      + " – HTTP 405: Die Pull-URL erlaubt diese Methode nicht. "
+      + "Setze WORKPASS_PLATFORM_PAYROLL_PULL_METHOD=GET (oder POST) passend zur Plattform, "
+      + "oder lass die Plattform den Monat per POST /v1/payroll/batch an die Buchhaltung senden.",
+  };
+}
+
+async function fetchPullOnce({ url, method, companyId, period, key, timeoutMs }) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-WorkPass-Key": key,
-        "X-WorkPass-Company-Id": companyId,
-        "X-WorkPass-Event": "payroll.month.pull",
-      },
-      body: JSON.stringify({
+    const headers = {
+      "X-WorkPass-Key": key,
+      "X-WorkPass-Company-Id": companyId,
+      "X-WorkPass-Event": "payroll.month.pull",
+      Accept: "application/json",
+    };
+
+    let requestUrl = url;
+    const init = { method, headers, signal: ctrl.signal };
+
+    if (method === "GET") {
+      const u = new URL(url);
+      u.searchParams.set("companyId", companyId);
+      u.searchParams.set("period", period);
+      u.searchParams.set("kind", "platform.payroll.pull.v1");
+      requestUrl = u.toString();
+    } else {
+      headers["Content-Type"] = "application/json";
+      init.body = JSON.stringify({
         kind: "platform.payroll.pull.v1",
         event: "payroll.month.requested",
         companyId,
         period,
-      }),
-      signal: ctrl.signal,
-    });
+      });
+    }
+
+    const res = await fetch(requestUrl, init);
     const text = await res.text();
     let body = null;
     try {
@@ -68,6 +118,7 @@ export async function pullPlatformPayrollBatch({ companyId, period }) {
         ok: false,
         skipped: false,
         status: res.status,
+        method,
         error: body?.error || `Plattform-Pull HTTP ${res.status}`,
         body,
       };
@@ -83,6 +134,7 @@ export async function pullPlatformPayrollBatch({ companyId, period }) {
         ok: false,
         skipped: false,
         status: res.status,
+        method,
         error: "Plattform-Antwort ohne employees[] / platform.payroll.batch.v1",
         body,
       };
@@ -93,11 +145,12 @@ export async function pullPlatformPayrollBatch({ companyId, period }) {
     if (!batch.period) batch.period = period;
     if (!batch.kind) batch.kind = "platform.payroll.batch.v1";
 
-    return { ok: true, skipped: false, status: res.status, batch };
+    return { ok: true, skipped: false, status: res.status, method, batch };
   } catch (e) {
     return {
       ok: false,
       skipped: false,
+      method,
       error: e.name === "AbortError" ? "Plattform-Pull Timeout" : (e.message || String(e)),
     };
   } finally {

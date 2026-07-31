@@ -128,7 +128,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "2.3.1",
+      version: "2.3.2",
       multiTenant: true,
       monthCloseScheduler: monthCloseSched,
       autoMonthClose: autoMonthCloseConfig(),
@@ -378,7 +378,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "2.3.1",
+          version: "2.3.2",
           ...syncHealth(),
         },
         monthCloseScheduler: monthCloseSched,
