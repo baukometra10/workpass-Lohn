@@ -462,6 +462,25 @@
         }
       }
 
+      const successCard = $("portalSuccessCard");
+      if (successCard) {
+        const released = Number(cur.released || arch.count || 0);
+        const total = Number(cur.total || 0);
+        const done = total > 0 && released === total && cur.status === "released";
+        successCard.hidden = !done;
+        successCard.classList.toggle("portal-success", done);
+        if ($("portalSuccessTitle")) {
+          $("portalSuccessTitle").textContent = done
+            ? `Monat ${period} komplett`
+            : "Alles erledigt";
+        }
+        if ($("portalSuccessHint")) {
+          $("portalSuccessHint").textContent = done
+            ? `${released} Abrechnung(en) berechnet und an die Plattform / Mitarbeiter gesendet.`
+            : "";
+        }
+      }
+
       if ($("portalSyncHint")) {
         const autoOn = sync?.autoPipeline?.enabled !== false;
         const wh = sync?.webhook?.last || sync?.lastWebhook || {};
@@ -492,6 +511,7 @@
                 : (wh.ok === true ? "OK" : "konfiguriert"))
           )}</span></div></div>
           <div class="api-inbox-item"><div><strong>Letzter Sync</strong><span>${esc(auto.lastTickAt || "—")}</span></div></div>
+          <div class="api-inbox-item"><div><strong>Letzter Erfolg</strong><span>${esc(auto.lastSuccessAt || "—")}</span></div></div>
           <div class="api-inbox-item"><div><strong>Pull-URL</strong><span>${esc(sync?.pullUrlConfigured ? "gesetzt" : "nicht gesetzt (Push empfohlen)")}</span></div></div>
           <div class="api-inbox-item"><div><strong>Offen</strong><span>Messages ${Number(sync?.pending?.messages || 0)} · Deliveries ${Number(sync?.pending?.deliveries || 0)}</span></div></div>
           ${hints.slice(0, 3).map((h) => `<div class="api-inbox-item"><div><span>${esc(h)}</span></div></div>`).join("")}
@@ -778,6 +798,7 @@
           period,
           pull: true,
           autoRelease: true,
+          forceAsk: true,
           reason: "portal_manual_sync",
         }),
       });

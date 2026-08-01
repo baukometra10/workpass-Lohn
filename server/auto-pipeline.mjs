@@ -18,12 +18,15 @@ import {
   requestEmployeeDataFromPlatform,
 } from "./month-close.mjs";
 import { ingestPayroll, ingestPayrollBatch, releasePayrollJob } from "./payroll-service.mjs";
-import { upsertPlatformMessage } from "./platform-messages.mjs";
+import { upsertPlatformMessage, ackOpenRequests } from "./platform-messages.mjs";
+import { isDemoPayrollJob } from "./demo-detect.mjs";
 import { normalizeCompanyId } from "./tenant.mjs";
 
 let timer = null;
 let lastTickAt = null;
 let lastResult = null;
+let lastSuccessAt = null;
+const companySyncState = new Map(); // companyId -> { period, askedAt, successAt, released }
 
 export function autoPipelineConfig() {
   const disabled = process.env.WORKPASS_AUTO_PIPELINE === "0"
@@ -33,6 +36,8 @@ export function autoPipelineConfig() {
     intervalMinutes: Math.max(2, Number(process.env.WORKPASS_AUTO_PIPELINE_MINUTES || 15)),
     autoRelease: process.env.WORKPASS_AUTO_RELEASE !== "0",
     pull: process.env.WORKPASS_AUTO_PIPELINE_PULL !== "0",
+    /** Minutes before re-asking platform when still waiting (default 30) */
+    reaskMinutes: Math.max(5, Number(process.env.WORKPASS_AUTO_REASK_MINUTES || 30)),
   };
 }
 
@@ -42,7 +47,25 @@ export function autoPipelineStatus() {
     ...cfg,
     running: Boolean(timer),
     lastTickAt,
+    lastSuccessAt,
     lastResult,
+  };
+}
+
+function monthProgress(companyId, period) {
+  const jobs = listPayrollJobs({ companyId, period }).filter((j) => !isDemoPayrollJob(j));
+  const released = jobs.filter((j) => j.status === "released").length;
+  const calculated = jobs.filter((j) => j.status === "calculated").length;
+  const error = jobs.filter((j) => j.status === "error").length;
+  const employees = listEmployees(companyId).length;
+  return {
+    jobs: jobs.length,
+    released,
+    calculated,
+    error,
+    employees,
+    complete: jobs.length > 0 && released === jobs.length && error === 0,
+    hasWork: jobs.length > 0,
   };
 }
 
@@ -67,6 +90,25 @@ export async function processInboundPayroll(payload, options = {}) {
     release = await releasePayrollJob(ingest.job.jobId, {
       tenantScope: options.tenantScope || ingest.job.company?.id,
     });
+  }
+
+  const companyId = ingest.job?.company?.id || normalizeCompanyId(payload?.company?.id || "");
+  const period = ingest.job?.period || payload?.period || "";
+  if (companyId && (ingest.ok || release?.ok)) {
+    ackOpenRequests({
+      companyId,
+      period,
+      types: ["payroll.month.requested", "employees.list.requested"],
+      meta: { reason: "payroll_ingest", readBy: "accounting-auto" },
+    });
+    if (release?.ok) {
+      lastSuccessAt = new Date().toISOString();
+      companySyncState.set(companyId, {
+        period,
+        successAt: lastSuccessAt,
+        released: 1,
+      });
+    }
   }
 
   return {
@@ -125,18 +167,35 @@ export async function processInboundPayrollBatch(batch, options = {}) {
   }
 
   const companyId = ingest.company?.id || normalizeCompanyId(batch?.company?.id || "");
+  const period = ingest.period || batch?.period || "";
+  if (companyId && ingest.count > 0) {
+    ackOpenRequests({
+      companyId,
+      period,
+      types: ["payroll.month.requested", "employees.list.requested"],
+      meta: { reason: "payroll_batch", readBy: "accounting-auto" },
+    });
+  }
   if (companyId && options.notify !== false) {
     await notifyPlatform({
       event: released.length ? "month.auto.processed" : "payroll.batch.received",
       company: ingest.company || { id: companyId },
       meta: {
-        period: ingest.period || batch?.period,
+        period,
         ingested: ingest.count,
         released: released.length,
         gaps: (ingest.results || []).filter((r) => !r.ok).length,
         auto: true,
       },
-      idempotencyKey: `auto-batch:${companyId}:${ingest.period || "x"}:${Date.now()}`,
+      idempotencyKey: `auto-batch:${companyId}:${period || "x"}:${Date.now()}`,
+    });
+  }
+  if (released.length) {
+    lastSuccessAt = new Date().toISOString();
+    companySyncState.set(companyId, {
+      period,
+      successAt: lastSuccessAt,
+      released: released.length,
     });
   }
 
@@ -167,6 +226,50 @@ export async function askPlatformAndSyncCompany(options = {}) {
     name: options.companyName || options.company?.name || "",
   };
   const cfg = autoPipelineConfig();
+  const progress = monthProgress(companyId, period);
+  const forceAsk = options.forceAsk === true;
+
+  // Smart skip: month already fully released → don't spam platform
+  if (!forceAsk && progress.complete) {
+    ackOpenRequests({
+      companyId,
+      period,
+      types: ["payroll.month.requested", "employees.list.requested"],
+      meta: { reason: "month_complete", readBy: "accounting-auto" },
+    });
+    lastSuccessAt = new Date().toISOString();
+    companySyncState.set(companyId, { period, successAt: lastSuccessAt, released: progress.released });
+    return {
+      ok: true,
+      skipped: true,
+      reason: "month_complete",
+      waitingForPlatform: false,
+      companyId,
+      period,
+      jobs: progress,
+      webhook: getLastWebhookStatus(),
+      webhookOk: getLastWebhookStatus()?.ok === true,
+      webhookBroken: false,
+      message: `Monat ${period} ist fertig: ${progress.released} Abrechnung(en) freigegeben – keine erneute Anfrage nötig.`,
+      nextActions: [],
+    };
+  }
+
+  // Release any leftover calculated jobs without re-asking
+  if (progress.calculated > 0 && (options.autoRelease !== false && cfg.autoRelease)) {
+    const calcJobs = listPayrollJobs({ companyId, period })
+      .filter((j) => !isDemoPayrollJob(j) && j.status === "calculated");
+    for (const job of calcJobs) {
+      try {
+        await releasePayrollJob(job.jobId, { tenantScope: companyId });
+      } catch { /* continue */ }
+    }
+  }
+
+  const prev = companySyncState.get(companyId);
+  const reaskMs = cfg.reaskMinutes * 60_000;
+  const recentlyAsked = prev?.askedAt && (Date.now() - new Date(prev.askedAt).getTime()) < reaskMs;
+  const shouldAsk = forceAsk || !recentlyAsked || !progress.hasWork;
 
   let employeesNotify = { skipped: true };
   let monthNotify = { skipped: true };
@@ -174,7 +277,12 @@ export async function askPlatformAndSyncCompany(options = {}) {
   let monthMessage = null;
   let webhookProbe = getLastWebhookStatus();
 
-  if (options.notify !== false) {
+  if (options.notify !== false && shouldAsk) {
+    companySyncState.set(companyId, {
+      ...(prev || {}),
+      period,
+      askedAt: new Date().toISOString(),
+    });
     // Durable inbox entries so platform can POLL even if webhook URL is broken/404
     try {
       const empMsg = await upsertPlatformMessage({
@@ -256,13 +364,24 @@ export async function askPlatformAndSyncCompany(options = {}) {
     if (options.probeWebhook) {
       webhookProbe = await probePlatformWebhook();
     }
+  } else if (!shouldAsk) {
+    employeesNotify = { skipped: true, reason: "recently_asked" };
+    monthNotify = { skipped: true, reason: "recently_asked" };
   }
 
-  // 3) Also ask per known employee (gaps / missing wages)
+  // 3) Ask only for employees still missing/error this period (not every tick)
   const known = listEmployees(companyId).slice(0, 30);
   const perEmployee = [];
-  if (options.notify !== false) {
+  if (options.notify !== false && shouldAsk) {
+    const byBadge = new Map(
+      listPayrollJobs({ companyId, period })
+        .filter((j) => !isDemoPayrollJob(j))
+        .map((j) => [String(j.employee?.badgeId || j.employee?.id || ""), j])
+    );
     for (const emp of known) {
+      const job = byBadge.get(String(emp.badgeId || ""));
+      if (job && job.status === "released") continue;
+      if (job && job.status === "calculated") continue;
       try {
         perEmployee.push(await requestEmployeeDataFromPlatform({
           companyId,
@@ -271,7 +390,7 @@ export async function askPlatformAndSyncCompany(options = {}) {
           badgeId: emp.badgeId,
           employeeName: emp.name,
           period,
-          gaps: ["Brutto / Lohnarten fehlen"],
+          gaps: job?.errors?.length ? job.errors : ["Brutto / Lohnarten fehlen"],
           pull: false,
           forceNotify: true,
           tenantScope: companyId,
@@ -298,12 +417,30 @@ export async function askPlatformAndSyncCompany(options = {}) {
     company,
   });
 
-  const jobs = listPayrollJobs({ companyId, period });
+  const after = monthProgress(companyId, period);
+  if (after.complete || (close?.newlyReleased?.length > 0)) {
+    lastSuccessAt = new Date().toISOString();
+    companySyncState.set(companyId, {
+      period,
+      askedAt: companySyncState.get(companyId)?.askedAt,
+      successAt: lastSuccessAt,
+      released: after.released,
+    });
+    ackOpenRequests({
+      companyId,
+      period,
+      types: ["payroll.month.requested", "employees.list.requested"],
+      meta: { reason: "sync_success", readBy: "accounting-auto" },
+    });
+  }
+
+  const jobs = listPayrollJobs({ companyId, period }).filter((j) => !isDemoPayrollJob(j));
   const webhookOk = webhookProbe?.ok === true;
   const webhookBroken = webhookProbe?.ok === false && Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL);
   return {
-    ok: Boolean(close?.ok || (close?.jobs?.total > 0)),
-    waitingForPlatform: Boolean(close?.waitingForPlatform),
+    ok: Boolean(close?.ok || after.hasWork),
+    skippedAsk: !shouldAsk,
+    waitingForPlatform: Boolean(close?.waitingForPlatform) && !after.hasWork,
     companyId,
     period,
     employeesNotify,
@@ -323,17 +460,21 @@ export async function askPlatformAndSyncCompany(options = {}) {
     },
     close,
     jobs: {
-      total: jobs.length,
-      released: jobs.filter((j) => j.status === "released").length,
-      calculated: jobs.filter((j) => j.status === "calculated").length,
-      error: jobs.filter((j) => j.status === "error").length,
+      total: after.jobs,
+      released: after.released,
+      calculated: after.calculated,
+      error: after.error,
     },
-    message: close?.ok
-      ? `Auto-Sync ${period}: ${close.newlyReleased?.length || 0} freigegeben.`
-      : (webhookBroken
-        ? `Plattform-Webhook antwortet nicht (${webhookProbe?.status || webhookProbe?.error || "Fehler"}). `
-          + `Anfragen liegen unter GET /v1/messages/pending – Plattform muss Endpoint reparieren und Daten pushen.`
-        : (close?.message || "Plattform nach Mitarbeitern und Monatsdaten gefragt.")),
+    message: after.complete
+      ? `Fertig: ${after.released} Abrechnung(en) für ${period} an die Plattform gesendet.`
+      : (close?.ok
+        ? `Auto-Sync ${period}: ${close.newlyReleased?.length || 0} freigegeben.`
+        : (webhookBroken
+          ? `Plattform-Webhook antwortet nicht (${webhookProbe?.status || webhookProbe?.error || "Fehler"}). `
+            + `Anfragen liegen unter GET /v1/messages/pending – Plattform muss Endpoint reparieren und Daten pushen.`
+          : (!shouldAsk
+            ? `Zuletzt gefragt – warte auf Plattform-Antwort (erneut in ~${cfg.reaskMinutes} Min. oder „Jetzt synchronisieren“).`
+            : (close?.message || "Plattform nach Mitarbeitern und Monatsdaten gefragt.")))),
     nextActions: webhookBroken
       ? [
           "Auf der Plattform den Webhook-Endpoint live schalten (aktuell oft HTTP 404)",
@@ -341,7 +482,7 @@ export async function askPlatformAndSyncCompany(options = {}) {
           "Fallback: Plattform pollt GET /v1/messages/pending und sendet dann Import/Batch",
           "Danach: POST /v1/employees/import + POST /v1/payroll/batch an WorkPass Lohn",
         ]
-      : (close?.waitingForPlatform
+      : (close?.waitingForPlatform && !after.hasWork
         ? [
             "Plattform muss auf employees.list.requested / payroll.month.requested reagieren",
             "Daten senden: POST /v1/employees/import und POST /v1/payroll/batch",

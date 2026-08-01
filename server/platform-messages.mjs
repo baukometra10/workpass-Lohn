@@ -506,6 +506,42 @@ export function listPendingMessagesForPlatform(filter = {}) {
  * Platform marks message as read → disappears from pending inbox.
  * Accounting (Steuerprogramm) treats this as „Auftrag gesehen“.
  */
+/**
+ * Close open request messages after platform delivered the data.
+ * Types: employees.list.requested, payroll.month.requested (and optional extras).
+ */
+export function ackOpenRequests({ companyId, period, types = [], meta = {} } = {}) {
+  const cid = normalizeCompanyId(companyId);
+  if (!cid) return { ok: false, error: "companyId fehlt", acked: 0 };
+  const wantTypes = (Array.isArray(types) && types.length
+    ? types
+    : ["employees.list.requested", "payroll.month.requested"]
+  ).map(String);
+  let sql = `SELECT * FROM platform_messages WHERE company_id = ? AND status = 'open'`;
+  const params = [cid];
+  if (period) {
+    sql += ` AND (period = ? OR period = '' OR period IS NULL)`;
+    params.push(String(period));
+  }
+  const rows = sqliteAll(sql, params);
+  let acked = 0;
+  const ids = [];
+  for (const row of rows) {
+    const msg = rowToMessage(row);
+    if (!msg) continue;
+    if (!wantTypes.includes(String(msg.type || ""))) continue;
+    const r = ackMessage(msg.messageId, {
+      readBy: meta.readBy || "accounting-auto",
+      reason: meta.reason || "data_received",
+    });
+    if (r.ok) {
+      acked += 1;
+      ids.push(msg.messageId);
+    }
+  }
+  return { ok: true, acked, messageIds: ids };
+}
+
 export function ackMessage(messageId, meta = {}) {
   const row = sqliteGet(`SELECT * FROM platform_messages WHERE message_id = ?`, [String(messageId || "")]);
   if (!row) return { ok: false, error: "Nachricht nicht gefunden" };

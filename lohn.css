@@ -514,6 +514,11 @@ textarea { min-height: 58px; resize: vertical; }
 }
 .portal-kpi-row .kpi span { display: block; color: var(--muted); font-size: 0.78rem; }
 .portal-kpi-row .kpi strong { font-size: 1.15rem; }
+.portal-success {
+  border-color: rgba(52, 211, 153, 0.45) !important;
+  background: linear-gradient(180deg, rgba(52, 211, 153, 0.12), rgba(16, 24, 38, 0.4));
+}
+.portal-success strong { color: #6ee7b7; }
 .portal-totals-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

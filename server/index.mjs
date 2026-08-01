@@ -34,6 +34,7 @@ import {
   messageStats,
   loadMessage,
   listSeenConfirmations,
+  ackOpenRequests,
 } from "./platform-messages.mjs";
 import { ingestInvoice, releaseInvoiceJob } from "./invoice-service.mjs";
 import { listPayrollJobs, loadPayrollJob, listInvoiceJobs, loadInvoiceJob } from "./store.mjs";
@@ -139,7 +140,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "2.6.1",
+      version: "2.7.0",
       multiTenant: true,
       monthCloseScheduler: monthCloseSched,
       autoMonthClose: autoMonthCloseConfig(),
@@ -391,7 +392,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "2.6.1",
+          version: "2.7.0",
           ...syncHealth(),
         },
         monthCloseScheduler: monthCloseSched,
@@ -646,6 +647,8 @@ async function handler(req, res) {
           pull: body.pull !== false,
           autoRelease: body.autoRelease !== false,
           reason: body.reason || "manual_auto_sync",
+          forceAsk: body.forceAsk !== false,
+          probeWebhook: body.probeWebhook === true,
         });
         audit({
           type: "payroll.auto_sync",
@@ -897,13 +900,22 @@ async function handler(req, res) {
       if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
       const list = Array.isArray(body.employees) ? body.employees : (body.employee ? [body.employee] : []);
       const result = importEmployees(companyId, list, { source: body.source || "api" });
+      let acked = null;
+      if (result.count > 0) {
+        acked = ackOpenRequests({
+          companyId,
+          period: body.period || currentPeriod(),
+          types: ["employees.list.requested"],
+          meta: { reason: "employees_import", readBy: "accounting-auto" },
+        });
+      }
       audit({
         type: "employees.import",
         outcome: result.ok ? "ok" : "error",
         ip,
         path,
         companyId,
-        detail: { count: result.count },
+        detail: { count: result.count, acked: acked?.acked || 0 },
       });
       let sync = null;
       if (result.count > 0 && body.autoSync !== false) {
@@ -915,6 +927,7 @@ async function handler(req, res) {
             pull: body.pull !== false,
             autoRelease: body.autoRelease !== false,
             reason: "employees_import",
+            forceAsk: body.forceAsk === true,
           });
         } catch (e) {
           sync = { ok: false, error: e.message };
@@ -922,6 +935,7 @@ async function handler(req, res) {
       }
       return reply(result.ok ? 200 : 422, {
         ...result,
+        ackedRequests: acked,
         autoSync: sync,
         message: result.count
           ? `Mitarbeiter übernommen (${result.count}). WorkPass Lohn fragt automatisch nach Monats-/Lohndaten.`
@@ -1020,7 +1034,7 @@ async function handler(req, res) {
         kind: "platform.accounting.sync.v1",
         schemaVersion: 2,
         companyId: companyId || null,
-        accountingVersion: "2.6.1",
+        accountingVersion: "2.7.0",
         autoPipeline: autoPipelineStatus(),
         webhook: {
           configured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),

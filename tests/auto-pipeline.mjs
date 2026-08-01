@@ -54,8 +54,8 @@ assert(batch.count === 1, "ingested 1");
 assert(batch.releasedCount === 1, `released 1 (got ${batch.releasedCount})`);
 assert(listPayrollJobs({ companyId: id, period: "2026-08" })[0]?.status === "released", "job released");
 
-console.log("\n=== ask platform sync (no pull data) ===");
-const sync = await askPlatformAndSyncCompany({
+console.log("\n=== smart skip when month complete ===");
+const skip = await askPlatformAndSyncCompany({
   companyId: id,
   companyName: "Auto Pipeline GmbH",
   period: "2026-08",
@@ -64,10 +64,31 @@ const sync = await askPlatformAndSyncCompany({
   notify: false,
   reason: "test",
 });
+assert(skip.skipped === true || skip.ok === true, "skip or ok");
+assert(/fertig|freigegeben/i.test(skip.message || ""), `complete message: ${skip.message}`);
+
+console.log("\n=== ask platform sync (no pull data) ===");
+const idle = `ap2${Date.now().toString(36)}`;
+activateCompany({
+  company: { id: idle, name: "Idle Auto GmbH", taxNumber: "12/345/67891" },
+  login: { password: "4821" },
+  connection: { accountingEnabled: true },
+});
+const sync = await askPlatformAndSyncCompany({
+  companyId: idle,
+  companyName: "Idle Auto GmbH",
+  period: "2026-08",
+  pull: false,
+  autoRelease: true,
+  notify: false,
+  forceAsk: true,
+  reason: "test",
+});
 assert(Boolean(sync.message), "sync message");
-assert(sync.companyId === id, "company id");
+assert(sync.companyId === idle, "company id");
 
 deleteCompany({ id });
+deleteCompany({ id: idle });
 if (prevAuto == null) delete process.env.WORKPASS_AUTO_PIPELINE;
 else process.env.WORKPASS_AUTO_PIPELINE = prevAuto;
 

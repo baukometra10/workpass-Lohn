@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=5" />
-    <link rel="stylesheet" href="lohn.css?v=47" />
+    <link rel="stylesheet" href="lohn.css?v=48" />
   </head>
   <body class="auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
@@ -165,6 +165,10 @@
                     <button type="button" class="primary" id="btnPortalApplyPeriod">Monat laden</button>
                   </div>
                 </div>
+                <section class="month-close-card portal-dash-card" id="portalSuccessCard" hidden style="margin-bottom:12px">
+                  <strong id="portalSuccessTitle">Alles erledigt</strong>
+                  <p id="portalSuccessHint">Abrechnungen wurden berechnet und an die Plattform gesendet.</p>
+                </section>
                 <section class="month-close-card portal-dash-card" id="portalSyncCard" style="margin-bottom:12px">
                   <strong>Automatik · Plattform-Sync</strong>
                   <p id="portalSyncHint">WorkPass Lohn fragt die Plattform selbst nach Mitarbeitern und Abrechnungen. Wenn Daten kommen, wird alles automatisch berechnet und freigegeben.</p>
@@ -557,6 +561,6 @@
     <script src="auth-gate.js?v=8"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="lohn-app.js?v=45"></script>
+    <script src="lohn-app.js?v=46"></script>
   </body>
 </html>
