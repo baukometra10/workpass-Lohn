@@ -15,13 +15,15 @@ import { startMonthCloseScheduler, runAutoMonthCloseOnce, autoMonthCloseConfig }
 import {
   processInboundPayroll,
   processInboundPayrollBatch,
+  processInboundInvoice,
+  processInboundInvoiceBatch,
   askPlatformAndSyncCompany,
   runAutoPipelineOnce,
   startAutoPipelineScheduler,
   autoPipelineStatus,
   autoPipelineConfig,
 } from "./auto-pipeline.mjs";
-import { listCompanyEmployees, monthOverview, listReleasedArchive } from "./portal-service.mjs";
+import { listCompanyEmployees, monthOverview, listReleasedArchive, listInvoiceArchive } from "./portal-service.mjs";
 import { buildDemoPayrollBatch } from "./demo-payroll.mjs";
 import { purgeDemoPayroll } from "./demo-purge.mjs";
 import { importEmployees, listEmployees } from "./employee-registry.mjs";
@@ -36,7 +38,7 @@ import {
   listSeenConfirmations,
   ackOpenRequests,
 } from "./platform-messages.mjs";
-import { ingestInvoice, releaseInvoiceJob } from "./invoice-service.mjs";
+import { releaseInvoiceJob } from "./invoice-service.mjs";
 import { listPayrollJobs, loadPayrollJob, listInvoiceJobs, loadInvoiceJob } from "./store.mjs";
 import { isDemoPayrollJob } from "./demo-detect.mjs";
 import { listPendingDeliveries, listAllDeliveries, ackDelivery } from "./delivery-queue.mjs";
@@ -140,7 +142,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "2.8.0",
+      version: "2.9.0",
       multiTenant: true,
       monthCloseScheduler: monthCloseSched,
       autoMonthClose: autoMonthCloseConfig(),
@@ -259,6 +261,7 @@ async function handler(req, res) {
       || path === "/v1/inbox"
       || path.startsWith("/v1/payroll/")
       || path.startsWith("/v1/invoice/")
+      || path.startsWith("/v1/invoices")
       || path.startsWith("/v1/delivery/")
       || path.startsWith("/v1/messages")
       || path.startsWith("/v1/employees")
@@ -392,7 +395,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "2.8.0",
+          version: "2.9.0",
           ...syncHealth(),
         },
         monthCloseScheduler: monthCloseSched,
@@ -678,13 +681,17 @@ async function handler(req, res) {
           receiveEvents: [
             "employees.list.requested",
             "payroll.month.requested",
+            "invoices.export.requested",
             "employee.data.requested",
             "payslip.released",
+            "invoice.released",
             "platform.ping",
           ],
           thenSendToAccounting: [
             "POST /v1/employees/import",
             "POST /v1/payroll/batch",
+            "POST /v1/invoice/batch",
+            "POST /v1/invoice/ingest",
           ],
           pollFallback: [
             "GET /v1/messages/pending",
@@ -962,6 +969,17 @@ async function handler(req, res) {
       return reply(200, result);
     }
 
+    if (req.method === "GET" && (path === "/v1/portal/invoices" || path === "/v1/invoices")) {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const result = listInvoiceArchive(companyId, {
+        status: url.searchParams.get("status") || undefined,
+        period: url.searchParams.get("period") || undefined,
+        includeAll: url.searchParams.get("all") === "1",
+      });
+      if (!result.ok) return reply(422, result);
+      return reply(200, result);
+    }
+
     // Demo seed / pull without real platform (admin / explicit only – not firm portal default)
     if (req.method === "POST" && (path === "/v1/demo/seed-month" || path === "/v1/demo/payroll-export")) {
       const body = (await readBodyLimited(req)) || {};
@@ -1034,7 +1052,7 @@ async function handler(req, res) {
         kind: "platform.accounting.sync.v1",
         schemaVersion: 2,
         companyId: companyId || null,
-        accountingVersion: "2.8.0",
+        accountingVersion: "2.9.0",
         autoPipeline: autoPipelineStatus(),
         webhook: {
           configured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),
@@ -1050,10 +1068,10 @@ async function handler(req, res) {
         messages: pendingMessages,
         deliveries: pendingDeliveries,
         hints: [
-          "Auto: WorkPass Lohn fragt die Plattform nach Mitarbeitern + Monat (employees.list.requested / payroll.month.requested)",
-          "Plattform sendet → POST /v1/employees/import und/oder POST /v1/payroll/batch → Auto berechnen + freigeben",
+          "Auto: WorkPass fragt nach Mitarbeitern + Monat + Rechnungen (employees.list.requested / payroll.month.requested / invoices.export.requested)",
+          "Plattform sendet → POST /v1/employees/import, /v1/payroll/batch, /v1/invoice/batch → Auto berechnen/übernehmen + freigeben",
           "Manuell: POST /v1/payroll/auto-sync { companyId, period }",
-          "Railway: WORKPASS_AUTO_PIPELINE=1 (Standard) · WORKPASS_PLATFORM_BASE_URL oder PULL_URL",
+          "Archiv: GET /v1/portal/invoices · Railway: WORKPASS_AUTO_PIPELINE=1",
         ],
       });
     }
@@ -1200,9 +1218,38 @@ async function handler(req, res) {
     // --- Invoices ---
     if (req.method === "POST" && path === "/v1/invoice/ingest") {
       const body = await readBodyLimited(req);
-      const result = ingestInvoice(body, { tenantScope });
-      audit({ type: "invoice.ingest", outcome: result.ok ? "ok" : "error", ip, path, companyId: result.job?.company?.id });
-      return reply( result.ok ? 200 : 422, result);
+      const result = await processInboundInvoice(body, {
+        tenantScope,
+        autoRelease: body?.autoRelease !== false,
+      });
+      audit({
+        type: "invoice.ingest",
+        outcome: result.ok || result.released ? "ok" : "error",
+        ip,
+        path,
+        companyId: result.job?.company?.id || body?.company?.id,
+        detail: { auto: true, released: result.released },
+      });
+      return reply(result.ok || result.job ? 200 : 422, result);
+    }
+
+    if (req.method === "POST" && (path === "/v1/invoice/batch" || path === "/v1/invoices/batch")) {
+      const body = await readBodyLimited(req);
+      const result = await processInboundInvoiceBatch(body, {
+        tenantScope,
+        autoRelease: body?.autoRelease !== false,
+        notify: body?.notify !== false,
+      });
+      audit({
+        type: "invoice.batch",
+        outcome: result.count > 0 ? "ok" : "error",
+        ip,
+        path,
+        companyId: result.company?.id,
+        detail: { auto: true, released: result.releasedCount },
+      });
+      const status = result.count > 0 ? 200 : (result.ok ? 200 : 422);
+      return reply(status, result);
     }
 
     if (req.method === "POST" && path.startsWith("/v1/invoice/") && path.endsWith("/release")) {
@@ -1213,8 +1260,9 @@ async function handler(req, res) {
       return reply( status, result);
     }
 
-    if (req.method === "GET" && path.startsWith("/v1/invoice/")) {
+    if (req.method === "GET" && path.startsWith("/v1/invoice/") && path !== "/v1/invoice/batch") {
       const id = decodeURIComponent(path.slice("/v1/invoice/".length));
+      if (!id || id === "batch") return reply(404, { ok: false, error: "Not found", path });
       const job = loadInvoiceJob(id);
       if (!job) return reply( 404, { ok: false, error: "Rechnung nicht gefunden" });
       const scopeCheck = assertSameTenant(tenantScope, job.company?.id || job.draft?.company?.id, "Rechnung");
@@ -1238,7 +1286,7 @@ server.listen(PORT, HOST, () => {
   console.log(`HTTPS: force=${FORCE_HTTPS} (Railway edge TLS for public HTTPS)`);
   if (backupSched.ok) console.log(`Backup scheduler: every ${backupSched.intervalHours}h`);
   else console.log("Backup scheduler: off – set WORKPASS_BACKUP_INTERVAL_HOURS=24");
-  if (autoPipeSched.ok) console.log(`[auto-pipeline] every ${autoPipeSched.intervalMinutes} min · asks platform for employees + payroll`);
+  if (autoPipeSched.ok) console.log(`[auto-pipeline] every ${autoPipeSched.intervalMinutes} min · asks platform for employees + payroll + invoices`);
   else console.log("[auto-pipeline] off – WORKPASS_AUTO_PIPELINE=0");
   if (monthCloseSched.ok) console.log("[month-close] end-of-month scheduler on");
   console.log("Auth: X-WorkPass-Key (timing-safe) · Tenant: X-WorkPass-Company-Id");

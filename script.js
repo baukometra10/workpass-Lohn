@@ -234,7 +234,7 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2026.35";
+const APP_VERSION = "2026.36";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
 let appBootstrapping = true;
@@ -897,17 +897,19 @@ async function updateDashboard() {
 
   const period = hubCurrentPeriod();
   try {
-    const [emps, month, inbox, msgs, sync] = await Promise.all([
+    const [emps, month, inbox, invArch, msgs, sync] = await Promise.all([
       hubApiFetch(`/v1/portal/employees?period=${encodeURIComponent(period)}`),
       hubApiFetch(`/v1/portal/month?period=${encodeURIComponent(period)}&months=6`),
       hubApiFetch("/v1/inbox").catch(() => ({ invoices: [] })),
+      hubApiFetch("/v1/portal/invoices?all=1").catch(() => ({ count: 0 })),
       hubApiFetch("/v1/messages?status=open").catch(() => ({ count: 0, messages: [] })),
       hubApiFetch("/v1/platform/status").catch(() => null),
     ]);
     if (seq !== hubDashboardSeq) return;
 
     const released = Number(month?.current?.released || 0);
-    const invoiceCount = Array.isArray(inbox?.invoices) ? inbox.invoices.length : 0;
+    const invoiceCount = Number(invArch?.count)
+      || (Array.isArray(inbox?.invoices) ? inbox.invoices.length : 0);
     const msgCount = Number(msgs?.count ?? (msgs?.messages || []).length ?? 0);
     const syncLabel = hubFormatSyncLabel(sync);
 

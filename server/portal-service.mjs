@@ -2,7 +2,7 @@
  * Firm-portal helpers: employees + month status overview.
  * Demo/example employees (Mustermann, Beispiel Anna, Demo-Seed) are excluded by default.
  */
-import { listPayrollJobs } from "./db/repository.mjs";
+import { listPayrollJobs, listInvoiceJobs } from "./db/repository.mjs";
 import { normalizeCompanyId, normalizeEmployeeId } from "./tenant.mjs";
 import { currentPeriod } from "./month-close.mjs";
 import { isDemoPayrollJob } from "./demo-detect.mjs";
@@ -133,6 +133,47 @@ export function listReleasedArchive(companyId, opts = {}) {
       gross: j.payslip?.totals?.gross ?? null,
       releasedAt: j.releasedAt,
       updatedAt: j.updatedAt,
+    })),
+  };
+}
+
+/** Released (or filtered) invoices for firm portal / hub. */
+export function listInvoiceArchive(companyId, opts = {}) {
+  const cid = normalizeCompanyId(companyId);
+  if (!cid) return { ok: false, error: "companyId fehlt", items: [] };
+  let jobs = listInvoiceJobs({
+    companyId: cid,
+    status: opts.status || undefined,
+  });
+  if (!opts.includeAll && !opts.status) {
+    jobs = jobs.filter((j) => j.status === "released");
+  }
+  const period = opts.period && /^\d{4}-\d{2}$/.test(opts.period) ? opts.period : "";
+  if (period) {
+    jobs = jobs.filter((j) => {
+      const p = j.period || String(j.draft?.invoiceDate || "").slice(0, 7);
+      return p === period;
+    });
+  }
+  jobs = jobs.sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+  return {
+    ok: true,
+    kind: "portal.invoice.archive.v1",
+    companyId: cid,
+    count: jobs.length,
+    items: jobs.map((j) => ({
+      id: j.id,
+      number: j.draft?.number || j.hubEntry?.number || "",
+      customer: j.draft?.customer || j.hubEntry?.buyer || "",
+      status: j.status,
+      period: j.period || String(j.draft?.invoiceDate || "").slice(0, 7) || null,
+      invoiceDate: j.draft?.invoiceDate || "",
+      net: j.draft?.totals?.net ?? null,
+      tax: j.draft?.totals?.tax ?? null,
+      gross: j.draft?.totals?.gross ?? null,
+      releasedAt: j.releasedAt || null,
+      updatedAt: j.updatedAt || null,
+      errors: j.errors || [],
     })),
   };
 }

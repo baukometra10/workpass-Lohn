@@ -1,0 +1,31 @@
+{
+  "kind": "platform.invoice.batch.v1",
+  "period": "2026-08",
+  "company": {
+    "id": "muster-gmbh",
+    "name": "Muster GmbH",
+    "street": "Musterstraße 1",
+    "zip": "80331",
+    "city": "München",
+    "taxNumber": "143/123/45678",
+    "vatId": "DE123456789"
+  },
+  "invoices": [
+    {
+      "number": "RE-2026-0100",
+      "invoiceDate": "2026-08-05",
+      "serviceDate": "2026-08-01",
+      "dueDate": "2026-08-19",
+      "customer": "Kunde AG\nKundenweg 3\n10115 Berlin",
+      "taxRate": 19,
+      "items": [
+        {
+          "description": "Beratung August",
+          "quantity": 4,
+          "unitPrice": 95,
+          "unit": "Std"
+        }
+      ]
+    }
+  ]
+}

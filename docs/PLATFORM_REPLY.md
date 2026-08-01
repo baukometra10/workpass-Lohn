@@ -9,8 +9,10 @@ Ohne diesen Schritt bleibt der Monatsabschluss bei „Warte auf Plattform“.
 |-------|----------------|
 | `employees.list.requested` | Mitarbeiterliste an Accounting pushen |
 | `payroll.month.requested` | Monats-Lohnbatch an Accounting pushen |
+| `invoices.export.requested` | Offene/exportierte Rechnungen an Accounting pushen |
 | `employee.data.requested` | Fehlende Felder für **eine** Person nachliefern |
 | `payslip.released` | Fertige Abrechnung dem Mitarbeiter zeigen |
+| `invoice.released` | Fertige Rechnung in der App zeigen |
 | `platform.ping` | nur `200 OK` zurückgeben (Connectivity) |
 
 **Aktueller Live-Stand:**  
@@ -64,14 +66,39 @@ Header: `X-WorkPass-Key: <gleicher WORKPASS_API_KEY>`
 }
 ```
 
-Danach macht WorkPass Lohn **automatisch**: berechnen → freigeben → Event `payslip.released` zurück.
+Danach macht WorkPass **automatisch**: berechnen → freigeben → Event `payslip.released` zurück.
+
+### 3) Rechnungen
+
+`POST /v1/invoice/batch` (oder einzeln `POST /v1/invoice/ingest`)
+
+```json
+{
+  "kind": "platform.invoice.batch.v1",
+  "period": "2026-08",
+  "company": { "id": "IHRE-FIRMA-ID", "name": "Firma GmbH" },
+  "invoices": [
+    {
+      "number": "RE-2026-0001",
+      "invoiceDate": "2026-08-01",
+      "customer": "Kunde AG\nStraße 1\n10115 Berlin",
+      "taxRate": 19,
+      "items": [
+        { "description": "Leistung", "quantity": 1, "unitPrice": 100, "unit": "Stk" }
+      ]
+    }
+  ]
+}
+```
+
+Danach macht WorkPass **automatisch**: übernehmen → freigeben → Event `invoice.released` zurück.
 
 ## Fallback ohne Webhook
 
 Wenn der Webhook 404 ist, kann die Plattform pollen:
 
 1. `GET {ACCOUNTING}/v1/messages/pending` (Header `X-WorkPass-Key`)
-2. Offene Typen: `employees.list.requested`, `payroll.month.requested`, `data.gap`
+2. Offene Typen: `employees.list.requested`, `payroll.month.requested`, `invoices.export.requested`, `data.gap`
 3. Daten pushen wie oben
 4. Optional: `POST /v1/messages/:messageId/ack`
 
@@ -114,8 +141,27 @@ app.post("/api/workpass/webhooks/accounting", async (req, res) => {
     });
   }
 
+  if (event === "invoices.export.requested" && company?.id) {
+    const period = meta?.period || message?.period;
+    const invoices = await loadCompanyInvoices(company.id, period); // eure DB
+    await fetch(`${accounting}/v1/invoice/batch`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        kind: "platform.invoice.batch.v1",
+        period,
+        company: { id: company.id },
+        invoices,
+      }),
+    });
+  }
+
   if (event === "payslip.released" && delivery) {
     await savePayslipForEmployee(delivery); // Mitarbeiter-App
+  }
+
+  if (event === "invoice.released" && delivery) {
+    await saveInvoiceForCompany(delivery); // Firmen-/Beleg-App
   }
 
   return res.status(200).json({ ok: true, accepted: true });

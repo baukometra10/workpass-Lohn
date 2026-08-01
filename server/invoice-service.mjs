@@ -90,12 +90,14 @@ export function ingestInvoice(payload, options = {}) {
   const id = invoiceDocumentId(company.id, draft.number);
   const now = new Date().toISOString();
   const prev = loadInvoiceJob(id);
+  const period = String(payload.period || draft.invoiceDate || "").trim().slice(0, 7);
   const job = {
     id,
     kind: "platform.invoice.job.v1",
     status: errors.length ? "error" : "received",
     createdAt: prev?.createdAt || now,
     updatedAt: now,
+    period: /^\d{4}-\d{2}$/.test(period) ? period : (prev?.period || ""),
     company: {
       id: company.id,
       name: company.name || draft.company.name,
@@ -136,6 +138,57 @@ export function ingestInvoice(payload, options = {}) {
 
   saveInvoiceJob(job);
   return { ok: errors.length === 0, errors, job };
+}
+
+/**
+ * Platform batch: { kind, company, period?, invoices: [...] }
+ */
+export function ingestInvoiceBatch(batch, options = {}) {
+  if (!batch || typeof batch !== "object") {
+    return { ok: false, errors: ["Invoice-Batch fehlt"], count: 0, results: [], company: null };
+  }
+  const companyCheck = requireCompanyId(batch);
+  if (!companyCheck.ok) {
+    return { ok: false, errors: [companyCheck.error], count: 0, results: [], company: null };
+  }
+  const scopeCheck = assertSameTenant(options.tenantScope, companyCheck.company.id, "Invoice-Batch");
+  if (!scopeCheck.ok) {
+    return { ok: false, errors: [scopeCheck.error], count: 0, results: [], company: null };
+  }
+
+  ensureCompanyFromPayload(batch);
+  const company = extractCompany(batch);
+  const period = String(batch.period || "").trim();
+  const rows = Array.isArray(batch.invoices)
+    ? batch.invoices
+    : (Array.isArray(batch.items) ? batch.items : []);
+  const results = [];
+  for (const row of rows) {
+    const payload = {
+      ...(row && typeof row === "object" ? row : {}),
+      kind: row?.kind || "platform.invoice.v1",
+      company: row?.company || company,
+      period: row?.period || period || undefined,
+    };
+    const r = ingestInvoice(payload, { tenantScope: options.tenantScope || company.id });
+    results.push({
+      ok: r.ok,
+      id: r.job?.id || null,
+      number: r.job?.draft?.number || payload.number || null,
+      errors: r.errors || [],
+      status: r.job?.status || null,
+    });
+  }
+  const okCount = results.filter((r) => r.ok).length;
+  return {
+    ok: okCount > 0 && okCount === results.length,
+    count: results.length,
+    okCount,
+    errors: results.flatMap((r) => r.errors || []),
+    results,
+    company: { id: company.id, name: company.name || "" },
+    period: period || null,
+  };
 }
 
 export async function releaseInvoiceJob(id, options = {}) {

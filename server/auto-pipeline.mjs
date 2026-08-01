@@ -1,14 +1,14 @@
 /**
- * WorkPass Lohn auto-pipeline:
- * 1) Ask platform for employees + month payroll
- * 2) When platform pushes data → calculate + release automatically
+ * WorkPass Steuerprogramm auto-pipeline:
+ * 1) Ask platform for employees + month payroll + invoices
+ * 2) When platform pushes data → calculate/ingest + release automatically
  *
  * Env:
  *   WORKPASS_AUTO_PIPELINE=1          (default ON; set 0 to disable)
  *   WORKPASS_AUTO_PIPELINE_MINUTES=15 (poll / ask interval)
  *   WORKPASS_AUTO_RELEASE=1           (default ON: release on inbound batch)
  */
-import { listCompanies, listPayrollJobs } from "./db/repository.mjs";
+import { listCompanies, listPayrollJobs, listInvoiceJobs } from "./db/repository.mjs";
 import { notifyPlatform, getLastWebhookStatus, probePlatformWebhook } from "./notify.mjs";
 import { listEmployees } from "./employee-registry.mjs";
 import {
@@ -18,6 +18,7 @@ import {
   requestEmployeeDataFromPlatform,
 } from "./month-close.mjs";
 import { ingestPayroll, ingestPayrollBatch, releasePayrollJob } from "./payroll-service.mjs";
+import { ingestInvoice, ingestInvoiceBatch, releaseInvoiceJob } from "./invoice-service.mjs";
 import { upsertPlatformMessage, ackOpenRequests } from "./platform-messages.mjs";
 import { isDemoPayrollJob } from "./demo-detect.mjs";
 import { normalizeCompanyId } from "./tenant.mjs";
@@ -26,7 +27,7 @@ let timer = null;
 let lastTickAt = null;
 let lastResult = null;
 let lastSuccessAt = null;
-const companySyncState = new Map(); // companyId -> { period, askedAt, successAt, released }
+const companySyncState = new Map(); // companyId -> { period, askedAt, invoiceAskedAt, successAt, released }
 
 export function autoPipelineConfig() {
   const disabled = process.env.WORKPASS_AUTO_PIPELINE === "0"
@@ -66,6 +67,268 @@ function monthProgress(companyId, period) {
     employees,
     complete: jobs.length > 0 && released === jobs.length && error === 0,
     hasWork: jobs.length > 0,
+  };
+}
+
+function invoiceProgress(companyId) {
+  const jobs = listInvoiceJobs({ companyId });
+  const released = jobs.filter((j) => j.status === "released").length;
+  const received = jobs.filter((j) => j.status === "received").length;
+  const error = jobs.filter((j) => j.status === "error").length;
+  return {
+    jobs: jobs.length,
+    released,
+    received,
+    error,
+    hasWork: jobs.length > 0,
+    pendingRelease: received,
+  };
+}
+
+/**
+ * After platform pushes a single invoice: ingest + auto-release if ready.
+ */
+export async function processInboundInvoice(payload, options = {}) {
+  const cfg = autoPipelineConfig();
+  const autoRelease = options.autoRelease !== undefined
+    ? options.autoRelease
+    : cfg.autoRelease;
+
+  const ingest = ingestInvoice(payload, {
+    tenantScope: options.tenantScope,
+  });
+
+  let release = null;
+  if (autoRelease && ingest.ok && ingest.job?.id) {
+    release = await releaseInvoiceJob(ingest.job.id, {
+      tenantScope: options.tenantScope || ingest.job.company?.id,
+    });
+  }
+
+  const companyId = ingest.job?.company?.id || normalizeCompanyId(payload?.company?.id || "");
+  const period = ingest.job?.period || payload?.period || "";
+  if (companyId && (ingest.ok || release?.ok)) {
+    ackOpenRequests({
+      companyId,
+      period: period || undefined,
+      types: ["invoices.export.requested"],
+      meta: { reason: "invoice_ingest", readBy: "accounting-auto" },
+    });
+    if (release?.ok) {
+      lastSuccessAt = new Date().toISOString();
+      const prev = companySyncState.get(companyId) || {};
+      companySyncState.set(companyId, {
+        ...prev,
+        period: period || prev.period,
+        successAt: lastSuccessAt,
+        invoiceReleased: (prev.invoiceReleased || 0) + 1,
+      });
+    }
+  }
+
+  return {
+    ...ingest,
+    auto: true,
+    autoRelease,
+    released: Boolean(release?.ok),
+    delivery: release?.delivery || null,
+    platformNotify: release?.platformNotify || null,
+    message: release?.ok
+      ? "Auto: Rechnung übernommen und an die Plattform freigegeben."
+      : (ingest.ok
+        ? "Auto: Rechnung übernommen – Freigabe wartete oder war deaktiviert."
+        : (ingest.errors?.join?.(" · ") || "Invoice-Ingest fehlgeschlagen")),
+  };
+}
+
+/**
+ * After platform pushes an invoice batch: ingest + auto-release.
+ */
+export async function processInboundInvoiceBatch(batch, options = {}) {
+  const cfg = autoPipelineConfig();
+  const autoRelease = options.autoRelease !== undefined
+    ? options.autoRelease
+    : cfg.autoRelease;
+
+  const ingest = ingestInvoiceBatch(batch, {
+    tenantScope: options.tenantScope,
+  });
+
+  const released = [];
+  const releaseErrors = [];
+  if (autoRelease && ingest.count > 0) {
+    for (const row of ingest.results || []) {
+      if (!row.ok || !row.id) continue;
+      try {
+        const r = await releaseInvoiceJob(row.id, {
+          tenantScope: options.tenantScope || ingest.company?.id,
+        });
+        if (r.ok) {
+          released.push({
+            id: row.id,
+            number: row.number,
+            deliveryId: r.delivery?.deliveryId,
+            gross: r.job?.draft?.totals?.gross,
+          });
+        } else {
+          releaseErrors.push({ id: row.id, error: r.error });
+        }
+      } catch (e) {
+        releaseErrors.push({ id: row.id, error: e.message });
+      }
+    }
+  }
+
+  const companyId = ingest.company?.id || normalizeCompanyId(batch?.company?.id || "");
+  const period = ingest.period || batch?.period || "";
+  if (companyId && ingest.count > 0) {
+    ackOpenRequests({
+      companyId,
+      period: period || undefined,
+      types: ["invoices.export.requested"],
+      meta: { reason: "invoice_batch", readBy: "accounting-auto" },
+    });
+  }
+  if (companyId && options.notify !== false) {
+    await notifyPlatform({
+      event: released.length ? "invoices.auto.processed" : "invoice.batch.received",
+      company: ingest.company || { id: companyId },
+      meta: {
+        period,
+        ingested: ingest.count,
+        released: released.length,
+        gaps: (ingest.results || []).filter((r) => !r.ok).length,
+        auto: true,
+      },
+      idempotencyKey: `auto-inv-batch:${companyId}:${period || "x"}:${Date.now()}`,
+    });
+  }
+  if (released.length) {
+    lastSuccessAt = new Date().toISOString();
+    const prev = companySyncState.get(companyId) || {};
+    companySyncState.set(companyId, {
+      ...prev,
+      period: period || prev.period,
+      successAt: lastSuccessAt,
+      invoiceReleased: released.length,
+    });
+  }
+
+  return {
+    ...ingest,
+    auto: true,
+    autoRelease,
+    released,
+    releaseErrors,
+    releasedCount: released.length,
+    message: ingest.count
+      ? `Auto: ${ingest.count} Rechnung(en) übernommen, ${released.length} freigegeben`
+        + (releaseErrors.length ? `, ${releaseErrors.length} Fehler` : "")
+        + "."
+      : (ingest.errors?.join?.(" · ") || "Keine Rechnungen im Batch"),
+  };
+}
+
+async function releasePendingInvoices(companyId, options = {}) {
+  const cfg = autoPipelineConfig();
+  const autoRelease = options.autoRelease !== undefined ? options.autoRelease : cfg.autoRelease;
+  if (!autoRelease) return { releasedCount: 0, items: [] };
+  const pending = listInvoiceJobs({ companyId, status: "received" });
+  const items = [];
+  for (const job of pending) {
+    try {
+      const r = await releaseInvoiceJob(job.id, { tenantScope: companyId });
+      if (r.ok) items.push({ id: job.id, number: job.draft?.number });
+    } catch { /* continue */ }
+  }
+  return { releasedCount: items.length, items };
+}
+
+async function askPlatformForInvoices(options = {}) {
+  const companyId = normalizeCompanyId(options.companyId || options.company?.id || "");
+  if (!companyId) return { ok: false, skipped: true, error: "companyId fehlt" };
+  const period = String(options.period || currentPeriod()).trim();
+  const company = {
+    id: companyId,
+    name: options.companyName || options.company?.name || "",
+  };
+  const cfg = autoPipelineConfig();
+  const forceAsk = options.forceAsk === true;
+  const prev = companySyncState.get(companyId);
+  const reaskMs = cfg.reaskMinutes * 60_000;
+  const recentlyAsked = prev?.invoiceAskedAt
+    && (Date.now() - new Date(prev.invoiceAskedAt).getTime()) < reaskMs;
+  const shouldAsk = options.notify !== false && (forceAsk || !recentlyAsked);
+
+  const release = await releasePendingInvoices(companyId, options);
+  let invoiceNotify = { skipped: true };
+  let invoiceMessage = null;
+
+  if (shouldAsk) {
+    companySyncState.set(companyId, {
+      ...(prev || {}),
+      period,
+      invoiceAskedAt: new Date().toISOString(),
+    });
+    try {
+      const invMsg = await upsertPlatformMessage({
+        type: "invoices.export.requested",
+        severity: "action_needed",
+        company,
+        period,
+        code: "invoices_export_requested",
+        dedupeKey: `invoices.export.requested::${companyId}::${period}`,
+        title: `Rechnungen anfordern · ${period}`,
+        body:
+          `WorkPass Steuerprogramm braucht offene/exportierte Rechnungen für ${period}.\n\n`
+          + `Bitte senden: POST ${process.env.WORKPASS_PUBLIC_URL || "https://workpass-lohn.up.railway.app"}/v1/invoice/batch\n`
+          + `Body: { "kind": "platform.invoice.batch.v1", "company": { "id": "${companyId}" }, "period": "${period}", "invoices": [...] }\n`
+          + `Einzelrechnung: POST /v1/invoice/ingest`,
+        gaps: [{
+          code: "invoices_export_requested",
+          field: "invoices",
+          label: "Rechnungen fehlen / Export ausstehend",
+          severity: "action_needed",
+        }],
+        source: "auto-pipeline",
+      }, { notify: false, forceNotify: false });
+      invoiceMessage = invMsg.message;
+    } catch { /* ignore */ }
+
+    invoiceNotify = await notifyPlatform({
+      event: "invoices.export.requested",
+      company,
+      message: invoiceMessage,
+      meta: {
+        period,
+        reason: options.reason || "auto_pipeline",
+        hint: "Bitte Rechnungen per POST /v1/invoice/batch oder /v1/invoice/ingest senden",
+        replyPath: "/v1/invoice/batch",
+      },
+      idempotencyKey: `inv-export:${companyId}:${period}:${Math.floor(Date.now() / 600000)}`,
+    });
+  }
+
+  const progress = invoiceProgress(companyId);
+  if (release.releasedCount > 0) {
+    lastSuccessAt = new Date().toISOString();
+    ackOpenRequests({
+      companyId,
+      period,
+      types: ["invoices.export.requested"],
+      meta: { reason: "invoice_pending_release", readBy: "accounting-auto" },
+    });
+  }
+
+  return {
+    ok: true,
+    skippedAsk: !shouldAsk,
+    companyId,
+    period,
+    invoiceNotify,
+    invoiceMessageId: invoiceMessage?.messageId || null,
+    pendingReleased: release.releasedCount,
+    invoices: progress,
   };
 }
 
@@ -229,7 +492,7 @@ export async function askPlatformAndSyncCompany(options = {}) {
   const progress = monthProgress(companyId, period);
   const forceAsk = options.forceAsk === true;
 
-  // Smart skip: month already fully released → don't spam platform
+  // Smart skip: month already fully released → don't spam payroll asks (invoices still sync)
   if (!forceAsk && progress.complete) {
     ackOpenRequests({
       companyId,
@@ -238,7 +501,23 @@ export async function askPlatformAndSyncCompany(options = {}) {
       meta: { reason: "month_complete", readBy: "accounting-auto" },
     });
     lastSuccessAt = new Date().toISOString();
-    companySyncState.set(companyId, { period, successAt: lastSuccessAt, released: progress.released });
+    companySyncState.set(companyId, {
+      ...(companySyncState.get(companyId) || {}),
+      period,
+      successAt: lastSuccessAt,
+      released: progress.released,
+    });
+    const invoices = options.skipInvoices
+      ? null
+      : await askPlatformForInvoices({
+        companyId,
+        companyName: company.name,
+        period,
+        autoRelease: options.autoRelease,
+        notify: options.notify,
+        forceAsk: options.forceAsk,
+        reason: options.reason || "auto_pipeline",
+      });
     return {
       ok: true,
       skipped: true,
@@ -247,10 +526,16 @@ export async function askPlatformAndSyncCompany(options = {}) {
       companyId,
       period,
       jobs: progress,
+      invoices: invoices?.invoices || invoiceProgress(companyId),
+      invoiceSync: invoices,
       webhook: getLastWebhookStatus(),
       webhookOk: getLastWebhookStatus()?.ok === true,
       webhookBroken: false,
-      message: `Monat ${period} ist fertig: ${progress.released} Abrechnung(en) freigegeben – keine erneute Anfrage nötig.`,
+      message: `Monat ${period} ist fertig: ${progress.released} Abrechnung(en) freigegeben`
+        + (invoices?.pendingReleased
+          ? ` · ${invoices.pendingReleased} Rechnung(en) nachfreigegeben`
+          : " – Lohn-Anfrage übersprungen, Rechnungen weiter synchronisiert")
+        + ".",
       nextActions: [],
     };
   }
@@ -421,6 +706,7 @@ export async function askPlatformAndSyncCompany(options = {}) {
   if (after.complete || (close?.newlyReleased?.length > 0)) {
     lastSuccessAt = new Date().toISOString();
     companySyncState.set(companyId, {
+      ...(companySyncState.get(companyId) || {}),
       period,
       askedAt: companySyncState.get(companyId)?.askedAt,
       successAt: lastSuccessAt,
@@ -434,11 +720,23 @@ export async function askPlatformAndSyncCompany(options = {}) {
     });
   }
 
+  const invoices = options.skipInvoices
+    ? null
+    : await askPlatformForInvoices({
+      companyId,
+      companyName: company.name,
+      period,
+      autoRelease: options.autoRelease,
+      notify: options.notify,
+      forceAsk: options.forceAsk || shouldAsk,
+      reason: options.reason || "auto_pipeline",
+    });
+
   const jobs = listPayrollJobs({ companyId, period }).filter((j) => !isDemoPayrollJob(j));
   const webhookOk = webhookProbe?.ok === true;
   const webhookBroken = webhookProbe?.ok === false && Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL);
   return {
-    ok: Boolean(close?.ok || after.hasWork),
+    ok: Boolean(close?.ok || after.hasWork || invoices?.pendingReleased || invoices?.invoices?.hasWork),
     skippedAsk: !shouldAsk,
     waitingForPlatform: Boolean(close?.waitingForPlatform) && !after.hasWork,
     companyId,
@@ -447,6 +745,8 @@ export async function askPlatformAndSyncCompany(options = {}) {
     monthNotify,
     employeesMessageId: employeesMessage?.messageId || null,
     monthMessageId: monthMessage?.messageId || null,
+    invoiceSync: invoices,
+    invoices: invoices?.invoices || invoiceProgress(companyId),
     webhook: webhookProbe,
     webhookOk,
     webhookBroken,
@@ -474,18 +774,18 @@ export async function askPlatformAndSyncCompany(options = {}) {
             + `Anfragen liegen unter GET /v1/messages/pending – Plattform muss Endpoint reparieren und Daten pushen.`
           : (!shouldAsk
             ? `Zuletzt gefragt – warte auf Plattform-Antwort (erneut in ~${cfg.reaskMinutes} Min. oder „Jetzt synchronisieren“).`
-            : (close?.message || "Plattform nach Mitarbeitern und Monatsdaten gefragt.")))),
+            : (close?.message || "Plattform nach Mitarbeitern, Monatsdaten und Rechnungen gefragt.")))),
     nextActions: webhookBroken
       ? [
           "Auf der Plattform den Webhook-Endpoint live schalten (aktuell oft HTTP 404)",
           "Erwartete URL: WORKPASS_PLATFORM_WEBHOOK_URL",
           "Fallback: Plattform pollt GET /v1/messages/pending und sendet dann Import/Batch",
-          "Danach: POST /v1/employees/import + POST /v1/payroll/batch an WorkPass Lohn",
+          "Danach: POST /v1/employees/import + POST /v1/payroll/batch + POST /v1/invoice/batch",
         ]
       : (close?.waitingForPlatform && !after.hasWork
         ? [
-            "Plattform muss auf employees.list.requested / payroll.month.requested reagieren",
-            "Daten senden: POST /v1/employees/import und POST /v1/payroll/batch",
+            "Plattform muss auf employees.list.requested / payroll.month.requested / invoices.export.requested reagieren",
+            "Daten senden: POST /v1/employees/import, POST /v1/payroll/batch, POST /v1/invoice/batch",
           ]
         : []),
   };

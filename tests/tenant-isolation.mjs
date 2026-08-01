@@ -54,7 +54,7 @@ assert(loadCompany("lufthansa")?.name.includes("Lufthansa"), "Load by id");
 assert(listCompanies().some((c) => c.id === "lufthansa") && listCompanies().some((c) => c.id === "acme-corp"), "Both in registry");
 
 console.log("\n=== Tenant: company.id Pflicht ===");
-const noId = ingestPayroll({
+const noId = await ingestPayroll({
   kind: "platform.payroll.v1",
   company: { name: "Ohne ID GmbH" },
   employee: { id: "1", name: "X" },
@@ -64,8 +64,8 @@ const noId = ingestPayroll({
 assert(!noId.ok && noId.errors.some((e) => /company\.id/i.test(e)), "Reject ohne company.id");
 
 console.log("\n=== Tenant: gleiche PersNr, verschiedene Firmen ===");
-const maxLh = ingestPayroll(employeePayload("lufthansa", "Lufthansa", "1001", "Max Mustermann", 4500));
-const maxAcme = ingestPayroll(employeePayload("acme-corp", "ACME Corp", "1001", "Max Mustermann", 2800));
+const maxLh = await ingestPayroll(employeePayload("lufthansa", "Lufthansa", "1001", "Max Mustermann", 4500));
+const maxAcme = await ingestPayroll(employeePayload("acme-corp", "ACME Corp", "1001", "Max Mustermann", 2800));
 assert(maxLh.ok && maxAcme.ok, "Beide Ingests ok");
 assert(maxLh.job.jobId !== maxAcme.job.jobId, `Getrennte jobIds (${maxLh.job.jobId} ≠ ${maxAcme.job.jobId})`);
 assert(maxLh.job.jobId === payrollJobId("lufthansa", "1001", "2025-07"), "LH jobId kanonisch");
@@ -82,12 +82,12 @@ assert(acmeJobs.some((j) => j.employee.id === "1001"), "Max in ACME (andere Firm
 assert(!lhJobs.some((j) => j.company.id === "acme-corp"), "Kein ACME-Leak in LH");
 
 console.log("\n=== Tenant: Scope-Header Simulation ===");
-const cross = ingestPayroll(employeePayload("lufthansa", "Lufthansa", "1002", "Ali Pilot"), {
+const cross = await ingestPayroll(employeePayload("lufthansa", "Lufthansa", "1002", "Ali Pilot"), {
   tenantScope: "acme-corp",
 });
 assert(!cross.ok && /Tenant-Isolation|Scope/i.test(cross.errors.join(" ")), "Cross-tenant ingest blockiert");
 
-const okScoped = ingestPayroll(employeePayload("lufthansa", "Lufthansa", "1003", "Josef Crew"), {
+const okScoped = await ingestPayroll(employeePayload("lufthansa", "Lufthansa", "1003", "Josef Crew"), {
   tenantScope: "lufthansa",
 });
 assert(okScoped.ok, "Ingest mit passendem Scope ok");

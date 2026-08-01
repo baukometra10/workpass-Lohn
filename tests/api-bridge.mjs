@@ -26,7 +26,7 @@ function assert(cond, msg) {
 
 console.log("\n=== API Bridge: Payroll ingest ===");
 const payroll = JSON.parse(readFileSync(path.join(root, "examples/platform-payroll.v1.json"), "utf8"));
-const one = ingestPayroll(payroll);
+const one = await ingestPayroll(payroll);
 assert(one.ok, "Einzel-Ingest ok");
 assert(one.payslip?.kind === "platform.payslip.v1", "payslip.v1 Kind");
 assert(one.payslip?.totals?.gross > 0, `Brutto ${one.payslip?.totals?.gross}`);
@@ -36,7 +36,7 @@ assert(Boolean(one.job?.jobId), `jobId ${one.job?.jobId}`);
 
 console.log("\n=== API Bridge: Batch ===");
 const batch = JSON.parse(readFileSync(path.join(root, "examples/platform-payroll.batch.v1.json"), "utf8"));
-const batchRes = ingestPayrollBatch(batch);
+const batchRes = await ingestPayrollBatch(batch);
 assert(batchRes.ok, "Batch ok");
 assert(batchRes.count === 2, `2 Mitarbeiter (${batchRes.count})`);
 assert(batchRes.results.every((r) => r.payslip?.totals?.net > 0), "Beide Netto > 0");
@@ -72,7 +72,7 @@ assert(invRel.delivery?.company?.id === "muster-gmbh", "Invoice delivery company
 assert(invRel.platformNotify?.ok, "Invoice notify ok");
 
 console.log("\n=== API Bridge: company.id Pflicht ===");
-const noCompany = ingestPayroll({
+const noCompany = await ingestPayroll({
   kind: "platform.payroll.v1",
   company: { name: "Nur Name" },
   employee: { id: "x", name: "X" },
@@ -86,7 +86,7 @@ const inbox = listPayrollJobs({ status: "released" });
 assert(inbox.some((j) => j.jobId === one.job.jobId), "Released Job in Store");
 
 console.log("\n=== API Bridge: Validierung ===");
-const bad = ingestPayroll({ kind: "platform.payroll.v1", company: {}, employee: {} });
+const bad = await ingestPayroll({ kind: "platform.payroll.v1", company: {}, employee: {} });
 assert(!bad.ok && bad.errors?.length, "Ungültige Nutzlast abgelehnt");
 
 console.log(`\n=== API Ergebnis: ${passed} bestanden, ${failed} fehlgeschlagen ===\n`);

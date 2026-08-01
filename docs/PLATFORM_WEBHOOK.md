@@ -59,7 +59,9 @@ Sync overview for the platform: `GET {ACCOUNTING}/v1/platform/status`
 | `employee.data.requested` | — | Firm asked for missing fields of **one** employee; platform should fill gaps and resend (incomplete OK) |
 | `employees.list.requested` | — | Accounting asks platform to send employees (POST /v1/employees/import) |
 | `payroll.month.requested` | — | Accounting asks platform to push/export the month now |
+| `invoices.export.requested` | — | Accounting asks platform to push invoices (POST /v1/invoice/batch or /v1/invoice/ingest) |
 | `payroll.batch.received` / `month.auto.processed` | — | Inbound batch processed; payslips auto-released when complete |
+| `invoice.batch.received` / `invoices.auto.processed` | — | Inbound invoices processed; invoices auto-released when valid |
 | `payroll.waiting` | `examples/webhook-payroll.waiting.json` | Month still empty – prompt firm/platform to send batch |
 | `month.closed` | `examples/webhook-month.closed.json` | Mark month done / notify HR |
 | `month.close.partial` | — | Month closed with some employees incomplete; platform was asked for gaps |

@@ -4,10 +4,12 @@
 import { activateCompany, deleteCompany } from "../server/company-service.mjs";
 import {
   processInboundPayrollBatch,
+  processInboundInvoiceBatch,
   askPlatformAndSyncCompany,
   autoPipelineConfig,
 } from "../server/auto-pipeline.mjs";
-import { listPayrollJobs } from "../server/db/repository.mjs";
+import { listPayrollJobs, listInvoiceJobs } from "../server/db/repository.mjs";
+import { listInvoiceArchive } from "../server/portal-service.mjs";
 
 let passed = 0;
 let failed = 0;
@@ -86,6 +88,26 @@ const sync = await askPlatformAndSyncCompany({
 });
 assert(Boolean(sync.message), "sync message");
 assert(sync.companyId === idle, "company id");
+
+console.log("\n=== inbound invoice batch auto release ===");
+const invBatch = await processInboundInvoiceBatch({
+  kind: "platform.invoice.batch.v1",
+  period: "2026-08",
+  company: { id, name: "Auto Pipeline GmbH", taxNumber: "12/345/67890" },
+  invoices: [{
+    number: `RE-AP-${Date.now().toString(36)}`,
+    invoiceDate: "2026-08-10",
+    customer: "Kunde Test\nWeg 1\n10115 Berlin",
+    taxRate: 19,
+    items: [{ description: "Leistung", quantity: 1, unitPrice: 119, unit: "Stk" }],
+  }],
+}, { tenantScope: id, notify: false });
+
+assert(invBatch.count === 1, "invoice ingested 1");
+assert(invBatch.releasedCount === 1, `invoice released 1 (got ${invBatch.releasedCount})`);
+assert(listInvoiceJobs({ companyId: id }).some((j) => j.status === "released"), "invoice job released");
+const arch = listInvoiceArchive(id, { includeAll: true });
+assert(arch.ok && arch.count >= 1, "invoice archive lists jobs");
 
 deleteCompany({ id });
 deleteCompany({ id: idle });
