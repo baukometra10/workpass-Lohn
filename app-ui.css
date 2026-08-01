@@ -1440,9 +1440,59 @@ body.dashboard-tab .preview-panel {
 
 .dash-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 16px;
+}
+
+.dash-kpi-grid.dash-kpi-local {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.dash-local-meta {
+  margin: 6px 0 0;
+}
+
+.dash-sync-status {
+  margin-top: 8px;
+}
+
+.dash-sync-status.is-error {
+  border-color: #c53d2f;
+}
+
+.dash-sync-status.is-ok {
+  border-color: #2f8f4e;
+}
+
+.dash-secondary-actions {
+  margin: 10px 0 0;
+}
+
+.linkish-btn {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--lex-blue, #1a6fb5);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  font-size: inherit;
+}
+
+@media (max-width: 1100px) {
+  .dash-kpi-grid,
+  .dash-kpi-grid.dash-kpi-local {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .dash-kpi-grid,
+  .dash-kpi-grid.dash-kpi-local {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .dash-kpi {

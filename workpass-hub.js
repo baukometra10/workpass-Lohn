@@ -157,6 +157,11 @@ body { margin: 0; font-family: "Barlow", "Segoe UI", sans-serif; color: #121518;
           }
         }
         renderInvoiceArchive();
+        if (typeof window.updateDashboard === "function") {
+          window.updateDashboard();
+        } else {
+          window.addEventListener("load", () => window.updateDashboard?.(), { once: true });
+        }
       },
     });
   }

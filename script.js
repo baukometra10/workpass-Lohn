@@ -1,4 +1,4 @@
-/* WorkPass Lohn – Rechnung & Hub (Suppix AI) */
+/* WorkPass Steuerprogramm – Rechnung & Hub (Suppix AI) */
 
 const itemsBody = document.getElementById("itemsBody");
 const previewItemsBody = document.getElementById("previewItemsBody");
@@ -234,7 +234,7 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2026.34";
+const APP_VERSION = "2026.35";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
 let appBootstrapping = true;
@@ -603,6 +603,114 @@ function initLexShell() {
   updateLexShellUI();
 }
 
+const HUB_API_CFG_KEY = "workpass.lohn.apiConfig.v1";
+let hubDashboardSeq = 0;
+
+function hubIsLocalHostPage() {
+  const h = String(location.hostname || "");
+  return h === "localhost" || h === "127.0.0.1" || h === "" || location.protocol === "file:";
+}
+
+function hubDefaultApiBase() {
+  if (hubIsLocalHostPage()) return "http://127.0.0.1:8787";
+  return String(location.origin || "").replace(/\/+$/, "");
+}
+
+function hubResolveApiBase() {
+  let raw = "";
+  try {
+    const saved = JSON.parse(localStorage.getItem(HUB_API_CFG_KEY) || "null");
+    raw = saved?.base ? String(saved.base).trim().replace(/\/+$/, "") : "";
+  } catch {
+    raw = "";
+  }
+  if (!raw) raw = hubDefaultApiBase();
+  if (!hubIsLocalHostPage()) {
+    try {
+      const u = new URL(raw, location.href);
+      if (u.hostname === "localhost" || u.hostname === "127.0.0.1") {
+        return "";
+      }
+      if (u.origin === location.origin) return "";
+    } catch {
+      /* keep raw */
+    }
+  }
+  return raw.replace(/\/+$/, "");
+}
+
+function hubApiConfig() {
+  let key = hubIsLocalHostPage() ? "workpass-dev-key" : "";
+  let companyId = "";
+  try {
+    const saved = JSON.parse(localStorage.getItem(HUB_API_CFG_KEY) || "null");
+    if (saved?.key) key = String(saved.key).trim();
+    if (saved?.companyId) companyId = String(saved.companyId).trim();
+  } catch {
+    /* ignore */
+  }
+  const sessionUser = window.WorkPassAuth?.getSessionUser?.();
+  if (sessionUser?.companyId) companyId = String(sessionUser.companyId).trim();
+  return { base: hubResolveApiBase(), key, companyId };
+}
+
+function hubCurrentPeriod() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+async function hubApiFetch(path, options = {}) {
+  const { base, key, companyId } = hubApiConfig();
+  const sessionToken = window.WorkPassAuth?.getSessionToken?.() || "";
+  if (!key && !sessionToken) {
+    throw new Error("API-Key oder Plattform-Login erforderlich.");
+  }
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+  if (key) headers["X-WorkPass-Key"] = key;
+  if (sessionToken) headers["X-WorkPass-Session"] = sessionToken;
+  if (!options.skipTenant && companyId) headers["X-WorkPass-Company-Id"] = companyId;
+  const { skipTenant: _skip, headers: _h, ...fetchOpts } = options;
+  const res = await fetch(`${base}${path}`, { ...fetchOpts, headers });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || data.message || `HTTP ${res.status}`);
+  }
+  return data;
+}
+
+function hubSetText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+function hubFormatSyncLabel(sync) {
+  if (!sync) return "Offline";
+  const pending = Number(sync?.pending?.messages || 0) + Number(sync?.pending?.deliveries || 0);
+  const wh = sync?.webhook?.last || {};
+  if (wh.ok === false && sync?.webhook?.configured) return "Fehler";
+  if (pending > 0) return "Wartet";
+  if (sync?.webhook?.configured) return "OK";
+  return "—";
+}
+
+function hubShowSyncStatus(text, { error = false } = {}) {
+  const el = document.getElementById("dashSyncStatus");
+  if (!el) return;
+  if (!text) {
+    el.hidden = true;
+    el.textContent = "";
+    el.classList.remove("is-error", "is-ok");
+    return;
+  }
+  el.hidden = false;
+  el.textContent = text;
+  el.classList.toggle("is-error", error);
+  el.classList.toggle("is-ok", !error);
+}
+
 function initDashboardActions() {
   document.querySelectorAll("[data-dash-go]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -627,11 +735,55 @@ function initDashboardActions() {
     dashBody.addEventListener("click", (event) => {
       const loadBtn = event.target.closest("[data-dash-load]");
       if (!loadBtn) return;
-      // Mitarbeiter → Lohnarbeitsplatz
       window.location.href = "lohn.html";
     });
   }
 
+  const syncBtn = document.getElementById("dashSyncCheckBtn");
+  if (syncBtn) {
+    syncBtn.addEventListener("click", () => {
+      runHubSyncCheck();
+    });
+  }
+}
+
+async function runHubSyncCheck() {
+  const firm = Boolean(window.WorkPassAuth?.isCompanyPortalUser?.());
+  const session = Boolean(window.WorkPassAuth?.getSessionToken?.());
+  if (!firm && !session) {
+    hubShowSyncStatus("Sync prüfen braucht Firmen-Login (Plattform-Konto).", { error: true });
+    return;
+  }
+  hubShowSyncStatus("Sync wird geprüft …");
+  try {
+    let sync = await hubApiFetch("/v1/platform/status");
+    if (firm) {
+      try {
+        await hubApiFetch("/v1/payroll/auto-sync", {
+          method: "POST",
+          body: JSON.stringify({ period: hubCurrentPeriod() }),
+        });
+        sync = await hubApiFetch("/v1/platform/status");
+      } catch {
+        /* status alone is enough for the KPI */
+      }
+    }
+    const pending = Number(sync?.pending?.messages || 0) + Number(sync?.pending?.deliveries || 0);
+    const wh = sync?.webhook?.last || {};
+    const auto = sync?.autoPipeline || {};
+    const parts = [
+      `Webhook: ${sync?.webhook?.configured ? (wh.ok === false ? `Fehler ${wh.status || ""}` : "OK") : "nicht gesetzt"}`,
+      `Pending: ${pending}`,
+      auto.lastSuccessAt ? `Letzter Erfolg: ${auto.lastSuccessAt}` : null,
+    ].filter(Boolean);
+    const err = Boolean(wh.ok === false && sync?.webhook?.configured);
+    hubShowSyncStatus(parts.join(" · "), { error: err });
+    hubSetText("dashKpiFirmSync", hubFormatSyncLabel(sync));
+    await updateDashboard();
+  } catch (err) {
+    hubShowSyncStatus(err?.message || "Sync-Prüfung fehlgeschlagen.", { error: true });
+    hubSetText("dashKpiFirmSync", "Offline");
+  }
 }
 
 function getEmployeeYtdTotals(employeeName, year, currentMonth) {
@@ -647,7 +799,7 @@ function getEmployeeYtdTotals(employeeName, year, currentMonth) {
   return data?.totals || null;
 }
 
-function updateDashboard() {
+function updateLocalDashboardKpis() {
   const profiles = readCompanyProfiles();
   const history = readEmployeeHistory();
   const employeeNames = Object.keys(history);
@@ -656,65 +808,138 @@ function updateDashboard() {
     monthCount += Object.keys(history[name] || {}).filter((m) => /^\d{4}-\d{2}$/.test(m)).length;
   });
 
-  const setText = (id, text) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = text;
-  };
-
-  setText("dashKpiProfiles", String(Object.keys(profiles).length));
-  setText("dashKpiEmployees", String(employeeNames.length));
-  setText("dashKpiPayrollMonths", String(monthCount));
+  const archiveLen = window.WorkPassHub?.readInvoiceArchive?.()?.length || 0;
+  hubSetText("dashKpiProfiles", String(Object.keys(profiles).length));
+  hubSetText("dashKpiEmployees", String(employeeNames.length));
+  hubSetText("dashKpiPayrollMonths", String(monthCount));
+  hubSetText("dashKpiInvoicesLocal", String(archiveLen));
   const mode = getCurrentMode();
-  setText("dashKpiMode", mode === "payroll-annual" ? "LStB" : (mode === "payroll" ? "Lohn" : "Rechnung"));
+  hubSetText("dashKpiMode", mode === "payroll-annual" ? "LStB" : (mode === "payroll" ? "Lohn" : "Rechnung"));
 
   const profileName = companyProfileNameInput?.value?.trim()
     || profiles[activeCompanyProfileId]?.name
     || "Standard-Mandant";
-  setText("dashWelcomeText", `Mandant „${profileName}“ · ${monthCount} gespeicherte Lohn-Monate`);
 
+  return { employeeNames, monthCount, profileName, history };
+}
+
+function updateDashboardEmployeeTable(employeeNames, history) {
   const dashBody = document.getElementById("dashEmployeeBody");
-  if (dashBody) {
-    dashBody.innerHTML = "";
-    if (!employeeNames.length) {
-      dashBody.innerHTML = '<tr><td colspan="4" class="dash-empty">Noch keine Lohn-Monatsdaten gespeichert.</td></tr>';
-    } else {
-      employeeNames.sort((a, b) => a.localeCompare(b, "de")).forEach((name) => {
-        const months = Object.keys(history[name] || {}).filter((m) => /^\d{4}-\d{2}$/.test(m)).sort();
-        const last = months[months.length - 1] || "-";
-        const tr = document.createElement("tr");
-        const tdName = document.createElement("td");
-        tdName.textContent = name;
-        const tdCount = document.createElement("td");
-        tdCount.textContent = String(months.length);
-        const tdLast = document.createElement("td");
-        tdLast.textContent = last;
-        const tdAction = document.createElement("td");
-        const loadBtn = document.createElement("button");
-        loadBtn.type = "button";
-        loadBtn.className = "secondary-btn dash-load-btn";
-        loadBtn.textContent = "Laden";
-        loadBtn.dataset.dashLoad = name;
-        tdAction.appendChild(loadBtn);
-        tr.append(tdName, tdCount, tdLast, tdAction);
-        dashBody.appendChild(tr);
-      });
-    }
+  if (!dashBody) return;
+  dashBody.innerHTML = "";
+  if (!employeeNames.length) {
+    dashBody.innerHTML = '<tr><td colspan="4" class="dash-empty">Noch keine Lohn-Monatsdaten gespeichert.</td></tr>';
+    return;
+  }
+  employeeNames.sort((a, b) => a.localeCompare(b, "de")).forEach((name) => {
+    const months = Object.keys(history[name] || {}).filter((m) => /^\d{4}-\d{2}$/.test(m)).sort();
+    const last = months[months.length - 1] || "-";
+    const tr = document.createElement("tr");
+    const tdName = document.createElement("td");
+    tdName.textContent = name;
+    const tdCount = document.createElement("td");
+    tdCount.textContent = String(months.length);
+    const tdLast = document.createElement("td");
+    tdLast.textContent = last;
+    const tdAction = document.createElement("td");
+    const loadBtn = document.createElement("button");
+    loadBtn.type = "button";
+    loadBtn.className = "secondary-btn dash-load-btn";
+    loadBtn.textContent = "Laden";
+    loadBtn.dataset.dashLoad = name;
+    tdAction.appendChild(loadBtn);
+    tr.append(tdName, tdCount, tdLast, tdAction);
+    dashBody.appendChild(tr);
+  });
+}
+
+function updateDashboardChecklist() {
+  const checklist = document.getElementById("dashChecklist");
+  if (!checklist) return;
+  const checks = {
+    seller: Boolean(sellerInput?.value?.trim()),
+    tax: Boolean(taxNumberInput?.value?.trim() || vatIdInput?.value?.trim()),
+    bank: Boolean(companyIbanInput?.value?.trim()),
+    layout: Boolean(payrollLayoutSelect?.value),
+  };
+  checklist.querySelectorAll("li[data-check]").forEach((li) => {
+    const key = li.dataset.check;
+    li.classList.toggle("done", Boolean(checks[key]));
+  });
+}
+
+async function updateDashboard() {
+  const seq = ++hubDashboardSeq;
+  const firm = Boolean(window.WorkPassAuth?.isCompanyPortalUser?.());
+  const localGrid = document.getElementById("dashKpiGridLocal");
+  const firmGrid = document.getElementById("dashKpiGridFirm");
+  if (localGrid) localGrid.hidden = firm;
+  if (firmGrid) firmGrid.hidden = !firm;
+  document.body.classList.toggle("company-portal", firm);
+
+  const { employeeNames, monthCount, profileName, history } = updateLocalDashboardKpis();
+  updateDashboardEmployeeTable(employeeNames, history);
+  updateDashboardChecklist();
+
+  const localMeta = document.getElementById("dashLocalMeta");
+  if (!firm) {
+    hubSetText("dashWelcomeText", `Mandant „${profileName}“ · ${monthCount} gespeicherte Lohn-Monate`);
+    if (localMeta) localMeta.textContent = "";
+    return;
   }
 
-  const checklist = document.getElementById("dashChecklist");
-  if (checklist) {
-    const checks = {
-      seller: Boolean(sellerInput?.value?.trim()),
-      tax: Boolean(taxNumberInput?.value?.trim() || vatIdInput?.value?.trim()),
-      bank: Boolean(companyIbanInput?.value?.trim()),
-      layout: Boolean(payrollLayoutSelect?.value),
-    };
-    checklist.querySelectorAll("li[data-check]").forEach((li) => {
-      const key = li.dataset.check;
-      li.classList.toggle("done", Boolean(checks[key]));
-    });
+  const user = window.WorkPassAuth?.getSessionUser?.();
+  const companyId = user?.companyId || hubApiConfig().companyId || "—";
+  hubSetText("dashWelcomeText", `Firma · ${companyId}`);
+  if (localMeta) {
+    localMeta.textContent = `Lokal: Mandant „${profileName}“ · ${monthCount} Lohn-Monate · Archiv ${window.WorkPassHub?.readInvoiceArchive?.()?.length || 0}`;
+  }
+
+  const period = hubCurrentPeriod();
+  try {
+    const [emps, month, inbox, msgs, sync] = await Promise.all([
+      hubApiFetch(`/v1/portal/employees?period=${encodeURIComponent(period)}`),
+      hubApiFetch(`/v1/portal/month?period=${encodeURIComponent(period)}&months=6`),
+      hubApiFetch("/v1/inbox").catch(() => ({ invoices: [] })),
+      hubApiFetch("/v1/messages?status=open").catch(() => ({ count: 0, messages: [] })),
+      hubApiFetch("/v1/platform/status").catch(() => null),
+    ]);
+    if (seq !== hubDashboardSeq) return;
+
+    const released = Number(month?.current?.released || 0);
+    const invoiceCount = Array.isArray(inbox?.invoices) ? inbox.invoices.length : 0;
+    const msgCount = Number(msgs?.count ?? (msgs?.messages || []).length ?? 0);
+    const syncLabel = hubFormatSyncLabel(sync);
+
+    hubSetText("dashKpiFirmEmployees", String(emps?.count || 0));
+    hubSetText("dashKpiFirmReleased", String(released));
+    hubSetText("dashKpiFirmInvoices", String(invoiceCount));
+    hubSetText("dashKpiFirmMessages", String(msgCount));
+    hubSetText("dashKpiFirmSync", syncLabel);
+
+    const pending = Number(sync?.pending?.messages || 0) + Number(sync?.pending?.deliveries || 0);
+    const wh = sync?.webhook?.last || {};
+    let statusLine = syncLabel === "OK"
+      ? `Sync OK · Monat ${period}`
+      : syncLabel === "Wartet"
+        ? `Warte auf Plattform · ${pending} offen · Monat ${period}`
+        : syncLabel === "Fehler"
+          ? `Webhook-Fehler ${wh.status || ""} · Monat ${period}`
+          : `Sync ${syncLabel} · Monat ${period}`;
+    hubSetText("dashWelcomeText", `Firma · ${companyId} · ${statusLine}`);
+  } catch (err) {
+    if (seq !== hubDashboardSeq) return;
+    hubSetText("dashKpiFirmEmployees", "—");
+    hubSetText("dashKpiFirmReleased", "—");
+    hubSetText("dashKpiFirmInvoices", "—");
+    hubSetText("dashKpiFirmMessages", "—");
+    hubSetText("dashKpiFirmSync", "Offline");
+    hubSetText("dashWelcomeText", `Firma · ${companyId} · Bridge offline (${err?.message || "Login/API"})`);
   }
 }
+
+window.updateDashboard = updateDashboard;
+window.runHubSyncCheck = runHubSyncCheck;
 
 function initTabs() {
   document.querySelectorAll(".form-tab").forEach((tab) => {
@@ -5258,7 +5483,7 @@ function updateUiStatusBar() {
 function collectFullBackup() {
   return {
     app: "WorkPassLohn",
-    product: "WorkPass Lohn",
+    product: "WorkPass Steuerprogramm",
     vendor: "Suppix AI",
     version: APP_VERSION,
     exportedAt: new Date().toISOString(),

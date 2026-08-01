@@ -261,6 +261,9 @@ body.workpass-hub .dash-action-btn span,
 body.workpass-hub .dash-kpi-label { color: var(--wp-text-dim) !important; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.68rem; }
 body.workpass-hub .dash-kpi-value { color: var(--wp-cyan-hot) !important; font-family: var(--wp-display); }
 body.workpass-hub .wp-hub-banner a { color: var(--wp-cyan-hot) !important; }
+body.workpass-hub .dash-sync-status.is-ok { border-color: rgba(47, 180, 120, 0.55) !important; }
+body.workpass-hub .dash-sync-status.is-error { border-color: rgba(197, 61, 47, 0.65) !important; }
+body.workpass-hub .linkish-btn { color: var(--wp-cyan-hot) !important; }
 
 body.workpass-hub input,
 body.workpass-hub select,

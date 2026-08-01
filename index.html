@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WorkPass Lohn – Suppix AI</title>
+    <title>WorkPass Steuerprogramm – Suppix AI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -12,7 +12,7 @@
     />
     <link rel="stylesheet" href="styles.css?v=42" />
     <link rel="stylesheet" href="agenda-reference.css?v=6" />
-    <link rel="stylesheet" href="app-ui.css?v=9" />
+    <link rel="stylesheet" href="app-ui.css?v=10" />
     <link rel="stylesheet" href="payroll-layouts.css?v=21" />
     <link rel="stylesheet" href="datev-layout.css?v=10" />
     <link rel="stylesheet" href="datev-ref-overlay.css?v=2" />
@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="verdienst-sheet.css?v=1" />
     <link rel="stylesheet" href="annual-certificate.css?v=3" />
     <link rel="stylesheet" href="documents-bw.css?v=1" />
-    <link rel="stylesheet" href="workpass-theme.css?v=5" />
+    <link rel="stylesheet" href="workpass-theme.css?v=6" />
   </head>
   <body class="lexware-app workpass-hub auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
@@ -30,14 +30,14 @@
           <div class="auth-mark" aria-hidden="true"><span></span></div>
           <div>
             <strong>SUPPIX AI</strong>
-            <small>WorkPass Lohn · Buchhaltung</small>
+            <small>WorkPass Steuerprogramm · Buchhaltung</small>
           </div>
         </div>
         <div class="auth-meta">
-          <div><span>Produkt</span>WorkPass Lohn</div>
+          <div><span>Produkt</span>WorkPass Steuerprogramm</div>
           <div><span>Modus</span>Hub · Standalone</div>
         </div>
-        <h1 id="authTitle">WorkPass Lohn entsperren</h1>
+        <h1 id="authTitle">WorkPass Steuerprogramm entsperren</h1>
         <p class="auth-hint" id="authHint">Geschützter Buchhaltungszugang · Suppix AI</p>
         <div class="auth-mode-tabs" id="authModeTabs" hidden>
           <button type="button" class="auth-mode-tab active" id="authTabPlatform">Plattform-Konto</button>
@@ -77,8 +77,8 @@
           </svg>
         </div>
         <div class="lex-appbar-titles">
-          <strong>WorkPass Lohn</strong>
-          <span>Suppix AI · Lohn &amp; Rechnung</span>
+          <strong>WorkPass Steuerprogramm</strong>
+          <span>Suppix AI · Rechnung · Lohn · Mandant</span>
         </div>
       </div>
       <nav class="lex-menubar" aria-label="Hauptmenü">
@@ -225,29 +225,31 @@
           <div class="tab-panel active" data-tab-panel="dashboard">
             <section id="onboardingBanner" class="onboarding-banner dash-onboarding">
               <div>
-                <strong>Willkommen bei WorkPass Lohn</strong>
-                <p class="small muted">Suppix AI · Rechnungen, Lohnabrechnungen &amp; Plattform-Empfang – auch standalone</p>
+                <strong>Willkommen bei WorkPass Steuerprogramm</strong>
+                <p class="small muted">Suppix AI · Rechnungen, Lohn, Mandanten &amp; Plattform – Hub und Standalone</p>
               </div>
               <button id="dismissOnboardingBtn" type="button" class="secondary-btn">Loslegen</button>
             </section>
 
-            <p class="wp-hub-banner">
-              <strong>Lohnarbeitsplatz:</strong> Plattformdaten empfangen, bearbeiten, A4 drucken →
-              <a href="lohn.html">lohn.html öffnen</a>
+            <p class="wp-hub-banner" id="dashHubBanner">
+              <strong>Steuerprogramm-Hub:</strong> Rechnung erfassen, Lohn freigeben, Mandant pflegen ·
+              <a href="lohn.html">Lohn-Portal öffnen</a>
             </p>
+            <p class="wp-hub-banner dash-sync-status" id="dashSyncStatus" hidden role="status"></p>
 
             <header class="dash-hero">
               <h2>Übersicht</h2>
               <p id="dashWelcomeText">Ihr Mandant und alle Belege auf einen Blick.</p>
+              <p class="muted small dash-local-meta" id="dashLocalMeta"></p>
             </header>
 
-            <div class="dash-kpi-grid" id="dashKpiGrid">
+            <div class="dash-kpi-grid dash-kpi-local" id="dashKpiGridLocal">
               <article class="dash-kpi">
                 <span class="dash-kpi-label">Mandanten</span>
                 <strong class="dash-kpi-value" id="dashKpiProfiles">1</strong>
               </article>
               <article class="dash-kpi">
-                <span class="dash-kpi-label">Mitarbeiter</span>
+                <span class="dash-kpi-label">Mitarbeiter (lokal)</span>
                 <strong class="dash-kpi-value" id="dashKpiEmployees">0</strong>
               </article>
               <article class="dash-kpi">
@@ -255,8 +257,35 @@
                 <strong class="dash-kpi-value" id="dashKpiPayrollMonths">0</strong>
               </article>
               <article class="dash-kpi">
+                <span class="dash-kpi-label">Rechnungen (Archiv)</span>
+                <strong class="dash-kpi-value" id="dashKpiInvoicesLocal">0</strong>
+              </article>
+              <article class="dash-kpi">
                 <span class="dash-kpi-label">Aktueller Modus</span>
                 <strong class="dash-kpi-value dash-kpi-mode" id="dashKpiMode">Rechnung</strong>
+              </article>
+            </div>
+
+            <div class="dash-kpi-grid dash-kpi-firm" id="dashKpiGridFirm" hidden>
+              <article class="dash-kpi">
+                <span class="dash-kpi-label">Mitarbeiter</span>
+                <strong class="dash-kpi-value" id="dashKpiFirmEmployees">0</strong>
+              </article>
+              <article class="dash-kpi">
+                <span class="dash-kpi-label">Freigegebene Abrechnungen</span>
+                <strong class="dash-kpi-value" id="dashKpiFirmReleased">0</strong>
+              </article>
+              <article class="dash-kpi">
+                <span class="dash-kpi-label">Rechnungen</span>
+                <strong class="dash-kpi-value" id="dashKpiFirmInvoices">0</strong>
+              </article>
+              <article class="dash-kpi">
+                <span class="dash-kpi-label">Offene Nachrichten</span>
+                <strong class="dash-kpi-value" id="dashKpiFirmMessages">0</strong>
+              </article>
+              <article class="dash-kpi">
+                <span class="dash-kpi-label">Sync</span>
+                <strong class="dash-kpi-value dash-kpi-mode" id="dashKpiFirmSync">—</strong>
               </article>
             </div>
 
@@ -273,18 +302,21 @@
                   <span>§ 14 UStG · PDF &amp; CSV</span>
                 </button>
                 <a href="lohn.html" class="dash-action-btn" style="text-decoration:none;color:inherit">
-                  <strong>Lohnabrechnung</strong>
-                  <span>Empfang · Bearbeitung · WorkPass A4</span>
+                  <strong>Lohn-Portal</strong>
+                  <span>Empfang · Freigabe · A4</span>
                 </a>
-                <button type="button" class="dash-action-btn" data-dash-go="document" data-dash-mode="payroll-annual">
-                  <strong>Lohnsteuerbescheinigung</strong>
-                  <span>Jahresbescheinigung · ELSTER</span>
-                </button>
                 <button type="button" class="dash-action-btn" data-dash-go="company">
                   <strong>Mandant verwalten</strong>
                   <span>Stammdaten, Bank, Logo</span>
                 </button>
+                <button type="button" class="dash-action-btn" id="dashSyncCheckBtn" data-dash-sync>
+                  <strong>Sync prüfen</strong>
+                  <span>Plattform · Webhook · Pending</span>
+                </button>
               </div>
+              <p class="muted small dash-secondary-actions">
+                <button type="button" class="linkish-btn" data-dash-go="document" data-dash-mode="payroll-annual">Lohnsteuerbescheinigung (ELSTER)</button>
+              </p>
             </section>
 
             <section class="form-section">
@@ -929,7 +961,7 @@
             </section>
             <section class="help-card help-legal">
               <h3>Rechtlicher Hinweis</h3>
-              <p class="small">WorkPass Lohn (Suppix AI) ist ein Buchhaltungs-Arbeitsplatz für Steuerberater und Firmen. Es ersetzt keine zertifizierte Voll-Lohnsoftware und keine individuelle Steuerberatung. ELSTER-Exporte sind Vorbereitungsdateien zur manuellen Prüfung.</p>
+              <p class="small">WorkPass Steuerprogramm (Suppix AI) ist ein Buchhaltungs-Arbeitsplatz für Steuerberater und Firmen. Es ersetzt keine zertifizierte Voll-Lohnsoftware und keine individuelle Steuerberatung. ELSTER-Exporte sind Vorbereitungsdateien zur manuellen Prüfung.</p>
             </section>
           </div>
         </section>
@@ -1640,9 +1672,9 @@
     <script src="datev-sheet.js?v=41"></script>
     <script src="payroll-core.js?v=17"></script>
     <script src="auth-gate.js?v=8"></script>
-    <script src="workpass-hub.js?v=2"></script>
+    <script src="workpass-hub.js?v=3"></script>
     <script src="templates.js?v=1" defer></script>
     <script src="signature-engine.js?v=4"></script>
-    <script src="script.js?v=67" defer></script>
+    <script src="script.js?v=68" defer></script>
   </body>
 </html>
