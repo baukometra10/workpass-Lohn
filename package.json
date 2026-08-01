@@ -1,6 +1,6 @@
 {
   "name": "workpass-lohn",
-  "version": "2.5.1",
+  "version": "2.6.0",
   "private": true,
   "description": "WorkPass Lohn – Buchhaltung + Platform Bridge API",
   "type": "module",
@@ -29,6 +29,7 @@
     "test:pull-urls": "node tests/pull-urls.mjs",
     "test:not-found": "node tests/not-found-pull.mjs",
     "test:incomplete": "node tests/incomplete-pull.mjs",
+    "test:auto": "node tests/auto-pipeline.mjs",
     "test:auth": "node tests/auth-session.mjs",
     "test:db": "node tests/db-local.mjs",
     "test:security": "node tests/security.mjs",

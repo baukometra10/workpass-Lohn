@@ -463,16 +463,20 @@
       }
 
       if ($("portalSyncHint")) {
-        $("portalSyncHint").textContent = emps.count
-          ? "Ihre Lohnzentrale ist bereit: vorhandene Daten werden gezogen – Lücken fragt das System automatisch bei der Plattform nach."
-          : "Bereit für echte Mitarbeiter. Sobald die Plattform sendet (auch unvollständig), starten wir die Abrechnung.";
+        const autoOn = sync?.autoPipeline?.enabled !== false;
+        $("portalSyncHint").textContent = autoOn
+          ? "Automatik an: WorkPass Lohn fragt die Plattform nach Mitarbeitern und Abrechnungen. Eingehende Daten werden sofort berechnet und freigegeben."
+          : "Automatik aus. Bitte manuell synchronisieren oder WORKPASS_AUTO_PIPELINE=1 setzen.";
       }
       if ($("portalSyncDetail")) {
         const hints = sync?.hints || [
-          "Plattform: POST /v1/payroll/batch mit echten Mitarbeitern.",
-          "not_found = Monat auf der Plattform noch nicht exportierbar / freigegeben.",
+          "Plattform: POST /v1/payroll/batch und/oder /v1/employees/import",
+          "WorkPass Lohn fragt per Webhook: employees.list.requested + payroll.month.requested",
         ];
+        const auto = sync?.autoPipeline || {};
         $("portalSyncDetail").innerHTML = `
+          <div class="api-inbox-item"><div><strong>Automatik</strong><span>${esc(auto.enabled === false ? "aus" : `an · alle ${auto.intervalMinutes || 15} Min.`)}</span></div></div>
+          <div class="api-inbox-item"><div><strong>Letzter Sync</strong><span>${esc(auto.lastTickAt || "—")}</span></div></div>
           <div class="api-inbox-item"><div><strong>Webhook</strong><span>${esc(sync?.webhook?.configured ? "konfiguriert" : "nicht gesetzt")}</span></div></div>
           <div class="api-inbox-item"><div><strong>Pull-URL</strong><span>${esc(sync?.pullUrlConfigured ? "gesetzt" : "nicht gesetzt (Push empfohlen)")}</span></div></div>
           <div class="api-inbox-item"><div><strong>Offen</strong><span>Messages ${Number(sync?.pending?.messages || 0)} · Deliveries ${Number(sync?.pending?.deliveries || 0)}</span></div></div>
@@ -725,6 +729,47 @@
       </div>`;
     $("btnMonthRetryPull")?.addEventListener("click", () => runMonthClose({ pull: true, autoRelease: true }));
     $("btnMonthPingPlatform")?.addEventListener("click", () => pingPlatformForMonth());
+  }
+
+  async function runAutoSyncNow() {
+    const companyId = companyPortalId || apiConfig().companyId;
+    if (!companyId) {
+      toast("Keine Firma – bitte anmelden.", "error");
+      return;
+    }
+    const period = currentPayrollPeriod();
+    const btn = $("btnAutoSyncNow");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Synchronisiert…";
+    }
+    try {
+      setStatus("Automatik: frage Plattform nach Mitarbeitern und Abrechnungen…", true);
+      const data = await apiFetch("/v1/payroll/auto-sync", {
+        method: "POST",
+        body: JSON.stringify({
+          companyId,
+          period,
+          pull: true,
+          autoRelease: true,
+          reason: "portal_manual_sync",
+        }),
+      });
+      renderMonthCloseStatus(data.close || data);
+      await loadPortalDashboard(true);
+      await loadApiInbox(true);
+      await loadPlatformMessages(true);
+      toast(data.message || "Sync fertig", data.ok ? "ok" : "info");
+      setStatus(data.message || "Sync fertig", Boolean(data.ok || data.waitingForPlatform));
+      if (data.waitingForPlatform) startMonthWaitRetry(period);
+    } catch (e) {
+      toast(String(e.message || e), "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Jetzt synchronisieren";
+      }
+    }
   }
 
   async function pingPlatformForMonth() {
@@ -2098,6 +2143,7 @@
     $("btnApiInbox")?.addEventListener("click", loadApiInbox);
     $("btnMonthClose")?.addEventListener("click", () => runMonthClose({ pull: true, autoRelease: true }));
     $("btnMonthReleaseOnly")?.addEventListener("click", () => runMonthClose({ pull: false, autoRelease: true }));
+    $("btnAutoSyncNow")?.addEventListener("click", () => runAutoSyncNow());
     $("btnRefreshMessages")?.addEventListener("click", () => loadPlatformMessages());
     $("btnSeedDemoMonth")?.addEventListener("click", () => seedDemoMonth());
     $("btnPurgeDemo")?.addEventListener("click", () => purgeDemoData());

@@ -166,9 +166,12 @@
                   </div>
                 </div>
                 <section class="month-close-card portal-dash-card" id="portalSyncCard" style="margin-bottom:12px">
-                  <strong>Plattform-Sync</strong>
-                  <p id="portalSyncHint">Status der Verbindung zur Plattform.</p>
+                  <strong>Automatik · Plattform-Sync</strong>
+                  <p id="portalSyncHint">WorkPass Lohn fragt die Plattform selbst nach Mitarbeitern und Abrechnungen. Wenn Daten kommen, wird alles automatisch berechnet und freigegeben.</p>
                   <div id="portalSyncDetail" class="api-inbox-list"></div>
+                  <div class="month-close-actions" style="margin-top:10px">
+                    <button type="button" class="primary" id="btnAutoSyncNow">Jetzt synchronisieren</button>
+                  </div>
                 </section>
                 <div class="portal-dash-grid">
                   <section class="month-close-card portal-dash-card">
@@ -553,6 +556,6 @@
     <script src="auth-gate.js?v=8"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="lohn-app.js?v=43"></script>
+    <script src="lohn-app.js?v=44"></script>
   </body>
 </html>

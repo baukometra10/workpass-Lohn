@@ -12,6 +12,15 @@ import { URL } from "node:url";
 import { ingestPayroll, ingestPayrollBatch, releasePayrollJob } from "./payroll-service.mjs";
 import { runMonthClose, currentPeriod, requestEmployeeDataFromPlatform, resolvePlatformPullUrls } from "./month-close.mjs";
 import { startMonthCloseScheduler, runAutoMonthCloseOnce, autoMonthCloseConfig } from "./month-scheduler.mjs";
+import {
+  processInboundPayroll,
+  processInboundPayrollBatch,
+  askPlatformAndSyncCompany,
+  runAutoPipelineOnce,
+  startAutoPipelineScheduler,
+  autoPipelineStatus,
+  autoPipelineConfig,
+} from "./auto-pipeline.mjs";
 import { listCompanyEmployees, monthOverview, listReleasedArchive } from "./portal-service.mjs";
 import { buildDemoPayrollBatch } from "./demo-payroll.mjs";
 import { purgeDemoPayroll } from "./demo-purge.mjs";
@@ -89,6 +98,7 @@ try {
 
 const backupSched = startBackupScheduler();
 const monthCloseSched = startMonthCloseScheduler();
+const autoPipeSched = startAutoPipelineScheduler();
 
 function sendJson(res, status, body, req) {
   const json = JSON.stringify(body, null, 2);
@@ -129,10 +139,11 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "2.5.1",
+      version: "2.6.0",
       multiTenant: true,
       monthCloseScheduler: monthCloseSched,
       autoMonthClose: autoMonthCloseConfig(),
+      autoPipeline: autoPipelineStatus(),
       platform: {
         domain: PLATFORM_DOMAIN,
         corsOrigins: PLATFORM_ORIGINS,
@@ -379,7 +390,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "2.5.1",
+          version: "2.6.0",
           ...syncHealth(),
         },
         monthCloseScheduler: monthCloseSched,
@@ -580,24 +591,72 @@ async function handler(req, res) {
     // --- Payroll ---
     if (req.method === "POST" && path === "/v1/payroll/ingest") {
       const body = await readBodyLimited(req);
-      const result = await ingestPayroll(body, { tenantScope });
+      const result = await processInboundPayroll(body, {
+        tenantScope,
+        autoRelease: body?.autoRelease !== false,
+      });
       audit({
         type: "payroll.ingest",
-        outcome: result.ok ? "ok" : "error",
+        outcome: result.ok || result.released ? "ok" : "error",
         ip,
         path,
         companyId: result.job?.company?.id || body?.company?.id,
+        detail: { auto: true, released: result.released },
       });
-      return reply( result.ok ? 200 : 422, result);
+      return reply(result.ok || result.job ? 200 : 422, result);
     }
 
     if (req.method === "POST" && path === "/v1/payroll/batch") {
       const body = await readBodyLimited(req);
-      const result = await ingestPayrollBatch(body, { tenantScope });
-      audit({ type: "payroll.batch", outcome: result.ok ? "ok" : "error", ip, path, companyId: result.company?.id });
-      // Partial batches (some employees incomplete) still return 200 so platform sync continues
+      const result = await processInboundPayrollBatch(body, {
+        tenantScope,
+        autoRelease: body?.autoRelease !== false,
+      });
+      audit({
+        type: "payroll.batch",
+        outcome: result.count > 0 ? "ok" : "error",
+        ip,
+        path,
+        companyId: result.company?.id,
+        detail: { auto: true, released: result.releasedCount },
+      });
       const status = result.count > 0 ? 200 : (result.ok ? 200 : 422);
-      return reply(status, { ...result, incompleteAccepted: result.count > 0 && !result.ok });
+      return reply(status, {
+        ...result,
+        incompleteAccepted: result.count > 0 && !result.ok,
+      });
+    }
+
+    if (
+      req.method === "POST"
+      && (path === "/v1/payroll/auto-sync" || path === "/v1/portal/auto-sync" || path === "/v1/sync/run")
+    ) {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(
+        body.companyId || body.company?.id || tenantScope || ""
+      );
+      if (companyId) {
+        const scopeCheck = assertSameTenant(tenantScope, companyId, "Auto-Sync");
+        if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+        const result = await askPlatformAndSyncCompany({
+          companyId,
+          companyName: body.companyName || body.company?.name || loadCompany(companyId)?.name || "",
+          period: body.period || currentPeriod(),
+          pull: body.pull !== false,
+          autoRelease: body.autoRelease !== false,
+          reason: body.reason || "manual_auto_sync",
+        });
+        audit({
+          type: "payroll.auto_sync",
+          outcome: result.ok ? "ok" : (result.waitingForPlatform ? "wait" : "error"),
+          ip,
+          path,
+          companyId,
+        });
+        return reply(200, result);
+      }
+      const result = await runAutoPipelineOnce({ force: true, period: body.period });
+      return reply(200, result);
     }
 
     if (
@@ -814,7 +873,28 @@ async function handler(req, res) {
         companyId,
         detail: { count: result.count },
       });
-      return reply(result.ok ? 200 : 422, result);
+      let sync = null;
+      if (result.count > 0 && body.autoSync !== false) {
+        try {
+          sync = await askPlatformAndSyncCompany({
+            companyId,
+            companyName: body.company?.name || loadCompany(companyId)?.name || "",
+            period: body.period || currentPeriod(),
+            pull: body.pull !== false,
+            autoRelease: body.autoRelease !== false,
+            reason: "employees_import",
+          });
+        } catch (e) {
+          sync = { ok: false, error: e.message };
+        }
+      }
+      return reply(result.ok ? 200 : 422, {
+        ...result,
+        autoSync: sync,
+        message: result.count
+          ? `Mitarbeiter übernommen (${result.count}). WorkPass Lohn fragt automatisch nach Monats-/Lohndaten.`
+          : (result.errors?.join?.(" · ") || "Import fehlgeschlagen"),
+      });
     }
 
     if (req.method === "GET" && path === "/v1/portal/month") {
@@ -908,7 +988,8 @@ async function handler(req, res) {
         kind: "platform.accounting.sync.v1",
         schemaVersion: 2,
         companyId: companyId || null,
-        accountingVersion: "2.5.1",
+        accountingVersion: "2.6.0",
+        autoPipeline: autoPipelineStatus(),
         webhook: {
           configured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),
           urlSuggested: platformWebhookUrl(),
@@ -923,10 +1004,10 @@ async function handler(req, res) {
         messages: pendingMessages,
         deliveries: pendingDeliveries,
         hints: [
-          "Fehlende Daten: Buchhaltung fragt per employee.data.requested → Plattform ergänzt → POST /v1/payroll/batch (unvollständig OK)",
-          "Freigaben: Webhook empfangen oder GET /v1/delivery/pending → POST /v1/delivery/:id/ack",
-          "Monatsabschluss: Pull GET+POST auf Export-URLs, sonst Push / Erneut versuchen",
-          "Railway: WORKPASS_PLATFORM_PAYROLL_PULL_URL oder WORKPASS_PLATFORM_BASE_URL=https://suppix-ai-workpass.com",
+          "Auto: WorkPass Lohn fragt die Plattform nach Mitarbeitern + Monat (employees.list.requested / payroll.month.requested)",
+          "Plattform sendet → POST /v1/employees/import und/oder POST /v1/payroll/batch → Auto berechnen + freigeben",
+          "Manuell: POST /v1/payroll/auto-sync { companyId, period }",
+          "Railway: WORKPASS_AUTO_PIPELINE=1 (Standard) · WORKPASS_PLATFORM_BASE_URL oder PULL_URL",
         ],
       });
     }
@@ -1111,6 +1192,9 @@ server.listen(PORT, HOST, () => {
   console.log(`HTTPS: force=${FORCE_HTTPS} (Railway edge TLS for public HTTPS)`);
   if (backupSched.ok) console.log(`Backup scheduler: every ${backupSched.intervalHours}h`);
   else console.log("Backup scheduler: off – set WORKPASS_BACKUP_INTERVAL_HOURS=24");
+  if (autoPipeSched.ok) console.log(`[auto-pipeline] every ${autoPipeSched.intervalMinutes} min · asks platform for employees + payroll`);
+  else console.log("[auto-pipeline] off – WORKPASS_AUTO_PIPELINE=0");
+  if (monthCloseSched.ok) console.log("[month-close] end-of-month scheduler on");
   console.log("Auth: X-WorkPass-Key (timing-safe) · Tenant: X-WorkPass-Company-Id");
 });
 
