@@ -40,6 +40,7 @@ const taxRateInput = document.getElementById("taxRate");
 const kleinunternehmerInput = document.getElementById("kleinunternehmer");
 const reverseChargeInput = document.getElementById("reverseCharge");
 const sellerInput = document.getElementById("seller");
+const companySellerInput = document.getElementById("companySeller");
 const customerInput = document.getElementById("customer");
 const noteInput = document.getElementById("note");
 
@@ -234,7 +235,7 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2026.36";
+const APP_VERSION = "2026.37";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
 let appBootstrapping = true;
@@ -853,19 +854,135 @@ function updateDashboardEmployeeTable(employeeNames, history) {
   });
 }
 
-function updateDashboardChecklist() {
-  const checklist = document.getElementById("dashChecklist");
+let hubServerCompany = null;
+let hubWorkspace = null;
+
+function syncSellerFields(from) {
+  const sellerVal = sellerInput?.value || "";
+  const companyVal = companySellerInput?.value || "";
+  if (from === "company" && sellerInput && companySellerInput) {
+    if (sellerInput.value !== companySellerInput.value) sellerInput.value = companySellerInput.value;
+  } else if (from === "seller" && companySellerInput && sellerInput) {
+    if (companySellerInput.value !== sellerInput.value) companySellerInput.value = sellerInput.value;
+  } else if (companySellerInput && !companySellerInput.value && sellerVal) {
+    companySellerInput.value = sellerVal;
+  } else if (sellerInput && !sellerVal && companyVal) {
+    sellerInput.value = companyVal;
+  }
+}
+
+function getSellerText() {
+  return String(sellerInput?.value || companySellerInput?.value || "").trim();
+}
+
+function getMandantChecklistState() {
+  const server = hubServerCompany || {};
+  const seller = Boolean(
+    getSellerText()
+    || server.name
+    || server.address
+    || [server.street, server.zip, server.city].filter(Boolean).join(" ").trim()
+  );
+  const tax = Boolean(
+    taxNumberInput?.value?.trim()
+    || vatIdInput?.value?.trim()
+    || server.taxNumber
+    || server.vatId
+  );
+  const bank = Boolean(companyIbanInput?.value?.trim());
+  const logo = Boolean(activeLogoDataUrl);
+  const register = Boolean(
+    commercialRegisterInput?.value?.trim()
+    || managingDirectorInput?.value?.trim()
+  );
+  const layout = Boolean(payrollLayoutSelect?.value || "datev");
+  return { seller, tax, bank, logo, register, layout };
+}
+
+function applyChecklistToDom(rootId, checks) {
+  const checklist = document.getElementById(rootId);
   if (!checklist) return;
-  const checks = {
-    seller: Boolean(sellerInput?.value?.trim()),
-    tax: Boolean(taxNumberInput?.value?.trim() || vatIdInput?.value?.trim()),
-    bank: Boolean(companyIbanInput?.value?.trim()),
-    layout: Boolean(payrollLayoutSelect?.value),
-  };
   checklist.querySelectorAll("li[data-check]").forEach((li) => {
     const key = li.dataset.check;
     li.classList.toggle("done", Boolean(checks[key]));
   });
+}
+
+function updateDashboardChecklist() {
+  syncSellerFields();
+  const checks = getMandantChecklistState();
+  applyChecklistToDom("dashChecklist", checks);
+  applyChecklistToDom("companyChecklist", checks);
+  const done = Object.values(checks).filter(Boolean).length;
+  const total = Object.keys(checks).length;
+  const statusEl = document.getElementById("mandantChecklistSummary");
+  if (statusEl) statusEl.textContent = `${done}/${total} Stammdaten erledigt`;
+}
+
+function renderMandantAccountingStatus() {
+  const el = document.getElementById("mandantAccountingStatus");
+  if (!el) return;
+  const firm = Boolean(window.WorkPassAuth?.isCompanyPortalUser?.());
+  if (!firm) {
+    el.hidden = true;
+    el.textContent = "";
+    return;
+  }
+  const user = window.WorkPassAuth?.getSessionUser?.();
+  const companyId = user?.companyId || hubApiConfig().companyId || "—";
+  const ws = hubWorkspace || {};
+  const active = ws.accountingEnabled !== false && (ws.workspaceStatus || "active") !== "inactive";
+  const section = ws.section?.title || ws.section?.name || "Buchhaltung";
+  const name = hubServerCompany?.name || companyId;
+  el.hidden = false;
+  el.innerHTML = active
+    ? `<strong>Buchhaltung aktiv</strong> · ${escapeHtmlLite(name)} · ${escapeHtmlLite(section)} · Firma ${escapeHtmlLite(companyId)}`
+    : `<strong>Buchhaltung inaktiv</strong> · ${escapeHtmlLite(name)} · Firma ${escapeHtmlLite(companyId)} · bitte im Admin/Plattform aktivieren`;
+  el.classList.toggle("is-ok", active);
+  el.classList.toggle("is-error", !active);
+}
+
+function escapeHtmlLite(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function refreshMandantAccountingStatus() {
+  if (!window.WorkPassAuth?.isCompanyPortalUser?.()) {
+    hubServerCompany = null;
+    hubWorkspace = null;
+    renderMandantAccountingStatus();
+    return;
+  }
+  try {
+    const me = await hubApiFetch("/v1/auth/me", { skipTenant: true });
+    hubServerCompany = me?.company || null;
+    hubWorkspace = me?.workspace || null;
+    if (hubServerCompany) {
+      if (!taxNumberInput?.value?.trim() && hubServerCompany.taxNumber && taxNumberInput) {
+        taxNumberInput.value = hubServerCompany.taxNumber;
+      }
+      if (!vatIdInput?.value?.trim() && hubServerCompany.vatId && vatIdInput) {
+        vatIdInput.value = hubServerCompany.vatId;
+      }
+      if (!getSellerText() && hubServerCompany.name) {
+        const addr = hubServerCompany.address
+          || [hubServerCompany.name, hubServerCompany.street, [hubServerCompany.zip, hubServerCompany.city].filter(Boolean).join(" ")]
+            .filter(Boolean)
+            .join("\n");
+        if (sellerInput) sellerInput.value = addr;
+        syncSellerFields("seller");
+      }
+    }
+  } catch {
+    hubServerCompany = null;
+    hubWorkspace = { accountingEnabled: true, workspaceStatus: "unknown" };
+  }
+  renderMandantAccountingStatus();
+  updateDashboardChecklist();
 }
 
 async function updateDashboard() {
@@ -880,6 +997,7 @@ async function updateDashboard() {
   const { employeeNames, monthCount, profileName, history } = updateLocalDashboardKpis();
   updateDashboardEmployeeTable(employeeNames, history);
   updateDashboardChecklist();
+  await refreshMandantAccountingStatus();
 
   const localMeta = document.getElementById("dashLocalMeta");
   if (!firm) {
@@ -892,7 +1010,8 @@ async function updateDashboard() {
   const companyId = user?.companyId || hubApiConfig().companyId || "—";
   hubSetText("dashWelcomeText", `Firma · ${companyId}`);
   if (localMeta) {
-    localMeta.textContent = `Lokal: Mandant „${profileName}“ · ${monthCount} Lohn-Monate · Archiv ${window.WorkPassHub?.readInvoiceArchive?.()?.length || 0}`;
+    const ws = hubWorkspace?.accountingEnabled === false ? "Buchhaltung inaktiv" : "Buchhaltung aktiv";
+    localMeta.textContent = `${ws} · Lokal: Mandant „${profileName}“ · ${monthCount} Lohn-Monate · Archiv ${window.WorkPassHub?.readInvoiceArchive?.()?.length || 0}`;
   }
 
   const period = hubCurrentPeriod();
@@ -1129,6 +1248,7 @@ async function handleLogoUpload(file) {
     activeLogoDataUrl = await resizeLogoFile(file);
     updateDocumentLogos();
     saveDraft(false);
+    updateDashboardChecklist();
   } catch (error) {
     window.alert("Logo konnte nicht verarbeitet werden.");
     console.error(error);
@@ -1140,6 +1260,7 @@ function removeCompanyLogo() {
   if (companyLogoInput) companyLogoInput.value = "";
   updateDocumentLogos();
   saveDraft(false);
+  updateDashboardChecklist();
 }
 
 function readCompanyProfiles() {
@@ -1159,10 +1280,11 @@ function writeCompanyProfiles(profiles) {
 }
 
 function collectCompanyProfileData() {
+  syncSellerFields();
   return {
     id: activeCompanyProfileId,
     name: companyProfileNameInput?.value?.trim() || "Unbenannt",
-    seller: sellerInput.value,
+    seller: getSellerText(),
     taxNumber: taxNumberInput?.value || "",
     vatId: vatIdInput?.value || "",
     commercialRegister: commercialRegisterInput?.value || "",
@@ -1182,6 +1304,7 @@ function applyCompanyProfile(profile) {
   if (!profile) return;
   if (companyProfileNameInput) companyProfileNameInput.value = profile.name || "";
   sellerInput.value = profile.seller || "";
+  syncSellerFields("seller");
   if (taxNumberInput) taxNumberInput.value = profile.taxNumber || "";
   if (vatIdInput) vatIdInput.value = profile.vatId || "";
   if (commercialRegisterInput) commercialRegisterInput.value = profile.commercialRegister || "";
@@ -1199,6 +1322,7 @@ function applyCompanyProfile(profile) {
   applyPayrollLayout(profile.payrollLayout || "datev");
   updateLayoutDescription();
   updateLexShellUI();
+  updateDashboardChecklist();
 }
 
 function refreshCompanyProfileSelect(applyProfile = true) {
@@ -1243,6 +1367,7 @@ function saveCurrentCompanyProfile(showMessage = true) {
   activeCompanyProfileId = id;
   writeCompanyProfiles(profiles);
   refreshCompanyProfileSelect();
+  updateDashboardChecklist();
   if (showMessage) window.alert("Mandantenprofil gespeichert.");
 }
 
@@ -5946,10 +6071,26 @@ watchedInputs.filter(Boolean).forEach((input) => {
     updatePreview();
     saveDraft(false);
     updateIncompleteFieldHighlights();
+    updateDashboardChecklist();
   };
   input.addEventListener("input", onUpdate);
   input.addEventListener("change", onUpdate);
 });
+
+if (companySellerInput) {
+  companySellerInput.addEventListener("input", () => {
+    syncSellerFields("company");
+    updatePreview();
+    saveDraft(false);
+    updateDashboardChecklist();
+  });
+}
+if (sellerInput) {
+  sellerInput.addEventListener("input", () => {
+    syncSellerFields("seller");
+    updateDashboardChecklist();
+  });
+}
 
 if (employeeNameInput && employeeSearchInput) {
   employeeNameInput.addEventListener("change", () => {
@@ -5989,6 +6130,7 @@ if (companyProfileSelect) {
     applyCompanyProfile(readCompanyProfiles()[activeCompanyProfileId]);
     updatePreview();
     saveDraft(false);
+    updateDashboardChecklist();
   });
 }
 if (saveCompanyProfileBtn) saveCompanyProfileBtn.addEventListener("click", () => saveCurrentCompanyProfile(true));

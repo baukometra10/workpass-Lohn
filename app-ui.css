@@ -1461,8 +1461,17 @@ body.dashboard-tab .preview-panel {
   border-color: #c53d2f;
 }
 
-.dash-sync-status.is-ok {
+.dash-sync-status.is-ok,
+#mandantAccountingStatus.is-ok {
   border-color: #2f8f4e;
+}
+
+#mandantAccountingStatus.is-error {
+  border-color: #c53d2f;
+}
+
+#mandantAccountingStatus {
+  margin-bottom: 14px;
 }
 
 .dash-secondary-actions {

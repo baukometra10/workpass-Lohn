@@ -12,7 +12,7 @@
     />
     <link rel="stylesheet" href="styles.css?v=42" />
     <link rel="stylesheet" href="agenda-reference.css?v=6" />
-    <link rel="stylesheet" href="app-ui.css?v=10" />
+    <link rel="stylesheet" href="app-ui.css?v=11" />
     <link rel="stylesheet" href="payroll-layouts.css?v=21" />
     <link rel="stylesheet" href="datev-layout.css?v=10" />
     <link rel="stylesheet" href="datev-ref-overlay.css?v=2" />
@@ -344,9 +344,14 @@
               <ul class="dash-checklist-items" id="dashChecklist">
                 <li data-check="seller">Firma / Arbeitgeber hinterlegt</li>
                 <li data-check="tax">Steuernummer oder USt-IdNr.</li>
-                <li data-check="bank">Bankverbindung Firma</li>
+                <li data-check="bank">Bankverbindung Firma (IBAN)</li>
+                <li data-check="logo">Firmenlogo</li>
+                <li data-check="register">Handelsregister oder Geschäftsführer</li>
                 <li data-check="layout">Lohn-Vorlage gewählt</li>
               </ul>
+              <p class="muted small">
+                <button type="button" class="linkish-btn" data-dash-go="company">In der Mandantenverwaltung pflegen</button>
+              </p>
             </section>
           </div>
 
@@ -534,8 +539,24 @@
           </div>
 
           <div class="tab-panel" data-tab-panel="company">
-            <h2>Mandantenprofil</h2>
-            <p class="muted">Jede Firma kann ein eigenes Profil mit Layout, Bankdaten und Standardtexten haben.</p>
+            <h2>Mandantenverwaltung</h2>
+            <p class="muted">
+              Lokales Profil für Rechnung &amp; PDF. Bei Firmen-Login zeigt der Status die Plattform-Buchhaltung;
+              Lohn-Stammdaten (DATEV-Nr.) liegen im <a href="lohn.html">Lohn-Portal</a>.
+            </p>
+            <p class="wp-hub-banner" id="mandantAccountingStatus" hidden role="status"></p>
+
+            <section class="form-section dash-checklist">
+              <h2 class="form-section-title">Stammdaten-Checkliste</h2>
+              <ul class="dash-checklist-items" id="companyChecklist">
+                <li data-check="seller">Firma / Arbeitgeber hinterlegt</li>
+                <li data-check="tax">Steuernummer oder USt-IdNr.</li>
+                <li data-check="bank">Bankverbindung Firma (IBAN)</li>
+                <li data-check="logo">Firmenlogo</li>
+                <li data-check="register">Handelsregister oder Geschäftsführer</li>
+                <li data-check="layout">Lohn-Vorlage gewählt</li>
+              </ul>
+            </section>
 
             <div class="grid two-col">
               <label>
@@ -567,6 +588,12 @@
               <img id="companyLogoPreview" class="company-logo-preview hidden" alt="Logo-Vorschau" />
             </section>
 
+            <label>
+              Firma / Arbeitgeber (Anschrift)
+              <textarea id="companySeller" rows="3" placeholder="Muster GmbH&#10;Musterstraße 1&#10;80331 München"></textarea>
+            </label>
+            <p class="muted small">Wird mit dem Feld „Verkäufer“ im Beleg synchronisiert.</p>
+
             <div class="grid two-col">
               <label>
                 Steuernummer
@@ -596,7 +623,7 @@
                 BIC (Firma)
                 <input id="companyBic" type="text" placeholder="GENODE00XXX" />
               </label>
-              <label class="payroll-layout-locked hidden">
+              <label>
                 Lohn-Vorlage
                 <select id="payrollLayoutSelect"></select>
               </label>
@@ -1675,6 +1702,6 @@
     <script src="workpass-hub.js?v=3"></script>
     <script src="templates.js?v=1" defer></script>
     <script src="signature-engine.js?v=4"></script>
-    <script src="script.js?v=69" defer></script>
+    <script src="script.js?v=70" defer></script>
   </body>
 </html>
