@@ -261,3 +261,86 @@ export async function notifyPlatform(event) {
 export function getLastWebhookStatus() {
   return { ...lastWebhookStatus };
 }
+
+/**
+ * Lightweight connectivity check to the configured platform webhook URL.
+ * Sends event "platform.ping" – platform should return 2xx (even if ignored).
+ */
+export async function probePlatformWebhook() {
+  const webhook = process.env.WORKPASS_PLATFORM_WEBHOOK_URL || "";
+  if (!webhook) {
+    const result = {
+      ok: false,
+      at: new Date().toISOString(),
+      event: "platform.ping",
+      status: null,
+      error: "WORKPASS_PLATFORM_WEBHOOK_URL fehlt",
+      mode: "unconfigured",
+    };
+    lastWebhookStatus = result;
+    return result;
+  }
+
+  const webhookKey = process.env.WORKPASS_PLATFORM_WEBHOOK_KEY || process.env.WORKPASS_API_KEY || "";
+  const timeoutMs = Number(process.env.WORKPASS_WEBHOOK_TIMEOUT_MS || 8000);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  const envelope = {
+    kind: "platform.accounting.event.v1",
+    schemaVersion: 2,
+    event: "platform.ping",
+    occurredAt: new Date().toISOString(),
+    source: "workpass-accounting-bridge",
+    idempotencyKey: `ping:${Date.now()}`,
+    company: null,
+    meta: { probe: true },
+  };
+
+  try {
+    const res = await fetch(webhook, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-WorkPass-Webhook-Key": webhookKey,
+        "X-WorkPass-Event": "platform.ping",
+        "X-WorkPass-Idempotency-Key": envelope.idempotencyKey,
+      },
+      body: JSON.stringify(envelope),
+      signal: ctrl.signal,
+    });
+    const text = await res.text();
+    let body = null;
+    try { body = JSON.parse(text); } catch { body = { raw: text.slice(0, 200) }; }
+    const result = {
+      ok: res.ok,
+      at: new Date().toISOString(),
+      event: "platform.ping",
+      status: res.status,
+      error: res.ok ? null : (body?.error || `HTTP ${res.status}`),
+      mode: "webhook",
+      urlHost: (() => { try { return new URL(webhook).host; } catch { return null; } })(),
+      hint: res.ok
+        ? null
+        : (res.status === 404
+          ? "Webhook-URL auf der Plattform existiert nicht (404). Endpoint live schalten."
+          : "Webhook fehlgeschlagen – Key/URL prüfen."),
+    };
+    lastWebhookStatus = result;
+    logDelivery({ direction: "webhook-probe", ...result, body });
+    return result;
+  } catch (e) {
+    const result = {
+      ok: false,
+      at: new Date().toISOString(),
+      event: "platform.ping",
+      status: null,
+      error: e.name === "AbortError" ? "Webhook-Timeout" : (e.message || String(e)),
+      mode: "webhook",
+      hint: "Plattform nicht erreichbar oder TLS/DNS-Fehler.",
+    };
+    lastWebhookStatus = result;
+    return result;
+  } finally {
+    clearTimeout(timer);
+  }
+}

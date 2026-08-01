@@ -464,9 +464,16 @@
 
       if ($("portalSyncHint")) {
         const autoOn = sync?.autoPipeline?.enabled !== false;
-        $("portalSyncHint").textContent = autoOn
-          ? "Automatik an: WorkPass Lohn fragt die Plattform nach Mitarbeitern und Abrechnungen. Eingehende Daten werden sofort berechnet und freigegeben."
-          : "Automatik aus. Bitte manuell synchronisieren oder WORKPASS_AUTO_PIPELINE=1 setzen.";
+        const wh = sync?.webhook?.last || sync?.lastWebhook || {};
+        if (wh.ok === false && sync?.webhook?.configured) {
+          $("portalSyncHint").textContent =
+            `Verbindung zur Plattform kaputt: Webhook ${wh.status || ""} ${wh.error || wh.hint || ""}. `
+            + `WorkPass fragt trotzdem – die Plattform muss den Endpoint live schalten und Daten zurücksenden.`;
+        } else {
+          $("portalSyncHint").textContent = autoOn
+            ? "Automatik an: WorkPass Lohn fragt die Plattform nach Mitarbeitern und Abrechnungen. Eingehende Daten werden sofort berechnet und freigegeben."
+            : "Automatik aus. Bitte manuell synchronisieren oder WORKPASS_AUTO_PIPELINE=1 setzen.";
+        }
       }
       if ($("portalSyncDetail")) {
         const hints = sync?.hints || [
@@ -474,10 +481,17 @@
           "WorkPass Lohn fragt per Webhook: employees.list.requested + payroll.month.requested",
         ];
         const auto = sync?.autoPipeline || {};
+        const wh = sync?.webhook?.last || {};
         $("portalSyncDetail").innerHTML = `
           <div class="api-inbox-item"><div><strong>Automatik</strong><span>${esc(auto.enabled === false ? "aus" : `an · alle ${auto.intervalMinutes || 15} Min.`)}</span></div></div>
+          <div class="api-inbox-item"><div><strong>Webhook</strong><span>${esc(
+            !sync?.webhook?.configured
+              ? "nicht gesetzt"
+              : (wh.ok === false
+                ? `FEHLER ${wh.status || ""} ${wh.error || ""}`
+                : (wh.ok === true ? "OK" : "konfiguriert"))
+          )}</span></div></div>
           <div class="api-inbox-item"><div><strong>Letzter Sync</strong><span>${esc(auto.lastTickAt || "—")}</span></div></div>
-          <div class="api-inbox-item"><div><strong>Webhook</strong><span>${esc(sync?.webhook?.configured ? "konfiguriert" : "nicht gesetzt")}</span></div></div>
           <div class="api-inbox-item"><div><strong>Pull-URL</strong><span>${esc(sync?.pullUrlConfigured ? "gesetzt" : "nicht gesetzt (Push empfohlen)")}</span></div></div>
           <div class="api-inbox-item"><div><strong>Offen</strong><span>Messages ${Number(sync?.pending?.messages || 0)} · Deliveries ${Number(sync?.pending?.deliveries || 0)}</span></div></div>
           ${hints.slice(0, 3).map((h) => `<div class="api-inbox-item"><div><span>${esc(h)}</span></div></div>`).join("")}
@@ -729,6 +743,18 @@
       </div>`;
     $("btnMonthRetryPull")?.addEventListener("click", () => runMonthClose({ pull: true, autoRelease: true }));
     $("btnMonthPingPlatform")?.addEventListener("click", () => pingPlatformForMonth());
+  }
+
+  async function pingPlatformWebhook() {
+    try {
+      setStatus("Prüfe Plattform-Webhook…", true);
+      const data = await apiFetch("/v1/platform/ping", { method: "POST", body: "{}" });
+      toast(data.message || (data.ok ? "Webhook OK" : "Webhook Fehler"), data.ok ? "ok" : "error");
+      setStatus(data.message || "", data.ok);
+      await loadPortalDashboard(true);
+    } catch (e) {
+      toast(`Webhook: ${e.message || e}`, "error");
+    }
   }
 
   async function runAutoSyncNow() {
@@ -2144,6 +2170,7 @@
     $("btnMonthClose")?.addEventListener("click", () => runMonthClose({ pull: true, autoRelease: true }));
     $("btnMonthReleaseOnly")?.addEventListener("click", () => runMonthClose({ pull: false, autoRelease: true }));
     $("btnAutoSyncNow")?.addEventListener("click", () => runAutoSyncNow());
+    $("btnPingPlatform")?.addEventListener("click", () => pingPlatformWebhook());
     $("btnRefreshMessages")?.addEventListener("click", () => loadPlatformMessages());
     $("btnSeedDemoMonth")?.addEventListener("click", () => seedDemoMonth());
     $("btnPurgeDemo")?.addEventListener("click", () => purgeDemoData());

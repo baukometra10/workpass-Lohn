@@ -39,7 +39,7 @@ import { ingestInvoice, releaseInvoiceJob } from "./invoice-service.mjs";
 import { listPayrollJobs, loadPayrollJob, listInvoiceJobs, loadInvoiceJob } from "./store.mjs";
 import { isDemoPayrollJob } from "./demo-detect.mjs";
 import { listPendingDeliveries, listAllDeliveries, ackDelivery } from "./delivery-queue.mjs";
-import { getLastWebhookStatus } from "./notify.mjs";
+import { getLastWebhookStatus, probePlatformWebhook } from "./notify.mjs";
 import {
   upsertCompany,
   activateCompany,
@@ -139,7 +139,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "2.6.0",
+      version: "2.6.1",
       multiTenant: true,
       monthCloseScheduler: monthCloseSched,
       autoMonthClose: autoMonthCloseConfig(),
@@ -173,6 +173,7 @@ async function handler(req, res) {
       },
       time: new Date().toISOString(),
       webhookConfigured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),
+      lastWebhook: getLastWebhookStatus(),
     });
   }
 
@@ -390,7 +391,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "2.6.0",
+          version: "2.6.1",
           ...syncHealth(),
         },
         monthCloseScheduler: monthCloseSched,
@@ -657,6 +658,37 @@ async function handler(req, res) {
       }
       const result = await runAutoPipelineOnce({ force: true, period: body.period });
       return reply(200, result);
+    }
+
+    if (
+      req.method === "POST"
+      && (path === "/v1/platform/ping" || path === "/v1/sync/ping")
+    ) {
+      const probe = await probePlatformWebhook();
+      return reply(probe.ok ? 200 : 502, {
+        ok: probe.ok,
+        webhook: probe,
+        message: probe.ok
+          ? "Plattform-Webhook erreichbar."
+          : (probe.hint || probe.error || "Webhook nicht erreichbar"),
+        platformShould: {
+          receiveEvents: [
+            "employees.list.requested",
+            "payroll.month.requested",
+            "employee.data.requested",
+            "payslip.released",
+            "platform.ping",
+          ],
+          thenSendToAccounting: [
+            "POST /v1/employees/import",
+            "POST /v1/payroll/batch",
+          ],
+          pollFallback: [
+            "GET /v1/messages/pending",
+            "GET /v1/delivery/pending",
+          ],
+        },
+      });
     }
 
     if (
@@ -988,7 +1020,7 @@ async function handler(req, res) {
         kind: "platform.accounting.sync.v1",
         schemaVersion: 2,
         companyId: companyId || null,
-        accountingVersion: "2.6.0",
+        accountingVersion: "2.6.1",
         autoPipeline: autoPipelineStatus(),
         webhook: {
           configured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),

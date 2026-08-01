@@ -56,13 +56,23 @@ export const accountingConnect = {
     keyHeader: "X-WorkPass-Webhook-Key",
     idempotencyHeader: "X-WorkPass-Idempotency-Key",
     events: [
+      "platform.ping",
+      "employees.list.requested",
+      "payroll.month.requested",
+      "employee.data.requested",
       "payslip.released",
       "invoice.released",
       "accounting.message",
       "payroll.waiting",
       "month.closed",
       "month.close.failed",
+      "month.auto.processed",
     ],
+    replyToAccounting: {
+      employees: "POST /v1/employees/import",
+      payrollBatch: "POST /v1/payroll/batch",
+      docs: "../docs/PLATFORM_REPLY.md",
+    },
   },
   sdk: "../sdk/workpass-accounting-client.mjs",
 };

@@ -9,7 +9,7 @@
  *   WORKPASS_AUTO_RELEASE=1           (default ON: release on inbound batch)
  */
 import { listCompanies, listPayrollJobs } from "./db/repository.mjs";
-import { notifyPlatform } from "./notify.mjs";
+import { notifyPlatform, getLastWebhookStatus, probePlatformWebhook } from "./notify.mjs";
 import { listEmployees } from "./employee-registry.mjs";
 import {
   runMonthClose,
@@ -18,6 +18,7 @@ import {
   requestEmployeeDataFromPlatform,
 } from "./month-close.mjs";
 import { ingestPayroll, ingestPayrollBatch, releasePayrollJob } from "./payroll-service.mjs";
+import { upsertPlatformMessage } from "./platform-messages.mjs";
 import { normalizeCompanyId } from "./tenant.mjs";
 
 let timer = null;
@@ -169,14 +170,70 @@ export async function askPlatformAndSyncCompany(options = {}) {
 
   let employeesNotify = { skipped: true };
   let monthNotify = { skipped: true };
+  let employeesMessage = null;
+  let monthMessage = null;
+  let webhookProbe = getLastWebhookStatus();
+
   if (options.notify !== false) {
+    // Durable inbox entries so platform can POLL even if webhook URL is broken/404
+    try {
+      const empMsg = await upsertPlatformMessage({
+        type: "employees.list.requested",
+        severity: "action_needed",
+        company,
+        period,
+        code: "employees_list_requested",
+        dedupeKey: `employees.list.requested::${companyId}::${period}`,
+        title: `Mitarbeiterliste anfordern · ${period}`,
+        body:
+          `WorkPass Lohn braucht die Mitarbeiterliste für ${period}.\n\n`
+          + `Bitte senden: POST ${process.env.WORKPASS_PUBLIC_URL || "https://workpass-lohn.up.railway.app"}/v1/employees/import\n`
+          + `Body: { "companyId": "${companyId}", "employees": [{ "badgeId", "name" }] }`,
+        gaps: [{
+          code: "employees_list_requested",
+          field: "employees",
+          label: "Mitarbeiterliste fehlt",
+          severity: "action_needed",
+        }],
+        source: "auto-pipeline",
+      }, { notify: false, forceNotify: false });
+      employeesMessage = empMsg.message;
+    } catch { /* ignore */ }
+
+    try {
+      const monMsg = await upsertPlatformMessage({
+        type: "payroll.month.requested",
+        severity: "action_needed",
+        company,
+        period,
+        code: "payroll_month_requested",
+        dedupeKey: `payroll.month.requested::${companyId}::${period}`,
+        title: `Monatsdaten anfordern · ${period}`,
+        body:
+          `WorkPass Lohn braucht Lohn-/Stundendaten für ${period}.\n\n`
+          + `Bitte senden: POST ${process.env.WORKPASS_PUBLIC_URL || "https://workpass-lohn.up.railway.app"}/v1/payroll/batch\n`
+          + `Body: platform.payroll.batch.v1 mit company.id="${companyId}" und employees[]\n`
+          + `(auch unvollständig OK – fehlende Felder werden nachgefragt).`,
+        gaps: [{
+          code: "payroll_month_requested",
+          field: "payroll.batch",
+          label: "Monatsdaten fehlen",
+          severity: "action_needed",
+        }],
+        source: "auto-pipeline",
+      }, { notify: false, forceNotify: false });
+      monthMessage = monMsg.message;
+    } catch { /* ignore */ }
+
     employeesNotify = await notifyPlatform({
       event: "employees.list.requested",
       company,
+      message: employeesMessage,
       meta: {
         period,
         reason: options.reason || "auto_pipeline",
         hint: "Bitte Mitarbeiter (Name + badgeId) per POST /v1/employees/import senden",
+        replyPath: "/v1/employees/import",
       },
       idempotencyKey: `emp-list:${companyId}:${period}:${Math.floor(Date.now() / 600000)}`,
     });
@@ -184,14 +241,21 @@ export async function askPlatformAndSyncCompany(options = {}) {
     monthNotify = await notifyPlatform({
       event: "payroll.month.requested",
       company,
+      message: monthMessage,
       meta: {
         period,
         allowIncomplete: true,
         reason: options.reason || "auto_pipeline",
         hint: "Bitte Monatsdaten per POST /v1/payroll/batch senden (auch unvollständig)",
+        replyPath: "/v1/payroll/batch",
       },
       idempotencyKey: `month-req:${companyId}:${period}:${Math.floor(Date.now() / 300000)}`,
     });
+
+    webhookProbe = getLastWebhookStatus();
+    if (options.probeWebhook) {
+      webhookProbe = await probePlatformWebhook();
+    }
   }
 
   // 3) Also ask per known employee (gaps / missing wages)
@@ -235,6 +299,8 @@ export async function askPlatformAndSyncCompany(options = {}) {
   });
 
   const jobs = listPayrollJobs({ companyId, period });
+  const webhookOk = webhookProbe?.ok === true;
+  const webhookBroken = webhookProbe?.ok === false && Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL);
   return {
     ok: Boolean(close?.ok || (close?.jobs?.total > 0)),
     waitingForPlatform: Boolean(close?.waitingForPlatform),
@@ -242,6 +308,11 @@ export async function askPlatformAndSyncCompany(options = {}) {
     period,
     employeesNotify,
     monthNotify,
+    employeesMessageId: employeesMessage?.messageId || null,
+    monthMessageId: monthMessage?.messageId || null,
+    webhook: webhookProbe,
+    webhookOk,
+    webhookBroken,
     knownEmployees: known.length,
     perEmployeeAsked: perEmployee.length,
     pull: {
@@ -259,7 +330,23 @@ export async function askPlatformAndSyncCompany(options = {}) {
     },
     message: close?.ok
       ? `Auto-Sync ${period}: ${close.newlyReleased?.length || 0} freigegeben.`
-      : (close?.message || "Plattform nach Mitarbeitern und Monatsdaten gefragt."),
+      : (webhookBroken
+        ? `Plattform-Webhook antwortet nicht (${webhookProbe?.status || webhookProbe?.error || "Fehler"}). `
+          + `Anfragen liegen unter GET /v1/messages/pending – Plattform muss Endpoint reparieren und Daten pushen.`
+        : (close?.message || "Plattform nach Mitarbeitern und Monatsdaten gefragt.")),
+    nextActions: webhookBroken
+      ? [
+          "Auf der Plattform den Webhook-Endpoint live schalten (aktuell oft HTTP 404)",
+          "Erwartete URL: WORKPASS_PLATFORM_WEBHOOK_URL",
+          "Fallback: Plattform pollt GET /v1/messages/pending und sendet dann Import/Batch",
+          "Danach: POST /v1/employees/import + POST /v1/payroll/batch an WorkPass Lohn",
+        ]
+      : (close?.waitingForPlatform
+        ? [
+            "Plattform muss auf employees.list.requested / payroll.month.requested reagieren",
+            "Daten senden: POST /v1/employees/import und POST /v1/payroll/batch",
+          ]
+        : []),
   };
 }
 
