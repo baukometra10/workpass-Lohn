@@ -3,50 +3,346 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WorkPass Accounting Admin</title>
+    <title>WorkPass Admin – Steuerprogramm · Suppix AI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="workpass-theme.css?v=5" />
-    <link rel="stylesheet" href="lohn.css?v=40" />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="workpass-theme.css?v=7" />
+    <link rel="stylesheet" href="lohn.css?v=49" />
     <style>
-      .admin-shell { max-width: 1100px; margin: 0 auto; padding: 24px 18px 48px; }
-      .admin-hero { margin-bottom: 22px; }
-      .admin-hero h1 { margin: 0 0 6px; font-family: var(--wp-display, "Space Grotesk", sans-serif); font-size: 1.6rem; color: #fff; }
-      .admin-hero p { margin: 0; color: var(--muted, #9bb0c9); font-size: 0.9rem; }
-      .admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 16px 0 22px; }
-      .admin-kpi { padding: 14px 16px; border: 1px solid rgba(90,140,200,0.25); border-radius: 12px; background: rgba(0,0,0,0.25); }
-      .admin-kpi span { display: block; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted, #9bb0c9); }
-      .admin-kpi strong { display: block; margin-top: 6px; font-size: 1.25rem; color: #fff; }
-      .admin-panel { border: 1px solid rgba(90,140,200,0.25); border-radius: 14px; padding: 16px; background: rgba(0,0,0,0.22); margin-bottom: 14px; }
-      .admin-panel h2 { margin: 0 0 10px; font-size: 1rem; color: #fff; }
-      .admin-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-      .admin-actions button, .admin-actions a {
-        border: 1px solid rgba(90,140,200,0.35); background: linear-gradient(180deg,#1a2740,#121b2c);
-        color: #fff; border-radius: 10px; padding: 8px 12px; font: inherit; font-size: 0.84rem; text-decoration: none; cursor: pointer;
+      body {
+        margin: 0;
+        min-height: 100%;
+        font-family: var(--wp-sans, "Barlow", system-ui, sans-serif);
+        color: var(--wp-text, #e8eef8);
+        background:
+          radial-gradient(ellipse 90% 55% at 8% -8%, rgba(120, 190, 255, 0.16), transparent 58%),
+          radial-gradient(ellipse 70% 45% at 95% 5%, rgba(110, 230, 180, 0.1), transparent 52%),
+          var(--wp-bg, #060b16);
       }
-      .admin-actions button.primary { background: linear-gradient(135deg,#3b9eff,#7c3aed); border-color: transparent; }
+      .admin-shell {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 20px 18px 48px;
+      }
+      .admin-topbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 18px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid rgba(90, 140, 200, 0.22);
+      }
+      .admin-brand-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+      .admin-brand-text strong {
+        display: block;
+        font-family: var(--wp-display, "Space Grotesk", sans-serif);
+        font-size: 1.15rem;
+        color: #fff;
+        line-height: 1.2;
+      }
+      .admin-brand-text span {
+        display: block;
+        font-size: 0.72rem;
+        color: var(--muted, #8a94a6);
+      }
+      .admin-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      .admin-nav a,
+      .admin-nav button {
+        border: 1px solid rgba(90, 140, 200, 0.35);
+        background: linear-gradient(180deg, #182338, #101a2c);
+        color: #fff;
+        border-radius: 10px;
+        padding: 8px 12px;
+        font: inherit;
+        font-size: 0.82rem;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .admin-nav a:hover,
+      .admin-nav button:hover {
+        border-color: rgba(93, 180, 255, 0.55);
+        box-shadow: 0 0 0 1px rgba(59, 158, 255, 0.25);
+      }
+      .admin-hero { margin-bottom: 14px; }
+      .admin-hero h1 {
+        margin: 0 0 6px;
+        font-family: var(--wp-display, "Space Grotesk", sans-serif);
+        font-size: 1.45rem;
+        color: #fff;
+      }
+      .admin-hero p { margin: 0; color: var(--muted, #9bb0c9); font-size: 0.88rem; }
+      .admin-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin: 14px 0 18px;
+      }
+      @media (max-width: 900px) {
+        .admin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      @media (max-width: 520px) {
+        .admin-grid { grid-template-columns: 1fr; }
+      }
+      .admin-kpi {
+        padding: 14px 16px;
+        border: 1px solid rgba(90, 140, 200, 0.25);
+        border-radius: 12px;
+        background: rgba(16, 24, 38, 0.85);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      }
+      .admin-kpi span {
+        display: block;
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted, #9bb0c9);
+      }
+      .admin-kpi strong {
+        display: block;
+        margin-top: 6px;
+        font-family: var(--wp-display, "Space Grotesk", sans-serif);
+        font-size: 1.25rem;
+        color: #5db4ff;
+      }
+      .admin-panel {
+        border: 1px solid rgba(90, 140, 200, 0.25);
+        border-radius: 14px;
+        padding: 16px;
+        background: rgba(16, 24, 38, 0.72);
+        margin-bottom: 14px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      }
+      .admin-panel h2 {
+        margin: 0 0 10px;
+        font-family: var(--wp-display, "Space Grotesk", sans-serif);
+        font-size: 1rem;
+        color: #fff;
+      }
+      .admin-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      .admin-actions button,
+      .admin-actions a {
+        border: 1px solid rgba(90, 140, 200, 0.35);
+        background: linear-gradient(180deg, #1a2740, #121b2c);
+        color: #fff;
+        border-radius: 10px;
+        padding: 8px 12px;
+        font: inherit;
+        font-size: 0.84rem;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .admin-actions button.primary {
+        background: linear-gradient(180deg, #1a4f8a 0%, #123a68 100%);
+        border-color: rgba(59, 160, 255, 0.55);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.12),
+          0 6px 18px rgba(20, 90, 180, 0.28);
+      }
+      .admin-actions button:hover,
+      .admin-actions a:hover {
+        border-color: rgba(93, 180, 255, 0.55);
+      }
+      .admin-actions button.is-busy,
+      .admin-nav button.is-busy {
+        opacity: 0.72;
+        cursor: wait;
+        pointer-events: none;
+      }
+      .admin-actions button:focus-visible,
+      .admin-actions a:focus-visible,
+      .admin-nav a:focus-visible,
+      .admin-nav button:focus-visible,
+      .auth-submit:focus-visible,
+      .auth-mode-tab:focus-visible,
+      .btn-delete-company:focus-visible,
+      .btn-restore-bak:focus-visible {
+        outline: 2px solid rgba(93, 180, 255, 0.85);
+        outline-offset: 2px;
+      }
       .admin-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
-      .admin-table th, .admin-table td { text-align: left; padding: 8px 6px; border-bottom: 1px solid rgba(90,140,200,0.18); color: #d7e6f7; }
-      .admin-table th { color: #8fb4d8; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
+      .admin-table th,
+      .admin-table td {
+        text-align: left;
+        padding: 10px 8px;
+        border-bottom: 1px solid rgba(90, 140, 200, 0.18);
+        color: #d7e6f7;
+        vertical-align: top;
+      }
+      .admin-table th {
+        color: #8fb4d8;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .admin-table code {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 0.78rem;
+        color: #a5f3fc;
+      }
+      .admin-status-cell {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+      }
+      .admin-warn {
+        flex: 1 1 100%;
+        font-size: 0.72rem;
+        color: #ffb4a8;
+        margin-top: 2px;
+      }
+      .admin-rights { margin: 0; padding-left: 18px; }
       .admin-rights li { margin: 6px 0; color: #d7e6f7; font-size: 0.88rem; }
-      .admin-status { min-height: 1.2em; font-size: 0.82rem; color: #9bb0c9; margin-bottom: 10px; }
-      .admin-status.ok { color: #7ddea2; }
-      .admin-status.err { color: #f87171; }
-      .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.7rem; }
-      .badge-on { background: rgba(52,211,153,0.15); color: #7ddea2; }
-      .badge-off { background: rgba(248,113,113,0.12); color: #fca5a5; }
+      .admin-status {
+        min-height: 1.2em;
+        font-size: 0.82rem;
+        color: #9bb0c9;
+        margin-bottom: 10px;
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(90, 140, 200, 0.22);
+        background: rgba(10, 16, 28, 0.55);
+      }
+      .admin-status.ok {
+        color: #7ddea2;
+        border-color: rgba(52, 211, 153, 0.35);
+      }
+      .admin-status.err {
+        color: #f87171;
+        border-color: rgba(248, 113, 113, 0.35);
+      }
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        border: 1px solid transparent;
+      }
+      .badge-on {
+        background: rgba(52, 211, 153, 0.15);
+        color: #7ddea2;
+        border-color: rgba(52, 211, 153, 0.35);
+      }
+      .badge-off {
+        background: rgba(248, 113, 113, 0.12);
+        color: #fca5a5;
+        border-color: rgba(248, 113, 113, 0.3);
+      }
+      .badge-warn {
+        background: rgba(251, 191, 36, 0.12);
+        color: #fde68a;
+        border-color: rgba(251, 191, 36, 0.35);
+      }
+      .btn-delete-company,
+      .btn-restore-bak {
+        margin-left: 0;
+        padding: 4px 8px;
+        font-size: 0.72rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font: inherit;
+      }
+      .btn-delete-company {
+        border: 1px solid rgba(220, 80, 80, 0.45);
+        background: rgba(120, 30, 30, 0.35);
+        color: #ffc9c9;
+      }
+      .btn-restore-bak {
+        border: 1px solid rgba(90, 140, 200, 0.4);
+        background: rgba(16, 28, 48, 0.8);
+        color: #d7e6f7;
+      }
+      .admin-field-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      @media (max-width: 700px) {
+        .admin-field-grid { grid-template-columns: 1fr; }
+      }
+      .admin-field-grid label {
+        display: block;
+        font-size: 0.72rem;
+        color: #9bb0c9;
+      }
+      .admin-field-grid input {
+        width: 100%;
+        margin-top: 4px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(90, 140, 200, 0.3);
+        background: #0a101c;
+        color: #fff;
+        font: inherit;
+      }
+      .admin-field-grid input:focus {
+        outline: none;
+        border-color: #3b9eff;
+        box-shadow: 0 0 0 3px rgba(59, 158, 255, 0.18);
+      }
+      .admin-hint {
+        margin: 0;
+        color: #9bb0c9;
+        font-size: 0.84rem;
+        line-height: 1.45;
+      }
+      .admin-audit-list,
+      .admin-backup-list {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 0.8rem;
+        color: #d7e6f7;
+      }
+      .admin-audit-list li,
+      .admin-backup-list li {
+        margin-bottom: 6px;
+      }
+      .admin-foot {
+        margin-top: 8px;
+        font-size: 0.72rem;
+        color: #8a94a6;
+      }
     </style>
   </head>
   <body class="auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
       <div class="auth-card">
         <div class="auth-brand">
-          <div class="auth-mark" aria-hidden="true"><span></span></div>
-          <div>
-            <strong>SUPPIX AI</strong>
-            <small>Accounting Admin</small>
+          <div class="lex-logo auth-logo" aria-hidden="true">
+            <svg viewBox="0 0 32 32" width="40" height="40">
+              <defs><linearGradient id="wpAuthGradAdmin" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#5db4ff"/><stop offset="100%" stop-color="#1d4ed8"/></linearGradient></defs>
+              <rect width="32" height="32" rx="8" fill="url(#wpAuthGradAdmin)"/>
+              <circle cx="16" cy="16" r="7" fill="none" stroke="#fff" stroke-width="2.2"/>
+              <circle cx="16" cy="16" r="2.5" fill="#fff"/>
+            </svg>
           </div>
+          <div>
+            <strong>WorkPass Steuerprogramm</strong>
+            <small>Suppix AI · Accounting Admin</small>
+          </div>
+        </div>
+        <div class="auth-meta">
+          <div><span>Produkt</span>WorkPass Admin</div>
+          <div><span>Zugang</span>Nur Admin-Rolle</div>
         </div>
         <h1 id="authTitle">Admin-Zugang</h1>
         <p class="auth-hint" id="authHint">Nur Accounting-Admin · Plattform-Konto oder Geräte-PIN</p>
@@ -72,24 +368,43 @@
           <p class="auth-error" id="authError" role="alert"></p>
           <button type="submit" class="auth-submit" id="authSubmit">Anmelden</button>
         </form>
-        <p class="auth-foot"><a href="index.html" style="color:inherit">← Hub</a></p>
+        <p class="auth-foot"><a href="index.html" style="color:inherit">← Hub</a> · <a href="lohn.html" style="color:inherit">Lohn</a></p>
       </div>
     </div>
 
     <div id="workpassApp" class="admin-shell" aria-hidden="true">
+      <div class="admin-topbar">
+        <div class="admin-brand-row">
+          <div class="admin-logo" aria-hidden="true">
+            <svg viewBox="0 0 32 32" width="28" height="28">
+              <defs><linearGradient id="wpGradAdmin" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#5db4ff"/><stop offset="100%" stop-color="#1d4ed8"/></linearGradient></defs>
+              <rect width="32" height="32" rx="8" fill="url(#wpGradAdmin)"/>
+              <circle cx="16" cy="16" r="7" fill="none" stroke="#fff" stroke-width="2.2"/>
+              <circle cx="16" cy="16" r="2.5" fill="#fff"/>
+            </svg>
+          </div>
+          <div class="admin-brand-text">
+            <strong>WorkPass Admin</strong>
+            <span>Suppix AI · Steuerprogramm</span>
+          </div>
+        </div>
+        <div class="admin-nav">
+          <a href="lohn.html">Lohn</a>
+          <a href="index.html">Hub</a>
+          <button type="button" id="btnLock">Sperren</button>
+        </div>
+      </div>
+
       <div class="admin-hero">
         <h1>Accounting Admin</h1>
         <p id="adminWho">Ihre Rechte als Administrator der Buchhaltungs-Bridge.</p>
       </div>
-      <div class="admin-status" id="adminStatus">Laden…</div>
+      <div class="admin-status" id="adminStatus" role="status">Laden…</div>
       <div class="admin-actions">
         <button type="button" class="primary" id="btnRefresh">Aktualisieren</button>
         <button type="button" id="btnBackup">Backup jetzt</button>
         <button type="button" id="btnMonthCloseAll">Monatsabschluss alle Firmen</button>
         <button type="button" id="btnClearRate">Rate-Limit löschen</button>
-        <a href="lohn.html">Lohn</a>
-        <a href="index.html">Hub</a>
-        <button type="button" id="btnLock">Sperren</button>
       </div>
       <div class="admin-grid" id="adminKpis"></div>
       <div class="admin-panel">
@@ -98,22 +413,22 @@
       </div>
       <div class="admin-panel">
         <h2>Firma aus Plattform hier anlegen (Login-Sync)</h2>
-        <p class="section-hint" style="margin-top:0;color:#9bb0c9;font-size:0.84rem;line-height:1.45">
+        <p class="admin-hint">
           Wenn in der Plattform „Abrechnungen an WorkPass Lohn senden“ aktiv ist, die Firma aber beim Login fehlt:
           hier einmal anlegen. Später soll die Plattform das automatisch per <code>POST /v1/company/login-sync</code> machen.
         </p>
-        <div class="field-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
-          <label style="display:block;font-size:0.72rem;color:#9bb0c9">Firma-ID (company.id)
-            <input id="syncCompanyId" type="text" placeholder="z. B. luf oder cmp-…" style="width:100%;margin-top:4px;padding:8px;border-radius:8px;border:1px solid rgba(90,140,200,0.3);background:#0a101c;color:#fff" />
+        <div class="admin-field-grid">
+          <label>Firma-ID (company.id)
+            <input id="syncCompanyId" type="text" placeholder="z. B. luf oder cmp-…" />
           </label>
-          <label style="display:block;font-size:0.72rem;color:#9bb0c9">Firmenname
-            <input id="syncCompanyName" type="text" placeholder="Anzeigename" style="width:100%;margin-top:4px;padding:8px;border-radius:8px;border:1px solid rgba(90,140,200,0.3);background:#0a101c;color:#fff" />
+          <label>Firmenname
+            <input id="syncCompanyName" type="text" placeholder="Anzeigename" />
           </label>
-          <label style="display:block;font-size:0.72rem;color:#9bb0c9">Login-E-Mail
-            <input id="syncLoginEmail" type="email" placeholder="luf@firma.de" style="width:100%;margin-top:4px;padding:8px;border-radius:8px;border:1px solid rgba(90,140,200,0.3);background:#0a101c;color:#fff" />
+          <label>Login-E-Mail
+            <input id="syncLoginEmail" type="email" placeholder="luf@firma.de" />
           </label>
-          <label style="display:block;font-size:0.72rem;color:#9bb0c9">Passwort / PIN (min. 4)
-            <input id="syncLoginPassword" type="text" placeholder="4821" autocomplete="off" style="width:100%;margin-top:4px;padding:8px;border-radius:8px;border:1px solid rgba(90,140,200,0.3);background:#0a101c;color:#fff" />
+          <label>Passwort / PIN (min. 4)
+            <input id="syncLoginPassword" type="text" placeholder="4821" autocomplete="off" />
           </label>
         </div>
         <div class="admin-actions" style="margin-top:12px;margin-bottom:0">
@@ -131,12 +446,13 @@
       </div>
       <div class="admin-panel">
         <h2>Security-Audit (letzte Einträge)</h2>
-        <div id="adminAudit"><p style="color:#9bb0c9;font-size:0.85rem">Wird beim Laden der Übersicht gefüllt.</p></div>
+        <div id="adminAudit"><p class="admin-hint">Wird beim Laden der Übersicht gefüllt.</p></div>
       </div>
       <div class="admin-panel">
         <h2>Backups</h2>
         <div id="adminBackups"></div>
       </div>
+      <p class="admin-foot">WorkPass Steuerprogramm · Bridge-Admin</p>
     </div>
 
     <script src="auth-gate.js?v=8"></script>
@@ -160,9 +476,26 @@
       function setStatus(msg, ok) {
         const el = document.getElementById("adminStatus");
         el.textContent = msg;
-        el.className = "admin-status " + (ok ? "ok" : "err");
+        el.className = "admin-status " + (ok === true ? "ok" : ok === false ? "err" : "");
+      }
+      function setBusy(btn, busy, label) {
+        if (!btn) return;
+        btn.disabled = Boolean(busy);
+        btn.classList.toggle("is-busy", Boolean(busy));
+        if (busy) btn.setAttribute("aria-busy", "true");
+        else btn.removeAttribute("aria-busy");
+        if (label != null) btn.textContent = label;
+      }
+      function esc(s) {
+        return String(s ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
       }
       async function refresh() {
+        const btn = document.getElementById("btnRefresh");
+        setBusy(btn, true, "Lädt…");
         try {
           const data = await api("/v1/admin/overview");
           const user = window.WorkPassAuth?.getSessionUser?.();
@@ -173,10 +506,10 @@
             <div class="admin-kpi"><span>Firmen</span><strong>${data.companies?.count ?? 0}</strong></div>
             <div class="admin-kpi"><span>Aktiv</span><strong>${data.companies?.active ?? 0}</strong></div>
             <div class="admin-kpi"><span>Backups</span><strong>${data.backup?.backups?.length ?? 0}</strong></div>
-            <div class="admin-kpi"><span>Version</span><strong>${data.health?.version || "—"}</strong></div>`;
+            <div class="admin-kpi"><span>Version</span><strong>${esc(data.health?.version || "—")}</strong></div>`;
           const rights = data.rights || {};
           document.getElementById("adminRights").innerHTML = Object.entries(rights)
-            .map(([k, v]) => `<li>${v ? "✓" : "–"} ${k}</li>`).join("");
+            .map(([k, v]) => `<li>${v ? "✓" : "–"} ${esc(k)}</li>`).join("") || "<li>Keine Rechte geladen.</li>";
           const rows = (data.companies?.items || []).map((c) => {
             const warnings = [];
             if (!c.accountingEnabled) warnings.push("Kein Accounting");
@@ -184,14 +517,16 @@
             if (!c.hasLoginPassword) warnings.push("Kein PIN");
             return `
             <tr>
-              <td>${c.name || "—"}</td>
-              <td><code>${c.id || ""}</code></td>
-              <td>${c.loginEmail || "—"} ${c.hasLoginPassword ? "· PIN ✓" : "· kein PIN"}</td>
+              <td>${esc(c.name || "—")}</td>
+              <td><code>${esc(c.id || "")}</code></td>
+              <td>${esc(c.loginEmail || "—")} ${c.hasLoginPassword ? "· PIN ✓" : "· kein PIN"}</td>
               <td>
-                <span class="badge ${c.accountingEnabled ? "badge-on" : "badge-off"}">${c.accountingEnabled ? "Aktiv" : "Inaktiv"}</span>
-                ${c.hasHubProfile ? '<span class="badge badge-on" style="margin-left:4px">Hub ✓</span>' : '<span class="badge badge-off" style="margin-left:4px">Hub ✗</span>'}
-                ${warnings.length ? `<div class="muted" style="font-size:0.72rem;margin-top:4px;color:#ffb4a8">${warnings.join(" · ")}</div>` : ""}
-                <button type="button" class="btn-delete-company" data-id="${c.id || ""}" data-name="${(c.name || c.id || "").replace(/"/g, "&quot;")}" style="margin-left:8px;padding:4px 8px;font-size:0.72rem;border-radius:6px;border:1px solid rgba(220,80,80,0.45);background:rgba(120,30,30,0.35);color:#ffc9c9;cursor:pointer">Löschen</button>
+                <div class="admin-status-cell">
+                  <span class="badge ${c.accountingEnabled ? "badge-on" : "badge-off"}">${c.accountingEnabled ? "Aktiv" : "Inaktiv"}</span>
+                  <span class="badge ${c.hasHubProfile ? "badge-on" : "badge-warn"}">${c.hasHubProfile ? "Hub ✓" : "Hub ✗"}</span>
+                  <button type="button" class="btn-delete-company" data-id="${esc(c.id || "")}" data-name="${esc(c.name || c.id || "")}">Löschen</button>
+                  ${warnings.length ? `<div class="admin-warn">${esc(warnings.join(" · "))}</div>` : ""}
+                </div>
               </td>
             </tr>`;
           }).join("");
@@ -201,18 +536,19 @@
             const auditHost = document.getElementById("adminAudit");
             if (auditHost) {
               auditHost.innerHTML = (audit.entries || []).length
-                ? `<ul style="margin:0;padding-left:18px;font-size:0.8rem">${(audit.entries || []).slice(0, 25).map((e) =>
-                  `<li><code>${e.at || ""}</code> · ${e.type || "?"} · ${e.outcome || ""} ${e.companyId ? `· ${e.companyId}` : ""}</li>`
+                ? `<ul class="admin-audit-list">${(audit.entries || []).slice(0, 25).map((e) =>
+                  `<li><code>${esc(e.at || "")}</code> · ${esc(e.type || "?")} · ${esc(e.outcome || "")}${e.companyId ? ` · ${esc(e.companyId)}` : ""}</li>`
                 ).join("")}</ul>`
-                : "<p>Noch keine Audit-Einträge.</p>";
+                : "<p class=\"admin-hint\">Noch keine Audit-Einträge.</p>";
             }
           } catch { /* optional */ }
-          document.querySelectorAll(".btn-delete-company").forEach((btn) => {
-            btn.addEventListener("click", async () => {
-              const id = btn.getAttribute("data-id");
-              const name = btn.getAttribute("data-name") || id;
+          document.querySelectorAll(".btn-delete-company").forEach((delBtn) => {
+            delBtn.addEventListener("click", async () => {
+              const id = delBtn.getAttribute("data-id");
+              const name = delBtn.getAttribute("data-name") || id;
               if (!id) return;
               if (!confirm(`Firma „${name}“ (${id}) wirklich aus WorkPass Lohn löschen?`)) return;
+              setBusy(delBtn, true, "…");
               try {
                 await api("/v1/company/delete", {
                   method: "POST",
@@ -222,21 +558,23 @@
                 refresh();
               } catch (e) {
                 setStatus(e.message, false);
+                setBusy(delBtn, false, "Löschen");
               }
             });
           });
           const backups = data.backup?.backups || [];
           document.getElementById("adminBackups").innerHTML = backups.length
-            ? `<ul>${backups.map((b) => `<li>
-                ${b.fileName || b.name || JSON.stringify(b)}
-                <button type="button" class="btn-restore-bak" data-file="${b.fileName || ""}" style="margin-left:8px;font-size:0.72rem">Wiederherstellen</button>
+            ? `<ul class="admin-backup-list">${backups.map((b) => `<li>
+                ${esc(b.fileName || b.name || JSON.stringify(b))}
+                <button type="button" class="btn-restore-bak" data-file="${esc(b.fileName || "")}">Wiederherstellen</button>
               </li>`).join("")}</ul>`
-            : "<p>Keine Backups gefunden.</p>";
-          document.querySelectorAll(".btn-restore-bak").forEach((btn) => {
-            btn.addEventListener("click", async () => {
-              const fileName = btn.getAttribute("data-file");
+            : "<p class=\"admin-hint\">Keine Backups gefunden.</p>";
+          document.querySelectorAll(".btn-restore-bak").forEach((bakBtn) => {
+            bakBtn.addEventListener("click", async () => {
+              const fileName = bakBtn.getAttribute("data-file");
               if (!fileName) return;
               if (!confirm(`Backup ${fileName} wirklich wiederherstellen? Aktuelle DB wird überschrieben (Sicherheitskopie wird angelegt).`)) return;
+              setBusy(bakBtn, true, "…");
               try {
                 await api("/v1/admin/backup/restore", {
                   method: "POST",
@@ -244,35 +582,58 @@
                 });
                 setStatus(`Backup ${fileName} wiederhergestellt`, true);
                 refresh();
-              } catch (e) { setStatus(e.message, false); }
+              } catch (e) {
+                setStatus(e.message, false);
+                setBusy(bakBtn, false, "Wiederherstellen");
+              }
             });
           });
           setStatus("Admin-Übersicht geladen", true);
         } catch (e) {
           setStatus(e.message, false);
+        } finally {
+          setBusy(btn, false, "Aktualisieren");
         }
       }
       document.getElementById("btnRefresh")?.addEventListener("click", refresh);
       document.getElementById("btnBackup")?.addEventListener("click", async () => {
+        const btn = document.getElementById("btnBackup");
+        setBusy(btn, true, "Backup…");
         try {
           await api("/v1/admin/backup", { method: "POST", body: "{}" });
           setStatus("Backup erstellt", true);
-          refresh();
-        } catch (e) { setStatus(e.message, false); }
+          await refresh();
+        } catch (e) {
+          setStatus(e.message, false);
+        } finally {
+          setBusy(btn, false, "Backup jetzt");
+        }
       });
       document.getElementById("btnClearRate")?.addEventListener("click", async () => {
+        const btn = document.getElementById("btnClearRate");
+        setBusy(btn, true, "Löscht…");
         try {
           await api("/v1/admin/rate-limit/clear", { method: "POST", body: "{}" });
           setStatus("Rate-Limit geleert", true);
-        } catch (e) { setStatus(e.message, false); }
+        } catch (e) {
+          setStatus(e.message, false);
+        } finally {
+          setBusy(btn, false, "Rate-Limit löschen");
+        }
       });
       document.getElementById("btnMonthCloseAll")?.addEventListener("click", async () => {
         if (!confirm("Monatsabschluss für alle aktiven Firmen jetzt ausführen?")) return;
+        const btn = document.getElementById("btnMonthCloseAll");
+        setBusy(btn, true, "Läuft…");
         try {
           const data = await api("/v1/admin/month-close/run", { method: "POST", body: "{}" });
           setStatus(`Monatsabschluss: ${data.count || 0} Firmen · ok=${data.ok}`, true);
-          refresh();
-        } catch (e) { setStatus(e.message, false); }
+          await refresh();
+        } catch (e) {
+          setStatus(e.message, false);
+        } finally {
+          setBusy(btn, false, "Monatsabschluss alle Firmen");
+        }
       });
       document.getElementById("btnSyncLogin")?.addEventListener("click", async () => {
         const companyId = String(document.getElementById("syncCompanyId")?.value || "").trim();
@@ -283,6 +644,8 @@
           setStatus("Firma-ID und Passwort/PIN (min. 4) sind Pflicht.", false);
           return;
         }
+        const btn = document.getElementById("btnSyncLogin");
+        setBusy(btn, true, "Speichert…");
         try {
           const data = await api("/v1/company/login-sync", {
             method: "POST",
@@ -294,9 +657,11 @@
           });
           setStatus(`Gespeichert: ${data.login?.email || email || companyId} – jetzt in Lohn anmelden.`, true);
           document.getElementById("syncLoginPassword").value = "";
-          refresh();
+          await refresh();
         } catch (e) {
           setStatus(e.message, false);
+        } finally {
+          setBusy(btn, false, "Firma + Login speichern");
         }
       });
       window.WorkPassAuth.init({
