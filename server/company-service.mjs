@@ -118,8 +118,87 @@ export function companyWorkspaceView(company) {
     connection: meta.connection || null,
     loginEmail: normalizeLoginEmail(auth?.email || "") || defaultCompanyLoginEmail(company.id),
     hasLoginPassword: Boolean(auth?.hash),
+    hasHubProfile: Boolean(meta.hubProfile && typeof meta.hubProfile === "object"),
     createdAt: company.createdAt,
     updatedAt: company.updatedAt,
+  };
+}
+
+const HUB_PROFILE_LOGO_MAX = 400_000;
+
+/** Persist hub Stammdaten (bank, logo, layout, letterhead) under company.meta.hubProfile */
+export function mergeHubProfile(prev, incoming) {
+  if (!incoming || typeof incoming !== "object") return prev && typeof prev === "object" ? prev : null;
+  const out = { ...(prev && typeof prev === "object" ? prev : {}) };
+  let logoSkipped = false;
+  for (const [key, value] of Object.entries(incoming)) {
+    if (value === undefined) continue;
+    if (key === "logoDataUrl") {
+      const s = String(value || "");
+      if (s.length > HUB_PROFILE_LOGO_MAX) {
+        logoSkipped = true;
+        continue;
+      }
+      if (s) out.logoDataUrl = s;
+      else if (value === "") delete out.logoDataUrl;
+      continue;
+    }
+    out[key] = value;
+  }
+  out.updatedAt = new Date().toISOString();
+  return { profile: out, logoSkipped };
+}
+
+export function upsertCompany(payload) {
+  const check = requireCompanyId(payload);
+  if (!check.ok) return { ok: false, errors: [check.error], company: null, created: false };
+
+  const incoming = extractCompany(payload);
+  const now = new Date().toISOString();
+  const prev = repoLoad(incoming.id);
+  const created = !prev;
+  const rawHub = payload?.hubProfile
+    || payload?.company?.hubProfile
+    || incoming.meta?.hubProfile
+    || null;
+  const hubMerge = rawHub
+    ? mergeHubProfile(prev?.meta?.hubProfile, rawHub)
+    : { profile: prev?.meta?.hubProfile || null, logoSkipped: false };
+
+  const company = {
+    kind: "platform.company.v1",
+    id: incoming.id,
+    name: incoming.name || prev?.name || incoming.id,
+    street: incoming.street || prev?.street || "",
+    zip: incoming.zip || prev?.zip || "",
+    city: incoming.city || prev?.city || "",
+    address: incoming.address || prev?.address || "",
+    taxNumber: incoming.taxNumber || prev?.taxNumber || "",
+    vatId: incoming.vatId || prev?.vatId || "",
+    datevClientNo: incoming.datevClientNo || prev?.datevClientNo || "",
+    datevConsultantNo: incoming.datevConsultantNo || prev?.datevConsultantNo || "",
+    email: incoming.email || prev?.email || "",
+    phone: incoming.phone || prev?.phone || "",
+    meta: {
+      ...(prev?.meta || {}),
+      ...(incoming.meta || {}),
+      ...(hubMerge.profile ? { hubProfile: hubMerge.profile } : {}),
+    },
+    createdAt: prev?.createdAt || now,
+    updatedAt: now,
+  };
+
+  saveCompany(company);
+  return {
+    ok: true,
+    errors: [],
+    company,
+    created,
+    hubProfileSynced: Boolean(rawHub),
+    logoSkipped: Boolean(hubMerge.logoSkipped),
+    message: hubMerge.logoSkipped
+      ? "Firma gespeichert – Logo zu groß für Server-Sync (lokal behalten)."
+      : undefined,
   };
 }
 
@@ -305,37 +384,6 @@ export function syncCompanyLogin(payload = {}) {
     login: activated.login,
     message: "Firma + Login in Buchhaltung synchronisiert – Anmeldung jetzt möglich",
   };
-}
-
-export function upsertCompany(payload) {
-  const check = requireCompanyId(payload);
-  if (!check.ok) return { ok: false, errors: [check.error], company: null, created: false };
-
-  const incoming = extractCompany(payload);
-  const now = new Date().toISOString();
-  const prev = repoLoad(incoming.id);
-  const created = !prev;
-  const company = {
-    kind: "platform.company.v1",
-    id: incoming.id,
-    name: incoming.name || prev?.name || incoming.id,
-    street: incoming.street || prev?.street || "",
-    zip: incoming.zip || prev?.zip || "",
-    city: incoming.city || prev?.city || "",
-    address: incoming.address || prev?.address || "",
-    taxNumber: incoming.taxNumber || prev?.taxNumber || "",
-    vatId: incoming.vatId || prev?.vatId || "",
-    datevClientNo: incoming.datevClientNo || prev?.datevClientNo || "",
-    datevConsultantNo: incoming.datevConsultantNo || prev?.datevConsultantNo || "",
-    email: incoming.email || prev?.email || "",
-    phone: incoming.phone || prev?.phone || "",
-    meta: { ...(prev?.meta || {}), ...(incoming.meta || {}) },
-    createdAt: prev?.createdAt || now,
-    updatedAt: now,
-  };
-
-  saveCompany(company);
-  return { ok: true, errors: [], company, created };
 }
 
 /**

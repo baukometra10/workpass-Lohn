@@ -1470,9 +1470,8 @@ body.dashboard-tab .preview-panel {
   border-color: #c53d2f;
 }
 
-#mandantAccountingStatus {
-  margin-bottom: 14px;
-}
+#mandantProfileSyncHint.is-ok { color: #2f8f4e; }
+#mandantProfileSyncHint.is-error { color: #c53d2f; }
 
 .dash-secondary-actions {
   margin: 10px 0 0;

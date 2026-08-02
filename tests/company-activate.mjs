@@ -11,6 +11,7 @@ import {
   loadCompany,
   companyWorkspaceView,
   ensureCompanyFromPayload,
+  upsertCompany,
 } from "../server/company-service.mjs";
 
 let passed = 0;
@@ -94,6 +95,33 @@ const ensured = ensureCompanyFromPayload({
 assert(ensured.ok && ensured.company?.meta?.accountingEnabled === true, "ingest ensure activates");
 assert(ensured.company?.meta?.section?.id === `ws:${ingestId}`, "ingest section");
 deleteCompany({ id: ingestId });
+
+console.log("\n=== Hub profile sync on upsert ===");
+const hubId = `hub-prof-${Date.now().toString(36)}`;
+const up = upsertCompany({
+  id: hubId,
+  name: "Hub Sync GmbH",
+  taxNumber: "11/222/33333",
+  hubProfile: {
+    companyIban: "DE89370400440532013000",
+    payrollLayout: "agenda",
+    seller: "Hub Sync GmbH\nWeg 1\n10115 Berlin",
+    commercialRegister: "HRB 1",
+  },
+});
+assert(up.ok && up.hubProfileSynced, "upsert with hubProfile");
+const loaded = loadCompany(hubId);
+assert(loaded?.meta?.hubProfile?.companyIban?.startsWith("DE89"), "hubProfile persisted");
+assert(loaded?.meta?.hubProfile?.payrollLayout === "agenda", "layout in hubProfile");
+assert(companyWorkspaceView(loaded)?.hasHubProfile === true, "workspace hasHubProfile");
+const up2 = upsertCompany({
+  id: hubId,
+  name: "Hub Sync GmbH",
+  hubProfile: { companyBic: "COBADEFFXXX" },
+});
+assert(up2.ok && loadCompany(hubId)?.meta?.hubProfile?.companyIban?.startsWith("DE89"), "hubProfile merge keeps iban");
+assert(loadCompany(hubId)?.meta?.hubProfile?.companyBic === "COBADEFFXXX", "hubProfile merge adds bic");
+deleteCompany({ id: hubId });
 
 console.log("\n=== Reject without id ===");
 const bad = activateCompany({ company: { name: "No Id GmbH" } });

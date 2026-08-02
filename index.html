@@ -12,7 +12,7 @@
     />
     <link rel="stylesheet" href="styles.css?v=42" />
     <link rel="stylesheet" href="agenda-reference.css?v=6" />
-    <link rel="stylesheet" href="app-ui.css?v=11" />
+    <link rel="stylesheet" href="app-ui.css?v=12" />
     <link rel="stylesheet" href="payroll-layouts.css?v=21" />
     <link rel="stylesheet" href="datev-layout.css?v=10" />
     <link rel="stylesheet" href="datev-ref-overlay.css?v=2" />
@@ -571,9 +571,11 @@
 
             <div class="tool-row">
               <button id="saveCompanyProfileBtn" type="button" class="secondary-btn">Profil speichern</button>
+              <button id="syncCompanyProfileBtn" type="button" class="secondary-btn">Mit Server synchronisieren</button>
               <button id="newCompanyProfileBtn" type="button" class="secondary-btn">Neues Profil</button>
               <button id="deleteCompanyProfileBtn" type="button" class="secondary-btn danger-btn">Profil löschen</button>
             </div>
+            <p class="muted small" id="mandantProfileSyncHint">Lokal gespeichert. Mit Firmen-Login zusätzlich auf dem Server.</p>
 
             <section class="logo-upload-box">
               <h3>Firmenlogo</h3>
@@ -1702,6 +1704,6 @@
     <script src="workpass-hub.js?v=3"></script>
     <script src="templates.js?v=1" defer></script>
     <script src="signature-engine.js?v=4"></script>
-    <script src="script.js?v=70" defer></script>
+    <script src="script.js?v=71" defer></script>
   </body>
 </html>

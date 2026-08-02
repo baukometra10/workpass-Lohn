@@ -91,6 +91,7 @@ const previewPayrollMonth = document.getElementById("previewPayrollMonth");
 const companyProfileSelect = document.getElementById("companyProfileSelect");
 const companyProfileNameInput = document.getElementById("companyProfileName");
 const saveCompanyProfileBtn = document.getElementById("saveCompanyProfileBtn");
+const syncCompanyProfileBtn = document.getElementById("syncCompanyProfileBtn");
 const newCompanyProfileBtn = document.getElementById("newCompanyProfileBtn");
 const deleteCompanyProfileBtn = document.getElementById("deleteCompanyProfileBtn");
 const taxNumberInput = document.getElementById("taxNumber");
@@ -235,7 +236,7 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2026.37";
+const APP_VERSION = "2026.38";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
 let appBootstrapping = true;
@@ -950,36 +951,226 @@ function escapeHtmlLite(s) {
     .replace(/"/g, "&quot;");
 }
 
+function parseSellerAddress(sellerText) {
+  const lines = String(sellerText || "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const name = lines[0] || "";
+  let street = "";
+  let zip = "";
+  let city = "";
+  if (lines.length >= 2) {
+    const last = lines[lines.length - 1];
+    const m = last.match(/^(\d{4,5})\s+(.+)$/);
+    if (m) {
+      zip = m[1];
+      city = m[2];
+      street = lines.length > 2 ? lines.slice(1, -1).join(", ") : "";
+    } else {
+      street = lines[1] || "";
+      if (lines.length > 2) city = lines.slice(2).join(" ");
+    }
+  }
+  return { name, street, zip, city, address: lines.join("\n") };
+}
+
+function buildHubProfilePayload() {
+  const data = collectCompanyProfileData();
+  return {
+    seller: data.seller || "",
+    commercialRegister: data.commercialRegister || "",
+    managingDirector: data.managingDirector || "",
+    companyBankName: data.companyBankName || "",
+    companyIban: data.companyIban || "",
+    companyBic: data.companyBic || "",
+    payrollLayout: data.payrollLayout || "datev",
+    payrollHeaderLine: data.payrollHeaderLine || "",
+    payrollFooterLine: data.payrollFooterLine || "",
+    note: data.note || "",
+    logoDataUrl: data.logoDataUrl || "",
+  };
+}
+
+function buildCompanyUpsertBody(companyId) {
+  const data = collectCompanyProfileData();
+  const parsed = parseSellerAddress(data.seller);
+  const name = data.name && data.name !== "Unbenannt" && data.name !== "Standard-Mandant"
+    ? data.name
+    : (parsed.name || companyId);
+  return {
+    id: companyId,
+    name,
+    street: parsed.street,
+    zip: parsed.zip,
+    city: parsed.city,
+    address: parsed.address || data.seller || "",
+    taxNumber: data.taxNumber || "",
+    vatId: data.vatId || "",
+    hubProfile: buildHubProfilePayload(),
+  };
+}
+
+function setMandantSyncHint(text, { error = false } = {}) {
+  const el = document.getElementById("mandantProfileSyncHint");
+  if (!el) return;
+  el.textContent = text;
+  el.classList.toggle("is-error", error);
+  el.classList.toggle("is-ok", !error && /Server|synchron/i.test(text));
+}
+
+function fillIfEmpty(input, value) {
+  if (!input || !value) return false;
+  if (String(input.value || "").trim()) return false;
+  input.value = String(value);
+  return true;
+}
+
+function applyHubProfileFromServer(hubProfile, { force = false } = {}) {
+  if (!hubProfile || typeof hubProfile !== "object") return false;
+  let changed = false;
+  const setVal = (input, value) => {
+    if (value == null || value === "") return;
+    if (!input) return;
+    if (!force && String(input.value || "").trim()) return;
+    input.value = String(value);
+    changed = true;
+  };
+  if (hubProfile.seller) {
+    if (force || !getSellerText()) {
+      if (sellerInput) sellerInput.value = hubProfile.seller;
+      syncSellerFields("seller");
+      changed = true;
+    }
+  }
+  setVal(commercialRegisterInput, hubProfile.commercialRegister);
+  setVal(managingDirectorInput, hubProfile.managingDirector);
+  setVal(companyBankNameInput, hubProfile.companyBankName);
+  setVal(companyIbanInput, hubProfile.companyIban);
+  setVal(companyBicInput, hubProfile.companyBic);
+  setVal(payrollHeaderLineInput, hubProfile.payrollHeaderLine);
+  setVal(payrollFooterLineInput, hubProfile.payrollFooterLine);
+  if (hubProfile.payrollLayout && payrollLayoutSelect) {
+    if (force || !payrollLayoutSelect.value) {
+      payrollLayoutSelect.value = hubProfile.payrollLayout;
+      applyPayrollLayout(hubProfile.payrollLayout);
+      changed = true;
+    }
+  }
+  if (hubProfile.note && noteInput && (force || !noteInput.value.trim())) {
+    noteInput.value = hubProfile.note;
+    changed = true;
+  }
+  if (hubProfile.logoDataUrl && (force || !activeLogoDataUrl)) {
+    activeLogoDataUrl = hubProfile.logoDataUrl;
+    updateDocumentLogos();
+    changed = true;
+  }
+  return changed;
+}
+
+async function pushCompanyProfileToBridge({ quiet = false } = {}) {
+  const firm = Boolean(window.WorkPassAuth?.isCompanyPortalUser?.());
+  const sessionToken = window.WorkPassAuth?.getSessionToken?.() || "";
+  const companyId = window.WorkPassAuth?.getSessionUser?.()?.companyId || hubApiConfig().companyId;
+  if (!companyId || (!firm && !sessionToken && !hubApiConfig().key)) {
+    if (!quiet) setMandantSyncHint("Nur lokal gespeichert (kein Firmen-Login / API-Key).", { error: false });
+    return { ok: false, skipped: true };
+  }
+  try {
+    const body = buildCompanyUpsertBody(companyId);
+    const result = await hubApiFetch("/v1/company/upsert", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    hubServerCompany = result.company || hubServerCompany;
+    const msg = result.logoSkipped
+      ? "Auf Server gespeichert (Logo lokal – zu groß)."
+      : `Auf Server gespeichert · Firma ${companyId}`;
+    setMandantSyncHint(msg, { error: false });
+    if (!quiet && !result.logoSkipped) {
+      /* toast via hint only */
+    }
+    return result;
+  } catch (err) {
+    setMandantSyncHint(err?.message || "Server-Sync fehlgeschlagen.", { error: true });
+    return { ok: false, error: err?.message };
+  }
+}
+
+async function pullCompanyProfileFromBridge({ force = false } = {}) {
+  const companyId = window.WorkPassAuth?.getSessionUser?.()?.companyId || hubApiConfig().companyId;
+  if (!companyId || !window.WorkPassAuth?.getSessionToken?.()) return { ok: false, skipped: true };
+  try {
+    const data = await hubApiFetch(`/v1/company/${encodeURIComponent(companyId)}`);
+    const company = data.company;
+    if (!company) return { ok: false };
+    hubServerCompany = {
+      id: company.id,
+      name: company.name,
+      street: company.street,
+      zip: company.zip,
+      city: company.city,
+      address: company.address,
+      taxNumber: company.taxNumber,
+      vatId: company.vatId,
+      hubProfile: company.meta?.hubProfile || null,
+    };
+    hubWorkspace = data.workspace || hubWorkspace;
+    fillIfEmpty(taxNumberInput, company.taxNumber);
+    fillIfEmpty(vatIdInput, company.vatId);
+    if (companyProfileNameInput && (force || !companyProfileNameInput.value.trim() || companyProfileNameInput.value === "Standard-Mandant")) {
+      if (company.name) companyProfileNameInput.value = company.name;
+    }
+    if (!getSellerText() || force) {
+      const addr = company.address
+        || [company.name, company.street, [company.zip, company.city].filter(Boolean).join(" ")].filter(Boolean).join("\n");
+      if (addr) {
+        if (sellerInput) sellerInput.value = addr;
+        syncSellerFields("seller");
+      }
+    }
+    applyHubProfileFromServer(company.meta?.hubProfile, { force });
+    updateDashboardChecklist();
+    renderMandantAccountingStatus();
+    setMandantSyncHint(
+      company.meta?.hubProfile
+        ? `Vom Server geladen · ${company.name || companyId}`
+        : `Firma vom Server · Stammdaten-Erweiterung noch lokal`,
+      { error: false }
+    );
+    return { ok: true, company };
+  } catch (err) {
+    setMandantSyncHint(err?.message || "Laden vom Server fehlgeschlagen.", { error: true });
+    return { ok: false, error: err?.message };
+  }
+}
+
 async function refreshMandantAccountingStatus() {
   if (!window.WorkPassAuth?.isCompanyPortalUser?.()) {
     hubServerCompany = null;
     hubWorkspace = null;
     renderMandantAccountingStatus();
+    setMandantSyncHint("Lokal gespeichert. Mit Firmen-Login zusätzlich auf dem Server.");
     return;
   }
   try {
     const me = await hubApiFetch("/v1/auth/me", { skipTenant: true });
-    hubServerCompany = me?.company || null;
     hubWorkspace = me?.workspace || null;
-    if (hubServerCompany) {
-      if (!taxNumberInput?.value?.trim() && hubServerCompany.taxNumber && taxNumberInput) {
-        taxNumberInput.value = hubServerCompany.taxNumber;
-      }
-      if (!vatIdInput?.value?.trim() && hubServerCompany.vatId && vatIdInput) {
-        vatIdInput.value = hubServerCompany.vatId;
-      }
-      if (!getSellerText() && hubServerCompany.name) {
-        const addr = hubServerCompany.address
-          || [hubServerCompany.name, hubServerCompany.street, [hubServerCompany.zip, hubServerCompany.city].filter(Boolean).join(" ")]
+    if (me?.company) {
+      hubServerCompany = me.company;
+      fillIfEmpty(taxNumberInput, me.company.taxNumber);
+      fillIfEmpty(vatIdInput, me.company.vatId);
+      if (!getSellerText() && (me.company.name || me.company.address)) {
+        const addr = me.company.address
+          || [me.company.name, me.company.street, [me.company.zip, me.company.city].filter(Boolean).join(" ")]
             .filter(Boolean)
             .join("\n");
         if (sellerInput) sellerInput.value = addr;
         syncSellerFields("seller");
       }
+      applyHubProfileFromServer(me.company.hubProfile, { force: false });
     }
+    await pullCompanyProfileFromBridge({ force: false });
   } catch {
-    hubServerCompany = null;
-    hubWorkspace = { accountingEnabled: true, workspaceStatus: "unknown" };
+    hubWorkspace = hubWorkspace || { accountingEnabled: true, workspaceStatus: "unknown" };
   }
   renderMandantAccountingStatus();
   updateDashboardChecklist();
@@ -1353,7 +1544,7 @@ function initPayrollLayoutSelect() {
   payrollLayoutSelect.value = getSelectedPayrollLayout() || "datev";
 }
 
-function saveCurrentCompanyProfile(showMessage = true) {
+async function saveCurrentCompanyProfile(showMessage = true) {
   const profiles = readCompanyProfiles();
   const data = collectCompanyProfileData();
   const id = activeCompanyProfileId === "default" && data.name !== "Standard-Mandant"
@@ -1368,7 +1559,18 @@ function saveCurrentCompanyProfile(showMessage = true) {
   writeCompanyProfiles(profiles);
   refreshCompanyProfileSelect();
   updateDashboardChecklist();
-  if (showMessage) window.alert("Mandantenprofil gespeichert.");
+  const sync = await pushCompanyProfileToBridge({ quiet: !showMessage });
+  if (showMessage) {
+    if (sync?.ok && !sync.skipped) {
+      window.alert(sync.logoSkipped
+        ? "Mandantenprofil lokal und auf dem Server gespeichert (Logo nur lokal – zu groß)."
+        : "Mandantenprofil lokal und auf dem Server gespeichert.");
+    } else if (sync?.skipped) {
+      window.alert("Mandantenprofil lokal gespeichert.");
+    } else {
+      window.alert(`Mandantenprofil lokal gespeichert.\nServer: ${sync?.error || "Sync fehlgeschlagen"}`);
+    }
+  }
 }
 
 function createNewCompanyProfile() {
@@ -6134,6 +6336,18 @@ if (companyProfileSelect) {
   });
 }
 if (saveCompanyProfileBtn) saveCompanyProfileBtn.addEventListener("click", () => saveCurrentCompanyProfile(true));
+if (syncCompanyProfileBtn) {
+  syncCompanyProfileBtn.addEventListener("click", async () => {
+    const firm = Boolean(window.WorkPassAuth?.isCompanyPortalUser?.());
+    if (!firm && !window.WorkPassAuth?.getSessionToken?.()) {
+      window.alert("Firmen-Login nötig, um mit dem Server zu synchronisieren.");
+      return;
+    }
+    await saveCurrentCompanyProfile(true);
+    await pullCompanyProfileFromBridge({ force: false });
+    saveDraft(false);
+  });
+}
 if (newCompanyProfileBtn) newCompanyProfileBtn.addEventListener("click", createNewCompanyProfile);
 if (deleteCompanyProfileBtn) deleteCompanyProfileBtn.addEventListener("click", deleteCurrentCompanyProfile);
 
