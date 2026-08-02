@@ -31,8 +31,8 @@
   }
 
   const FIELD_IDS = [
-    "seller", "note", "taxNumber", "datevClientNo", "datevConsultantNo",
-    "companyName", "mandantId",
+    "seller", "note", "taxNumber", "vatId", "datevClientNo", "datevConsultantNo",
+    "companyName", "mandantId", "managingDirector", "companyBankName", "companyIban",
     "employeeName", "employeeAddress", "employeeId", "personnelNumber",
     "employeeTaxId", "employeeInsuranceNo", "employeeBirthDate", "employeeEntryDate",
     "payrollMonth", "taxClass", "churchTaxRate", "churchConfession",
@@ -484,7 +484,9 @@
       if ($("portalSyncHint")) {
         const autoOn = sync?.autoPipeline?.enabled !== false;
         const wh = sync?.webhook?.last || sync?.lastWebhook || {};
-        if (wh.ok === false && sync?.webhook?.configured) {
+        if (sync?.message) {
+          $("portalSyncHint").textContent = sync.message;
+        } else if (wh.ok === false && sync?.webhook?.configured) {
           $("portalSyncHint").textContent =
             `Verbindung zur Plattform kaputt: Webhook ${wh.status || ""} ${wh.error || wh.hint || ""}. `
             + `WorkPass fragt trotzdem – die Plattform muss den Endpoint live schalten und Daten zurücksenden.`;
@@ -518,10 +520,16 @@
           <div class="api-inbox-item"><div><strong>Offen</strong><span>Messages ${Number(sync?.pending?.messages || 0)} · Deliveries ${Number(sync?.pending?.deliveries || 0)}</span></div></div>
           ${hints.slice(0, 3).map((h) => `<div class="api-inbox-item"><div><span>${esc(h)}</span></div></div>`).join("")}
         `;
-        renderPortalNextActions(last.nextActions || (wh.ok === false ? [
-          "Webhook-Endpoint auf der Plattform live schalten",
-          "Dann „Jetzt synchronisieren“ erneut tippen",
-        ] : []));
+        renderPortalNextActions(
+          last.nextActions?.length
+            ? last.nextActions
+            : (sync?.nextActions?.length
+              ? sync.nextActions
+              : (wh.ok === false ? [
+                "Webhook-Endpoint auf der Plattform live schalten",
+                "Dann „Jetzt synchronisieren“ erneut tippen",
+              ] : []))
+        );
       }
 
       const empHost = $("portalEmployeeList");
@@ -1135,6 +1143,7 @@
         taxNumber: state.taxNumber,
         vatId: state.vatId,
         companyIban: state.companyIban,
+        managingDirector: state.managingDirector,
         datevClientNo: state.datevClientNo,
         datevConsultantNo: state.datevConsultantNo,
         payrollLayout: state.payrollLayout || "datev",
@@ -1143,8 +1152,21 @@
         ["seller", stammdaten.seller, MC.LABELS.seller],
         ["tax", stammdaten.tax, MC.LABELS.tax],
         ["bank", stammdaten.bank, MC.LABELS.bank],
+        ["register", stammdaten.register, MC.LABELS.register],
         ["datev", stammdaten.datev, MC.LABELS.datev],
       );
+      const hint = $("lohnStammdatenHint");
+      if (hint && MC.renderSummary) {
+        // reuse text helper without requiring DOM id wiring on dash
+        const sum = MC.summary(stammdaten);
+        hint.textContent = sum.done >= sum.total
+          ? sum.text
+          : `${sum.text} · ${MC.nextHint(stammdaten)}`;
+        hint.classList.toggle("is-ok", sum.done >= sum.total);
+      }
+      if (MC.wireClickToFocus) {
+        MC.wireClickToFocus("liveCheckList", MC.LOHN_FIELD_MAP, { openCompanyTab: false });
+      }
     }
     list.innerHTML = items.map(([key, ok, label]) => `
       <li data-check="${key}" class="${ok ? "done" : ""}">

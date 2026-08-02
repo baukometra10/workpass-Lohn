@@ -7,8 +7,7 @@
  * Tenant: X-WorkPass-Company-Id
  * Encryption at rest: AES-256-GCM (WORKPASS_DATA_KEY or local .data-key)
  */
-import http from "node:http";
-import { URL } from "node:url";
+import { ACCOUNTING_VERSION, SERVICE_NAME } from "./version.mjs";
 import { ingestPayroll, ingestPayrollBatch, releasePayrollJob } from "./payroll-service.mjs";
 import { runMonthClose, currentPeriod, requestEmployeeDataFromPlatform, resolvePlatformPullUrls } from "./month-close.mjs";
 import { startMonthCloseScheduler, runAutoMonthCloseOnce, autoMonthCloseConfig } from "./month-scheduler.mjs";
@@ -141,8 +140,8 @@ async function handler(req, res) {
     const db = syncHealth();
     return reply(200, {
       ok: true,
-      service: "workpass-accounting-bridge",
-      version: "2.12.0",
+      service: SERVICE_NAME,
+      version: ACCOUNTING_VERSION,
       multiTenant: true,
       monthCloseScheduler: monthCloseSched,
       autoMonthClose: autoMonthCloseConfig(),
@@ -396,7 +395,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "2.12.0",
+          version: ACCOUNTING_VERSION,
           ...syncHealth(),
         },
         monthCloseScheduler: monthCloseSched,
@@ -1061,17 +1060,61 @@ async function handler(req, res) {
       const companyId = tenantScope || url.searchParams.get("companyId") || undefined;
       const pendingMessages = listPendingMessagesForPlatform({ companyId, limit: 100 });
       const pendingDeliveries = listPendingDeliveries({ companyId });
+      const auto = autoPipelineStatus();
+      const last = auto.lastResult || {};
+      const webhookConfigured = Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL);
+      const wh = getLastWebhookStatus();
+      const pendingCount = pendingMessages.length + pendingDeliveries.length;
+      let status = "ready";
+      let message = last.message || null;
+      let nextActions = Array.isArray(last.nextActions) ? [...last.nextActions] : [];
+      if (webhookConfigured && wh?.ok === false) {
+        status = "error";
+        message = message || `Webhook-Fehler ${wh.status || ""} ${wh.error || ""}`.trim();
+        if (!nextActions.length) {
+          nextActions = [
+            "Auf der Plattform den Webhook-Endpoint live schalten",
+            "Erwartete URL: WORKPASS_PLATFORM_WEBHOOK_URL",
+            "Danach Sync erneut prüfen",
+          ];
+        }
+      } else if (last.waitingForPlatform || pendingCount > 0) {
+        status = "waiting";
+        message = message || (pendingCount > 0
+          ? `Warte auf Plattform · ${pendingCount} offen`
+          : "Warte auf Plattform-Antwort");
+        if (!nextActions.length) {
+          nextActions = [
+            "Plattform soll Import/Batch senden (Mitarbeiter, Monat, Rechnungen)",
+            "In Lohn-Portal: Empfang → API-Bridge → Jetzt synchronisieren",
+          ];
+        }
+      } else if (auto.enabled === false) {
+        status = "manual";
+        message = message || "Automatik aus · manuell synchronisieren";
+        if (!nextActions.length) {
+          nextActions = ["WORKPASS_AUTO_PIPELINE=1 setzen oder manuell syncen"];
+        }
+      } else if (last.ok || auto.lastSuccessAt) {
+        status = "ok";
+        message = message || (auto.lastSuccessAt
+          ? `Automatik an · letzter Erfolg ${auto.lastSuccessAt}`
+          : "Automatik an");
+      }
       return reply(200, {
         ok: true,
         kind: "platform.accounting.sync.v1",
-        schemaVersion: 2,
+        schemaVersion: 3,
         companyId: companyId || null,
-        accountingVersion: "2.16.0",
-        autoPipeline: autoPipelineStatus(),
+        accountingVersion: ACCOUNTING_VERSION,
+        status,
+        message,
+        nextActions,
+        autoPipeline: auto,
         webhook: {
-          configured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),
+          configured: webhookConfigured,
           urlSuggested: platformWebhookUrl(),
-          last: getLastWebhookStatus(),
+          last: wh,
         },
         pullUrlConfigured: resolvePlatformPullUrls().length > 0,
         pullUrls: resolvePlatformPullUrls().slice(0, 5),

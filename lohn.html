@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=8" />
-    <link rel="stylesheet" href="lohn.css?v=50" />
+    <link rel="stylesheet" href="lohn.css?v=51" />
   </head>
   <body class="auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
@@ -316,6 +316,10 @@
                 <input id="taxNumber" type="text" placeholder="143/123/45678" autocomplete="off" />
               </div>
               <div>
+                <label for="vatId">USt-IdNr.</label>
+                <input id="vatId" type="text" placeholder="DE123456789" autocomplete="off" />
+              </div>
+              <div>
                 <label for="datevClientNo">Mandant-Nr.</label>
                 <input id="datevClientNo" type="text" placeholder="10001" inputmode="numeric" autocomplete="off" />
               </div>
@@ -323,11 +327,24 @@
                 <label for="datevConsultantNo">Berater-Nr.</label>
                 <input id="datevConsultantNo" type="text" placeholder="12345" inputmode="numeric" autocomplete="off" />
               </div>
+              <div>
+                <label for="managingDirector">Geschäftsführer</label>
+                <input id="managingDirector" type="text" placeholder="Max Mustermann" autocomplete="off" />
+              </div>
+              <div>
+                <label for="companyBankName">Bank (Firma)</label>
+                <input id="companyBankName" type="text" placeholder="Musterbank AG" autocomplete="off" />
+              </div>
+              <div class="full">
+                <label for="companyIban">IBAN (Firma)</label>
+                <input id="companyIban" type="text" placeholder="DE00 0000 0000 0000 0000 00" autocomplete="off" />
+              </div>
               <div class="full">
                 <label for="note">Hinweis</label>
                 <input id="note" type="text" placeholder="Optional auf der Abrechnung" />
               </div>
             </div>
+            <p class="section-hint" id="lohnStammdatenHint" role="status"></p>
 
             <div class="field-grid mt-block" id="employeeBlock">
               <div class="full">
@@ -577,11 +594,11 @@
     <script src="datev-import.js?v=2"></script>
     <script src="templates.js?v=1"></script>
     <script src="datev-sheet.js?v=42"></script>
-    <script src="payroll-core.js?v=21"></script>
+    <script src="payroll-core.js?v=22"></script>
     <script src="auth-gate.js?v=8"></script>
-    <script src="mandant-checklist.js?v=2"></script>
+    <script src="mandant-checklist.js?v=3"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="lohn-app.js?v=49"></script>
+    <script src="lohn-app.js?v=50"></script>
   </body>
 </html>

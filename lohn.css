@@ -1350,17 +1350,9 @@ body.company-portal .lohn-preview .preview-toolbar {
   background: rgba(16, 28, 48, 0.7);
 }
 
-.portal-next-actions {
-  margin: 10px 0 0;
-  padding: 10px 12px 10px 28px;
-  border: 1px solid rgba(140, 190, 255, 0.28);
-  border-radius: 10px;
-  background: rgba(8, 18, 34, 0.55);
-  color: #9bb0c9;
-  font-size: 0.78rem;
-  line-height: 1.45;
-}
-.portal-next-actions li { margin-bottom: 4px; }
+body.company-portal #lohnStammdatenHint.is-ok,
+#lohnStammdatenHint.is-ok { color: #7ddea2; }
+#lohnStammdatenHint { margin-top: 8px; font-size: 0.78rem; color: #9bb0c9; }
 .portal-dash-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

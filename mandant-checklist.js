@@ -23,18 +23,29 @@
    */
   function evaluate(ctx = {}) {
     const server = ctx.server && typeof ctx.server === "object" ? ctx.server : {};
+    const hub = (server.hubProfile && typeof server.hubProfile === "object")
+      ? server.hubProfile
+      : ((server.meta?.hubProfile && typeof server.meta.hubProfile === "object")
+        ? server.meta.hubProfile
+        : {});
     const seller = truthy(ctx.seller)
       || truthy(server.name)
       || truthy(server.address)
+      || truthy(hub.seller)
       || truthy([server.street, server.zip, server.city].filter(Boolean).join(" "));
     const tax = truthy(ctx.taxNumber) || truthy(ctx.vatId)
-      || truthy(server.taxNumber) || truthy(server.vatId);
-    const bank = truthy(ctx.companyIban);
-    const logo = truthy(ctx.logoDataUrl);
-    const register = truthy(ctx.commercialRegister) || truthy(ctx.managingDirector);
-    const layout = truthy(ctx.payrollLayout || "datev");
+      || truthy(server.taxNumber) || truthy(server.vatId)
+      || truthy(hub.taxNumber) || truthy(hub.vatId);
+    const bank = truthy(ctx.companyIban)
+      || truthy(hub.companyIban)
+      || truthy(server.companyIban);
+    const logo = truthy(ctx.logoDataUrl) || truthy(hub.logoDataUrl);
+    const register = truthy(ctx.commercialRegister) || truthy(ctx.managingDirector)
+      || truthy(hub.commercialRegister) || truthy(hub.managingDirector);
+    const layout = truthy(ctx.payrollLayout || hub.payrollLayout || "datev");
     const datev = truthy(ctx.datevClientNo) || truthy(ctx.datevConsultantNo)
-      || truthy(server.datevClientNo) || truthy(server.datevConsultantNo);
+      || truthy(server.datevClientNo) || truthy(server.datevConsultantNo)
+      || truthy(hub.datevClientNo) || truthy(hub.datevConsultantNo);
     return { seller, tax, bank, logo, register, layout, datev };
   }
 
@@ -66,7 +77,7 @@
     bank: "companyIban",
     logo: null,
     register: "managingDirector",
-    layout: "payrollLayout",
+    layout: null,
     datev: "datevClientNo",
   };
 

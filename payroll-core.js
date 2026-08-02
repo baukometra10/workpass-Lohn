@@ -440,6 +440,9 @@
       vatId: "",
       datevClientNo: "",
       datevConsultantNo: "",
+      managingDirector: "",
+      companyBankName: "",
+      companyIban: "",
       wageItems: [],
       meta: {},
     };

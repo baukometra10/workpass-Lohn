@@ -238,7 +238,7 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2026.43";
+const APP_VERSION = "2026.44";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
 let appBootstrapping = true;
@@ -735,10 +735,13 @@ function hubFormatAutoSyncHint(sync, autoResult = null) {
   const last = autoResult || auto.lastResult || null;
   const pending = Number(sync?.pending?.messages || 0) + Number(sync?.pending?.deliveries || 0);
   const wh = sync?.webhook?.last || {};
-  const actions = Array.isArray(last?.nextActions) ? last.nextActions : [];
-  if (wh.ok === false && sync?.webhook?.configured) {
+  const fromStatus = Array.isArray(sync?.nextActions) ? sync.nextActions : [];
+  const actions = Array.isArray(last?.nextActions) && last.nextActions.length
+    ? last.nextActions
+    : fromStatus;
+  if (sync?.status === "error" || (wh.ok === false && sync?.webhook?.configured)) {
     return {
-      text: `Webhook-Fehler ${wh.status || ""} · Plattform-Endpoint prüfen`,
+      text: sync?.message || `Webhook-Fehler ${wh.status || ""} · Plattform-Endpoint prüfen`,
       error: true,
       nextActions: actions.length ? actions : [
         "Auf der Plattform den Webhook-Endpoint live schalten",
@@ -746,9 +749,9 @@ function hubFormatAutoSyncHint(sync, autoResult = null) {
       ],
     };
   }
-  if (last?.waitingForPlatform || (pending > 0 && !last?.ok)) {
+  if (sync?.status === "waiting" || last?.waitingForPlatform || (pending > 0 && !last?.ok)) {
     return {
-      text: last?.message || `Warte auf Plattform · ${pending} offene Nachricht(en)`,
+      text: sync?.message || last?.message || `Warte auf Plattform · ${pending} offene Nachricht(en)`,
       error: false,
       nextActions: actions.length ? actions : [
         "Plattform soll Import/Batch senden (Mitarbeiter, Monat, Rechnungen)",
@@ -756,15 +759,15 @@ function hubFormatAutoSyncHint(sync, autoResult = null) {
       ],
     };
   }
-  if (auto.enabled === false) {
+  if (sync?.status === "manual" || auto.enabled === false) {
     return {
-      text: "Automatik aus · manuell in Lohn synchronisieren oder WORKPASS_AUTO_PIPELINE=1",
+      text: sync?.message || "Automatik aus · manuell in Lohn synchronisieren oder WORKPASS_AUTO_PIPELINE=1",
       error: false,
-      nextActions: ["Lohn-Portal öffnen und „Jetzt synchronisieren“ tippen"],
+      nextActions: actions.length ? actions : ["Lohn-Portal öffnen und „Jetzt synchronisieren“ tippen"],
     };
   }
-  if (last?.message) {
-    return { text: last.message, error: false, nextActions: actions };
+  if (sync?.message || last?.message) {
+    return { text: sync?.message || last.message, error: false, nextActions: actions };
   }
   if (auto.lastSuccessAt) {
     return {
@@ -6643,6 +6646,7 @@ if (importPayrollSidebarBtn) {
   importPayrollSidebarBtn.addEventListener("click", () => triggerFileInput(importPayrollInput));
 }
 bindFileImportButton("importTemplateBtn", "importTemplateInput", importJsonFile);
+const exportTemplateBtn = document.getElementById("exportTemplateBtn");
 if (exportTemplateBtn) exportTemplateBtn.addEventListener("click", exportCurrentAsTemplate);
 const loadBuiltInTemplateBtn = document.getElementById("loadBuiltInTemplateBtn");
 const builtInTemplateSelect = document.getElementById("builtInTemplateSelect");
