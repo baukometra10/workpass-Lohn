@@ -1066,7 +1066,7 @@ async function handler(req, res) {
         kind: "platform.accounting.sync.v1",
         schemaVersion: 2,
         companyId: companyId || null,
-        accountingVersion: "2.12.0",
+        accountingVersion: "2.16.0",
         autoPipeline: autoPipelineStatus(),
         webhook: {
           configured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),

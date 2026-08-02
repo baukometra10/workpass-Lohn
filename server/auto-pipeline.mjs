@@ -817,10 +817,14 @@ export async function runAutoPipelineOnce(opts = {}) {
     }
   }
   lastTickAt = new Date().toISOString();
+  const primary = results.find((r) => r.waitingForPlatform || r.webhookBroken || !r.ok) || results[0] || null;
   lastResult = {
     ok: results.some((r) => r.ok) || results.every((r) => r.waitingForPlatform),
+    waitingForPlatform: Boolean(primary?.waitingForPlatform),
     period,
     count: results.length,
+    message: primary?.message || null,
+    nextActions: Array.isArray(primary?.nextActions) ? primary.nextActions : [],
     results: results.map((r) => ({
       companyId: r.companyId,
       ok: r.ok,

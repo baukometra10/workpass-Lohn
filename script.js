@@ -238,7 +238,7 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2026.42";
+const APP_VERSION = "2026.43";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
 let appBootstrapping = true;
@@ -700,19 +700,102 @@ function hubFormatSyncLabel(sync) {
   return "—";
 }
 
-function hubShowSyncStatus(text, { error = false } = {}) {
+function hubShowSyncStatus(text, { error = false, nextActions = [] } = {}) {
   const el = document.getElementById("dashSyncStatus");
+  const list = document.getElementById("dashSyncNextActions");
   if (!el) return;
   if (!text) {
     el.hidden = true;
     el.textContent = "";
     el.classList.remove("is-error", "is-ok");
+    if (list) {
+      list.hidden = true;
+      list.innerHTML = "";
+    }
     return;
   }
   el.hidden = false;
   el.textContent = text;
   el.classList.toggle("is-error", error);
   el.classList.toggle("is-ok", !error);
+  if (list) {
+    const actions = Array.isArray(nextActions) ? nextActions.filter(Boolean).slice(0, 4) : [];
+    if (!actions.length) {
+      list.hidden = true;
+      list.innerHTML = "";
+    } else {
+      list.hidden = false;
+      list.innerHTML = actions.map((a) => `<li>${escapeHtmlLite(a)}</li>`).join("");
+    }
+  }
+}
+
+function hubFormatAutoSyncHint(sync, autoResult = null) {
+  const auto = sync?.autoPipeline || {};
+  const last = autoResult || auto.lastResult || null;
+  const pending = Number(sync?.pending?.messages || 0) + Number(sync?.pending?.deliveries || 0);
+  const wh = sync?.webhook?.last || {};
+  const actions = Array.isArray(last?.nextActions) ? last.nextActions : [];
+  if (wh.ok === false && sync?.webhook?.configured) {
+    return {
+      text: `Webhook-Fehler ${wh.status || ""} · Plattform-Endpoint prüfen`,
+      error: true,
+      nextActions: actions.length ? actions : [
+        "Auf der Plattform den Webhook-Endpoint live schalten",
+        "Danach Sync erneut prüfen oder in Lohn „Jetzt synchronisieren“",
+      ],
+    };
+  }
+  if (last?.waitingForPlatform || (pending > 0 && !last?.ok)) {
+    return {
+      text: last?.message || `Warte auf Plattform · ${pending} offene Nachricht(en)`,
+      error: false,
+      nextActions: actions.length ? actions : [
+        "Plattform soll Import/Batch senden (Mitarbeiter, Monat, Rechnungen)",
+        "In Lohn-Portal: Empfang → API-Bridge → Jetzt synchronisieren",
+      ],
+    };
+  }
+  if (auto.enabled === false) {
+    return {
+      text: "Automatik aus · manuell in Lohn synchronisieren oder WORKPASS_AUTO_PIPELINE=1",
+      error: false,
+      nextActions: ["Lohn-Portal öffnen und „Jetzt synchronisieren“ tippen"],
+    };
+  }
+  if (last?.message) {
+    return { text: last.message, error: false, nextActions: actions };
+  }
+  if (auto.lastSuccessAt) {
+    return {
+      text: `Automatik an · letzter Erfolg ${auto.lastSuccessAt}`,
+      error: false,
+      nextActions: actions,
+    };
+  }
+  return {
+    text: sync?.webhook?.configured
+      ? `Automatik an · Pending ${pending}`
+      : "Webhook nicht gesetzt · Sync nur begrenzt möglich",
+    error: !sync?.webhook?.configured,
+    nextActions: actions,
+  };
+}
+
+function focusNextMandantField({ openCompanyTab = true } = {}) {
+  const MC = window.MandantChecklist;
+  const checks = getMandantChecklistState();
+  const key = MC?.nextOpen?.(checks);
+  if (!key) {
+    hubShowSyncStatus("Alle Stammdaten sind vollständig.", { error: false });
+    return;
+  }
+  const fieldId = MC?.HUB_FIELD_MAP?.[key];
+  if (MC?.focusField) {
+    MC.focusField(fieldId, { openCompanyTab });
+    return;
+  }
+  document.querySelector('.form-tab[data-tab="company"]')?.click();
 }
 
 function initDashboardActions() {
@@ -749,6 +832,18 @@ function initDashboardActions() {
       runHubSyncCheck();
     });
   }
+
+  const MC = window.MandantChecklist;
+  if (MC?.wireClickToFocus) {
+    MC.wireClickToFocus("dashChecklist", MC.HUB_FIELD_MAP, { openCompanyTab: true });
+    MC.wireClickToFocus("companyChecklist", MC.HUB_FIELD_MAP, { openCompanyTab: false });
+  }
+  document.getElementById("dashChecklistNextBtn")?.addEventListener("click", () => {
+    focusNextMandantField({ openCompanyTab: true });
+  });
+  document.getElementById("companyChecklistNextBtn")?.addEventListener("click", () => {
+    focusNextMandantField({ openCompanyTab: false });
+  });
 }
 
 async function runHubSyncCheck() {
@@ -784,18 +879,18 @@ async function runHubSyncCheck() {
     const pipe = sync?.autoPipeline || {};
     const payrollReleased = Number(auto?.jobs?.released ?? auto?.close?.newlyReleased?.length ?? 0);
     const invoicesReleased = Number(auto?.invoiceSync?.pendingReleased || auto?.invoices?.released || 0);
+    const hint = hubFormatAutoSyncHint(sync, auto);
     const parts = [
-      `Webhook: ${sync?.webhook?.configured ? (wh.ok === false ? `Fehler ${wh.status || ""}` : "OK") : "nicht gesetzt"}`,
-      `Pending: ${pending}`,
+      hint.text,
       `Freigegeben: ${payrollReleased} Abrechnung(en) · ${invoicesReleased} Rechnung(en)`,
-      pipe.lastSuccessAt ? `Letzter Erfolg: ${pipe.lastSuccessAt}` : null,
+      pipe.lastSuccessAt && !auto?.message ? `Letzter Erfolg: ${pipe.lastSuccessAt}` : null,
+      pending ? `Pending: ${pending}` : null,
     ].filter(Boolean);
-    const err = Boolean(wh.ok === false && sync?.webhook?.configured);
-    const msg = parts.join(" · ");
-    hubShowSyncStatus(msg, { error: err });
+    const err = Boolean(hint.error || (wh.ok === false && sync?.webhook?.configured));
+    hubShowSyncStatus(parts.join(" · "), { error: err, nextActions: hint.nextActions });
     hubSetText("dashKpiFirmSync", hubFormatSyncLabel(sync));
     window.WorkPassHub?.pushSyncLog?.({
-      message: auto?.message || "Sync geprüft",
+      message: auto?.message || hint.text || "Sync geprüft",
       payrollReleased,
       invoicesReleased,
       pending,
@@ -948,15 +1043,26 @@ function updateDashboardChecklist() {
   const checks = getMandantChecklistState();
   applyChecklistToDom("dashChecklist", checks);
   applyChecklistToDom("companyChecklist", checks);
+  const MC = window.MandantChecklist;
+  if (MC?.renderSummary) {
+    MC.renderSummary("dashChecklistSummary", checks);
+    MC.renderSummary("companyChecklistSummary", checks);
+  }
 }
 
 function renderMandantAccountingStatus() {
   const el = document.getElementById("mandantAccountingStatus");
   if (!el) return;
   const firm = Boolean(window.WorkPassAuth?.isCompanyPortalUser?.());
+  const checks = getMandantChecklistState();
+  const MC = window.MandantChecklist;
+  const sum = MC?.summary?.(checks) || { done: 0, total: 7, text: "" };
+  const next = MC?.nextHint?.(checks) || "";
   if (!firm) {
-    el.hidden = true;
-    el.textContent = "";
+    el.hidden = false;
+    el.innerHTML = `<strong>Lokaler Mandant</strong> · ${escapeHtmlLite(sum.text)}${sum.done < sum.total ? ` · ${escapeHtmlLite(next)}` : ""}`;
+    el.classList.toggle("is-ok", sum.done >= sum.total);
+    el.classList.toggle("is-error", false);
     return;
   }
   const user = window.WorkPassAuth?.getSessionUser?.();
@@ -965,11 +1071,12 @@ function renderMandantAccountingStatus() {
   const active = ws.accountingEnabled !== false && (ws.workspaceStatus || "active") !== "inactive";
   const section = ws.section?.title || ws.section?.name || "Buchhaltung";
   const name = hubServerCompany?.name || companyId;
+  const hubOk = Boolean(hubServerCompany?.hubProfile || hubServerCompany?.meta?.hubProfile);
   el.hidden = false;
   el.innerHTML = active
-    ? `<strong>Buchhaltung aktiv</strong> · ${escapeHtmlLite(name)} · ${escapeHtmlLite(section)} · Firma ${escapeHtmlLite(companyId)}`
+    ? `<strong>Buchhaltung aktiv</strong> · ${escapeHtmlLite(name)} · ${escapeHtmlLite(section)} · ${escapeHtmlLite(sum.text)}${hubOk ? " · Server-Profil ✓" : " · Server-Profil offen"}${sum.done < sum.total ? ` · ${escapeHtmlLite(next)}` : ""}`
     : `<strong>Buchhaltung inaktiv</strong> · ${escapeHtmlLite(name)} · Firma ${escapeHtmlLite(companyId)} · bitte im Admin/Plattform aktivieren`;
-  el.classList.toggle("is-ok", active);
+  el.classList.toggle("is-ok", active && sum.done >= sum.total);
   el.classList.toggle("is-error", !active);
 }
 
@@ -1279,6 +1386,16 @@ async function updateDashboard() {
           ? `Webhook-Fehler ${wh.status || ""} · Monat ${period}`
           : `Sync ${syncLabel} · Monat ${period}`;
     hubSetText("dashWelcomeText", `Firma · ${companyId} · ${statusLine}`);
+    const hint = hubFormatAutoSyncHint(sync);
+    if (!document.getElementById("dashSyncStatus")?.textContent || document.getElementById("dashSyncStatus")?.hidden) {
+      hubShowSyncStatus(hint.text, { error: hint.error, nextActions: hint.nextActions });
+    } else if (hint.nextActions?.length) {
+      const list = document.getElementById("dashSyncNextActions");
+      if (list && list.hidden) {
+        list.hidden = false;
+        list.innerHTML = hint.nextActions.slice(0, 4).map((a) => `<li>${escapeHtmlLite(a)}</li>`).join("");
+      }
+    }
   } catch (err) {
     if (seq !== hubDashboardSeq) return;
     hubSetText("dashKpiFirmEmployees", "—");

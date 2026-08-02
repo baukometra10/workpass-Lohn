@@ -438,8 +438,8 @@
           : "—";
       }
       if ($("portalKpiMessages")) $("portalKpiMessages").textContent = String((msgs.messages || []).length);
+      const pending = Number(sync?.pending?.messages || 0) + Number(sync?.pending?.deliveries || 0);
       if ($("portalKpiSync")) {
-        const pending = Number(sync?.pending?.messages || 0) + Number(sync?.pending?.deliveries || 0);
         $("portalKpiSync").textContent = pending ? `${pending} offen` : (sync?.webhook?.configured ? "OK" : "—");
       }
 
@@ -500,6 +500,7 @@
           "WorkPass Lohn fragt per Webhook: employees.list.requested + payroll.month.requested",
         ];
         const auto = sync?.autoPipeline || {};
+        const last = auto.lastResult || {};
         const wh = sync?.webhook?.last || {};
         $("portalSyncDetail").innerHTML = `
           <div class="api-inbox-item"><div><strong>Automatik</strong><span>${esc(auto.enabled === false ? "aus" : `an · alle ${auto.intervalMinutes || 15} Min.`)}</span></div></div>
@@ -512,10 +513,15 @@
           )}</span></div></div>
           <div class="api-inbox-item"><div><strong>Letzter Sync</strong><span>${esc(auto.lastTickAt || "—")}</span></div></div>
           <div class="api-inbox-item"><div><strong>Letzter Erfolg</strong><span>${esc(auto.lastSuccessAt || "—")}</span></div></div>
+          <div class="api-inbox-item"><div><strong>Status</strong><span>${esc(last.message || (pending ? `${pending} offen` : "bereit"))}</span></div></div>
           <div class="api-inbox-item"><div><strong>Pull-URL</strong><span>${esc(sync?.pullUrlConfigured ? "gesetzt" : "nicht gesetzt (Push empfohlen)")}</span></div></div>
           <div class="api-inbox-item"><div><strong>Offen</strong><span>Messages ${Number(sync?.pending?.messages || 0)} · Deliveries ${Number(sync?.pending?.deliveries || 0)}</span></div></div>
           ${hints.slice(0, 3).map((h) => `<div class="api-inbox-item"><div><span>${esc(h)}</span></div></div>`).join("")}
         `;
+        renderPortalNextActions(last.nextActions || (wh.ok === false ? [
+          "Webhook-Endpoint auf der Plattform live schalten",
+          "Dann „Jetzt synchronisieren“ erneut tippen",
+        ] : []));
       }
 
       const empHost = $("portalEmployeeList");
@@ -765,6 +771,19 @@
     $("btnMonthPingPlatform")?.addEventListener("click", () => pingPlatformForMonth());
   }
 
+  function renderPortalNextActions(actions) {
+    const host = $("portalNextActions");
+    if (!host) return;
+    const list = Array.isArray(actions) ? actions.filter(Boolean).slice(0, 4) : [];
+    if (!list.length) {
+      host.hidden = true;
+      host.innerHTML = "";
+      return;
+    }
+    host.hidden = false;
+    host.innerHTML = list.map((a) => `<li>${esc(a)}</li>`).join("");
+  }
+
   async function pingPlatformWebhook() {
     const btn = $("btnPingPlatform");
     if (btn) {
@@ -822,6 +841,10 @@
       await loadPlatformMessages(true);
       toast(data.message || "Sync fertig", data.ok ? "ok" : "info");
       setStatus(data.message || "Sync fertig", Boolean(data.ok || data.waitingForPlatform));
+      renderPortalNextActions(data.nextActions || (data.waitingForPlatform ? [
+        "Plattform muss Import/Batch senden",
+        "Webhook und Pending-Messages prüfen",
+      ] : []));
       if (data.waitingForPlatform) startMonthWaitRetry(period);
     } catch (e) {
       toast(String(e.message || e), "error");

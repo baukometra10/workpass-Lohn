@@ -439,6 +439,24 @@ body.workpass-hub .dash-action-btn.is-busy {
 body.workpass-hub.dashboard-tab .lex-ribbon {
   opacity: 0.9;
 }
-body.workpass-hub.dashboard-tab .lex-page-header h2 {
-  font-size: 1.15rem;
+body.workpass-hub .dash-checklist-items li.is-next:not(.done) {
+  border-left-color: var(--wp-cyan-hot);
+  background: rgba(59, 158, 255, 0.08);
+}
+
+body.workpass-hub .hub-next-actions,
+body.company-portal .portal-next-actions {
+  border-color: rgba(93, 180, 255, 0.3);
+  background: rgba(59, 158, 255, 0.06);
+  color: var(--wp-text-dim, #8a94a6);
+}
+
+body.workpass-hub #dashChecklistSummary.is-ok,
+body.workpass-hub #companyChecklistSummary.is-ok {
+  color: var(--wp-ok);
+}
+
+body.workpass-hub #dashChecklistSummary.is-warn,
+body.workpass-hub #companyChecklistSummary.is-warn {
+  color: var(--wp-warn);
 }

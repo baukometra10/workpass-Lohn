@@ -12,7 +12,7 @@
     />
     <link rel="stylesheet" href="styles.css?v=42" />
     <link rel="stylesheet" href="agenda-reference.css?v=6" />
-    <link rel="stylesheet" href="app-ui.css?v=14" />
+    <link rel="stylesheet" href="app-ui.css?v=15" />
     <link rel="stylesheet" href="payroll-layouts.css?v=21" />
     <link rel="stylesheet" href="datev-layout.css?v=10" />
     <link rel="stylesheet" href="datev-ref-overlay.css?v=2" />
@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="verdienst-sheet.css?v=1" />
     <link rel="stylesheet" href="annual-certificate.css?v=3" />
     <link rel="stylesheet" href="documents-bw.css?v=1" />
-    <link rel="stylesheet" href="workpass-theme.css?v=7" />
+    <link rel="stylesheet" href="workpass-theme.css?v=8" />
   </head>
   <body class="lexware-app workpass-hub auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
@@ -246,6 +246,7 @@
               <a href="lohn.html">Zum Lohn-Portal</a>
             </p>
             <p class="wp-hub-banner dash-sync-status" id="dashSyncStatus" hidden role="status"></p>
+            <ul class="hub-next-actions" id="dashSyncNextActions" hidden></ul>
 
             <header class="dash-hero">
               <p id="dashWelcomeText" class="dash-welcome">Ihr Mandant und alle Belege auf einen Blick.</p>
@@ -356,6 +357,7 @@
 
             <section class="form-section dash-checklist">
               <h2 class="form-section-title">Checkliste Mandant</h2>
+              <p class="muted small" id="dashChecklistSummary" role="status"></p>
               <ul class="dash-checklist-items" id="dashChecklist">
                 <li data-check="seller">Firma / Arbeitgeber hinterlegt</li>
                 <li data-check="tax">Steuernummer oder USt-IdNr.</li>
@@ -366,6 +368,8 @@
                 <li data-check="datev">DATEV-Mandant- oder Berater-Nr.</li>
               </ul>
               <p class="muted small">
+                <button type="button" class="linkish-btn" id="dashChecklistNextBtn">Nächstes offenes Feld öffnen</button>
+                ·
                 <button type="button" class="linkish-btn" data-dash-go="company">In der Mandantenverwaltung pflegen</button>
               </p>
             </section>
@@ -564,6 +568,7 @@
 
             <section class="form-section dash-checklist">
               <h2 class="form-section-title">Stammdaten-Checkliste</h2>
+              <p class="muted small" id="companyChecklistSummary" role="status"></p>
               <ul class="dash-checklist-items" id="companyChecklist">
                 <li data-check="seller">Firma / Arbeitgeber hinterlegt</li>
                 <li data-check="tax">Steuernummer oder USt-IdNr.</li>
@@ -573,6 +578,9 @@
                 <li data-check="layout">Lohn-Vorlage gewählt</li>
                 <li data-check="datev">DATEV-Mandant- oder Berater-Nr.</li>
               </ul>
+              <p class="muted small">
+                <button type="button" class="linkish-btn" id="companyChecklistNextBtn">Nächstes offenes Feld fokussieren</button>
+              </p>
             </section>
 
             <div class="grid two-col">
@@ -1729,10 +1737,10 @@
     <script src="datev-sheet.js?v=41"></script>
     <script src="payroll-core.js?v=17"></script>
     <script src="auth-gate.js?v=8"></script>
-    <script src="mandant-checklist.js?v=1"></script>
+    <script src="mandant-checklist.js?v=2"></script>
     <script src="workpass-hub.js?v=4"></script>
     <script src="templates.js?v=1" defer></script>
     <script src="signature-engine.js?v=4"></script>
-    <script src="script.js?v=75" defer></script>
+    <script src="script.js?v=76" defer></script>
   </body>
 </html>
