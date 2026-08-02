@@ -43,7 +43,7 @@ import { releaseInvoiceJob } from "./invoice-service.mjs";
 import { listPayrollJobs, loadPayrollJob, listInvoiceJobs, loadInvoiceJob } from "./store.mjs";
 import { isDemoPayrollJob } from "./demo-detect.mjs";
 import { listPendingDeliveries, listAllDeliveries, ackDelivery } from "./delivery-queue.mjs";
-import { getLastWebhookStatus, probePlatformWebhook } from "./notify.mjs";
+import { getLastWebhookStatus, probePlatformWebhook, webhookKeyConfigured, resolveWebhookKey } from "./notify.mjs";
 import {
   upsertCompany,
   activateCompany,
@@ -1072,10 +1072,24 @@ async function handler(req, res) {
       let nextActions = Array.isArray(last.nextActions) ? [...last.nextActions] : [];
       if (webhookConfigured && wh?.ok === false) {
         status = "error";
-        message = message || `Webhook-Fehler ${wh.status || ""} ${wh.error || ""}`.trim();
-        if (!nextActions.length) {
+        const keyInfo = resolveWebhookKey();
+        message = message
+          || wh.hint
+          || `Webhook-Fehler ${wh.status || ""} ${wh.error || ""}`.trim();
+        if (wh.status === 401 || wh.status === 403) {
           nextActions = [
-            "Auf der Plattform den Webhook-Endpoint live schalten",
+            wh.hint || "401: Webhook-Key stimmt nicht mit der Plattform überein",
+            "Railway Variables: WORKPASS_PLATFORM_WEBHOOK_KEY = gleicher Secret wie auf der Plattform",
+            keyInfo.source === "WORKPASS_API_KEY"
+              ? "Hinweis: aktuell wird WORKPASS_API_KEY als Fallback genutzt – oft falsch"
+              : (keyInfo.source === "missing"
+                ? "WORKPASS_PLATFORM_WEBHOOK_KEY fehlt komplett"
+                : "Key ist gesetzt – Wert mit Plattform abgleichen (Leerzeichen/Altes Secret)"),
+            "Danach in Lohn „Webhook prüfen“ oder Hub „Sync prüfen“",
+          ];
+        } else if (!nextActions.length) {
+          nextActions = [
+            wh.hint || "Auf der Plattform den Webhook-Endpoint live schalten",
             "Erwartete URL: WORKPASS_PLATFORM_WEBHOOK_URL",
             "Danach Sync erneut prüfen",
           ];
@@ -1115,6 +1129,8 @@ async function handler(req, res) {
         autoPipeline: auto,
         webhook: {
           configured: webhookConfigured,
+          keyConfigured: webhookKeyConfigured(),
+          keySource: resolveWebhookKey().source,
           urlSuggested: platformWebhookUrl(),
           last: wh,
         },

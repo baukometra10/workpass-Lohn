@@ -3,9 +3,11 @@
  *
  * Env:
  *   WORKPASS_PLATFORM_WEBHOOK_URL  e.g. https://suppix-ai-workpass.com/api/workpass/webhooks/accounting
- *   WORKPASS_PLATFORM_WEBHOOK_KEY  optional shared secret (X-WorkPass-Webhook-Key)
+ *   WORKPASS_PLATFORM_WEBHOOK_KEY  shared secret (X-WorkPass-Webhook-Key) – must match platform
+ *   WORKPASS_API_KEY               fallback only if WEBHOOK_KEY unset (often wrong → 401)
  *   WORKPASS_WEBHOOK_RETRIES       default 3
  *   WORKPASS_WEBHOOK_TIMEOUT_MS    default 8000
+ *   WORKPASS_PLATFORM_WEBHOOK_AUTH header|bearer|both (default both)
  */
 import { appendFileSync, mkdirSync, existsSync } from "fs";
 import path from "path";
@@ -20,6 +22,8 @@ let lastWebhookStatus = {
   status: null,
   error: null,
   mode: null,
+  hint: null,
+  keySource: null,
 };
 
 function ensureLog() {
@@ -34,6 +38,59 @@ function logDelivery(entry) {
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Resolve webhook shared secret + where it came from (never log the secret). */
+export function resolveWebhookKey() {
+  if (process.env.WORKPASS_PLATFORM_WEBHOOK_KEY) {
+    return { key: String(process.env.WORKPASS_PLATFORM_WEBHOOK_KEY), source: "WORKPASS_PLATFORM_WEBHOOK_KEY" };
+  }
+  if (process.env.WORKPASS_API_KEY) {
+    return { key: String(process.env.WORKPASS_API_KEY), source: "WORKPASS_API_KEY" };
+  }
+  return { key: "", source: "missing" };
+}
+
+export function webhookKeyConfigured() {
+  return Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_KEY);
+}
+
+function buildWebhookHeaders({ event, idempotencyKey, attempt, companyId, webhookKey }) {
+  const mode = String(process.env.WORKPASS_PLATFORM_WEBHOOK_AUTH || "both").toLowerCase();
+  const headers = {
+    "Content-Type": "application/json",
+    "X-WorkPass-Event": String(event || ""),
+    "X-WorkPass-Idempotency-Key": String(idempotencyKey || ""),
+  };
+  if (attempt != null) headers["X-WorkPass-Attempt"] = String(attempt);
+  if (companyId) headers["X-WorkPass-Company-Id"] = String(companyId);
+  if (webhookKey) {
+    if (mode === "bearer") {
+      headers.Authorization = `Bearer ${webhookKey}`;
+    } else if (mode === "header") {
+      headers["X-WorkPass-Webhook-Key"] = webhookKey;
+    } else {
+      headers["X-WorkPass-Webhook-Key"] = webhookKey;
+      headers.Authorization = `Bearer ${webhookKey}`;
+    }
+  }
+  return headers;
+}
+
+function hintForWebhookFailure(status, keySource) {
+  if (status === 401 || status === 403) {
+    if (keySource === "missing") {
+      return "401/403: Kein Webhook-Key. Railway: WORKPASS_PLATFORM_WEBHOOK_KEY setzen (gleicher Wert wie auf der Plattform).";
+    }
+    if (keySource === "WORKPASS_API_KEY") {
+      return "401/403: Es wurde WORKPASS_API_KEY als Webhook-Key genutzt. Setze WORKPASS_PLATFORM_WEBHOOK_KEY auf denselben Secret wie die Plattform (oft ein anderer Wert als der API-Key).";
+    }
+    return "401/403: Webhook-Key abgelehnt. Railway WORKPASS_PLATFORM_WEBHOOK_KEY und Plattform-Secret müssen exakt übereinstimmen.";
+  }
+  if (status === 404) {
+    return "Webhook-URL auf der Plattform existiert nicht (404). Endpoint live schalten.";
+  }
+  return "Webhook fehlgeschlagen – Key/URL prüfen.";
 }
 
 /**
@@ -128,7 +185,7 @@ function resolveIdempotencyKey(event) {
  */
 export async function notifyPlatform(event) {
   const webhook = process.env.WORKPASS_PLATFORM_WEBHOOK_URL || "";
-  const webhookKey = process.env.WORKPASS_PLATFORM_WEBHOOK_KEY || process.env.WORKPASS_API_KEY || "workpass-dev-key";
+  const { key: webhookKey, source: keySource } = resolveWebhookKey();
   const retries = Math.max(1, Number(process.env.WORKPASS_WEBHOOK_RETRIES || 3));
   const timeoutMs = Number(process.env.WORKPASS_WEBHOOK_TIMEOUT_MS || 8000);
   const idempotencyKey = resolveIdempotencyKey(event);
@@ -148,7 +205,7 @@ export async function notifyPlatform(event) {
     meta: event.meta || null,
   };
 
-  logDelivery({ direction: "out", webhook: webhook || null, envelope });
+  logDelivery({ direction: "out", webhook: webhook || null, envelope, keySource });
 
   if (!webhook) {
     const result = {
@@ -165,6 +222,8 @@ export async function notifyPlatform(event) {
       status: null,
       error: null,
       mode: "local-log-only",
+      hint: null,
+      keySource,
     };
     return result;
   }
@@ -179,14 +238,13 @@ export async function notifyPlatform(event) {
     try {
       const res = await fetch(webhook, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-WorkPass-Webhook-Key": webhookKey,
-          "X-WorkPass-Event": String(event.event || ""),
-          "X-WorkPass-Idempotency-Key": idempotencyKey,
-          "X-WorkPass-Attempt": String(attempt),
-          ...(company?.id ? { "X-WorkPass-Company-Id": String(company.id) } : {}),
-        },
+        headers: buildWebhookHeaders({
+          event: event.event,
+          idempotencyKey,
+          attempt,
+          companyId: company?.id,
+          webhookKey,
+        }),
         body: JSON.stringify(envelope),
         signal: ctrl.signal,
       });
@@ -201,6 +259,7 @@ export async function notifyPlatform(event) {
         attempt,
         body,
         idempotencyKey,
+        keySource,
       });
       if (res.ok) {
         lastWebhookStatus = {
@@ -210,6 +269,8 @@ export async function notifyPlatform(event) {
           status: res.status,
           error: null,
           mode: "webhook",
+          hint: null,
+          keySource,
         };
         return {
           ok: true,
@@ -229,6 +290,7 @@ export async function notifyPlatform(event) {
         attempt,
         error: lastError,
         idempotencyKey,
+        keySource,
       });
     } finally {
       clearTimeout(timer);
@@ -236,6 +298,7 @@ export async function notifyPlatform(event) {
     if (attempt < retries) await sleep(250 * attempt);
   }
 
+  const hint = hintForWebhookFailure(lastStatus, keySource);
   lastWebhookStatus = {
     ok: false,
     at: new Date().toISOString(),
@@ -243,6 +306,8 @@ export async function notifyPlatform(event) {
     status: lastStatus,
     error: lastError,
     mode: "webhook",
+    hint,
+    keySource,
   };
 
   return {
@@ -254,7 +319,8 @@ export async function notifyPlatform(event) {
     delivery: event.delivery || null,
     idempotencyKey,
     queuedForPull: Boolean(event.delivery?.deliveryId),
-    hint: "Webhook fehlgeschlagen – Plattform: GET /v1/delivery/pending bzw. /v1/messages/pending.",
+    hint,
+    keySource,
   };
 }
 
@@ -268,6 +334,7 @@ export function getLastWebhookStatus() {
  */
 export async function probePlatformWebhook() {
   const webhook = process.env.WORKPASS_PLATFORM_WEBHOOK_URL || "";
+  const { key: webhookKey, source: keySource } = resolveWebhookKey();
   if (!webhook) {
     const result = {
       ok: false,
@@ -276,12 +343,13 @@ export async function probePlatformWebhook() {
       status: null,
       error: "WORKPASS_PLATFORM_WEBHOOK_URL fehlt",
       mode: "unconfigured",
+      hint: "Railway: WORKPASS_PLATFORM_WEBHOOK_URL setzen.",
+      keySource,
     };
     lastWebhookStatus = result;
     return result;
   }
 
-  const webhookKey = process.env.WORKPASS_PLATFORM_WEBHOOK_KEY || process.env.WORKPASS_API_KEY || "";
   const timeoutMs = Number(process.env.WORKPASS_WEBHOOK_TIMEOUT_MS || 8000);
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -299,18 +367,18 @@ export async function probePlatformWebhook() {
   try {
     const res = await fetch(webhook, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-WorkPass-Webhook-Key": webhookKey,
-        "X-WorkPass-Event": "platform.ping",
-        "X-WorkPass-Idempotency-Key": envelope.idempotencyKey,
-      },
+      headers: buildWebhookHeaders({
+        event: "platform.ping",
+        idempotencyKey: envelope.idempotencyKey,
+        webhookKey,
+      }),
       body: JSON.stringify(envelope),
       signal: ctrl.signal,
     });
     const text = await res.text();
     let body = null;
     try { body = JSON.parse(text); } catch { body = { raw: text.slice(0, 200) }; }
+    const hint = res.ok ? null : hintForWebhookFailure(res.status, keySource);
     const result = {
       ok: res.ok,
       at: new Date().toISOString(),
@@ -319,11 +387,9 @@ export async function probePlatformWebhook() {
       error: res.ok ? null : (body?.error || `HTTP ${res.status}`),
       mode: "webhook",
       urlHost: (() => { try { return new URL(webhook).host; } catch { return null; } })(),
-      hint: res.ok
-        ? null
-        : (res.status === 404
-          ? "Webhook-URL auf der Plattform existiert nicht (404). Endpoint live schalten."
-          : "Webhook fehlgeschlagen – Key/URL prüfen."),
+      hint,
+      keySource,
+      keyConfigured: webhookKeyConfigured(),
     };
     lastWebhookStatus = result;
     logDelivery({ direction: "webhook-probe", ...result, body });
@@ -337,6 +403,8 @@ export async function probePlatformWebhook() {
       error: e.name === "AbortError" ? "Webhook-Timeout" : (e.message || String(e)),
       mode: "webhook",
       hint: "Plattform nicht erreichbar oder TLS/DNS-Fehler.",
+      keySource,
+      keyConfigured: webhookKeyConfigured(),
     };
     lastWebhookStatus = result;
     return result;

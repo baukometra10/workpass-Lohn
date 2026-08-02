@@ -138,14 +138,19 @@ app.post("/api/workpass/webhooks/accounting", async (req, res) => {
 
 ```
 WORKPASS_PLATFORM_WEBHOOK_URL=https://suppix-ai-workpass.com/api/workpass/webhooks/accounting
-WORKPASS_PLATFORM_WEBHOOK_KEY=<long shared secret>
-WORKPASS_API_KEY=<api key>
+WORKPASS_PLATFORM_WEBHOOK_KEY=<long shared secret – must match platform exactly>
+WORKPASS_API_KEY=<api key for /v1 calls – often different from webhook key>
+WORKPASS_PLATFORM_WEBHOOK_AUTH=both
 ```
+
+`WORKPASS_PLATFORM_WEBHOOK_AUTH`: `header` (nur `X-WorkPass-Webhook-Key`), `bearer` (nur `Authorization: Bearer`), oder `both` (Standard).
 
 ### Platform
 
 ```
 WORKPASS_ACCOUNTING_BASE_URL=https://workpass-lohn.up.railway.app
 WORKPASS_API_KEY=<same api key>
-WORKPASS_PLATFORM_WEBHOOK_KEY=<same webhook secret>
+WORKPASS_PLATFORM_WEBHOOK_KEY=<same webhook secret as accounting>
 ```
+
+**401 unauthorized** heißt fast immer: Webhook-Key stimmt nicht. Nicht den API-Key und den Webhook-Key verwechseln.
