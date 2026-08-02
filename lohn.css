@@ -222,6 +222,7 @@ select option:checked,
   overflow-y: auto;
   max-height: calc(100vh - var(--appbar-h));
   scroll-behavior: smooth;
+  scroll-padding-top: 120px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -235,11 +236,19 @@ select option:checked,
   position: sticky;
   top: 0;
   z-index: 8;
-  background: linear-gradient(180deg, #0b1220 70%, rgba(11, 18, 32, 0.92) 100%);
-  padding: 12px 0 10px;
-  margin-bottom: 8px;
+  background: linear-gradient(180deg, #0b1220 85%, rgba(11, 18, 32, 0.96) 100%);
+  padding: 10px 0 8px;
+  margin-bottom: 4px;
   border-bottom: 1px solid var(--border);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
+.lohn-form-summary {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 4px;
 }
 
 .form-jump {
@@ -269,11 +278,12 @@ select option:checked,
 
 .form-section {
   margin: 0;
-  padding: 10px 10px 12px;
+  padding: 12px 12px 14px;
   border: 1px solid rgba(90, 140, 200, 0.14);
   border-radius: 12px;
   background: rgba(16, 24, 38, 0.65);
   flex: 0 0 auto;
+  scroll-margin-top: 118px;
 }
 .form-section.form-fill {
   flex: 1 1 auto;
@@ -1057,7 +1067,7 @@ body.company-portal .lohn-form {
     linear-gradient(180deg, rgba(11, 18, 32, 0.92), rgba(10, 16, 28, 0.88));
 }
 body.company-portal .lohn-form-sticky {
-  padding: 14px 0 12px;
+  padding: 10px 0 8px;
 }
 body.company-portal .lohn-status {
   border-radius: 12px;
@@ -1502,12 +1512,39 @@ body.company-portal .form-jump a.is-active {
   background: rgba(93, 180, 255, 0.16);
   border-color: rgba(93, 180, 255, 0.45);
 }
+body.company-portal .lohn-form {
+  scroll-padding-top: 128px;
+}
+body.company-portal .lohn-form-sticky {
+  padding: 10px 0 8px;
+}
+body.company-portal .form-section {
+  scroll-margin-top: 128px;
+  padding-top: 16px;
+}
 body.company-portal .form-section.is-focused {
   border-color: rgba(93, 180, 255, 0.42);
   box-shadow: 0 0 0 1px rgba(93, 180, 255, 0.18), 0 12px 28px rgba(0, 0, 0, 0.22);
 }
+body.company-portal .form-section.step .step-head {
+  margin-bottom: 10px;
+}
 body.company-portal .form-section.step .step-head h2 {
   font-size: 1.15rem;
+}
+body.company-portal .field-grid {
+  gap: 12px;
+}
+body.company-portal .field-grid label,
+body.company-portal label {
+  font-size: 0.78rem;
+  color: #c5d4e8;
+}
+body.company-portal input,
+body.company-portal textarea,
+body.company-portal select {
+  min-height: 40px;
+  font-size: 0.92rem;
 }
 body.company-portal .section-hint {
   font-size: 0.86rem;

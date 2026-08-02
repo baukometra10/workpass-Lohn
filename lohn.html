@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=8" />
-    <link rel="stylesheet" href="lohn.css?v=52" />
+    <link rel="stylesheet" href="lohn.css?v=53" />
   </head>
   <body class="auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
@@ -121,6 +121,15 @@
             <div id="statusBar" class="lohn-status warn">Bereit – manuell, Datei oder Inbox.</div>
             <div id="printHints" class="print-hints" hidden></div>
             <div id="missingPanel" class="missing-panel" hidden></div>
+            <nav class="form-jump" aria-label="Abschnitte">
+              <a href="#secEmpfang">Empfang</a>
+              <a href="#secFirma">Firma</a>
+              <a href="#secLohnarten">Lohnarten</a>
+              <a href="#secAuszahlung">Auszahlung</a>
+              <a href="#secArchiv">Archiv</a>
+            </nav>
+          </div>
+          <div class="lohn-form-summary" id="lohnFormSummary">
             <div id="auditOverview" class="audit-overview" hidden role="region" aria-label="Prüfübersicht">
               <div class="audit-overview-head">
                 <strong>Prüfübersicht</strong>
@@ -132,13 +141,6 @@
               <div class="kpi"><span>Brutto</span><strong id="kpiGross">—</strong></div>
               <div class="kpi"><span>Netto / Auszahlung</span><strong id="kpiNet">—</strong></div>
             </div>
-            <nav class="form-jump" aria-label="Abschnitte">
-              <a href="#secEmpfang">Empfang</a>
-              <a href="#secFirma">Firma</a>
-              <a href="#secLohnarten">Lohnarten</a>
-              <a href="#secAuszahlung">Auszahlung</a>
-              <a href="#secArchiv">Archiv</a>
-            </nav>
           </div>
 
           <section class="form-section step" id="secEmpfang">
@@ -620,6 +622,6 @@
     <script src="mandant-checklist.js?v=3"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="lohn-app.js?v=51"></script>
+    <script src="lohn-app.js?v=52"></script>
   </body>
 </html>
