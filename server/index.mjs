@@ -7,6 +7,8 @@
  * Tenant: X-WorkPass-Company-Id
  * Encryption at rest: AES-256-GCM (WORKPASS_DATA_KEY or local .data-key)
  */
+import http from "node:http";
+import { URL } from "node:url";
 import { ACCOUNTING_VERSION, SERVICE_NAME } from "./version.mjs";
 import { ingestPayroll, ingestPayrollBatch, releasePayrollJob } from "./payroll-service.mjs";
 import { runMonthClose, currentPeriod, requestEmployeeDataFromPlatform, resolvePlatformPullUrls } from "./month-close.mjs";
