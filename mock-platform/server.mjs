@@ -90,8 +90,10 @@ const server = http.createServer(async (req, res) => {
 
   // Accounting → Platform webhook
   if (req.method === "POST" && pathName === "/api/workpass/webhooks/accounting") {
-    const key = req.headers["x-workpass-webhook-key"];
-    if (key !== WEBHOOK_KEY) {
+    const headerKey = req.headers["x-workpass-webhook-key"];
+    const auth = String(req.headers.authorization || "");
+    const bearerKey = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
+    if (headerKey !== WEBHOOK_KEY && bearerKey !== WEBHOOK_KEY) {
       return send(res, 401, { ok: false, error: "Invalid webhook key" });
     }
     try {
