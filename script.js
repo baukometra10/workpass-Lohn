@@ -238,7 +238,7 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2026.39";
+const APP_VERSION = "2026.40";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
 let appBootstrapping = true;
@@ -758,6 +758,12 @@ async function runHubSyncCheck() {
     hubShowSyncStatus("Sync prüfen braucht Firmen-Login (Plattform-Konto).", { error: true });
     return;
   }
+  const syncBtn = document.getElementById("dashSyncCheckBtn");
+  if (syncBtn) {
+    syncBtn.disabled = true;
+    syncBtn.setAttribute("aria-busy", "true");
+    syncBtn.classList.add("is-busy");
+  }
   hubShowSyncStatus("Sync wird geprüft …");
   try {
     let sync = await hubApiFetch("/v1/platform/status");
@@ -798,6 +804,12 @@ async function runHubSyncCheck() {
   } catch (err) {
     hubShowSyncStatus(err?.message || "Sync-Prüfung fehlgeschlagen.", { error: true });
     hubSetText("dashKpiFirmSync", "Offline");
+  } finally {
+    if (syncBtn) {
+      syncBtn.disabled = false;
+      syncBtn.removeAttribute("aria-busy");
+      syncBtn.classList.remove("is-busy");
+    }
   }
 }
 
@@ -6222,15 +6234,24 @@ function importAllData(file) {
   reader.readAsText(file);
 }
 
+function syncHubBannerVisibility() {
+  const banner = document.getElementById("dashHubBanner");
+  if (!banner) return;
+  const onboardingVisible = Boolean(onboardingBanner && !onboardingBanner.classList.contains("hidden"));
+  banner.hidden = onboardingVisible;
+}
+
 function initOnboarding() {
   if (!onboardingBanner) return;
   const dismissed = localStorage.getItem(ONBOARDING_KEY) === "1";
   onboardingBanner.classList.toggle("hidden", dismissed);
+  syncHubBannerVisibility();
 }
 
 function dismissOnboarding() {
   localStorage.setItem(ONBOARDING_KEY, "1");
   if (onboardingBanner) onboardingBanner.classList.add("hidden");
+  syncHubBannerVisibility();
 }
 
 function updateIncompleteFieldHighlights() {

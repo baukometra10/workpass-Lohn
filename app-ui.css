@@ -1422,8 +1422,20 @@ body.dashboard-tab .preview-panel {
   display: none;
 }
 
+body.dashboard-tab .app-topbar.lex-page-header .topbar-heading {
+  /* Page chrome already says Übersicht via sidebar */
+}
+
+body.dashboard-tab .lex-context-bar .ui-status-bar {
+  opacity: 0.85;
+}
+
+body.workpass-hub.dashboard-tab .dash-hero h2 {
+  display: none;
+}
+
 .dash-hero {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .dash-hero h2 {
@@ -1432,21 +1444,34 @@ body.dashboard-tab .preview-panel {
   color: var(--lex-navy);
 }
 
+.dash-welcome {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--lex-navy);
+  line-height: 1.35;
+}
+
 .dash-hero p {
   margin: 0;
   color: var(--lex-muted);
   font-size: 0.92rem;
 }
 
-.dash-kpi-grid {
+.dash-onboarding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.dash-kpi-grid,
+.dash-kpi-grid.dash-kpi-local,
+.dash-kpi-grid.dash-kpi-firm {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 16px;
-}
-
-.dash-kpi-grid.dash-kpi-local {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .dash-local-meta {
@@ -1470,6 +1495,30 @@ body.dashboard-tab .preview-panel {
   border-color: #c53d2f;
 }
 
+.dash-action-btn.is-busy {
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.dash-action-btn.is-busy strong::after {
+  content: " …";
+}
+
+.invoice-archive-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.invoice-archive-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  transition: border-color 0.12s, background 0.12s;
+}
+
 .invoice-archive-item .inv-badge {
   display: inline-block;
   margin-left: 6px;
@@ -1491,35 +1540,12 @@ body.dashboard-tab .preview-panel {
 }
 .hub-sync-log li { margin-bottom: 6px; }
 
-.dash-secondary-actions {
-  margin: 10px 0 0;
+#mandantAccountingStatus {
+  margin-bottom: 14px;
 }
 
-.linkish-btn {
-  appearance: none;
-  background: none;
-  border: 0;
-  padding: 0;
-  color: var(--lex-blue, #1a6fb5);
-  text-decoration: underline;
-  cursor: pointer;
-  font: inherit;
-  font-size: inherit;
-}
-
-@media (max-width: 1100px) {
-  .dash-kpi-grid,
-  .dash-kpi-grid.dash-kpi-local {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 720px) {
-  .dash-kpi-grid,
-  .dash-kpi-grid.dash-kpi-local {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
+#mandantProfileSyncHint.is-ok { color: #2f8f4e; }
+#mandantProfileSyncHint.is-error { color: #c53d2f; }
 
 .dash-kpi {
   padding: 14px 16px;
@@ -1559,6 +1585,7 @@ body.dashboard-tab .preview-panel {
   align-items: flex-start;
   gap: 4px;
   padding: 14px 16px;
+  min-height: 72px;
   border: 1px solid var(--lex-border);
   border-radius: 3px;
   background: var(--lex-panel);
@@ -1572,6 +1599,11 @@ body.dashboard-tab .preview-panel {
   background: var(--lex-blue-soft);
 }
 
+.dash-action-btn:focus-visible {
+  outline: 2px solid var(--lex-blue);
+  outline-offset: 2px;
+}
+
 .dash-action-btn strong {
   font-size: 13px;
   color: var(--lex-navy);
@@ -1580,6 +1612,49 @@ body.dashboard-tab .preview-panel {
 .dash-action-btn span {
   font-size: 11px;
   color: var(--lex-muted);
+}
+
+.dash-secondary-actions {
+  margin: 10px 0 0;
+}
+
+.linkish-btn {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--lex-blue, #1a6fb5);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  font-size: inherit;
+}
+
+@media (max-width: 1100px) {
+  .dash-kpi-grid,
+  .dash-kpi-grid.dash-kpi-local,
+  .dash-kpi-grid.dash-kpi-firm {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .dash-kpi-grid,
+  .dash-kpi-grid.dash-kpi-local,
+  .dash-kpi-grid.dash-kpi-firm {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .dash-kpi-grid,
+  .dash-kpi-grid.dash-kpi-local,
+  .dash-kpi-grid.dash-kpi-firm {
+    grid-template-columns: 1fr;
+  }
+  .dash-quick-actions {
+    grid-template-columns: 1fr;
+  }
 }
 
 .dash-table-wrap {
@@ -1688,11 +1763,4 @@ body.dashboard-tab .preview-panel {
   border: none;
   border-top: 1px solid var(--lex-border-light);
 }
-
-@media (max-width: 900px) {
-  .dash-kpi-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
 

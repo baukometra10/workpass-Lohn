@@ -385,3 +385,60 @@ body.workpass-hub .preview-document {
 @media (max-width: 900px) {
   .pin-change-box .grid { grid-template-columns: 1fr; }
 }
+
+/* ——— UX polish: focus, badges, dashboard chrome ——— */
+body.workpass-hub .dash-action-btn:focus-visible,
+body.workpass-hub .auth-submit:focus-visible,
+body.workpass-hub .auth-mode-tab:focus-visible,
+body.workpass-hub .secondary-btn:focus-visible,
+body.workpass-hub .lex-ribbon-btn:focus-visible,
+body.workpass-hub button:focus-visible,
+body.workpass-hub a.dash-action-btn:focus-visible {
+  outline: 2px solid rgba(93, 180, 255, 0.85);
+  outline-offset: 2px;
+}
+
+body.workpass-hub .wp-hub-banner {
+  padding: 10px 14px !important;
+  margin-bottom: 12px;
+  background: rgba(59, 158, 255, 0.08) !important;
+  border-color: rgba(59, 158, 255, 0.28) !important;
+}
+
+body.workpass-hub .dash-checklist-items li::before {
+  color: #64748b;
+}
+body.workpass-hub .dash-checklist-items li.done::before {
+  color: var(--wp-ok);
+}
+
+body.workpass-hub .inv-badge {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.55) !important;
+  color: #e2e8f0 !important;
+}
+body.workpass-hub .inv-badge-ok,
+body.workpass-hub .inv-badge:not(.inv-badge-local):not(.inv-badge-warn) {
+  border-color: rgba(52, 211, 153, 0.4);
+}
+body.workpass-hub .inv-badge-local {
+  background: rgba(148, 163, 184, 0.12) !important;
+  color: #cbd5e1 !important;
+}
+body.workpass-hub .invoice-archive-item:hover,
+body.workpass-hub .invoice-archive-item:focus-within {
+  border-color: rgba(93, 180, 255, 0.45) !important;
+  background: rgba(59, 158, 255, 0.06) !important;
+}
+
+body.workpass-hub .dash-action-btn.is-busy {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+body.workpass-hub.dashboard-tab .lex-ribbon {
+  opacity: 0.9;
+}
+body.workpass-hub.dashboard-tab .lex-page-header h2 {
+  font-size: 1.15rem;
+}
