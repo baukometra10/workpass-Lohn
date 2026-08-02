@@ -87,14 +87,36 @@ body.auth-locked { overflow: hidden; }
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
-.lohn-brand { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lohn-brand { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.lohn-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.lohn-logo {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  line-height: 0;
+}
+.lohn-brand-text { min-width: 0; }
+.lohn-brand-text strong {
+  display: block;
+  font-family: var(--display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.15;
+}
+.lohn-brand-text span { display: block; font-size: 0.68rem; color: var(--muted); }
 .lohn-brand strong {
   font-family: var(--display);
   font-size: 1.05rem;
   font-weight: 700;
   color: #fff;
 }
-.lohn-brand span { font-size: 0.68rem; color: var(--muted); }
+.lohn-brand > span:not(.mode-pill) { font-size: 0.68rem; color: var(--muted); }
 
 .mode-pill {
   display: inline-flex; align-items: center; gap: 5px; margin-top: 3px; width: fit-content;
@@ -512,8 +534,18 @@ textarea { min-height: 58px; resize: vertical; }
   border-radius: var(--radius-sm);
   padding: 10px 12px;
 }
-.portal-kpi-row .kpi span { display: block; color: var(--muted); font-size: 0.78rem; }
-.portal-kpi-row .kpi strong { font-size: 1.15rem; }
+.portal-kpi-row .kpi span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.portal-kpi-row .kpi strong {
+  font-size: 1.15rem;
+  font-family: var(--display);
+  color: var(--accent-hot);
+}
 .portal-success {
   border-color: rgba(52, 211, 153, 0.45) !important;
   background: linear-gradient(180deg, rgba(52, 211, 153, 0.12), rgba(16, 24, 38, 0.4));
@@ -533,6 +565,9 @@ textarea { min-height: 58px; resize: vertical; }
 @media (max-width: 700px) {
   .portal-kpi-row,
   .portal-totals-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 420px) {
+  .portal-kpi-row { grid-template-columns: 1fr; }
 }
 .kpi {
   background: var(--panel); border: 1px solid var(--border);
@@ -1159,9 +1194,13 @@ body.company-portal .month-status-err {
 }
 body.company-portal .month-status-err strong { color: #fca5a5; }
 body.company-portal button.primary.is-busy,
-body.company-portal #btnMonthClose.is-busy {
+body.company-portal #btnMonthClose.is-busy,
+body.company-portal #btnAutoSyncNow.is-busy,
+body.company-portal #btnPingPlatform.is-busy,
+body.company-portal #btnRefreshPortal.is-busy {
   opacity: 0.75;
   cursor: wait;
+  pointer-events: none;
 }
 body.company-portal .api-inbox-item {
   transition: border-color 0.2s ease, transform 0.15s ease, background 0.2s ease;
@@ -1389,4 +1428,23 @@ body.theme-light .month-chip strong { color: var(--text); }
 body.theme-light .lohn-status.ok { color: #0f7a4c; }
 body.theme-light .auth-gate {
   background: radial-gradient(ellipse at 50% 0%, rgba(29, 111, 216, 0.12), transparent 50%), #eef3fb;
+}
+
+/* Focus + UX polish aligned with Hub */
+.lohn-shell button:focus-visible,
+.lohn-shell a.btn:focus-visible,
+.lohn-shell label.btn:focus-visible,
+.lohn-shell .recv-mode:focus-visible,
+.lohn-shell .month-chip:focus-visible,
+.auth-submit:focus-visible,
+.auth-mode-tab:focus-visible {
+  outline: 2px solid rgba(93, 180, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.portal-dash-card {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.portal-dash-card:focus-within {
+  border-color: rgba(93, 180, 255, 0.4);
 }

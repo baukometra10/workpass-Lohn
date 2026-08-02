@@ -766,6 +766,12 @@
   }
 
   async function pingPlatformWebhook() {
+    const btn = $("btnPingPlatform");
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add("is-busy");
+      btn.setAttribute("aria-busy", "true");
+    }
     try {
       setStatus("Prüfe Plattform-Webhook…", true);
       const data = await apiFetch("/v1/platform/ping", { method: "POST", body: "{}" });
@@ -774,6 +780,12 @@
       await loadPortalDashboard(true);
     } catch (e) {
       toast(`Webhook: ${e.message || e}`, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove("is-busy");
+        btn.removeAttribute("aria-busy");
+      }
     }
   }
 
@@ -787,6 +799,8 @@
     const btn = $("btnAutoSyncNow");
     if (btn) {
       btn.disabled = true;
+      btn.classList.add("is-busy");
+      btn.setAttribute("aria-busy", "true");
       btn.textContent = "Synchronisiert…";
     }
     try {
@@ -814,6 +828,8 @@
     } finally {
       if (btn) {
         btn.disabled = false;
+        btn.classList.remove("is-busy");
+        btn.removeAttribute("aria-busy");
         btn.textContent = "Jetzt synchronisieren";
       }
     }
@@ -901,6 +917,7 @@
     busyButtons.forEach((b) => {
       b.disabled = true;
       b.classList.add("is-busy");
+      b.setAttribute("aria-busy", "true");
       if (b.id === "btnMonthClose") b.textContent = "Läuft…";
       if (b.id === "btnPortalMonthClose") b.textContent = "Läuft…";
     });
@@ -1003,6 +1020,7 @@
       busyButtons.forEach((b) => {
         b.disabled = false;
         b.classList.remove("is-busy");
+        b.removeAttribute("aria-busy");
         if (b.id === "btnMonthClose") b.textContent = "Monatsabschluss jetzt";
         if (b.id === "btnPortalMonthClose") b.textContent = "Monatsabschluss";
       });
@@ -2213,9 +2231,23 @@
     $("btnRefreshMessages")?.addEventListener("click", () => loadPlatformMessages());
     $("btnSeedDemoMonth")?.addEventListener("click", () => seedDemoMonth());
     $("btnPurgeDemo")?.addEventListener("click", () => purgeDemoData());
-    $("btnRefreshPortal")?.addEventListener("click", () => {
-      loadPortalDashboard();
-      loadPlatformMessages(true);
+    $("btnRefreshPortal")?.addEventListener("click", async () => {
+      const btn = $("btnRefreshPortal");
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add("is-busy");
+        btn.setAttribute("aria-busy", "true");
+      }
+      try {
+        await loadPortalDashboard();
+        await loadPlatformMessages(true);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove("is-busy");
+          btn.removeAttribute("aria-busy");
+        }
+      }
     });
     $("btnApiCompanies")?.addEventListener("click", loadPlatformCompanies);
     $("btnApiHealth")?.addEventListener("click", checkApiHealth);

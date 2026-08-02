@@ -3,26 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WorkPass Lohn – Suppix AI</title>
+    <title>WorkPass Lohn – Steuerprogramm · Suppix AI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="workpass-theme.css?v=5" />
-    <link rel="stylesheet" href="lohn.css?v=48" />
+    <link rel="stylesheet" href="workpass-theme.css?v=7" />
+    <link rel="stylesheet" href="lohn.css?v=49" />
   </head>
   <body class="auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
       <div class="auth-card">
         <div class="auth-brand">
-          <div class="auth-mark" aria-hidden="true"><span></span></div>
+          <div class="lex-logo auth-logo" aria-hidden="true">
+            <svg viewBox="0 0 32 32" width="40" height="40">
+              <defs><linearGradient id="wpAuthGradLohn" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#5db4ff"/><stop offset="100%" stop-color="#1d4ed8"/></linearGradient></defs>
+              <rect width="32" height="32" rx="8" fill="url(#wpAuthGradLohn)"/>
+              <circle cx="16" cy="16" r="7" fill="none" stroke="#fff" stroke-width="2.2"/>
+              <circle cx="16" cy="16" r="2.5" fill="#fff"/>
+            </svg>
+          </div>
           <div>
-            <strong>SUPPIX AI</strong>
-            <small>WorkPass Lohn · Buchhaltung</small>
+            <strong>WorkPass Steuerprogramm</strong>
+            <small>Suppix AI · Lohn-Portal</small>
           </div>
         </div>
         <div class="auth-meta">
           <div><span>Produkt</span>WorkPass Lohn</div>
-          <div><span>Modus</span>Standalone / Empfang</div>
+          <div><span>Modus</span>Empfang · Freigabe</div>
         </div>
         <h1 id="authTitle">WorkPass Lohn entsperren</h1>
         <p class="auth-hint" id="authHint">Geschützter Buchhaltungszugang · Suppix AI</p>
@@ -55,8 +62,20 @@
     <div id="lohnApp" class="lohn-shell" aria-hidden="true">
       <header class="lohn-appbar">
         <div class="lohn-brand">
-          <strong>WorkPass Lohn</strong>
-          <span>Suppix AI · Live-Abrechnung</span>
+          <div class="lohn-brand-row">
+            <div class="lohn-logo" aria-hidden="true">
+              <svg viewBox="0 0 32 32" width="28" height="28">
+                <defs><linearGradient id="wpGradLohn" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#5db4ff"/><stop offset="100%" stop-color="#1d4ed8"/></linearGradient></defs>
+                <rect width="32" height="32" rx="8" fill="url(#wpGradLohn)"/>
+                <circle cx="16" cy="16" r="7" fill="none" stroke="#fff" stroke-width="2.2"/>
+                <circle cx="16" cy="16" r="2.5" fill="#fff"/>
+              </svg>
+            </div>
+            <div class="lohn-brand-text">
+              <strong>WorkPass Lohn</strong>
+              <span>Suppix AI · Steuerprogramm</span>
+            </div>
+          </div>
           <span class="mode-pill" id="modePill" title="Arbeitet unabhängig von der Plattform">Standalone</span>
         </div>
 
@@ -171,7 +190,7 @@
                 </section>
                 <section class="month-close-card portal-dash-card" id="portalSyncCard" style="margin-bottom:12px">
                   <strong>Automatik · Plattform-Sync</strong>
-                  <p id="portalSyncHint">WorkPass Lohn fragt die Plattform selbst nach Mitarbeitern und Abrechnungen. Wenn Daten kommen, wird alles automatisch berechnet und freigegeben.</p>
+                  <p id="portalSyncHint">Fragt die Plattform nach Mitarbeitern und Abrechnungen – berechnet und gibt frei, sobald Daten da sind.</p>
                   <div id="portalSyncDetail" class="api-inbox-list"></div>
                   <div class="month-close-actions" style="margin-top:10px">
                     <button type="button" class="primary" id="btnAutoSyncNow">Jetzt synchronisieren</button>
@@ -562,6 +581,6 @@
     <script src="mandant-checklist.js?v=1"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="lohn-app.js?v=47"></script>
+    <script src="lohn-app.js?v=48"></script>
   </body>
 </html>
