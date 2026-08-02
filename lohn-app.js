@@ -277,8 +277,14 @@
   function setKpis(payroll) {
     const g = $("kpiGross");
     const n = $("kpiNet");
-    if (g) g.textContent = payroll.gross > 0 ? PayrollCore.formatAmount(payroll.gross) : "—";
-    if (n) n.textContent = payroll.net > 0 ? PayrollCore.formatAmount(payroll.net) : "—";
+    if (g) {
+      g.textContent = payroll.gross > 0 ? PayrollCore.formatAmount(payroll.gross) : "Keine Daten";
+      g.classList.toggle("is-empty", !(payroll.gross > 0));
+    }
+    if (n) {
+      n.textContent = payroll.net > 0 ? PayrollCore.formatAmount(payroll.net) : "Keine Daten";
+      n.classList.toggle("is-empty", !(payroll.net > 0));
+    }
   }
 
   function setPrintHints(state, hardErrors) {
@@ -430,18 +436,35 @@
       if ($("portalKpiGross")) {
         $("portalKpiGross").textContent = cur.total
           ? PayrollCore.formatAmount(cur.grossSum || 0)
-          : "—";
+          : "Keine Daten";
+        $("portalKpiGross").classList.toggle("is-empty", !cur.total);
       }
       if ($("portalKpiNet")) {
         $("portalKpiNet").textContent = cur.total
           ? PayrollCore.formatAmount(cur.netSum || 0)
-          : "—";
+          : "Keine Daten";
+        $("portalKpiNet").classList.toggle("is-empty", !cur.total);
       }
       if ($("portalKpiMessages")) $("portalKpiMessages").textContent = String((msgs.messages || []).length);
       const pending = Number(sync?.pending?.messages || 0) + Number(sync?.pending?.deliveries || 0);
-      if ($("portalKpiSync")) {
-        $("portalKpiSync").textContent = pending ? `${pending} offen` : (sync?.webhook?.configured ? "OK" : "—");
+      const syncLabel = pending ? `${pending} offen` : (sync?.webhook?.configured ? (sync?.status === "error" ? "Fehler" : "OK") : "—");
+      if ($("portalKpiSync")) $("portalKpiSync").textContent = syncLabel;
+      if ($("portalSyncBadge")) {
+        $("portalSyncBadge").textContent = sync?.status === "error"
+          ? "Fehler"
+          : (sync?.status === "waiting" ? "Wartet" : (sync?.status === "ok" ? "OK" : "Status"));
+        $("portalSyncBadge").classList.toggle("is-error", sync?.status === "error");
+        $("portalSyncBadge").classList.toggle("is-ok", sync?.status === "ok");
       }
+
+      renderAuditOverview({
+        period,
+        employees: Number(emps.count || 0),
+        released: Number(cur.released || arch.count || 0),
+        openMessages: Number((msgs.messages || []).length),
+        syncLabel,
+        hasData: Boolean(cur.total),
+      });
 
       const totalsCard = $("portalTotalsCard");
       if (totalsCard) {
@@ -535,18 +558,21 @@
       const empHost = $("portalEmployeeList");
       if (empHost) {
         const list = emps.employees || [];
+        const shown = list.slice(0, 50);
         empHost.innerHTML = list.length
-          ? list.map((e) => `
+          ? `<p class="portal-list-meta">${esc(String(list.length))} Mitarbeiter · Anzeige ${esc(String(shown.length))} (Mandantentrennung)</p>`
+            + shown.map((e) => `
             <div class="api-inbox-item">
               <div>
                 <strong>${esc(e.name || e.id)}</strong>
-                <span>Badge ${esc(e.badgeId || e.id)}${e.personnelNumber ? ` · Pers.-Nr. ${esc(e.personnelNumber)}` : ""} · ${esc(e.lastPeriod || "—")} · ${esc(e.lastStatus || "—")}</span>
+                <span class="portal-item-meta">Badge ${esc(e.badgeId || e.id)}${e.personnelNumber ? ` · Pers.-Nr. ${esc(e.personnelNumber)}` : ""} · ${esc(e.lastPeriod || "—")} · ${esc(e.lastStatus || "—")}</span>
                 <span>Netto ${e.net != null ? PayrollCore.formatAmount(e.net) : "—"}</span>
               </div>
               <div class="api-inbox-actions">
                 <button type="button" class="api-open-emp primary" data-id="${esc(e.lastJobId || "")}">Öffnen</button>
               </div>
             </div>`).join("")
+            + (list.length > shown.length ? `<p class="portal-list-more">+ ${list.length - shown.length} weitere – für große Firmen seitenweise</p>` : "")
           : '<div class="company-empty-inbox"><strong>Noch keine echten Mitarbeiter</strong><p>Die Plattform muss Mitarbeiter (Name + Badge-ID) bzw. den Monats-Lohnbatch senden. Beispieldaten werden nicht angezeigt.</p></div>';
         empHost.querySelectorAll(".api-open-emp").forEach((btn) => {
           btn.addEventListener("click", () => openApiPayrollJob(btn.dataset.id));
@@ -644,10 +670,57 @@
     });
   }
 
+  function groupSeenConfirmations(seen) {
+    const groups = new Map();
+    for (const s of seen || []) {
+      const title = String(s.title || s.type || s.label || "Auftrag").trim();
+      const period = String(s.period || "—").trim();
+      const key = `${title}::${period}`;
+      const prev = groups.get(key) || {
+        title,
+        period,
+        label: s.label || "Auftrag gesehen",
+        count: 0,
+        latestAt: "",
+        employees: [],
+      };
+      prev.count += 1;
+      const at = String(s.seenAt || "");
+      if (!prev.latestAt || at > prev.latestAt) prev.latestAt = at;
+      const who = s.employee?.name || s.employee?.badgeId || s.employee?.id || "";
+      if (who && prev.employees.length < 4) prev.employees.push(who);
+      groups.set(key, prev);
+    }
+    return [...groups.values()].sort((a, b) => String(b.latestAt).localeCompare(String(a.latestAt)));
+  }
+
+  function renderAuditOverview({ period, employees = 0, released = 0, openMessages = 0, syncLabel = "—", hasData = false } = {}) {
+    const host = $("auditOverview");
+    const grid = $("auditOverviewGrid");
+    if (!host || !grid) return;
+    if (!companyPortalId) {
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    const dataState = hasData ? "Daten vorhanden" : "Noch keine Monatsdaten";
+    grid.innerHTML = `
+      <div class="audit-chip"><span>Firma</span><strong>${esc(companyPortalId)}</strong></div>
+      <div class="audit-chip"><span>Monat</span><strong>${esc(period || currentPayrollPeriod())}</strong></div>
+      <div class="audit-chip"><span>Mitarbeiter</span><strong>${esc(String(employees))}</strong></div>
+      <div class="audit-chip"><span>Freigegeben</span><strong>${esc(String(released))}</strong></div>
+      <div class="audit-chip"><span>Offene Aufträge</span><strong>${esc(String(openMessages))}</strong></div>
+      <div class="audit-chip"><span>Sync</span><strong>${esc(syncLabel)}</strong></div>
+      <div class="audit-chip audit-chip-wide"><span>Datenlage</span><strong>${esc(dataState)}</strong></div>
+      <div class="audit-chip audit-chip-wide"><span>Mandant</span><strong>Nur diese Firma sichtbar (Isolation)</strong></div>
+    `;
+  }
+
   async function loadPlatformMessages(silent = false) {
     const host = $("platformCommsList");
     const seenHost = $("platformSeenList");
     const card = $("platformCommsCard");
+    const badge = $("platformCommsBadge");
     if (!companyPortalId) {
       if (card) card.hidden = true;
       return null;
@@ -657,33 +730,47 @@
       const data = await apiFetch("/v1/messages?status=open");
       const messages = data.messages || [];
       const seen = data.seenConfirmations || [];
+      const grouped = groupSeenConfirmations(seen);
+      if (badge) {
+        badge.textContent = `${messages.length} offen · ${seen.length} gesehen`;
+      }
       if (seenHost) {
-        seenHost.innerHTML = seen.length
-          ? `<strong style="display:block;margin-bottom:8px">Von Plattform gesehen</strong>`
-            + seen.slice(0, 15).map((s) => `
-            <div class="api-inbox-item api-seen-item">
-              <div>
-                <strong>✓ ${esc(s.label || "Auftrag gesehen")}</strong>
-                <span>${esc(s.employee?.name || s.employee?.badgeId || s.employee?.id || "—")} · ${esc(s.period || "—")} · ${esc(s.seenAt || "").replace("T", " ").slice(0, 16)}</span>
-                <span>${esc(s.title || "")}</span>
-              </div>
-            </div>`).join("")
-          : `<div class="company-empty-inbox"><strong>Noch keine Lesebestätigung</strong><p>Sobald die Plattform eine Mitteilung öffnet, erscheint hier „Auftrag gesehen“.</p></div>`;
+        if (!grouped.length) {
+          seenHost.innerHTML = `<div class="company-empty-inbox"><strong>Noch keine Lesebestätigung</strong><p>Sobald die Plattform eine Mitteilung öffnet, erscheint hier eine klare Bestätigung – gruppiert nach Vorgang.</p></div>`;
+        } else {
+          const shown = grouped.slice(0, 12);
+          seenHost.innerHTML = `
+            <p class="portal-list-meta">${esc(String(seen.length))} Bestätigung(en) · ${esc(String(grouped.length))} Vorgänge</p>
+            ${shown.map((g) => `
+              <div class="api-inbox-item api-seen-item">
+                <div>
+                  <strong>✓ ${esc(g.title)}</strong>
+                  <span class="portal-item-meta">${esc(g.period)} · ${esc(String(g.count))}× gesehen · ${esc(String(g.latestAt || "").replace("T", " ").slice(0, 16))}</span>
+                  <span>${esc(g.employees.length ? `Betroffen: ${g.employees.join(", ")}${g.count > g.employees.length ? " …" : ""}` : (g.label || "Auftrag gesehen"))}</span>
+                </div>
+              </div>`).join("")}
+            ${grouped.length > shown.length ? `<p class="portal-list-more">+ ${grouped.length - shown.length} weitere Vorgänge (für Prüfung gekürzt)</p>` : ""}
+          `;
+        }
       }
       if (!host) return data;
       if (!messages.length) {
-        host.innerHTML = '<div class="company-empty-inbox"><strong>Keine offenen Aufträge an die Plattform</strong><p>Fehlende Daten (z. B. IBAN) werden einmal gebündelt pro Mitarbeiter gemeldet.</p></div>';
+        host.innerHTML = '<div class="company-empty-inbox"><strong>Keine offenen Aufträge</strong><p>Fehlende Daten werden gebündelt pro Mitarbeiter gemeldet. Die Liste bleibt leer, wenn nichts offen ist.</p></div>';
         return data;
       }
-      host.innerHTML = `<strong style="display:block;margin-bottom:8px">Offen – wartend auf Plattform</strong>`
-        + messages.slice(0, 40).map((m) => `
+      const shownMsg = messages.slice(0, 40);
+      host.innerHTML = `
+        <p class="portal-list-meta">${esc(String(messages.length))} offen · Anzeige ${esc(String(shownMsg.length))}</p>
+        ${shownMsg.map((m) => `
         <div class="api-inbox-item" data-message-id="${esc(m.messageId)}">
           <div>
             <strong>${esc(m.title || "Nachricht")}</strong>
-            <span>${esc(m.employee?.name || m.employee?.id || "—")} · Badge ${esc(m.employee?.badgeId || m.employee?.id || "—")} · ${esc(m.period || "—")}</span>
+            <span class="portal-item-meta">${esc(m.employee?.name || m.employee?.id || "—")} · Badge ${esc(m.employee?.badgeId || m.employee?.id || "—")} · ${esc(m.period || "—")}</span>
             <span>${esc((m.gaps || []).map((g) => g.label).join(" · ") || m.body || "").slice(0, 180)}</span>
           </div>
-        </div>`).join("");
+        </div>`).join("")}
+        ${messages.length > shownMsg.length ? `<p class="portal-list-more">+ ${messages.length - shownMsg.length} weitere (Mandanten-Isolation aktiv)</p>` : ""}
+      `;
       if (!silent) setStatus(`Offene Plattform-Aufträge: ${messages.length} · Gesehen: ${seen.length}`, true);
       return data;
     } catch (e) {
@@ -1830,7 +1917,7 @@
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> Firmen-Portal live</span>
               <strong>${esc(companyName)}</strong>
-              <small>Nur Ihre Daten · ${esc(me.user?.email || "")} · Monat ${esc(currentPayrollPeriod())}</small>
+              <small>Nur Ihre Daten · Mandantentrennung aktiv · ${esc(me.user?.email || "")} · Monat ${esc(currentPayrollPeriod())}</small>
             </div>
             <div class="month-close-actions">
               <button type="button" class="primary glossy" id="btnPortalMonthClose">Monatsabschluss</button>
@@ -2328,6 +2415,39 @@
 
     bindDropZone();
     window.addEventListener("resize", () => requestAnimationFrame(() => fitSheetPreview()));
+    initSectionNav();
+  }
+
+  function initSectionNav() {
+    const links = [...document.querySelectorAll(".form-jump a[href^='#']")];
+    if (!links.length) return;
+    const sections = links
+      .map((a) => document.querySelector(a.getAttribute("href")))
+      .filter(Boolean);
+    const setActive = (id) => {
+      links.forEach((a) => {
+        a.classList.toggle("is-active", a.getAttribute("href") === `#${id}`);
+      });
+      sections.forEach((sec) => {
+        sec.classList.toggle("is-focused", sec.id === id);
+      });
+    };
+    links.forEach((a) => {
+      a.addEventListener("click", () => {
+        const id = (a.getAttribute("href") || "").slice(1);
+        if (id) setActive(id);
+      });
+    });
+    if ("IntersectionObserver" in window) {
+      const io = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) setActive(visible.target.id);
+      }, { rootMargin: "-20% 0px -55% 0px", threshold: [0.15, 0.35, 0.6] });
+      sections.forEach((sec) => io.observe(sec));
+    }
+    setActive(sections[0]?.id || "secEmpfang");
   }
 
   function startApp() {

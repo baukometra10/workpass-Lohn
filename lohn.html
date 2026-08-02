@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=8" />
-    <link rel="stylesheet" href="lohn.css?v=51" />
+    <link rel="stylesheet" href="lohn.css?v=52" />
   </head>
   <body class="auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
@@ -121,6 +121,13 @@
             <div id="statusBar" class="lohn-status warn">Bereit – manuell, Datei oder Inbox.</div>
             <div id="printHints" class="print-hints" hidden></div>
             <div id="missingPanel" class="missing-panel" hidden></div>
+            <div id="auditOverview" class="audit-overview" hidden role="region" aria-label="Prüfübersicht">
+              <div class="audit-overview-head">
+                <strong>Prüfübersicht</strong>
+                <span class="audit-pill" id="auditTenantPill">Mandantentrennung aktiv</span>
+              </div>
+              <div class="audit-overview-grid" id="auditOverviewGrid"></div>
+            </div>
             <div class="kpi-strip">
               <div class="kpi"><span>Brutto</span><strong id="kpiGross">—</strong></div>
               <div class="kpi"><span>Netto / Auszahlung</span><strong id="kpiNet">—</strong></div>
@@ -189,9 +196,12 @@
                   <p id="portalSuccessHint">Abrechnungen wurden berechnet und an die Plattform gesendet.</p>
                 </section>
                 <section class="month-close-card portal-dash-card" id="portalSyncCard" style="margin-bottom:12px">
-                  <strong>Automatik · Plattform-Sync</strong>
+                  <div class="portal-card-head">
+                    <strong>Automatik · Plattform-Sync</strong>
+                    <span class="portal-card-badge" id="portalSyncBadge">Status</span>
+                  </div>
                   <p id="portalSyncHint">Fragt die Plattform nach Mitarbeitern und Abrechnungen – berechnet und gibt frei, sobald Daten da sind.</p>
-                  <div id="portalSyncDetail" class="api-inbox-list"></div>
+                  <div id="portalSyncDetail" class="api-inbox-list portal-sync-detail"></div>
                   <div class="month-close-actions" style="margin-top:10px">
                     <button type="button" class="primary" id="btnAutoSyncNow">Jetzt synchronisieren</button>
                     <button type="button" id="btnPingPlatform">Webhook prüfen</button>
@@ -230,11 +240,22 @@
                   <button type="button" id="btnMonthReleaseOnly">Nur Freigabe offener Jobs</button>
                 </div>
               </div>
-              <div id="platformCommsCard" class="month-close-card" hidden>
-                <strong>Kommunikation mit Plattform</strong>
-                <p>Pro Mitarbeiter geht <em>eine</em> Mitteilung an die Plattform (alle fehlenden Felder gebündelt). Wenn die Plattform die Nachricht liest, erscheint hier die Bestätigung „Auftrag gesehen“.</p>
-                <div id="platformSeenList" class="api-inbox-list" style="margin-bottom:12px" aria-live="polite"></div>
-                <div id="platformCommsList" class="api-inbox-list" aria-live="polite"></div>
+              <div id="platformCommsCard" class="month-close-card portal-audit-card" hidden>
+                <div class="portal-card-head">
+                  <strong>Kommunikation mit Plattform</strong>
+                  <span class="portal-card-badge" id="platformCommsBadge">Prüfsicht</span>
+                </div>
+                <p class="section-hint">Eine Mitteilung pro Vorgang. Lesebestätigungen werden zusammengefasst – klar für Buchhaltung und Prüfung.</p>
+                <div class="portal-comms-grid">
+                  <section class="portal-comms-pane" aria-labelledby="seenPaneTitle">
+                    <h3 id="seenPaneTitle" class="portal-pane-title">Von Plattform gesehen</h3>
+                    <div id="platformSeenList" class="api-inbox-list portal-seen-list" aria-live="polite"></div>
+                  </section>
+                  <section class="portal-comms-pane" aria-labelledby="openPaneTitle">
+                    <h3 id="openPaneTitle" class="portal-pane-title">Offen – wartet auf Plattform</h3>
+                    <div id="platformCommsList" class="api-inbox-list" aria-live="polite"></div>
+                  </section>
+                </div>
                 <div class="month-close-actions" style="margin-top:10px">
                   <button type="button" id="btnRefreshMessages">Nachrichten aktualisieren</button>
                 </div>
@@ -599,6 +620,6 @@
     <script src="mandant-checklist.js?v=3"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="lohn-app.js?v=50"></script>
+    <script src="lohn-app.js?v=51"></script>
   </body>
 </html>

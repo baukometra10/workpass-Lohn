@@ -1353,6 +1353,179 @@ body.company-portal .lohn-preview .preview-toolbar {
 body.company-portal #lohnStammdatenHint.is-ok,
 #lohnStammdatenHint.is-ok { color: #7ddea2; }
 #lohnStammdatenHint { margin-top: 8px; font-size: 0.78rem; color: #9bb0c9; }
+
+/* —— Prüfübersicht / Klarheit Firmen-Portal —— */
+.audit-overview {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(125, 222, 162, 0.28);
+  background:
+    linear-gradient(160deg, rgba(16, 40, 34, 0.75), rgba(12, 22, 38, 0.88));
+}
+.audit-overview[hidden] { display: none !important; }
+.audit-overview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.audit-overview-head strong {
+  font-family: var(--display);
+  font-size: 0.95rem;
+  color: #fff;
+}
+.audit-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #bbf7d0;
+  border: 1px solid rgba(125, 222, 162, 0.4);
+  background: rgba(18, 48, 36, 0.55);
+}
+.audit-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+@media (max-width: 900px) {
+  .audit-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) {
+  .audit-overview-grid { grid-template-columns: 1fr; }
+}
+.audit-chip {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(140, 190, 255, 0.2);
+  background: rgba(8, 16, 30, 0.55);
+}
+.audit-chip span {
+  display: block;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9bb0c9;
+}
+.audit-chip strong {
+  display: block;
+  margin-top: 4px;
+  color: #fff;
+  font-size: 0.92rem;
+  line-height: 1.25;
+}
+.audit-chip-wide { grid-column: 1 / -1; }
+
+.portal-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.portal-card-badge {
+  display: inline-flex;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #c5d4e8;
+  border: 1px solid rgba(140, 190, 255, 0.3);
+  background: rgba(255, 255, 255, 0.04);
+}
+.portal-card-badge.is-ok {
+  color: #bbf7d0;
+  border-color: rgba(125, 222, 162, 0.45);
+}
+.portal-card-badge.is-error {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+.portal-comms-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+}
+@media (max-width: 900px) {
+  .portal-comms-grid { grid-template-columns: 1fr; }
+}
+.portal-comms-pane {
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(140, 190, 255, 0.18);
+  background: rgba(8, 16, 30, 0.4);
+  min-height: 120px;
+}
+.portal-pane-title {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #a8c0dc;
+}
+.portal-list-meta,
+.portal-list-more {
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  color: #9bb0c9;
+}
+.portal-item-meta {
+  font-family: var(--mono);
+  font-size: 0.7rem !important;
+  color: #8aa0b8 !important;
+}
+.portal-seen-list .api-seen-item strong {
+  color: #bbf7d0;
+}
+.kpi strong.is-empty {
+  color: #8a94a6 !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  text-shadow: none !important;
+}
+
+body.company-portal .form-jump a.is-active {
+  color: #fff;
+  background: rgba(93, 180, 255, 0.16);
+  border-color: rgba(93, 180, 255, 0.45);
+}
+body.company-portal .form-section.is-focused {
+  border-color: rgba(93, 180, 255, 0.42);
+  box-shadow: 0 0 0 1px rgba(93, 180, 255, 0.18), 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+body.company-portal .form-section.step .step-head h2 {
+  font-size: 1.15rem;
+}
+body.company-portal .section-hint {
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: #b7c6d9;
+}
+body.company-portal .api-inbox-item {
+  padding: 12px 14px;
+}
+body.company-portal .api-inbox-item strong {
+  font-size: 0.95rem;
+}
+body.company-portal .portal-sync-detail {
+  max-height: 220px;
+}
+body.company-portal .portal-comms-pane .api-inbox-list {
+  max-height: min(42vh, 360px);
+}
 .portal-dash-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
