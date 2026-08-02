@@ -58,3 +58,22 @@ export function audit(entry) {
 export function auditLogPath() {
   return logFile;
 }
+
+/** Read last N audit entries (newest first). Admin tooling only. */
+export function readAuditTail(limit = 50) {
+  prime();
+  if (!existsSync(logFile)) return [];
+  try {
+    const lines = readFileSync(logFile, "utf8").trim().split("\n").filter(Boolean);
+    const take = Math.max(1, Math.min(500, Number(limit) || 50));
+    return lines.slice(-take).reverse().map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return { type: "parse.error", raw: line.slice(0, 200) };
+      }
+    });
+  } catch {
+    return [];
+  }
+}

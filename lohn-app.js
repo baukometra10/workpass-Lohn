@@ -1087,6 +1087,24 @@
       ["sheet", sheetOk, `Live-Berechnung (Netto ${payroll?.net != null ? PayrollCore.formatAmount(payroll.net) : "—"})`],
       ["print", printOk, "Druckbereit (A4)"],
     ];
+    const MC = window.MandantChecklist;
+    if (MC?.evaluate) {
+      const stammdaten = MC.evaluate({
+        seller: state.seller || state.companyName,
+        taxNumber: state.taxNumber,
+        vatId: state.vatId,
+        companyIban: state.companyIban,
+        datevClientNo: state.datevClientNo,
+        datevConsultantNo: state.datevConsultantNo,
+        payrollLayout: state.payrollLayout || "datev",
+      });
+      items.push(
+        ["seller", stammdaten.seller, MC.LABELS.seller],
+        ["tax", stammdaten.tax, MC.LABELS.tax],
+        ["bank", stammdaten.bank, MC.LABELS.bank],
+        ["datev", stammdaten.datev, MC.LABELS.datev],
+      );
+    }
     list.innerHTML = items.map(([key, ok, label]) => `
       <li data-check="${key}" class="${ok ? "done" : ""}">
         <strong>${ok ? "✓" : "○"}</strong> ${label}

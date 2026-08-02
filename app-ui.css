@@ -1470,8 +1470,26 @@ body.dashboard-tab .preview-panel {
   border-color: #c53d2f;
 }
 
-#mandantProfileSyncHint.is-ok { color: #2f8f4e; }
-#mandantProfileSyncHint.is-error { color: #c53d2f; }
+.invoice-archive-item .inv-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #e8f4ff;
+  color: #1a5f9e;
+  vertical-align: middle;
+}
+.invoice-archive-item .inv-badge-local {
+  background: #f0f0f0;
+  color: #555;
+}
+.hub-sync-log {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+}
+.hub-sync-log li { margin-bottom: 6px; }
 
 .dash-secondary-actions {
   margin: 10px 0 0;

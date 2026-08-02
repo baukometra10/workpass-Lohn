@@ -130,6 +130,10 @@
         </table>
       </div>
       <div class="admin-panel">
+        <h2>Security-Audit (letzte Einträge)</h2>
+        <div id="adminAudit"><p style="color:#9bb0c9;font-size:0.85rem">Wird beim Laden der Übersicht gefüllt.</p></div>
+      </div>
+      <div class="admin-panel">
         <h2>Backups</h2>
         <div id="adminBackups"></div>
       </div>
@@ -173,17 +177,36 @@
           const rights = data.rights || {};
           document.getElementById("adminRights").innerHTML = Object.entries(rights)
             .map(([k, v]) => `<li>${v ? "✓" : "–"} ${k}</li>`).join("");
-          const rows = (data.companies?.items || []).map((c) => `
+          const rows = (data.companies?.items || []).map((c) => {
+            const warnings = [];
+            if (!c.accountingEnabled) warnings.push("Kein Accounting");
+            if (!c.hasHubProfile) warnings.push("Kein Hub-Profil");
+            if (!c.hasLoginPassword) warnings.push("Kein PIN");
+            return `
             <tr>
               <td>${c.name || "—"}</td>
               <td><code>${c.id || ""}</code></td>
               <td>${c.loginEmail || "—"} ${c.hasLoginPassword ? "· PIN ✓" : "· kein PIN"}</td>
               <td>
                 <span class="badge ${c.accountingEnabled ? "badge-on" : "badge-off"}">${c.accountingEnabled ? "Aktiv" : "Inaktiv"}</span>
+                ${c.hasHubProfile ? '<span class="badge badge-on" style="margin-left:4px">Hub ✓</span>' : '<span class="badge badge-off" style="margin-left:4px">Hub ✗</span>'}
+                ${warnings.length ? `<div class="muted" style="font-size:0.72rem;margin-top:4px;color:#ffb4a8">${warnings.join(" · ")}</div>` : ""}
                 <button type="button" class="btn-delete-company" data-id="${c.id || ""}" data-name="${(c.name || c.id || "").replace(/"/g, "&quot;")}" style="margin-left:8px;padding:4px 8px;font-size:0.72rem;border-radius:6px;border:1px solid rgba(220,80,80,0.45);background:rgba(120,30,30,0.35);color:#ffc9c9;cursor:pointer">Löschen</button>
               </td>
-            </tr>`).join("");
+            </tr>`;
+          }).join("");
           document.getElementById("adminCompanies").innerHTML = rows || `<tr><td colspan="4">Noch keine Firmen – oben „Login-Sync“ nutzen oder Plattform syncen.</td></tr>`;
+          try {
+            const audit = await api("/v1/admin/audit?limit=40");
+            const auditHost = document.getElementById("adminAudit");
+            if (auditHost) {
+              auditHost.innerHTML = (audit.entries || []).length
+                ? `<ul style="margin:0;padding-left:18px;font-size:0.8rem">${(audit.entries || []).slice(0, 25).map((e) =>
+                  `<li><code>${e.at || ""}</code> · ${e.type || "?"} · ${e.outcome || ""} ${e.companyId ? `· ${e.companyId}` : ""}</li>`
+                ).join("")}</ul>`
+                : "<p>Noch keine Audit-Einträge.</p>";
+            }
+          } catch { /* optional */ }
           document.querySelectorAll(".btn-delete-company").forEach((btn) => {
             btn.addEventListener("click", async () => {
               const id = btn.getAttribute("data-id");

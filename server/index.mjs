@@ -66,7 +66,7 @@ import {
   publicSecurityInfo,
 } from "./security/http.mjs";
 import { assertProductionSecurity } from "./security/crypto.mjs";
-import { audit } from "./security/audit.mjs";
+import { audit, readAuditTail } from "./security/audit.mjs";
 import { clientIp } from "./security/rate-limit.mjs";
 import { createBackup, listBackups, restoreBackup, startBackupScheduler } from "./backup/backup.mjs";
 import { PLATFORM_DOMAIN, PLATFORM_ORIGINS, platformWebhookUrl } from "./platform-config.mjs";
@@ -142,7 +142,7 @@ async function handler(req, res) {
     return reply(200, {
       ok: true,
       service: "workpass-accounting-bridge",
-      version: "2.11.0",
+      version: "2.12.0",
       multiTenant: true,
       monthCloseScheduler: monthCloseSched,
       autoMonthClose: autoMonthCloseConfig(),
@@ -396,7 +396,7 @@ async function handler(req, res) {
         ok: true,
         admin: req._workpassSession || { via: "api-key" },
         health: {
-          version: "2.11.0",
+          version: "2.12.0",
           ...syncHealth(),
         },
         monthCloseScheduler: monthCloseSched,
@@ -404,6 +404,7 @@ async function handler(req, res) {
         companies: {
           count: companies.length,
           active: companies.filter((c) => c.meta?.accountingEnabled).length,
+          withHubProfile: companies.filter((c) => c.meta?.hubProfile).length,
           items: companies.map(companyWorkspaceView),
         },
         backup: { scheduler: backupSched, backups: listBackups().slice(0, 10) },
@@ -416,7 +417,19 @@ async function handler(req, res) {
           sync: true,
           clearRateLimit: true,
           viewAllCompanies: true,
+          audit: true,
         },
+      });
+    }
+
+    if (req.method === "GET" && path === "/v1/admin/audit") {
+      const limit = Number(url.searchParams.get("limit") || 80);
+      const entries = readAuditTail(limit);
+      return reply(200, {
+        ok: true,
+        count: entries.length,
+        entries,
+        path: "server/data/audit/security-audit.jsonl",
       });
     }
 
@@ -1053,7 +1066,7 @@ async function handler(req, res) {
         kind: "platform.accounting.sync.v1",
         schemaVersion: 2,
         companyId: companyId || null,
-        accountingVersion: "2.11.0",
+        accountingVersion: "2.12.0",
         autoPipeline: autoPipelineStatus(),
         webhook: {
           configured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),

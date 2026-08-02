@@ -97,17 +97,47 @@ const server = http.createServer(async (req, res) => {
     try {
       const envelope = await readBody(req);
       logWebhook({ direction: "in", envelope });
+      const event = String(envelope?.event || "");
       const delivery = envelope?.delivery;
-      if (!delivery) {
-        return send(res, 400, { ok: false, error: "delivery missing" });
+
+      // Ask events: ack without delivery (platform would push data back)
+      if (
+        event === "employees.list.requested"
+        || event === "payroll.month.requested"
+        || event === "invoices.export.requested"
+        || event === "employee.data.requested"
+        || event === "platform.ping"
+      ) {
+        console.log(`[mock-platform] ask/event ${event} · company=${envelope?.company?.id || "—"}`);
+        return send(res, 200, {
+          ok: true,
+          accepted: true,
+          event,
+          hint: event === "invoices.export.requested"
+            ? "Reply with POST /v1/invoice/batch to accounting"
+            : (event.includes("payroll") || event.includes("employees")
+              ? "Reply with employees.import / payroll.batch"
+              : "ok"),
+        });
       }
-      const item = deliverToEmployeeApp(delivery);
-      console.log(`[mock-platform] ${envelope.event} → employee app: ${item.title || item.deliveryId}`);
+
+      if (!delivery) {
+        return send(res, 200, { ok: true, accepted: true, event, note: "no delivery payload" });
+      }
+      const item = deliverToEmployeeApp({
+        ...delivery,
+        event,
+        title: event === "invoice.released"
+          ? (delivery.title || `Rechnung ${delivery.invoiceId || delivery.number || ""}`)
+          : (delivery.title || event),
+      });
+      console.log(`[mock-platform] ${event || "delivery"} → employee app: ${item.title || item.deliveryId}`);
       return send(res, 200, {
         ok: true,
         accepted: true,
         deliveryId: item.deliveryId,
         employeeAppStatus: "visible",
+        kind: event === "invoice.released" ? "invoice" : (delivery.type || "payslip"),
       });
     } catch (e) {
       return send(res, 400, { ok: false, error: e.message });

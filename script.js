@@ -101,6 +101,8 @@ const managingDirectorInput = document.getElementById("managingDirector");
 const companyBankNameInput = document.getElementById("companyBankName");
 const companyIbanInput = document.getElementById("companyIban");
 const companyBicInput = document.getElementById("companyBic");
+const datevClientNoInput = document.getElementById("datevClientNo");
+const datevConsultantNoInput = document.getElementById("datevConsultantNo");
 const payrollLayoutSelect = document.getElementById("payrollLayoutSelect");
 const payrollLayoutDescription = document.getElementById("payrollLayoutDescription");
 const payrollLayoutDescriptionPayroll = document.getElementById("payrollLayoutDescriptionPayroll");
@@ -236,7 +238,7 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2026.38";
+const APP_VERSION = "2026.39";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
 let appBootstrapping = true;
@@ -759,9 +761,10 @@ async function runHubSyncCheck() {
   hubShowSyncStatus("Sync wird geprüft …");
   try {
     let sync = await hubApiFetch("/v1/platform/status");
+    let auto = null;
     if (firm) {
       try {
-        await hubApiFetch("/v1/payroll/auto-sync", {
+        auto = await hubApiFetch("/v1/payroll/auto-sync", {
           method: "POST",
           body: JSON.stringify({ period: hubCurrentPeriod() }),
         });
@@ -772,15 +775,25 @@ async function runHubSyncCheck() {
     }
     const pending = Number(sync?.pending?.messages || 0) + Number(sync?.pending?.deliveries || 0);
     const wh = sync?.webhook?.last || {};
-    const auto = sync?.autoPipeline || {};
+    const pipe = sync?.autoPipeline || {};
+    const payrollReleased = Number(auto?.jobs?.released ?? auto?.close?.newlyReleased?.length ?? 0);
+    const invoicesReleased = Number(auto?.invoiceSync?.pendingReleased || auto?.invoices?.released || 0);
     const parts = [
       `Webhook: ${sync?.webhook?.configured ? (wh.ok === false ? `Fehler ${wh.status || ""}` : "OK") : "nicht gesetzt"}`,
       `Pending: ${pending}`,
-      auto.lastSuccessAt ? `Letzter Erfolg: ${auto.lastSuccessAt}` : null,
+      `Freigegeben: ${payrollReleased} Abrechnung(en) · ${invoicesReleased} Rechnung(en)`,
+      pipe.lastSuccessAt ? `Letzter Erfolg: ${pipe.lastSuccessAt}` : null,
     ].filter(Boolean);
     const err = Boolean(wh.ok === false && sync?.webhook?.configured);
-    hubShowSyncStatus(parts.join(" · "), { error: err });
+    const msg = parts.join(" · ");
+    hubShowSyncStatus(msg, { error: err });
     hubSetText("dashKpiFirmSync", hubFormatSyncLabel(sync));
+    window.WorkPassHub?.pushSyncLog?.({
+      message: auto?.message || "Sync geprüft",
+      payrollReleased,
+      invoicesReleased,
+      pending,
+    });
     await updateDashboard();
   } catch (err) {
     hubShowSyncStatus(err?.message || "Sync-Prüfung fehlgeschlagen.", { error: true });
@@ -877,30 +890,39 @@ function getSellerText() {
 }
 
 function getMandantChecklistState() {
-  const server = hubServerCompany || {};
-  const seller = Boolean(
-    getSellerText()
-    || server.name
-    || server.address
-    || [server.street, server.zip, server.city].filter(Boolean).join(" ").trim()
-  );
-  const tax = Boolean(
-    taxNumberInput?.value?.trim()
-    || vatIdInput?.value?.trim()
-    || server.taxNumber
-    || server.vatId
-  );
-  const bank = Boolean(companyIbanInput?.value?.trim());
-  const logo = Boolean(activeLogoDataUrl);
-  const register = Boolean(
-    commercialRegisterInput?.value?.trim()
-    || managingDirectorInput?.value?.trim()
-  );
-  const layout = Boolean(payrollLayoutSelect?.value || "datev");
-  return { seller, tax, bank, logo, register, layout };
+  syncSellerFields();
+  const MC = window.MandantChecklist;
+  if (MC?.evaluate) {
+    return MC.evaluate({
+      seller: getSellerText(),
+      taxNumber: taxNumberInput?.value,
+      vatId: vatIdInput?.value,
+      companyIban: companyIbanInput?.value,
+      logoDataUrl: activeLogoDataUrl,
+      commercialRegister: commercialRegisterInput?.value,
+      managingDirector: managingDirectorInput?.value,
+      payrollLayout: payrollLayoutSelect?.value || "datev",
+      datevClientNo: datevClientNoInput?.value,
+      datevConsultantNo: datevConsultantNoInput?.value,
+      server: hubServerCompany,
+    });
+  }
+  return {
+    seller: Boolean(getSellerText()),
+    tax: Boolean(taxNumberInput?.value?.trim() || vatIdInput?.value?.trim()),
+    bank: Boolean(companyIbanInput?.value?.trim()),
+    logo: Boolean(activeLogoDataUrl),
+    register: Boolean(commercialRegisterInput?.value?.trim() || managingDirectorInput?.value?.trim()),
+    layout: Boolean(payrollLayoutSelect?.value || "datev"),
+    datev: Boolean(datevClientNoInput?.value?.trim() || datevConsultantNoInput?.value?.trim()),
+  };
 }
 
 function applyChecklistToDom(rootId, checks) {
+  if (window.MandantChecklist?.applyToDom) {
+    window.MandantChecklist.applyToDom(rootId, checks);
+    return;
+  }
   const checklist = document.getElementById(rootId);
   if (!checklist) return;
   checklist.querySelectorAll("li[data-check]").forEach((li) => {
@@ -914,10 +936,6 @@ function updateDashboardChecklist() {
   const checks = getMandantChecklistState();
   applyChecklistToDom("dashChecklist", checks);
   applyChecklistToDom("companyChecklist", checks);
-  const done = Object.values(checks).filter(Boolean).length;
-  const total = Object.keys(checks).length;
-  const statusEl = document.getElementById("mandantChecklistSummary");
-  if (statusEl) statusEl.textContent = `${done}/${total} Stammdaten erledigt`;
 }
 
 function renderMandantAccountingStatus() {
@@ -981,6 +999,8 @@ function buildHubProfilePayload() {
     companyBankName: data.companyBankName || "",
     companyIban: data.companyIban || "",
     companyBic: data.companyBic || "",
+    datevClientNo: datevClientNoInput?.value || "",
+    datevConsultantNo: datevConsultantNoInput?.value || "",
     payrollLayout: data.payrollLayout || "datev",
     payrollHeaderLine: data.payrollHeaderLine || "",
     payrollFooterLine: data.payrollFooterLine || "",
@@ -1004,6 +1024,8 @@ function buildCompanyUpsertBody(companyId) {
     address: parsed.address || data.seller || "",
     taxNumber: data.taxNumber || "",
     vatId: data.vatId || "",
+    datevClientNo: data.datevClientNo || "",
+    datevConsultantNo: data.datevConsultantNo || "",
     hubProfile: buildHubProfilePayload(),
   };
 }
@@ -1045,6 +1067,8 @@ function applyHubProfileFromServer(hubProfile, { force = false } = {}) {
   setVal(companyBankNameInput, hubProfile.companyBankName);
   setVal(companyIbanInput, hubProfile.companyIban);
   setVal(companyBicInput, hubProfile.companyBic);
+  setVal(datevClientNoInput, hubProfile.datevClientNo);
+  setVal(datevConsultantNoInput, hubProfile.datevConsultantNo);
   setVal(payrollHeaderLineInput, hubProfile.payrollHeaderLine);
   setVal(payrollFooterLineInput, hubProfile.payrollFooterLine);
   if (hubProfile.payrollLayout && payrollLayoutSelect) {
@@ -1116,6 +1140,8 @@ async function pullCompanyProfileFromBridge({ force = false } = {}) {
     hubWorkspace = data.workspace || hubWorkspace;
     fillIfEmpty(taxNumberInput, company.taxNumber);
     fillIfEmpty(vatIdInput, company.vatId);
+    fillIfEmpty(datevClientNoInput, company.datevClientNo);
+    fillIfEmpty(datevConsultantNoInput, company.datevConsultantNo);
     if (companyProfileNameInput && (force || !companyProfileNameInput.value.trim() || companyProfileNameInput.value === "Standard-Mandant")) {
       if (company.name) companyProfileNameInput.value = company.name;
     }
@@ -1228,6 +1254,8 @@ async function updateDashboard() {
     hubSetText("dashKpiFirmInvoices", String(invoiceCount));
     hubSetText("dashKpiFirmMessages", String(msgCount));
     hubSetText("dashKpiFirmSync", syncLabel);
+    window.WorkPassHub?.setServerInvoices?.(invArch?.items || inbox?.invoices || []);
+    window.hubApiFetch = hubApiFetch;
 
     const pending = Number(sync?.pending?.messages || 0) + Number(sync?.pending?.deliveries || 0);
     const wh = sync?.webhook?.last || {};
@@ -1252,6 +1280,7 @@ async function updateDashboard() {
 
 window.updateDashboard = updateDashboard;
 window.runHubSyncCheck = runHubSyncCheck;
+window.hubApiFetch = hubApiFetch;
 
 function initTabs() {
   document.querySelectorAll(".form-tab").forEach((tab) => {
@@ -1375,6 +1404,8 @@ function defaultCompanyProfile() {
     companyBankName: "",
     companyIban: "",
     companyBic: "",
+    datevClientNo: "",
+    datevConsultantNo: "",
     payrollLayout: "datev",
     payrollHeaderLine: "",
     payrollFooterLine: "",
@@ -1483,6 +1514,8 @@ function collectCompanyProfileData() {
     companyBankName: companyBankNameInput?.value || "",
     companyIban: companyIbanInput?.value || "",
     companyBic: companyBicInput?.value || "",
+    datevClientNo: datevClientNoInput?.value || "",
+    datevConsultantNo: datevConsultantNoInput?.value || "",
     payrollLayout: payrollLayoutSelect?.value || "datev",
     payrollHeaderLine: payrollHeaderLineInput?.value || "",
     payrollFooterLine: payrollFooterLineInput?.value || "",
@@ -1503,6 +1536,8 @@ function applyCompanyProfile(profile) {
   if (companyBankNameInput) companyBankNameInput.value = profile.companyBankName || "";
   if (companyIbanInput) companyIbanInput.value = profile.companyIban || "";
   if (companyBicInput) companyBicInput.value = profile.companyBic || "";
+  if (datevClientNoInput) datevClientNoInput.value = profile.datevClientNo || "";
+  if (datevConsultantNoInput) datevConsultantNoInput.value = profile.datevConsultantNo || "";
   if (payrollLayoutSelect) payrollLayoutSelect.value = profile.payrollLayout || "datev";
   if (payrollHeaderLineInput) payrollHeaderLineInput.value = profile.payrollHeaderLine || "";
   if (payrollFooterLineInput) payrollFooterLineInput.value = profile.payrollFooterLine || "";
@@ -6238,7 +6273,7 @@ const watchedInputs = [
   workHoursInput, workDaysInput, bankNameInput, bankBicInput, bankIbanInput,
   signatureNameInput,
   taxNumberInput, vatIdInput, commercialRegisterInput, managingDirectorInput,
-  companyBankNameInput, companyIbanInput, companyBicInput, payrollLayoutSelect,
+  companyBankNameInput, companyIbanInput, companyBicInput, datevClientNoInput, datevConsultantNoInput, payrollLayoutSelect,
   payrollHeaderLineInput, payrollFooterLineInput,
 ];
 

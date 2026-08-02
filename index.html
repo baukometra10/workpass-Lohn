@@ -12,7 +12,7 @@
     />
     <link rel="stylesheet" href="styles.css?v=42" />
     <link rel="stylesheet" href="agenda-reference.css?v=6" />
-    <link rel="stylesheet" href="app-ui.css?v=12" />
+    <link rel="stylesheet" href="app-ui.css?v=13" />
     <link rel="stylesheet" href="payroll-layouts.css?v=21" />
     <link rel="stylesheet" href="datev-layout.css?v=10" />
     <link rel="stylesheet" href="datev-ref-overlay.css?v=2" />
@@ -291,7 +291,13 @@
 
             <section class="form-section">
               <h2 class="form-section-title">Rechnungsarchiv</h2>
+              <p class="muted small">Lokal gespeicherte Entwürfe und freigegebene Rechnungen vom Server (Firmen-Login).</p>
               <div id="invoiceArchiveList" class="invoice-archive-list"></div>
+            </section>
+
+            <section class="form-section">
+              <h2 class="form-section-title">Sync-Historie</h2>
+              <div id="hubSyncLogList"></div>
             </section>
 
             <section class="form-section">
@@ -348,6 +354,7 @@
                 <li data-check="logo">Firmenlogo</li>
                 <li data-check="register">Handelsregister oder Geschäftsführer</li>
                 <li data-check="layout">Lohn-Vorlage gewählt</li>
+                <li data-check="datev">DATEV-Mandant- oder Berater-Nr.</li>
               </ul>
               <p class="muted small">
                 <button type="button" class="linkish-btn" data-dash-go="company">In der Mandantenverwaltung pflegen</button>
@@ -555,6 +562,7 @@
                 <li data-check="logo">Firmenlogo</li>
                 <li data-check="register">Handelsregister oder Geschäftsführer</li>
                 <li data-check="layout">Lohn-Vorlage gewählt</li>
+                <li data-check="datev">DATEV-Mandant- oder Berater-Nr.</li>
               </ul>
             </section>
 
@@ -626,6 +634,14 @@
                 <input id="companyBic" type="text" placeholder="GENODE00XXX" />
               </label>
               <label>
+                DATEV-Mandant-Nr.
+                <input id="datevClientNo" type="text" placeholder="z. B. 10001" />
+              </label>
+              <label>
+                DATEV-Berater-Nr.
+                <input id="datevConsultantNo" type="text" placeholder="z. B. 12345" />
+              </label>
+              <label>
                 Lohn-Vorlage
                 <select id="payrollLayoutSelect"></select>
               </label>
@@ -648,7 +664,10 @@
 
             <section class="data-backup-box">
               <h3>Datensicherung</h3>
-              <p class="muted small">Alle Mandanten, Mitarbeiter und Einstellungen als Datei sichern oder wiederherstellen.</p>
+              <p class="muted small">
+                Browser-Backup: alle lokalen Mandanten, Mitarbeiter und Einstellungen als JSON.
+                Server-Backups (SQLite, verschlüsselt) liegen im <a href="admin.html">Admin</a> unter Backup – dort auch Wiederherstellen.
+              </p>
               <div class="tool-row">
                 <button id="exportDataBtn" type="button" class="secondary-btn">Alles exportieren</button>
                 <button id="importDataBtn" type="button" class="secondary-btn">Daten importieren</button>
@@ -1701,9 +1720,10 @@
     <script src="datev-sheet.js?v=41"></script>
     <script src="payroll-core.js?v=17"></script>
     <script src="auth-gate.js?v=8"></script>
-    <script src="workpass-hub.js?v=3"></script>
+    <script src="mandant-checklist.js?v=1"></script>
+    <script src="workpass-hub.js?v=4"></script>
     <script src="templates.js?v=1" defer></script>
     <script src="signature-engine.js?v=4"></script>
-    <script src="script.js?v=71" defer></script>
+    <script src="script.js?v=72" defer></script>
   </body>
 </html>
