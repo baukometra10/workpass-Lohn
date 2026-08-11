@@ -75,12 +75,17 @@ export function authPublicConfig() {
 
 export function createSession(user) {
   const now = Date.now();
+  const locale = String(user.locale || user.language || user.preferredLocale || "")
+    .trim()
+    .toLowerCase()
+    .slice(0, 2);
   const payload = {
     sub: String(user.id || user.email || "user"),
     email: String(user.email || "").toLowerCase(),
     name: String(user.name || user.email || ""),
     role: user.role === "admin" ? "admin" : "accountant",
     companyId: user.companyId ? String(user.companyId) : "",
+    locale: locale || "",
     iat: now,
     exp: now + SESSION_TTL_MS,
   };
@@ -95,6 +100,7 @@ export function createSession(user) {
       name: payload.name,
       role: payload.role,
       companyId: payload.companyId || null,
+      locale: payload.locale || null,
     },
   };
 }
@@ -123,6 +129,7 @@ export function verifySessionToken(token) {
       name: payload.name,
       role: payload.role === "admin" ? "admin" : "accountant",
       companyId: payload.companyId || null,
+      locale: payload.locale || null,
     },
     payload,
   };
@@ -248,8 +255,17 @@ function verifyLocalAdmin(email, password) {
  * 2) Company login from registry (name@firma.de + PIN 4+)
  * 3) Optional platform auth URL
  */
-export async function loginWithPassword(email, password, req) {
+export async function loginWithPassword(email, password, req, opts = {}) {
   const ip = clientIp(req);
+  const acceptLang = String(req?.headers?.["accept-language"] || "").split(",")[0] || "";
+  const preferredLocale = String(opts.locale || opts.language || acceptLang || "")
+    .trim()
+    .toLowerCase()
+    .slice(0, 2);
+  const withLocale = (user) => ({
+    ...user,
+    locale: String(user.locale || user.language || user.preferredLocale || preferredLocale || "").slice(0, 2) || null,
+  });
   const rl = rateLimit({
     ip,
     route: "auth-login",
@@ -280,13 +296,13 @@ export async function loginWithPassword(email, password, req) {
   if (hasLocalAdminConfigured()) {
     local = verifyLocalAdmin(mail, pass);
     if (local.ok) {
-      const session = createSession({ ...local.user, role: "admin" });
+      const session = createSession(withLocale({ ...local.user, role: "admin" }));
       noteAuthSuccess(ip);
       audit({
         type: "auth.login.ok",
         outcome: "ok",
         ip,
-        detail: { email: session.user.email, role: "admin", via: "local-admin-first" },
+        detail: { email: session.user.email, role: "admin", via: "local-admin-first", locale: session.user.locale },
       });
       return {
         ok: true,
@@ -295,6 +311,7 @@ export async function loginWithPassword(email, password, req) {
         expiresAt: session.expiresAt,
         user: session.user,
         via: "local-admin",
+        preferredLocale: session.user.locale,
       };
     }
   }
@@ -302,7 +319,7 @@ export async function loginWithPassword(email, password, req) {
   // 2) Company login (platform firm accounts synced via activate)
   const companyLogin = verifyCompanyLogin(mail, pass);
   if (companyLogin.ok) {
-    const session = createSession(companyLogin.user);
+    const session = createSession(withLocale(companyLogin.user));
     noteAuthSuccess(ip);
     audit({
       type: "auth.login.ok",
@@ -313,6 +330,7 @@ export async function loginWithPassword(email, password, req) {
         role: session.user.role,
         companyId: session.user.companyId,
         via: "company-login",
+        locale: session.user.locale,
       },
     });
     return {
@@ -323,6 +341,7 @@ export async function loginWithPassword(email, password, req) {
       user: session.user,
       via: "company-login",
       companyId: session.user.companyId,
+      preferredLocale: session.user.locale,
     };
   }
 
@@ -354,13 +373,13 @@ export async function loginWithPassword(email, password, req) {
   }
 
   const role = result.user.role === "admin" ? "admin" : resolveRole(result.user.email);
-  const session = createSession({ ...result.user, role });
+  const session = createSession(withLocale({ ...result.user, role }));
   noteAuthSuccess(ip);
   audit({
     type: "auth.login.ok",
     outcome: "ok",
     ip,
-    detail: { email: session.user.email, role: session.user.role, via: result.via },
+    detail: { email: session.user.email, role: session.user.role, via: result.via, locale: session.user.locale },
   });
   return {
     ok: true,
@@ -369,6 +388,7 @@ export async function loginWithPassword(email, password, req) {
     expiresAt: session.expiresAt,
     user: session.user,
     via: result.via,
+    preferredLocale: session.user.locale,
   };
 }
 

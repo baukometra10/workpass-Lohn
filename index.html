@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="verdienst-sheet.css?v=1" />
     <link rel="stylesheet" href="annual-certificate.css?v=3" />
     <link rel="stylesheet" href="documents-bw.css?v=1" />
-    <link rel="stylesheet" href="workpass-theme.css?v=8" />
+    <link rel="stylesheet" href="workpass-theme.css?v=9" />
   </head>
   <body class="lexware-app workpass-hub auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
@@ -36,29 +36,29 @@
             </svg>
           </div>
           <div>
-            <strong>WorkPass Steuerprogramm</strong>
+            <strong data-i18n="auth.product">WorkPass Steuerprogramm</strong>
             <small>Suppix AI · Buchhaltung</small>
           </div>
         </div>
         <div class="auth-meta">
-          <div><span>Produkt</span>WorkPass Steuerprogramm</div>
-          <div><span>Modus</span>Hub · Standalone</div>
+          <div><span>Produkt</span><span data-i18n="auth.product">WorkPass Steuerprogramm</span></div>
+          <div><span>Modus</span><span data-i18n="auth.mode.hub">Hub · Standalone</span></div>
         </div>
-        <h1 id="authTitle">WorkPass Steuerprogramm entsperren</h1>
-        <p class="auth-hint" id="authHint">Geschützter Buchhaltungszugang · Suppix AI</p>
+        <h1 id="authTitle" data-i18n="auth.unlock">WorkPass Steuerprogramm entsperren</h1>
+        <p class="auth-hint" id="authHint" data-i18n="auth.hint">Geschützter Buchhaltungszugang · Suppix AI</p>
         <div class="auth-mode-tabs" id="authModeTabs" hidden>
-          <button type="button" class="auth-mode-tab active" id="authTabPlatform">Plattform-Konto</button>
-          <button type="button" class="auth-mode-tab" id="authTabPin">Geräte-PIN</button>
+          <button type="button" class="auth-mode-tab active" id="authTabPlatform" data-i18n="auth.tab.platform">Plattform-Konto</button>
+          <button type="button" class="auth-mode-tab" id="authTabPin" data-i18n="auth.tab.pin">Geräte-PIN</button>
         </div>
         <form id="authForm">
           <div id="authPlatformFields">
-            <label for="authEmail">E-Mail (Firma oder Admin)</label>
+            <label for="authEmail" data-i18n="auth.email">E-Mail (Firma oder Admin)</label>
             <input id="authEmail" type="email" autocomplete="username" placeholder="luf@firma.de" />
-            <label for="authPassword">Passwort / PIN</label>
+            <label for="authPassword" data-i18n="auth.password">Passwort / PIN</label>
             <input id="authPassword" type="password" autocomplete="current-password" placeholder="z. B. 4821" />
           </div>
           <div id="authPinFields" hidden>
-            <label for="authPin">PIN</label>
+            <label for="authPin" data-i18n="auth.pin">PIN</label>
             <input id="authPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" placeholder="••••" />
             <div id="authConfirmWrap" hidden>
               <label for="authPinConfirm">PIN bestätigen</label>
@@ -66,9 +66,9 @@
             </div>
           </div>
           <p class="auth-error" id="authError" role="alert"></p>
-          <button type="submit" class="auth-submit" id="authSubmit">Anmelden</button>
+          <button type="submit" class="auth-submit" id="authSubmit" data-i18n="auth.submit">Anmelden</button>
         </form>
-        <p class="auth-foot">Ein Login reicht für Hub, Lohn und Admin · Sitzung hält mehrere Stunden</p>
+        <p class="auth-foot" data-i18n="auth.foot">Ein Login reicht für Hub, Lohn und Admin</p>
       </div>
     </div>
 
@@ -84,8 +84,8 @@
           </svg>
         </div>
         <div class="lex-appbar-titles">
-          <strong>WorkPass Steuerprogramm</strong>
-          <span>Suppix AI · Rechnung · Lohn · Mandant</span>
+          <strong data-i18n="app.brand.hub">WorkPass Steuerprogramm</strong>
+          <span data-i18n="app.sub.hub">Suppix AI · Rechnung · Lohn · Mandant</span>
         </div>
       </div>
       <nav class="lex-menubar" aria-label="Hauptmenü">
@@ -93,14 +93,15 @@
         <button type="button" class="lex-menu-btn" data-menu="edit">Bearbeiten</button>
         <button type="button" class="lex-menu-btn" data-menu="view">Ansicht</button>
         <button type="button" class="lex-menu-btn" data-menu="export">Export</button>
-        <button type="button" class="lex-menu-btn" data-menu="help" data-tab-jump="help">Hilfe</button>
+        <button type="button" class="lex-menu-btn" data-menu="help" data-tab-jump="help" data-i18n="nav.help">Hilfe</button>
       </nav>
       <div class="lex-appbar-right wp-appbar-actions">
+        <span id="wpLangHost" class="wp-lang-host"></span>
         <span class="lex-appbar-mandant" id="lexAppbarMandant">Mandant: Standard-Mandant</span>
-        <a href="lohn.html" class="wp-lock-btn" style="text-decoration:none">Lohn</a>
-        <a href="admin.html" class="wp-lock-btn" style="text-decoration:none" title="Accounting Admin">Admin</a>
+        <a href="lohn.html" class="wp-lock-btn" style="text-decoration:none" data-i18n="nav.lohn">Lohn</a>
+        <a href="admin.html" class="wp-lock-btn" style="text-decoration:none" title="Accounting Admin" data-i18n="nav.admin">Admin</a>
         <span id="hubCompanyBadge" class="wp-lock-btn" hidden style="opacity:0.9"></span>
-        <button type="button" class="wp-lock-btn" id="btnLock" title="Sofort sperren">Sperren</button>
+        <button type="button" class="wp-lock-btn" id="btnLock" title="Sofort sperren" data-i18n="nav.lock">Sperren</button>
       </div>
       <div class="lex-menu-portal" id="lexMenuPortal" hidden></div>
     </header>
@@ -112,25 +113,25 @@
           <p class="lex-nav-group">Allgemein</p>
           <button type="button" class="form-tab sidebar-nav-btn active" data-tab="dashboard" role="tab" aria-selected="true">
             <svg class="sidebar-nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" fill="currentColor"/></svg>
-            Übersicht
+            <span data-i18n="nav.overview">Übersicht</span>
           </button>
           <button type="button" class="form-tab sidebar-nav-btn" data-tab="document" role="tab" aria-selected="false">
             <svg class="sidebar-nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm0 2l5 5h-5V4zM8 13h8v2H8v-2zm0 4h8v2H8v-2z" fill="currentColor"/></svg>
-            Beleg erfassen
+            <span data-i18n="nav.document">Beleg erfassen</span>
           </button>
           <button type="button" class="form-tab sidebar-nav-btn" data-tab="company" role="tab" aria-selected="false">
             <svg class="sidebar-nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10z" fill="currentColor"/></svg>
-            Mandantenverwaltung
+            <span data-i18n="nav.company">Mandantenverwaltung</span>
           </button>
           <p class="lex-nav-group mode-payroll-nav hidden">Lohn &amp; Gehalt</p>
           <button type="button" class="form-tab sidebar-nav-btn mode-payroll-tab hidden" data-tab="payroll" role="tab" aria-selected="false">
             <svg class="sidebar-nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z" fill="currentColor"/></svg>
-            Lohnabrechnung
+            <span data-i18n="nav.lohn">Lohnabrechnung</span>
           </button>
           <p class="lex-nav-group">System</p>
           <button type="button" class="form-tab sidebar-nav-btn" data-tab="help" role="tab" aria-selected="false">
             <svg class="sidebar-nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92A3.003 3.003 0 0 0 13 15h-2v-.5a3.996 3.996 0 0 1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z" fill="currentColor"/></svg>
-            Hilfe
+            <span data-i18n="nav.help">Hilfe</span>
           </button>
         </nav>
         <div class="sidebar-footer lex-sidebar-footer">
@@ -1736,11 +1737,12 @@
     <script src="elster-export.js?v=1"></script>
     <script src="datev-sheet.js?v=42"></script>
     <script src="payroll-core.js?v=22"></script>
+    <script src="workpass-i18n.js?v=1"></script>
     <script src="auth-gate.js?v=9"></script>
     <script src="mandant-checklist.js?v=3"></script>
-    <script src="workpass-hub.js?v=4"></script>
+    <script src="workpass-hub.js?v=5"></script>
     <script src="templates.js?v=1" defer></script>
     <script src="signature-engine.js?v=4"></script>
-    <script src="script.js?v=78" defer></script>
+    <script src="script.js?v=79" defer></script>
   </body>
 </html>

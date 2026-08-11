@@ -240,8 +240,19 @@ body { margin: 0; font-family: "Barlow", "Segoe UI", sans-serif; color: #121518;
     });
   }
 
+  function bootI18n() {
+    if (!window.WorkPassI18n) return;
+    window.WorkPassI18n.init();
+    const host = document.getElementById("wpLangHost")
+      || document.querySelector(".lex-appbar-right")
+      || document.querySelector(".wp-appbar-actions");
+    window.WorkPassI18n.mountSelect(host, "wpLangSelectHub");
+    window.WorkPassI18n.applyDom(document);
+  }
+
   function boot() {
     document.body.classList.add("workpass-hub");
+    bootI18n();
     renderInvoiceArchive();
     renderSyncLog();
     bindPinChange();
@@ -263,6 +274,7 @@ body { margin: 0; font-family: "Barlow", "Segoe UI", sans-serif; color: #121518;
             badge.hidden = true;
           }
         }
+        window.WorkPassI18n?.syncFromSession?.();
         renderInvoiceArchive();
         renderSyncLog();
         if (typeof window.updateDashboard === "function") {

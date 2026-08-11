@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="workpass-theme.css?v=8" />
+    <link rel="stylesheet" href="workpass-theme.css?v=9" />
     <link rel="stylesheet" href="lohn.css?v=53" />
     <style>
       body {
@@ -336,29 +336,29 @@
             </svg>
           </div>
           <div>
-            <strong>WorkPass Steuerprogramm</strong>
+            <strong data-i18n="auth.product">WorkPass Steuerprogramm</strong>
             <small>Suppix AI · Accounting Admin</small>
           </div>
         </div>
         <div class="auth-meta">
           <div><span>Produkt</span>WorkPass Admin</div>
-          <div><span>Zugang</span>Nur Admin-Rolle</div>
+          <div><span>Zugang</span><span data-i18n="auth.mode.admin">Nur Admin-Rolle</span></div>
         </div>
-        <h1 id="authTitle">Admin-Zugang</h1>
-        <p class="auth-hint" id="authHint">Nur Accounting-Admin · Plattform-Konto oder Geräte-PIN</p>
+        <h1 id="authTitle" data-i18n="auth.unlock">Admin-Zugang</h1>
+        <p class="auth-hint" id="authHint" data-i18n="auth.hint">Nur Accounting-Admin · Plattform-Konto oder Geräte-PIN</p>
         <div class="auth-mode-tabs" id="authModeTabs" hidden>
-          <button type="button" class="auth-mode-tab active" id="authTabPlatform">Plattform-Konto</button>
-          <button type="button" class="auth-mode-tab" id="authTabPin">Geräte-PIN</button>
+          <button type="button" class="auth-mode-tab active" id="authTabPlatform" data-i18n="auth.tab.platform">Plattform-Konto</button>
+          <button type="button" class="auth-mode-tab" id="authTabPin" data-i18n="auth.tab.pin">Geräte-PIN</button>
         </div>
         <form id="authForm">
           <div id="authPlatformFields">
-            <label for="authEmail">E-Mail</label>
+            <label for="authEmail" data-i18n="auth.email">E-Mail</label>
             <input id="authEmail" type="email" autocomplete="username" />
-            <label for="authPassword">Passwort</label>
+            <label for="authPassword" data-i18n="auth.password">Passwort</label>
             <input id="authPassword" type="password" autocomplete="current-password" />
           </div>
           <div id="authPinFields" hidden>
-            <label for="authPin">PIN</label>
+            <label for="authPin" data-i18n="auth.pin">PIN</label>
             <input id="authPin" type="password" inputmode="numeric" maxlength="8" />
             <div id="authConfirmWrap" hidden>
               <label for="authPinConfirm">PIN bestätigen</label>
@@ -366,7 +366,7 @@
             </div>
           </div>
           <p class="auth-error" id="authError" role="alert"></p>
-          <button type="submit" class="auth-submit" id="authSubmit">Anmelden</button>
+          <button type="submit" class="auth-submit" id="authSubmit" data-i18n="auth.submit">Anmelden</button>
         </form>
         <p class="auth-foot"><a href="index.html" style="color:inherit">← Hub</a> · <a href="lohn.html" style="color:inherit">Lohn</a></p>
       </div>
@@ -389,9 +389,10 @@
           </div>
         </div>
         <div class="admin-nav">
-          <a href="lohn.html">Lohn</a>
-          <a href="index.html">Hub</a>
-          <button type="button" id="btnLock">Sperren</button>
+          <span id="wpLangHost" class="wp-lang-host"></span>
+          <a href="lohn.html" data-i18n="nav.lohn">Lohn</a>
+          <a href="index.html" data-i18n="nav.hub">Hub</a>
+          <button type="button" id="btnLock" data-i18n="nav.lock">Sperren</button>
         </div>
       </div>
 
@@ -455,8 +456,14 @@
       <p class="admin-foot">WorkPass Steuerprogramm · Bridge-Admin</p>
     </div>
 
+    <script src="workpass-i18n.js?v=1"></script>
     <script src="auth-gate.js?v=9"></script>
     <script>
+      if (window.WorkPassI18n) {
+        window.WorkPassI18n.init();
+        window.WorkPassI18n.mountSelect(document.getElementById("wpLangHost"), "wpLangSelectAdmin");
+        window.WorkPassI18n.applyDom(document);
+      }
       function origin() {
         const h = location.hostname;
         if (h === "localhost" || h === "127.0.0.1") return "http://127.0.0.1:8787";
@@ -666,6 +673,7 @@
       });
       window.WorkPassAuth.init({
         onUnlock: () => {
+          window.WorkPassI18n?.syncFromSession?.();
           const u = window.WorkPassAuth.getSessionUser?.();
           if (u && u.role !== "admin") {
             setStatus("Firmen-Login hat keinen Admin-Zugang. Bitte Admin-Konto nutzen.", false);

@@ -215,7 +215,9 @@ async function handler(req, res) {
 
   if (req.method === "POST" && path === "/v1/auth/login") {
     const body = await readBodyLimited(req);
-    const result = await loginWithPassword(body?.email, body?.password, req);
+    const result = await loginWithPassword(body?.email, body?.password, req, {
+      locale: body?.locale || body?.language || body?.preferredLocale,
+    });
     return reply(result.status || (result.ok ? 200 : 401), result);
   }
 
@@ -233,12 +235,20 @@ async function handler(req, res) {
   if (req.method === "GET" && path === "/v1/auth/me") {
     const s = sessionFromRequest(req);
     if (!s.ok) return reply(401, { ok: false, error: s.error });
-    const out = { ok: true, user: s.user };
+    const out = {
+      ok: true,
+      user: s.user,
+      preferredLocale: s.user?.locale || null,
+    };
     if (s.user?.companyId && s.user.role !== "admin") {
       const company = loadCompany(s.user.companyId);
       out.workspace = companyWorkspaceView(company);
       out.companyLocked = true;
       if (company) {
+        out.preferredLocale = out.preferredLocale
+          || company.meta?.locale
+          || company.meta?.language
+          || null;
         out.company = {
           id: company.id,
           name: company.name,
@@ -253,6 +263,7 @@ async function handler(req, res) {
           datevClientNo: company.datevClientNo,
           datevConsultantNo: company.datevConsultantNo,
           hubProfile: company.meta?.hubProfile || null,
+          locale: company.meta?.locale || company.meta?.language || null,
         };
       }
     }

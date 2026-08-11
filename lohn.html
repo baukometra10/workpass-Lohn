@@ -7,8 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="workpass-theme.css?v=8" />
-    <link rel="stylesheet" href="lohn.css?v=53" />
+    <link rel="stylesheet" href="workpass-theme.css?v=9" />
+    <link rel="stylesheet" href="lohn.css?v=54" />
   </head>
   <body class="auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
@@ -23,29 +23,29 @@
             </svg>
           </div>
           <div>
-            <strong>WorkPass Steuerprogramm</strong>
+            <strong data-i18n="auth.product">WorkPass Steuerprogramm</strong>
             <small>Suppix AI · Lohn-Portal</small>
           </div>
         </div>
         <div class="auth-meta">
-          <div><span>Produkt</span>WorkPass Lohn</div>
-          <div><span>Modus</span>Empfang · Freigabe</div>
+          <div><span>Produkt</span><span data-i18n="app.brand.lohn">WorkPass Lohn</span></div>
+          <div><span>Modus</span><span data-i18n="auth.mode.lohn">Empfang · Freigabe</span></div>
         </div>
-        <h1 id="authTitle">WorkPass Lohn entsperren</h1>
-        <p class="auth-hint" id="authHint">Geschützter Buchhaltungszugang · Suppix AI</p>
+        <h1 id="authTitle" data-i18n="auth.unlock">WorkPass Lohn entsperren</h1>
+        <p class="auth-hint" id="authHint" data-i18n="auth.hint">Geschützter Buchhaltungszugang · Suppix AI</p>
         <div class="auth-mode-tabs" id="authModeTabs" hidden>
-          <button type="button" class="auth-mode-tab active" id="authTabPlatform">Plattform-Konto</button>
-          <button type="button" class="auth-mode-tab" id="authTabPin">Geräte-PIN</button>
+          <button type="button" class="auth-mode-tab active" id="authTabPlatform" data-i18n="auth.tab.platform">Plattform-Konto</button>
+          <button type="button" class="auth-mode-tab" id="authTabPin" data-i18n="auth.tab.pin">Geräte-PIN</button>
         </div>
         <form id="authForm">
           <div id="authPlatformFields">
-            <label for="authEmail">E-Mail (Firma oder Admin)</label>
+            <label for="authEmail" data-i18n="auth.email">E-Mail (Firma oder Admin)</label>
             <input id="authEmail" type="email" autocomplete="username" placeholder="luf@firma.de" />
-            <label for="authPassword">Passwort / PIN</label>
+            <label for="authPassword" data-i18n="auth.password">Passwort / PIN</label>
             <input id="authPassword" type="password" autocomplete="current-password" placeholder="z. B. 4821" />
           </div>
           <div id="authPinFields" hidden>
-            <label for="authPin">PIN</label>
+            <label for="authPin" data-i18n="auth.pin">PIN</label>
             <input id="authPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" placeholder="••••" />
             <div id="authConfirmWrap" hidden>
               <label for="authPinConfirm">PIN bestätigen</label>
@@ -53,9 +53,9 @@
             </div>
           </div>
           <p class="auth-error" id="authError" role="alert"></p>
-          <button type="submit" class="auth-submit" id="authSubmit">Anmelden</button>
+          <button type="submit" class="auth-submit" id="authSubmit" data-i18n="auth.submit">Anmelden</button>
         </form>
-        <p class="auth-foot">Ein Login reicht für Hub, Lohn und Admin · Sitzung hält mehrere Stunden</p>
+        <p class="auth-foot" data-i18n="auth.foot">Ein Login reicht für Hub, Lohn und Admin</p>
       </div>
     </div>
 
@@ -72,8 +72,8 @@
               </svg>
             </div>
             <div class="lohn-brand-text">
-              <strong>WorkPass Lohn</strong>
-              <span>Suppix AI · Steuerprogramm</span>
+              <strong data-i18n="app.brand.lohn">WorkPass Lohn</strong>
+              <span data-i18n="app.sub.lohn">Suppix AI · Steuerprogramm</span>
             </div>
           </div>
           <span class="mode-pill" id="modePill" title="Arbeitet unabhängig von der Plattform">Standalone</span>
@@ -91,25 +91,26 @@
         </div>
 
         <div class="lohn-actions">
+          <span id="wpLangHost" class="wp-lang-host"></span>
           <div class="lohn-actions-group">
-            <label class="btn primary" for="importPlatformInput">Datei</label>
+            <label class="btn primary" for="importPlatformInput" data-i18n="recv.file">Datei</label>
             <input type="file" id="importPlatformInput" accept=".json,application/json" />
             <label class="btn" for="importCsvInput">CSV</label>
             <input type="file" id="importCsvInput" accept=".csv,.txt" />
           </div>
           <div class="lohn-actions-group">
-            <button type="button" id="btnNew">Neu</button>
-            <button type="button" id="btnExportJson">Export</button>
+            <button type="button" id="btnNew" data-i18n="common.new">Neu</button>
+            <button type="button" id="btnExportJson" data-i18n="common.export">Export</button>
           </div>
           <div class="lohn-actions-group">
-            <button type="button" id="btnPrint" class="primary">Drucken</button>
-            <button type="button" id="btnPdf">PDF</button>
+            <button type="button" id="btnPrint" class="primary" data-i18n="common.print">Drucken</button>
+            <button type="button" id="btnPdf" data-i18n="common.pdf">PDF</button>
             <button type="button" id="btnExportCsv" title="Bewegungsdaten CSV">CSV</button>
-            <button type="button" id="btnLock" title="Sofort sperren">Sperren</button>
+            <button type="button" id="btnLock" title="Sofort sperren" data-i18n="nav.lock">Sperren</button>
           </div>
-          <a href="admin.html" class="btn btn-link" title="Accounting Admin">Admin</a>
-          <a href="index.html" class="btn btn-link" title="WorkPass Hub">Hub</a>
-          <button type="button" id="btnThemeToggle" class="btn btn-link" title="Hell/Dunkel">Theme</button>
+          <a href="admin.html" class="btn btn-link" title="Accounting Admin" data-i18n="nav.admin">Admin</a>
+          <a href="index.html" class="btn btn-link" title="WorkPass Hub" data-i18n="nav.hub">Hub</a>
+          <button type="button" id="btnThemeToggle" class="btn btn-link" title="Hell/Dunkel" data-i18n="common.theme">Theme</button>
         </div>
       </header>
 
@@ -118,42 +119,42 @@
       <div class="lohn-layout">
         <aside class="lohn-form" id="lohnForm">
           <div class="lohn-form-sticky">
-            <div id="statusBar" class="lohn-status warn">Bereit – manuell, Datei oder Inbox.</div>
+            <div id="statusBar" class="lohn-status warn" data-i18n="status.ready">Bereit – manuell, Datei oder Inbox.</div>
             <div id="printHints" class="print-hints" hidden></div>
             <div id="missingPanel" class="missing-panel" hidden></div>
             <nav class="form-jump" aria-label="Abschnitte">
-              <a href="#secEmpfang">Empfang</a>
-              <a href="#secFirma">Firma</a>
-              <a href="#secLohnarten">Lohnarten</a>
-              <a href="#secAuszahlung">Auszahlung</a>
-              <a href="#secArchiv">Archiv</a>
+              <a href="#secEmpfang" data-i18n="jump.empfang">Empfang</a>
+              <a href="#secFirma" data-i18n="jump.firma">Firma</a>
+              <a href="#secLohnarten" data-i18n="jump.lohnarten">Lohnarten</a>
+              <a href="#secAuszahlung" data-i18n="jump.auszahlung">Auszahlung</a>
+              <a href="#secArchiv" data-i18n="jump.archiv">Archiv</a>
             </nav>
           </div>
           <div class="lohn-form-summary" id="lohnFormSummary">
             <div id="auditOverview" class="audit-overview" hidden role="region" aria-label="Prüfübersicht">
               <div class="audit-overview-head">
-                <strong>Prüfübersicht</strong>
-                <span class="audit-pill" id="auditTenantPill">Mandantentrennung aktiv</span>
+                <strong data-i18n="audit.title">Prüfübersicht</strong>
+                <span class="audit-pill" id="auditTenantPill" data-i18n="audit.tenant">Mandantentrennung aktiv</span>
               </div>
               <div class="audit-overview-grid" id="auditOverviewGrid"></div>
             </div>
             <div class="kpi-strip">
-              <div class="kpi"><span>Brutto</span><strong id="kpiGross">—</strong></div>
-              <div class="kpi"><span>Netto / Auszahlung</span><strong id="kpiNet">—</strong></div>
+              <div class="kpi"><span data-i18n="kpi.gross">Brutto</span><strong id="kpiGross">—</strong></div>
+              <div class="kpi"><span data-i18n="kpi.net">Netto / Auszahlung</span><strong id="kpiNet">—</strong></div>
             </div>
           </div>
 
           <section class="form-section step" id="secEmpfang">
             <div class="step-head">
               <span class="step-num">1</span>
-              <h2>Empfang</h2>
+              <h2 data-i18n="empfang.title">Empfang</h2>
             </div>
-            <p class="section-hint" id="recvSectionHint">Datei, Inbox oder manuell – auch ohne Plattform.</p>
+            <p class="section-hint" id="recvSectionHint" data-i18n="empfang.hint">Datei, Inbox oder manuell – auch ohne Plattform.</p>
             <div class="recv-modes" role="tablist">
-              <button type="button" class="recv-mode active" data-recv="file" id="recvFile">Datei</button>
-              <button type="button" class="recv-mode" data-recv="paste" id="recvPaste">Inbox / Paste</button>
-              <button type="button" class="recv-mode" data-recv="api" id="recvApi">API-Bridge</button>
-              <button type="button" class="recv-mode" data-recv="manual" id="recvManual">Manuell</button>
+              <button type="button" class="recv-mode active" data-recv="file" id="recvFile" data-i18n="recv.file">Datei</button>
+              <button type="button" class="recv-mode" data-recv="paste" id="recvPaste" data-i18n="recv.paste">Inbox / Paste</button>
+              <button type="button" class="recv-mode" data-recv="api" id="recvApi" data-i18n="recv.api">API-Bridge</button>
+              <button type="button" class="recv-mode" data-recv="manual" id="recvManual" data-i18n="recv.manual">Manuell</button>
             </div>
             <div class="recv-panel" id="panelFile">
               <div class="drop-target" id="dropTarget">
@@ -199,14 +200,14 @@
                 </section>
                 <section class="month-close-card portal-dash-card" id="portalSyncCard" style="margin-bottom:12px">
                   <div class="portal-card-head">
-                    <strong>Automatik · Plattform-Sync</strong>
+                    <strong data-i18n="sync.title">Automatik · Plattform-Sync</strong>
                     <span class="portal-card-badge" id="portalSyncBadge">Status</span>
                   </div>
                   <p id="portalSyncHint">Fragt die Plattform nach Mitarbeitern und Abrechnungen – berechnet und gibt frei, sobald Daten da sind.</p>
                   <div id="portalSyncDetail" class="api-inbox-list portal-sync-detail"></div>
                   <div class="month-close-actions" style="margin-top:10px">
-                    <button type="button" class="primary" id="btnAutoSyncNow">Jetzt synchronisieren</button>
-                    <button type="button" id="btnPingPlatform">Webhook prüfen</button>
+                    <button type="button" class="primary" id="btnAutoSyncNow" data-i18n="sync.now">Jetzt synchronisieren</button>
+                    <button type="button" id="btnPingPlatform" data-i18n="sync.ping">Webhook prüfen</button>
                   </div>
                   <ul class="portal-next-actions" id="portalNextActions" hidden></ul>
                 </section>
@@ -309,7 +310,7 @@
           <section class="form-section step" id="secFirma">
             <div class="step-head">
               <span class="step-num">2</span>
-              <h2>Firma &amp; Mitarbeiter</h2>
+              <h2 data-i18n="firma.title">Firma &amp; Mitarbeiter</h2>
             </div>
             <div class="company-flow" id="companyFlow">
               <p class="section-hint">
@@ -618,10 +619,11 @@
     <script src="templates.js?v=1"></script>
     <script src="datev-sheet.js?v=42"></script>
     <script src="payroll-core.js?v=22"></script>
+    <script src="workpass-i18n.js?v=1"></script>
     <script src="auth-gate.js?v=9"></script>
     <script src="mandant-checklist.js?v=3"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="lohn-app.js?v=52"></script>
+    <script src="lohn-app.js?v=53"></script>
   </body>
 </html>

@@ -948,7 +948,7 @@
         btn.disabled = false;
         btn.classList.remove("is-busy");
         btn.removeAttribute("aria-busy");
-        btn.textContent = "Jetzt synchronisieren";
+        btn.textContent = window.WorkPassI18n?.t?.("sync.now") || "Jetzt synchronisieren";
       }
     }
   }
@@ -1884,9 +1884,10 @@
     $("btnApiCompanies")?.setAttribute("hidden", "hidden");
     $("btnNewCompany")?.setAttribute("hidden", "hidden");
 
+    const t = (k) => window.WorkPassI18n?.t?.(k) || k;
     const hint = $("recvSectionHint") || document.querySelector("#secEmpfang .section-hint");
     if (hint) {
-      hint.innerHTML = "<strong>Firmen-Portal:</strong> Automatische Abrechnungen Ihrer Mitarbeiter erscheinen hier.";
+      hint.textContent = t("empfang.firmHint");
     }
     const apiHint = $("apiBridgeHint");
     if (apiHint) {
@@ -1900,7 +1901,8 @@
 
     const recvApiTab = $("recvApi");
     if (recvApiTab) {
-      recvApiTab.textContent = "Meine Abrechnungen";
+      recvApiTab.setAttribute("data-i18n", "recv.apiFirm");
+      recvApiTab.textContent = t("recv.apiFirm");
     }
 
     persistApiConfig();
@@ -1915,13 +1917,13 @@
         banner.innerHTML = `
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
-              <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> Firmen-Portal live</span>
+              <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live"))}</span>
               <strong>${esc(companyName)}</strong>
-              <small>Nur Ihre Daten · Mandantentrennung aktiv · ${esc(me.user?.email || "")} · Monat ${esc(currentPayrollPeriod())}</small>
+              <small>${esc(t("portal.onlyYourData"))} · ${esc(me.user?.email || "")} · Monat ${esc(currentPayrollPeriod())}</small>
             </div>
             <div class="month-close-actions">
-              <button type="button" class="primary glossy" id="btnPortalMonthClose">Monatsabschluss</button>
-              <button type="button" id="btnPortalRefreshInbox">Inbox</button>
+              <button type="button" class="primary glossy" id="btnPortalMonthClose">${esc(t("portal.monthClose"))}</button>
+              <button type="button" id="btnPortalRefreshInbox">${esc(t("portal.inbox"))}</button>
             </div>
           </div>`;
         $("btnPortalMonthClose")?.addEventListener("click", () => runMonthClose({ pull: true, autoRelease: true }));
@@ -2478,15 +2480,31 @@
     setRecvMode(isCompanyPortal() ? "api" : "file");
     renderArchiveBoard();
     applyCompanyPortalMode();
+    window.WorkPassI18n?.applyDom?.(document);
+  }
+
+  function bootI18n() {
+    if (!window.WorkPassI18n) return;
+    window.WorkPassI18n.init();
+    const host = document.getElementById("wpLangHost")
+      || document.querySelector(".lohn-actions");
+    window.WorkPassI18n.mountSelect(host, "wpLangSelectLohn");
+    window.WorkPassI18n.applyDom(document);
   }
 
   function init() {
+    bootI18n();
     // onUnlock startet die App nach PIN; bei aktiver Sitzung/E2E sofort
     if (!window.WorkPassAuth) {
       startApp();
       return;
     }
-    window.WorkPassAuth.init({ onUnlock: startApp });
+    window.WorkPassAuth.init({
+      onUnlock: () => {
+        window.WorkPassI18n?.syncFromSession?.();
+        startApp();
+      },
+    });
   }
 
   if (document.readyState === "loading") {

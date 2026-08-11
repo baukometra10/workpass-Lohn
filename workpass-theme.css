@@ -460,3 +460,75 @@ body.workpass-hub #dashChecklistSummary.is-warn,
 body.workpass-hub #companyChecklistSummary.is-warn {
   color: var(--wp-warn);
 }
+
+/* UI language switcher + RTL (Arabic) */
+.wp-lang-host {
+  display: inline-flex;
+  align-items: center;
+}
+
+.wp-lang-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline-end: 6px;
+}
+
+.wp-lang-label {
+  font-size: 0.72rem;
+  color: var(--wp-text-dim, #8a94a6);
+  white-space: nowrap;
+}
+
+.wp-lang-select {
+  appearance: none;
+  min-width: 7.5rem;
+  padding: 5px 28px 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--wp-line, rgba(90, 140, 200, 0.22));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent),
+    var(--wp-bg-soft, #141e2e)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%238a94a6' d='M1 1l5 5 5-5'/%3E%3C/svg%3E")
+    no-repeat right 10px center;
+  color: var(--wp-text, #e8eef8);
+  font: 500 0.78rem/1.2 var(--wp-sans, "Barlow", system-ui, sans-serif);
+  cursor: pointer;
+}
+
+.wp-lang-select:focus {
+  outline: none;
+  border-color: var(--wp-line-strong, rgba(59, 160, 255, 0.55));
+  box-shadow: 0 0 0 2px var(--wp-glow-soft, rgba(59, 158, 255, 0.18));
+}
+
+.admin-nav .wp-lang-host {
+  margin-inline-end: 8px;
+}
+
+body.is-rtl {
+  direction: rtl;
+}
+
+body.is-rtl .wp-lang-select {
+  padding: 5px 10px 5px 28px;
+  background-position: left 10px center;
+}
+
+body.is-rtl .lohn-appbar,
+body.is-rtl .lex-appbar,
+body.is-rtl .admin-topbar {
+  direction: rtl;
+}
+
+body.is-rtl .form-jump,
+body.is-rtl .recv-modes,
+body.is-rtl .kpi-strip {
+  direction: rtl;
+}
+
+body.is-rtl .sidebar-nav-btn,
+body.is-rtl .form-tab {
+  text-align: right;
+}
+

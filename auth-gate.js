@@ -34,6 +34,16 @@
         JSON.stringify({ ...prev, companyId: data.user.companyId }),
       );
     }
+    const locale = String(data.preferredLocale || data.user?.locale || data.user?.language || "")
+      .trim()
+      .toLowerCase()
+      .slice(0, 2);
+    if (locale) {
+      try {
+        localStorage.setItem("workpass.ui.locale", locale);
+        localStorage.removeItem("workpass.ui.locale.manual");
+      } catch { /* ignore */ }
+    }
     history.replaceState(null, "", location.pathname + location.search);
     location.reload();
   } catch (e) {
@@ -362,10 +372,16 @@
     }
     if (err) err.textContent = "Anmelden…";
     try {
+      const localeHint = window.WorkPassI18n?.getLocale?.()
+        || (navigator.language || "").slice(0, 2)
+        || "de";
       const res = await fetch(`${apiOrigin()}/v1/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        headers: {
+          "Content-Type": "application/json",
+          "Accept-Language": localeHint,
+        },
+        body: JSON.stringify({ email, password, locale: localeHint }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
@@ -394,6 +410,12 @@
       // Align UI session with server token lifetime (login once)
       const expMs = data.expiresAt ? Date.parse(data.expiresAt) - Date.now() : IDLE_MS;
       touchSession(Math.max(expMs, 60 * 60 * 1000));
+      const preferred = data.preferredLocale || data.user?.locale || data.user?.language;
+      if (preferred && window.WorkPassI18n && !window.WorkPassI18n.isManual?.()) {
+        window.WorkPassI18n.setLocale(preferred, { manual: false, persist: true });
+      } else {
+        await window.WorkPassI18n?.syncFromSession?.();
+      }
       hideGate();
       onUnlockCb?.();
       return true;
@@ -527,10 +549,12 @@
       hideGate();
       touchSession();
       document.body.classList.toggle("company-portal", isCompanyPortalUser());
+      await window.WorkPassI18n?.syncFromSession?.();
       onUnlockCb?.();
       return true;
     }
     showGate("");
+    window.WorkPassI18n?.applyDom?.(document.getElementById("authGate") || document);
     return false;
   }
 
