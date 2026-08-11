@@ -265,11 +265,8 @@ body { margin: 0; font-family: "Barlow", "Segoe UI", sans-serif; color: #121518;
         document.body.classList.remove("auth-locked");
         const companyUser = window.WorkPassAuth?.isCompanyPortalUser?.();
         document.body.classList.toggle("company-portal", Boolean(companyUser));
-        if (companyUser) {
-          // Firm clients belong in Lohn, not the full Hub workspace
-          window.location.replace("lohn.html");
-          return;
-        }
+        // Companies keep full Hub access (Rechnung + Mandant + Übersicht).
+        // Only Admin stays hidden for firm logins.
         document.querySelectorAll('a[href="admin.html"]').forEach((a) => {
           a.hidden = Boolean(companyUser);
         });

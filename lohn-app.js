@@ -1884,6 +1884,11 @@
     document.querySelectorAll('a[href="admin.html"]').forEach((a) => {
       a.hidden = Boolean(companyPortalId);
     });
+    document.querySelectorAll('a[href="index.html"]').forEach((a) => {
+      a.hidden = false;
+      a.classList.add("portal-hub-link");
+      if (!a.dataset.i18n) a.setAttribute("data-i18n", "nav.hub");
+    });
 
     const banner = $("companyPortalBanner");
     if (!companyPortalId) {
@@ -1969,6 +1974,7 @@
               <small>${esc(t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))} · Monat ${esc(currentPayrollPeriod())}</small>
             </div>
             <div class="month-close-actions portal-primary-actions">
+              <a href="index.html" class="primary glossy portal-hub-link" id="btnPortalOpenHub">${esc(uiT("nav.hub", "Hub"))}</a>
               <button type="button" class="primary glossy" id="btnPortalMonthClose">${esc(t("portal.monthClose", "Monatsabschluss"))}</button>
               <button type="button" id="btnPortalSyncTop">${esc(t("sync.now", "Jetzt synchronisieren"))}</button>
             </div>

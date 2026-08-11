@@ -1009,7 +1009,22 @@ textarea.field-invalid {
 .company-empty-inbox strong { display: block; color: #fff; margin-bottom: 6px; }
 .company-empty-inbox p { margin: 0; color: #9bb0c9; font-size: 0.84rem; line-height: 1.45; }
 
-body.company-portal a[href="admin.html"] { display: none !important; }
+body.company-portal a[href="index.html"] {
+  display: inline-flex !important;
+  align-items: center;
+  font-weight: 700;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(93, 180, 255, 0.45);
+  background: linear-gradient(180deg, #1a4f8a 0%, #123a68 100%);
+  color: #fff !important;
+  text-decoration: none !important;
+}
+body.company-portal a[href="index.html"]:hover {
+  border-color: rgba(125, 200, 255, 0.7);
+  filter: brightness(1.06);
+}
 body.company-portal #recvFile,
 body.company-portal #recvPaste,
 body.company-portal #recvManual { display: none !important; }
@@ -1709,7 +1724,6 @@ body.company-portal #importCsvInput,
 body.company-portal #btnNew,
 body.company-portal #btnExportJson,
 body.company-portal #btnExportCsv,
-body.company-portal a[href="index.html"],
 body.company-portal a[href="admin.html"],
 body.company-portal .recv-modes,
 body.company-portal #panelFile,
@@ -1726,22 +1740,19 @@ body.company-portal .lohn-context .ctx-field:first-child {
   display: none !important;
 }
 
-body.company-portal:not(.portal-editing) a[href="#secLohnarten"],
-body.company-portal:not(.portal-editing) a[href="#secAuszahlung"],
-body.company-portal:not(.portal-editing) #secLohnarten,
-body.company-portal:not(.portal-editing) #secSteuerSv,
-body.company-portal:not(.portal-editing) #secAuszahlung {
-  display: none !important;
-}
-
-/* Keep Empfang / Firma / Archiv navigable across the firm portal */
+/* Firm portal: keep full Lohn section navigation (Empfang / Firma / Lohnarten / Auszahlung / Archiv) */
 body.company-portal .form-jump {
   display: grid !important;
 }
-body.company-portal:not(.portal-editing) a[href="#secFirma"],
-body.company-portal:not(.portal-editing) #secFirma,
-body.company-portal:not(.portal-editing) a[href="#secArchiv"],
-body.company-portal:not(.portal-editing) #secArchiv {
+body.company-portal #secFirma,
+body.company-portal #secLohnarten,
+body.company-portal #secSteuerSv,
+body.company-portal #secAuszahlung,
+body.company-portal #secArchiv,
+body.company-portal a[href="#secFirma"],
+body.company-portal a[href="#secLohnarten"],
+body.company-portal a[href="#secAuszahlung"],
+body.company-portal a[href="#secArchiv"] {
   display: revert !important;
 }
 body.company-portal:not(.portal-editing) #secNext {

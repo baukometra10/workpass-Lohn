@@ -65,9 +65,15 @@
     const path = String(location.pathname || "").toLowerCase();
     const isFirm = Boolean(data.user?.companyId && data.user?.role !== "admin");
     history.replaceState(null, "", location.pathname + location.search);
-    if (isFirm && !/lohn\.html$/i.test(path)) {
-      location.replace(`${location.origin}/lohn.html`);
-      return;
+    // Firms from the platform open the full accounting Hub (not Lohn-only).
+    if (isFirm) {
+      const isHubEntry = /index\.html$/i.test(path)
+        || path.endsWith("/")
+        || !/\.html$/i.test(path);
+      if (!isHubEntry) {
+        location.replace(`${location.origin}/index.html`);
+        return;
+      }
     }
     location.reload();
   } catch (e) {
