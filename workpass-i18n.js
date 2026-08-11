@@ -672,6 +672,16 @@
   let current = "de";
   let manualOverride = false;
 
+  (window.WorkPassI18nExtraPacks || []).forEach((row) => {
+    const key = row?.[0];
+    const locs = row?.[1];
+    if (!key || !locs) return;
+    SUPPORTED.forEach((code) => {
+      if (!dict[code]) dict[code] = {};
+      if (locs[code] != null) dict[code][key] = locs[code];
+    });
+  });
+
   function normalize(code) {
     const raw = String(code || "").trim().toLowerCase().replace("_", "-");
     if (!raw) return "";
@@ -699,6 +709,17 @@
       if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
         if (el.hasAttribute("data-i18n-placeholder")) el.placeholder = val;
         else if (el.type === "submit" || el.type === "button") el.value = val;
+      } else if (el.querySelector("svg")) {
+        [...el.childNodes].forEach((n) => {
+          if (n.nodeType === 3 && String(n.textContent || "").trim()) n.textContent = "";
+        });
+        let textEl = el.querySelector(".i18n-text");
+        if (!textEl) {
+          textEl = document.createElement("span");
+          textEl.className = "i18n-text";
+          el.appendChild(textEl);
+        }
+        textEl.textContent = val;
       } else {
         el.textContent = val;
       }

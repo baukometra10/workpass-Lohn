@@ -248,10 +248,14 @@ body { margin: 0; font-family: "Barlow", "Segoe UI", sans-serif; color: #121518;
       || document.querySelector(".wp-appbar-actions");
     window.WorkPassI18n.mountSelect(host, "wpLangSelectHub");
     window.WorkPassI18n.applyDom(document);
+    window.addEventListener("workpass:locale", () => {
+      window.WorkPassI18n?.applyDom?.(document);
+    });
   }
 
   function boot() {
     document.body.classList.add("workpass-hub");
+    document.documentElement.classList.add("hub-desktop");
     bootI18n();
     renderInvoiceArchive();
     renderSyncLog();

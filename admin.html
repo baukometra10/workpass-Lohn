@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="workpass-theme.css?v=10" />
+    <link rel="stylesheet" href="workpass-theme.css?v=11" />
     <link rel="stylesheet" href="lohn.css?v=53" />
     <style>
       body {
@@ -384,8 +384,8 @@
             </svg>
           </div>
           <div class="admin-brand-text">
-            <strong>WorkPass Admin</strong>
-            <span>Suppix AI · Steuerprogramm</span>
+            <strong data-i18n="nav.admin">WorkPass Admin</strong>
+            <span data-i18n="app.sub.lohn">Suppix AI · Steuerprogramm</span>
           </div>
         </div>
         <div class="admin-nav">
@@ -397,23 +397,23 @@
       </div>
 
       <div class="admin-hero">
-        <h1>Accounting Admin</h1>
-        <p id="adminWho">Ihre Rechte als Administrator der Buchhaltungs-Bridge.</p>
+        <h1 data-i18n="admin.title">Accounting Admin</h1>
+        <p id="adminWho" data-i18n="admin.who">Ihre Rechte als Administrator der Buchhaltungs-Bridge.</p>
       </div>
-      <div class="admin-status" id="adminStatus" role="status">Laden…</div>
+      <div class="admin-status" id="adminStatus" role="status" data-i18n="action.loading">Laden…</div>
       <div class="admin-actions">
-        <button type="button" class="primary" id="btnRefresh">Aktualisieren</button>
-        <button type="button" id="btnBackup">Backup jetzt</button>
-        <button type="button" id="btnMonthCloseAll">Monatsabschluss alle Firmen</button>
-        <button type="button" id="btnClearRate">Rate-Limit löschen</button>
+        <button type="button" class="primary" id="btnRefresh" data-i18n="action.refresh">Aktualisieren</button>
+        <button type="button" id="btnBackup" data-i18n="admin.backup">Backup jetzt</button>
+        <button type="button" id="btnMonthCloseAll" data-i18n="admin.monthCloseAll">Monatsabschluss alle Firmen</button>
+        <button type="button" id="btnClearRate" data-i18n="admin.clearRate">Rate-Limit löschen</button>
       </div>
       <div class="admin-grid" id="adminKpis"></div>
       <div class="admin-panel">
-        <h2>Ihre Admin-Rechte</h2>
+        <h2 data-i18n="admin.rights">Ihre Admin-Rechte</h2>
         <ul class="admin-rights" id="adminRights"></ul>
       </div>
       <div class="admin-panel">
-        <h2>Firma aus Plattform hier anlegen (Login-Sync)</h2>
+        <h2 data-i18n="admin.syncTitle">Firma aus Plattform hier anlegen (Login-Sync)</h2>
         <p class="admin-hint">
           Wenn in der Plattform „Abrechnungen an WorkPass Lohn senden“ aktiv ist, die Firma aber beim Login fehlt:
           hier einmal anlegen. Später soll die Plattform das automatisch per <code>POST /v1/company/login-sync</code> machen.
@@ -437,7 +437,7 @@
         </div>
       </div>
       <div class="admin-panel">
-        <h2>Firmen / Abteilungen</h2>
+        <h2 data-i18n="admin.companies">Firmen / Abteilungen</h2>
         <table class="admin-table">
           <thead>
             <tr><th>Firma</th><th>ID</th><th>Login</th><th>Status</th></tr>
@@ -446,17 +446,18 @@
         </table>
       </div>
       <div class="admin-panel">
-        <h2>Security-Audit (letzte Einträge)</h2>
+        <h2 data-i18n="admin.audit">Security-Audit (letzte Einträge)</h2>
         <div id="adminAudit"><p class="admin-hint">Wird beim Laden der Übersicht gefüllt.</p></div>
       </div>
       <div class="admin-panel">
-        <h2>Backups</h2>
+        <h2 data-i18n="admin.backups">Backups</h2>
         <div id="adminBackups"></div>
       </div>
       <p class="admin-foot">WorkPass Steuerprogramm · Bridge-Admin</p>
     </div>
 
-    <script src="workpass-i18n.js?v=2"></script>
+    <script src="workpass-i18n-packs.js?v=1"></script>
+    <script src="workpass-i18n.js?v=3"></script>
     <script src="auth-gate.js?v=11"></script>
     <script>
       if (window.WorkPassI18n) {

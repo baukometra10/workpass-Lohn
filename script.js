@@ -1474,26 +1474,29 @@ function initDocTypeCards() {
 function updateLexShellUI() {
   const mode = getCurrentMode();
   const activeTab = document.querySelector(".form-tab.active")?.dataset.tab || "document";
+  const tt = (k, fb) => (window.WorkPassI18n?.t?.(k) && window.WorkPassI18n.t(k) !== k)
+    ? window.WorkPassI18n.t(k)
+    : fb;
   const tabLabels = {
-    dashboard: "Übersicht",
-    document: "Beleg erfassen",
-    company: "Mandantenverwaltung",
-    payroll: "Lohnabrechnung",
-    help: "Hilfe",
+    dashboard: tt("nav.overview", "Übersicht"),
+    document: tt("nav.document", "Beleg erfassen"),
+    company: tt("nav.company", "Mandantenverwaltung"),
+    payroll: tt("nav.payrollFull", "Lohnabrechnung"),
+    help: tt("nav.help", "Hilfe"),
   };
   const docLabels = {
-    invoice: "Rechnung",
-    payroll: "Lohnabrechnung (monatlich)",
-    "payroll-annual": "Lohnsteuerbescheinigung",
+    invoice: tt("doc.invoice", "Rechnung"),
+    payroll: tt("doc.payroll", "Lohnabrechnung (monatlich)"),
+    "payroll-annual": tt("doc.payrollAnnual", "Lohnsteuerbescheinigung"),
   };
   if (lexBcModule) lexBcModule.textContent = tabLabels[activeTab] || tabLabels.document;
   if (lexBcDoc) {
-    lexBcDoc.textContent = activeTab === "dashboard" ? "Startseite" : (docLabels[mode] || docLabels.invoice);
+    lexBcDoc.textContent = activeTab === "dashboard" ? tt("doc.home", "Startseite") : (docLabels[mode] || docLabels.invoice);
   }
   const profileName = companyProfileNameInput?.value?.trim()
     || readCompanyProfiles()[activeCompanyProfileId]?.name
-    || "Standard-Mandant";
-  const mandantLine = `Mandant: ${profileName}`;
+    || tt("mandant.default", "Standard-Mandant");
+  const mandantLine = `${tt("mandant.label", "Mandant")}: ${profileName}`;
   if (lexAppbarMandant) lexAppbarMandant.textContent = mandantLine;
   if (lexStatusMandant) lexStatusMandant.textContent = mandantLine;
 }
@@ -1501,12 +1504,15 @@ function updateLexShellUI() {
 function updateTopbarForMode() {
   const mode = getCurrentMode();
   const activeTab = document.querySelector(".form-tab.active")?.dataset.tab || "document";
+  const tt = (k, fb) => (window.WorkPassI18n?.t?.(k) && window.WorkPassI18n.t(k) !== k)
+    ? window.WorkPassI18n.t(k)
+    : fb;
   const tabTitles = {
-    dashboard: "Übersicht",
-    document: "Beleg erfassen",
-    company: "Mandantenverwaltung",
-    payroll: "Lohn & Gehalt – Abrechnung",
-    help: "Hilfe & Checklisten",
+    dashboard: tt("nav.overview", "Übersicht"),
+    document: tt("nav.document", "Beleg erfassen"),
+    company: tt("nav.company", "Mandantenverwaltung"),
+    payroll: tt("menu.payrollGroup", "Lohn & Gehalt"),
+    help: tt("nav.help", "Hilfe"),
   };
   const tabSubs = {
     dashboard: "Dashboard · Mandant, Mitarbeiter & Schnellzugriff",
@@ -6769,3 +6775,9 @@ updateIncompleteFieldHighlights();
 updateInvoiceComplianceList();
 applyPreviewZoom();
 saveDraft(false);
+
+window.addEventListener("workpass:locale", () => {
+  window.WorkPassI18n?.applyDom?.(document);
+  try { updateLexShellUI(); } catch { /* ignore */ }
+  try { updateTopbarForMode(); } catch { /* ignore */ }
+});
