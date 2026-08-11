@@ -202,18 +202,51 @@ body { margin: 0; font-family: "Barlow", "Segoe UI", sans-serif; color: #121518;
     renderSyncLog();
   }
 
+  function t(key, fb, vars) {
+    const v = window.WorkPassI18n?.t?.(key, vars);
+    return (v && v !== key) ? v : (fb || key);
+  }
+
+  function localizeStoredSyncMessage(msg) {
+    const raw = String(msg || "").trim();
+    if (!raw) return t("hub.syncChecked", "Sync geprüft");
+    if (/Webhook-Key abgelehnt/i.test(raw) || /webhook.?key.*(abgelehnt|rejected)/i.test(raw)) {
+      return t(
+        "hub.webhookKeyRejected",
+        "Webhook-Key abgelehnt. Railway WORKPASS_PLATFORM_WEBHOOK_KEY und Plattform-Secret müssen exakt übereinstimmen."
+      );
+    }
+    if (/Kein Webhook-Key/i.test(raw)) {
+      return t(
+        "hub.webhookKeyMissing",
+        "Kein Webhook-Key. Railway: WORKPASS_PLATFORM_WEBHOOK_KEY setzen (gleicher Wert wie auf der Plattform)."
+      );
+    }
+    if (/WORKPASS_API_KEY als Webhook-Key/i.test(raw)) {
+      return t(
+        "hub.webhookKeyWrongSecret",
+        "Es wurde WORKPASS_API_KEY als Webhook-Key genutzt. Setze WORKPASS_PLATFORM_WEBHOOK_KEY auf denselben Secret wie die Plattform."
+      );
+    }
+    if (/Sync geprüft/i.test(raw)) return t("hub.syncChecked", "Sync geprüft");
+    return raw;
+  }
+
   function renderSyncLog() {
     const host = document.getElementById("hubSyncLogList");
     if (!host) return;
     const list = readSyncLog();
     if (!list.length) {
-      host.innerHTML = '<p class="muted small">Noch keine Sync-Einträge.</p>';
+      host.innerHTML = `<p class="muted small">${escapeHtml(t("hub.syncEmpty", "Noch keine Sync-Einträge."))}</p>`;
       return;
     }
     host.innerHTML = `<ul class="hub-sync-log">${list.slice(0, 12).map((e) => `
       <li><strong>${escapeHtml(String(e.at || "").replace("T", " ").slice(0, 19))}</strong>
-        · ${escapeHtml(e.message || "Sync")}
-        · Lohn ${e.payrollReleased || 0} · Rechnungen ${e.invoicesReleased || 0}
+        · ${escapeHtml(localizeStoredSyncMessage(e.message))}
+        · ${escapeHtml(t("hub.syncLogCounts", "Lohn {p} · Rechnungen {i}", {
+          p: e.payrollReleased || 0,
+          i: e.invoicesReleased || 0,
+        }))}
       </li>`).join("")}</ul>`;
   }
 
@@ -232,15 +265,15 @@ body { margin: 0; font-family: "Barlow", "Segoe UI", sans-serif; color: #121518;
       const newPin = String(document.getElementById("pinNew")?.value || "").trim();
       const conf = String(document.getElementById("pinNewConfirm")?.value || "").trim();
       if (newPin !== conf) {
-        window.alert("Neue PIN und Bestätigung stimmen nicht überein.");
+        window.alert(t("hub.pinMismatch", "Neue PIN und Bestätigung stimmen nicht überein."));
         return;
       }
       const res = await window.WorkPassAuth?.changePin(oldPin, newPin);
       if (!res?.ok) {
-        window.alert(res?.error || "PIN konnte nicht geändert werden.");
+        window.alert(res?.error || t("hub.pinChangeFail", "PIN konnte nicht geändert werden."));
         return;
       }
-      window.alert("PIN wurde geändert.");
+      window.alert(t("hub.pinChanged", "PIN wurde geändert."));
       ["pinOld", "pinNew", "pinNewConfirm"].forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.value = "";
@@ -258,6 +291,8 @@ body { margin: 0; font-family: "Barlow", "Segoe UI", sans-serif; color: #121518;
     window.WorkPassI18n.applyDom(document);
     window.addEventListener("workpass:locale", () => {
       window.WorkPassI18n?.applyDom?.(document);
+      renderSyncLog();
+      renderInvoiceArchive();
     });
   }
 

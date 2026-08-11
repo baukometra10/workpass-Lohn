@@ -17,37 +17,43 @@
 
   function ensureBtn() {
     let btn = document.getElementById("wpInstallApp");
-    if (btn) return btn;
-    const hosts = [
-      document.getElementById("wpLangHost"),
-      document.querySelector(".lohn-actions"),
-      document.querySelector(".lex-appbar-actions"),
-      document.querySelector(".app-topbar"),
-    ].filter(Boolean);
-    const host = hosts[0];
-    if (!host) return null;
-    btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "wpInstallApp";
-    btn.className = "btn btn-link wp-install-btn";
-    btn.hidden = true;
-    btn.setAttribute("data-i18n", "pwa.install");
-    btn.textContent = t("pwa.install", "App installieren");
-    host.prepend(btn);
-    btn.addEventListener("click", async () => {
-      if (!deferred) {
-        window.alert(t("pwa.manual", "Über den Browser: Menü → App installieren / Zum Desktop hinzufügen."));
-        return;
-      }
-      deferred.prompt();
-      const choice = await deferred.userChoice.catch(() => null);
-      deferred = null;
+    if (!btn) {
+      const host = document.querySelector(".wp-appbar-actions")
+        || document.querySelector(".lohn-actions")
+        || document.getElementById("wpLangHost");
+      if (!host) return null;
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "wpInstallApp";
+      btn.className = "wp-install-btn";
       btn.hidden = true;
-      if (choice?.outcome === "dismissed") {
-        try { localStorage.setItem(KEY, String(Date.now())); } catch { /* ignore */ }
+      btn.setAttribute("data-i18n", "pwa.install");
+      const lang = document.getElementById("wpLangHost");
+      if (lang && lang.parentElement === host) {
+        lang.insertAdjacentElement("afterend", btn);
+      } else {
+        host.prepend(btn);
       }
-    });
+      btn.addEventListener("click", onInstallClick);
+    }
+    btn.className = "wp-install-btn";
+    btn.textContent = t("pwa.install", "App installieren");
     return btn;
+  }
+
+  async function onInstallClick() {
+    const btn = document.getElementById("wpInstallApp");
+    if (!deferred) {
+      window.alert(t("pwa.manual", "Über den Browser: Menü → App installieren / Zum Desktop hinzufügen."));
+      return;
+    }
+    deferred.prompt();
+    const choice = await deferred.userChoice.catch(() => null);
+    deferred = null;
+    if (btn) btn.hidden = true;
+    if (choice?.outcome === "dismissed") {
+      try { localStorage.setItem(KEY, String(Date.now())); } catch { /* ignore */ }
+    }
   }
 
   function showInstall() {
@@ -76,7 +82,7 @@
 
   window.addEventListener("workpass:locale", () => {
     const btn = document.getElementById("wpInstallApp");
-    if (btn && !btn.hidden) btn.textContent = t("pwa.install", "App installieren");
+    if (btn) btn.textContent = t("pwa.install", "App installieren");
   });
 
   function registerSw() {
@@ -87,10 +93,12 @@
 
   function boot() {
     registerSw();
-    if (!isStandalone()) {
-      // Show manual install affordance even if beforeinstallprompt is delayed
-      setTimeout(showInstall, 1200);
+    const existing = document.getElementById("wpInstallApp");
+    if (existing && !existing.dataset.bound) {
+      existing.dataset.bound = "1";
+      existing.addEventListener("click", onInstallClick);
     }
+    if (!isStandalone()) setTimeout(showInstall, 800);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

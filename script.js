@@ -735,6 +735,33 @@ function hubT(key, fallback, vars) {
   return (v && v !== key) ? v : (fallback || key);
 }
 
+/** Map known German/platform sync messages → UI locale. Keep env var names as-is. */
+function localizeHubSyncMessage(msg) {
+  const raw = String(msg || "").trim();
+  if (!raw) return hubT("hub.syncChecked", "Sync geprüft");
+  if (/Webhook-Key abgelehnt/i.test(raw) || /webhook.?key.*(abgelehnt|rejected)/i.test(raw)) {
+    return hubT(
+      "hub.webhookKeyRejected",
+      "Webhook-Key abgelehnt. Railway WORKPASS_PLATFORM_WEBHOOK_KEY und Plattform-Secret müssen exakt übereinstimmen."
+    );
+  }
+  if (/Kein Webhook-Key/i.test(raw)) {
+    return hubT(
+      "hub.webhookKeyMissing",
+      "Kein Webhook-Key. Railway: WORKPASS_PLATFORM_WEBHOOK_KEY setzen (gleicher Wert wie auf der Plattform)."
+    );
+  }
+  if (/WORKPASS_API_KEY als Webhook-Key/i.test(raw)) {
+    return hubT(
+      "hub.webhookKeyWrongSecret",
+      "Es wurde WORKPASS_API_KEY als Webhook-Key genutzt. Setze WORKPASS_PLATFORM_WEBHOOK_KEY auf denselben Secret wie die Plattform."
+    );
+  }
+  if (/Sync geprüft/i.test(raw)) return hubT("hub.syncChecked", "Sync geprüft");
+  if (/Sync-Prüfung fehlgeschlagen/i.test(raw)) return hubT("hub.syncFailed", "Sync-Prüfung fehlgeschlagen.");
+  return raw;
+}
+
 function hubFormatAutoSyncHint(sync, autoResult = null) {
   const auto = sync?.autoPipeline || {};
   const last = autoResult || auto.lastResult || null;
@@ -747,13 +774,15 @@ function hubFormatAutoSyncHint(sync, autoResult = null) {
   if (sync?.status === "error" || (wh.ok === false && sync?.webhook?.configured)) {
     const raw = String(sync?.message || "");
     let text = hubT("hub.webhookError", "Webhook-Fehler {status} · Plattform-Endpoint prüfen", { status: wh.status || "" });
-    if (/401/.test(raw) || wh.status === 401) {
-      text = hubT(
-        "hub.webhook401",
-        "Plattform-Webhook antwortet nicht (401). Die Plattform muss den Endpoint reparieren und Daten senden."
-      );
+    if (/401/.test(raw) || wh.status === 401 || /Webhook-Key/i.test(raw)) {
+      text = localizeHubSyncMessage(raw) !== raw
+        ? localizeHubSyncMessage(raw)
+        : hubT(
+          "hub.webhook401",
+          "Plattform-Webhook antwortet nicht (401). Die Plattform muss den Endpoint reparieren und Daten senden."
+        );
     } else if (raw && !/WORKPASS_|Endpoint|GET \/v1/i.test(raw)) {
-      text = raw;
+      text = localizeHubSyncMessage(raw);
     }
     return {
       text,
@@ -803,7 +832,7 @@ function focusNextMandantField({ openCompanyTab = true } = {}) {
   const checks = getMandantChecklistState();
   const key = MC?.nextOpen?.(checks);
   if (!key) {
-    hubShowSyncStatus("Alle Stammdaten sind vollständig.", { error: false });
+    hubShowSyncStatus(hubT("hub.checkAllDone", "Alle Stammdaten sind vollständig."), { error: false });
     return;
   }
   const fieldId = MC?.HUB_FIELD_MAP?.[key];
@@ -897,24 +926,29 @@ async function runHubSyncCheck() {
     const invoicesReleased = Number(auto?.invoiceSync?.pendingReleased || auto?.invoices?.released || 0);
     const hint = hubFormatAutoSyncHint(sync, auto);
     const parts = [
-      hint.text,
-      `Freigegeben: ${payrollReleased} Abrechnung(en) · ${invoicesReleased} Rechnung(en)`,
-      pipe.lastSuccessAt && !auto?.message ? `Letzter Erfolg: ${pipe.lastSuccessAt}` : null,
-      pending ? `Pending: ${pending}` : null,
+      localizeHubSyncMessage(auto?.message || hint.text),
+      hubT("hub.releasedCounts", "Freigegeben: {p} Abrechnung(en) · {i} Rechnung(en)", {
+        p: payrollReleased,
+        i: invoicesReleased,
+      }),
+      pipe.lastSuccessAt && !auto?.message
+        ? hubT("hub.lastSuccess", "Letzter Erfolg: {at}", { at: pipe.lastSuccessAt })
+        : null,
+      pending ? hubT("hub.pendingCount", "Pending: {n}", { n: pending }) : null,
     ].filter(Boolean);
     const err = Boolean(hint.error || (wh.ok === false && sync?.webhook?.configured));
     hubShowSyncStatus(parts.join(" · "), { error: err, nextActions: hint.nextActions });
     hubSetText("dashKpiFirmSync", hubFormatSyncLabel(sync));
     window.WorkPassHub?.pushSyncLog?.({
-      message: auto?.message || hint.text || "Sync geprüft",
+      message: auto?.message || hint.text || hubT("hub.syncChecked", "Sync geprüft"),
       payrollReleased,
       invoicesReleased,
       pending,
     });
     await updateDashboard();
   } catch (err) {
-    hubShowSyncStatus(err?.message || "Sync-Prüfung fehlgeschlagen.", { error: true });
-    hubSetText("dashKpiFirmSync", "Offline");
+    hubShowSyncStatus(err?.message || hubT("hub.syncFailed", "Sync-Prüfung fehlgeschlagen."), { error: true });
+    hubSetText("dashKpiFirmSync", hubT("hub.offline", "Offline"));
   } finally {
     if (syncBtn) {
       syncBtn.disabled = false;
@@ -952,7 +986,9 @@ function updateLocalDashboardKpis() {
   hubSetText("dashKpiPayrollMonths", String(monthCount));
   hubSetText("dashKpiInvoicesLocal", String(archiveLen));
   const mode = getCurrentMode();
-  hubSetText("dashKpiMode", mode === "payroll-annual" ? "LStB" : (mode === "payroll" ? "Lohn" : "Rechnung"));
+  hubSetText("dashKpiMode", mode === "payroll-annual"
+    ? hubT("doc.annualTaxShort", "LStB")
+    : (mode === "payroll" ? hubT("nav.lohn", "Lohn") : hubT("doc.invoice", "Rechnung")));
 
   const profileName = companyProfileNameInput?.value?.trim()
     || profiles[activeCompanyProfileId]?.name
@@ -966,7 +1002,7 @@ function updateDashboardEmployeeTable(employeeNames, history) {
   if (!dashBody) return;
   dashBody.innerHTML = "";
   if (!employeeNames.length) {
-    dashBody.innerHTML = '<tr><td colspan="4" class="dash-empty">Noch keine Lohn-Monatsdaten gespeichert.</td></tr>';
+    dashBody.innerHTML = `<tr><td colspan="4" class="dash-empty">${escapeHtmlLite(hubT("hub.empEmpty", "Noch keine Lohn-Monatsdaten gespeichert."))}</td></tr>`;
     return;
   }
   employeeNames.sort((a, b) => a.localeCompare(b, "de")).forEach((name) => {
@@ -983,7 +1019,7 @@ function updateDashboardEmployeeTable(employeeNames, history) {
     const loadBtn = document.createElement("button");
     loadBtn.type = "button";
     loadBtn.className = "secondary-btn dash-load-btn";
-    loadBtn.textContent = "Laden";
+    loadBtn.textContent = hubT("common.load", "Laden");
     loadBtn.dataset.dashLoad = name;
     tdAction.appendChild(loadBtn);
     tr.append(tdName, tdCount, tdLast, tdAction);
@@ -1076,7 +1112,7 @@ function renderMandantAccountingStatus() {
   const next = MC?.nextHint?.(checks) || "";
   if (!firm) {
     el.hidden = false;
-    el.innerHTML = `<strong>Lokaler Mandant</strong> · ${escapeHtmlLite(sum.text)}${sum.done < sum.total ? ` · ${escapeHtmlLite(next)}` : ""}`;
+    el.innerHTML = `<strong>${escapeHtmlLite(hubT("hub.localClient", "Lokaler Mandant"))}</strong> · ${escapeHtmlLite(sum.text)}${sum.done < sum.total ? ` · ${escapeHtmlLite(next)}` : ""}`;
     el.classList.toggle("is-ok", sum.done >= sum.total);
     el.classList.toggle("is-error", false);
     return;
@@ -1085,13 +1121,13 @@ function renderMandantAccountingStatus() {
   const companyId = user?.companyId || hubApiConfig().companyId || "—";
   const ws = hubWorkspace || {};
   const active = ws.accountingEnabled !== false && (ws.workspaceStatus || "active") !== "inactive";
-  const section = ws.section?.title || ws.section?.name || "Buchhaltung";
+  const section = ws.section?.title || ws.section?.name || hubT("hub.accounting", "Buchhaltung");
   const name = hubServerCompany?.name || companyId;
   const hubOk = Boolean(hubServerCompany?.hubProfile || hubServerCompany?.meta?.hubProfile);
   el.hidden = false;
   el.innerHTML = active
-    ? `<strong>Buchhaltung aktiv</strong> · ${escapeHtmlLite(name)} · ${escapeHtmlLite(section)} · ${escapeHtmlLite(sum.text)}${hubOk ? " · Server-Profil ✓" : " · Server-Profil offen"}${sum.done < sum.total ? ` · ${escapeHtmlLite(next)}` : ""}`
-    : `<strong>Buchhaltung inaktiv</strong> · ${escapeHtmlLite(name)} · Firma ${escapeHtmlLite(companyId)} · bitte im Admin/Plattform aktivieren`;
+    ? `<strong>${escapeHtmlLite(hubT("hub.accountingOn", "Buchhaltung aktiv"))}</strong> · ${escapeHtmlLite(name)} · ${escapeHtmlLite(section)} · ${escapeHtmlLite(sum.text)}${hubOk ? ` · ${escapeHtmlLite(hubT("hub.serverProfileOk", "Server-Profil ✓"))}` : ` · ${escapeHtmlLite(hubT("hub.serverProfileOpen", "Server-Profil offen"))}`}${sum.done < sum.total ? ` · ${escapeHtmlLite(next)}` : ""}`
+    : `<strong>${escapeHtmlLite(hubT("hub.accountingOff", "Buchhaltung inaktiv"))}</strong> · ${escapeHtmlLite(name)} · ${escapeHtmlLite(hubT("hub.firmIdLine", "Firma {id}", { id: companyId }))} · ${escapeHtmlLite(hubT("hub.activateInAdmin", "bitte im Admin/Plattform aktivieren"))}`;
   el.classList.toggle("is-ok", active && sum.done >= sum.total);
   el.classList.toggle("is-error", !active);
 }
@@ -3360,9 +3396,10 @@ function toggleModeUI() {
   document.body.classList.toggle("annual-mode", isAnnual);
 
   if (modeChip) {
-    modeChip.textContent = isAnnual
-      ? "Modus: Lohnsteuerbescheinigung"
-      : (isMonthly ? "Modus: Lohnabrechnung (monatlich)" : "Modus: Rechnung");
+    const modeLabel = isAnnual
+      ? hubT("doc.annualTax", "Lohnsteuerbescheinigung")
+      : (isMonthly ? hubT("nav.payrollMonthly", "Lohnabrechnung (monatlich)") : hubT("doc.invoice", "Rechnung"));
+    modeChip.textContent = hubT("status.modeOf", "Modus: {mode}", { mode: modeLabel });
   }
 
   syncDocTypeCards(mode);
@@ -5986,12 +6023,14 @@ function setInvoiceItemIncomplete(isIncomplete) {
 }
 
 function updateUiStatusBar() {
-  const isPayroll = getCurrentMode() === "payroll";
+  const mode = getCurrentMode();
   const tt = (k, fb, vars) => {
     const v = window.WorkPassI18n?.t?.(k, vars);
     return (v && v !== k) ? v : fb;
   };
-  const modeLabel = isPayroll ? tt("nav.payrollFull", "Lohnabrechnung") : tt("doc.invoice", "Rechnung");
+  const modeLabel = mode === "payroll-annual"
+    ? tt("doc.annualTax", "Lohnsteuerbescheinigung")
+    : (mode === "payroll" ? tt("nav.payrollFull", "Lohnabrechnung") : tt("doc.invoice", "Rechnung"));
   const visibleIncomplete = document.querySelectorAll(
     ".form-panel input.field-incomplete, .form-panel textarea.field-incomplete, .form-panel select.field-incomplete"
   ).length;
@@ -6804,4 +6843,7 @@ window.addEventListener("workpass:locale", () => {
   window.WorkPassI18n?.applyDom?.(document);
   try { updateLexShellUI(); } catch { /* ignore */ }
   try { updateTopbarForMode(); } catch { /* ignore */ }
+  try { updateUiStatusBar(); } catch { /* ignore */ }
+  try { updateDashboard(); } catch { /* ignore */ }
+  try { window.WorkPassHub?.renderSyncLog?.(); } catch { /* ignore */ }
 });

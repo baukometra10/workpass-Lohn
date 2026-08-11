@@ -224,11 +224,11 @@ body.lexware-app {
 
   white-space: nowrap;
 
-  overflow: hidden;
+  overflow: visible;
 
   text-overflow: ellipsis;
 
-  max-width: 280px;
+  max-width: none;
 
 }
 

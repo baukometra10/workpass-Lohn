@@ -49,7 +49,17 @@
     return { seller, tax, bank, logo, register, layout, datev };
   }
 
-  const LABELS = {
+  const LABEL_KEYS = {
+    seller: "hub.checkSeller",
+    tax: "hub.checkTax",
+    bank: "hub.checkBank",
+    logo: "hub.checkLogo",
+    register: "hub.checkRegister",
+    layout: "hub.checkLayout",
+    datev: "hub.checkDatev",
+  };
+
+  const LABELS_DE = {
     seller: "Firma / Arbeitgeber hinterlegt",
     tax: "Steuernummer oder USt-IdNr.",
     bank: "Bankverbindung Firma (IBAN)",
@@ -58,6 +68,22 @@
     layout: "Lohn-Vorlage gewählt",
     datev: "DATEV-Mandant- oder Berater-Nr.",
   };
+
+  function tt(key, fb, vars) {
+    const v = window.WorkPassI18n?.t?.(key, vars);
+    return (v && v !== key) ? v : fb;
+  }
+
+  function localizedLabels() {
+    const out = {};
+    for (const key of Object.keys(LABELS_DE)) {
+      out[key] = tt(LABEL_KEYS[key], LABELS_DE[key]);
+    }
+    return out;
+  }
+
+  /** @deprecated use localizedLabels(); kept for callers expecting LABELS */
+  const LABELS = LABELS_DE;
 
   /** Hub company-tab field ids for each checklist key */
   const HUB_FIELD_MAP = {
@@ -83,7 +109,8 @@
 
   const ORDER = ["seller", "tax", "bank", "logo", "register", "layout", "datev"];
 
-  function applyToDom(rootId, checks, labels = LABELS) {
+  function applyToDom(rootId, checks, labels) {
+    const resolved = labels || localizedLabels();
     const checklist = document.getElementById(rootId);
     if (!checklist) return;
     const items = checklist.querySelectorAll("li[data-check]");
@@ -94,6 +121,11 @@
         li.classList.toggle("done", done);
         li.classList.toggle("is-next", false);
         li.setAttribute("aria-checked", done ? "true" : "false");
+        const span = li.querySelector("[data-check-label]");
+        if (span && resolved[key]) span.textContent = resolved[key];
+        else if (!span && resolved[key] && !li.querySelector("[data-i18n]")) {
+          /* keep data-i18n spans for applyDom; only rewrite plain text nodes */
+        }
       });
       const next = nextOpen(checks);
       if (next) {
@@ -102,8 +134,8 @@
       }
       return;
     }
-    checklist.innerHTML = Object.keys(labels).map((key) => `
-      <li data-check="${key}" class="${checks[key] ? "done" : ""}${!checks[key] && key === nextOpen(checks) ? " is-next" : ""}" role="checkbox" aria-checked="${checks[key] ? "true" : "false"}">${labels[key]}</li>
+    checklist.innerHTML = Object.keys(resolved).map((key) => `
+      <li data-check="${key}" class="${checks[key] ? "done" : ""}${!checks[key] && key === nextOpen(checks) ? " is-next" : ""}" role="checkbox" aria-checked="${checks[key] ? "true" : "false"}">${resolved[key]}</li>
     `).join("");
   }
 
@@ -111,7 +143,11 @@
     const keys = ORDER.filter((k) => Object.prototype.hasOwnProperty.call(checks, k));
     const list = keys.length ? keys : Object.keys(checks);
     const done = list.filter((k) => checks[k]).length;
-    return { done, total: list.length, text: `${done}/${list.length} Stammdaten erledigt` };
+    return {
+      done,
+      total: list.length,
+      text: tt("hub.checkSummary", "{done}/{total} Stammdaten erledigt", { done, total: list.length }),
+    };
   }
 
   function nextOpen(checks) {
@@ -121,10 +157,11 @@
     return null;
   }
 
-  function nextHint(checks, labels = LABELS) {
+  function nextHint(checks, labels) {
+    const resolved = labels || localizedLabels();
     const key = nextOpen(checks);
-    if (!key) return "Alle Stammdaten sind vollständig.";
-    return `Als Nächstes: ${labels[key] || key}`;
+    if (!key) return tt("hub.checkAllDone", "Alle Stammdaten sind vollständig.");
+    return tt("hub.checkNextHint", "Als Nächstes: {item}", { item: resolved[key] || key });
   }
 
   function focusField(fieldId, { openCompanyTab } = {}) {
