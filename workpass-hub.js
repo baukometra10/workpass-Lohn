@@ -115,20 +115,28 @@ body { margin: 0; font-family: "Barlow", "Segoe UI", sans-serif; color: #121518;
     if (!host) return;
     const list = mergedArchiveList();
     if (!list.length) {
-      host.innerHTML = '<p class="muted small">Noch keine gespeicherten oder freigegebenen Rechnungen.</p>';
+      const empty = (window.WorkPassI18n?.t?.("hub.invoiceArchiveEmpty") && window.WorkPassI18n.t("hub.invoiceArchiveEmpty") !== "hub.invoiceArchiveEmpty")
+        ? window.WorkPassI18n.t("hub.invoiceArchiveEmpty")
+        : "Noch keine gespeicherten oder freigegebenen Rechnungen.";
+      host.innerHTML = `<p class="muted small">${empty}</p>`;
       return;
     }
+    const openLabel = (window.WorkPassI18n?.t?.("lohn.open") && window.WorkPassI18n.t("lohn.open") !== "lohn.open")
+      ? window.WorkPassI18n.t("lohn.open")
+      : "Öffnen";
     host.innerHTML = list.slice(0, 16).map((item) => {
       const badge = item.source === "server"
-        ? '<span class="inv-badge">Server</span>'
-        : (item.source === "both" ? '<span class="inv-badge">Lokal+Server</span>' : '<span class="inv-badge inv-badge-local">Lokal</span>');
+        ? `<span class="inv-badge">${window.WorkPassI18n?.t?.("hub.badgeServer") || "Server"}</span>`
+        : (item.source === "both"
+          ? `<span class="inv-badge">${window.WorkPassI18n?.t?.("hub.badgeBoth") || "Lokal+Server"}</span>`
+          : `<span class="inv-badge inv-badge-local">${window.WorkPassI18n?.t?.("hub.badgeLocal") || "Lokal"}</span>`);
       return `
       <div class="invoice-archive-item" data-number="${escapeAttr(item.number)}" data-server-id="${escapeAttr(item.serverId || "")}">
         <div>
           <strong>${escapeHtml(item.number)}</strong> ${badge}
           <div class="muted small">${escapeHtml(item.buyer || "—")} · ${escapeHtml(item.total || "")}${item.status ? ` · ${escapeHtml(item.status)}` : ""}</div>
         </div>
-        <button type="button" class="inv-open">Öffnen</button>
+        <button type="button" class="inv-open">${openLabel}</button>
       </div>`;
     }).join("");
     host.querySelectorAll(".inv-open").forEach((btn) => {

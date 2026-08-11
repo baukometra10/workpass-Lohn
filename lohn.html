@@ -34,10 +34,10 @@
             <small>Suppix AI · Lohn-Portal</small>
           </div>
         </div>
-        <div class="auth-meta">
-          <div><span>Produkt</span><span data-i18n="app.brand.lohn">WorkPass Lohn</span></div>
-          <div><span>Modus</span><span data-i18n="auth.mode.lohn">Empfang · Freigabe</span></div>
-        </div>
+          <div class="auth-meta">
+            <div><span data-i18n="auth.productMeta">Produkt</span><span data-i18n="app.brand.lohn">WorkPass Lohn</span></div>
+            <div><span data-i18n="auth.modeMeta">Modus</span><span data-i18n="auth.mode.lohn">Empfang · Freigabe</span></div>
+          </div>
         <h1 id="authTitle" data-i18n="auth.unlock">WorkPass Lohn entsperren</h1>
         <p class="auth-hint" id="authHint" data-i18n="auth.hint">Geschützter Buchhaltungszugang · Suppix AI</p>
         <div class="auth-mode-tabs" id="authModeTabs" hidden>
@@ -55,7 +55,7 @@
             <label for="authPin" data-i18n="auth.pin">PIN</label>
             <input id="authPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" placeholder="••••" />
             <div id="authConfirmWrap" hidden>
-              <label for="authPinConfirm">PIN bestätigen</label>
+              <label for="authPinConfirm" data-i18n="auth.pinConfirmLabel">PIN bestätigen</label>
               <input id="authPinConfirm" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8" placeholder="••••" />
             </div>
           </div>
@@ -83,13 +83,13 @@
               <span data-i18n="app.sub.lohn">Suppix AI · Steuerprogramm</span>
             </div>
           </div>
-          <span class="mode-pill" id="modePill" title="Arbeitet unabhängig von der Plattform">Standalone</span>
+          <span class="mode-pill" id="modePill" data-i18n-title="mode.standaloneTitle" title="Arbeitet unabhängig von der Plattform">Standalone</span>
         </div>
 
         <div class="lohn-context">
           <label class="ctx-field">
             <span data-i18n="lohn.companySelect">Firma / Abrechnung</span>
-            <select id="companySelect" title="Gespeicherte Abrechnungen je Firma"></select>
+            <select id="companySelect" data-i18n-title="lohn.savedPayslipsTitle" title="Gespeicherte Abrechnungen je Firma"></select>
           </label>
           <label class="ctx-field ctx-month">
             <span data-i18n="lohn.month">Monat</span>
@@ -165,15 +165,15 @@
             </div>
             <div class="recv-panel" id="panelFile">
               <div class="drop-target" id="dropTarget">
-                <strong>Datei hier ablegen</strong>
-                <span>JSON (platform.payroll.v1) oder CSV – auch ohne Plattform</span>
+                <strong data-i18n="recv.dropTitle">Datei hier ablegen</strong>
+                <span data-i18n="recv.dropHint">JSON (platform.payroll.v1) oder CSV – auch ohne Plattform</span>
               </div>
             </div>
             <div class="recv-panel" id="panelPaste" hidden>
-              <p class="section-hint">JSON aus E-Mail / Plattform-Versand hier einfügen und übernehmen.</p>
+              <p class="section-hint" data-i18n="recv.pasteHint">JSON aus E-Mail / Plattform-Versand hier einfügen und übernehmen.</p>
               <textarea id="pasteInbox" class="paste-box" placeholder='{"kind":"platform.payroll.v1", ...}'></textarea>
               <div class="btn-row">
-                <button type="button" class="primary" id="btnPasteApply">Inbox übernehmen</button>
+                <button type="button" class="primary" id="btnPasteApply" data-i18n="recv.pasteApply">Inbox übernehmen</button>
               </div>
             </div>
             <div class="recv-panel" id="panelApi" hidden>
@@ -235,7 +235,7 @@
                   <p data-i18n="portal.archiveHint">Freigegebene Abrechnungen öffnen und als PDF speichern.</p>
                   <div id="portalArchiveList" class="api-inbox-list"></div>
                   <div class="month-close-actions" style="margin-top:10px">
-                    <button type="button" id="btnPurgeDemo">Beispieldaten entfernen</button>
+                    <button type="button" id="btnPurgeDemo" data-i18n="recv.purgeDemo">Beispieldaten entfernen</button>
                     <button type="button" id="btnRefreshPortal" class="primary" data-i18n="sync.refresh">Portal aktualisieren</button>
                   </div>
                 </section>
@@ -272,45 +272,45 @@
               </div>
               <div class="field-grid">
                 <div class="full">
-                  <label for="apiBaseUrl">API-URL</label>
+                  <label for="apiBaseUrl" data-i18n="api.urlLabel">API-URL</label>
                   <input id="apiBaseUrl" type="url" value="" placeholder="https://… oder http://127.0.0.1:8787" />
                 </div>
                 <div class="full">
-                  <label for="apiKey">API-Key (Railway: WORKPASS_API_KEY)</label>
+                  <label for="apiKey" data-i18n="api.keyLabel">API-Key (Railway: WORKPASS_API_KEY)</label>
                   <input id="apiKey" type="password" value="" placeholder="API-Key eingeben" autocomplete="off" />
                 </div>
                 <div class="full">
-                  <label for="apiCompanyId">Firma-ID (company.id) – Pflicht für Isolation</label>
+                  <label for="apiCompanyId" data-i18n="api.companyId">Firma-ID (company.id) – Pflicht für Isolation</label>
                   <input id="apiCompanyId" type="text" placeholder="z. B. lufthansa" autocomplete="off" />
                 </div>
               </div>
               <div class="btn-row">
-                <button type="button" class="primary" id="btnApiInbox">Inbox laden</button>
-                <button type="button" id="btnApiCompanies">Firmen laden</button>
-                <button type="button" id="btnApiHealth">Server prüfen</button>
+                <button type="button" class="primary" id="btnApiInbox" data-i18n="api.loadInbox">Inbox laden</button>
+                <button type="button" id="btnApiCompanies" data-i18n="api.loadCompanies">Firmen laden</button>
+                <button type="button" id="btnApiHealth" data-i18n="api.checkServer">Server prüfen</button>
               </div>
               <div id="apiCompanyList" class="api-company-list" aria-live="polite"></div>
               <div id="apiInboxList" class="api-inbox-list" aria-live="polite"></div>
             </div>
             <div class="recv-panel" id="panelManual" hidden>
-              <p class="section-hint">Kein Import nötig – Felder unten ausfüllen. Das Blatt aktualisiert sich live.</p>
+              <p class="section-hint" data-i18n="recv.manualHint">Kein Import nötig – Felder unten ausfüllen. Das Blatt aktualisiert sich live.</p>
             </div>
           </section>
 
           <section class="form-section form-fill" id="secNext">
             <div class="step-head">
               <span class="step-num">✓</span>
-              <h2>Ausgabe</h2>
+              <h2 data-i18n="out.title">Ausgabe</h2>
             </div>
             <ul class="flow-list compact" id="liveCheckList" aria-live="polite">
-              <li data-check="data"><strong>○</strong> Daten empfangen / erfasst</li>
-              <li data-check="master"><strong>○</strong> Stammdaten geprüft</li>
-              <li data-check="sheet"><strong>○</strong> Live-Blatt kontrolliert</li>
-              <li data-check="print"><strong>○</strong> Druckbereit (A4)</li>
+              <li data-check="data"><strong>○</strong> <span data-i18n="out.checkData">Daten empfangen / erfasst</span></li>
+              <li data-check="master"><strong>○</strong> <span data-i18n="out.checkMaster">Stammdaten geprüft</span></li>
+              <li data-check="sheet"><strong>○</strong> <span data-i18n="out.checkSheet">Live-Blatt kontrolliert</span></li>
+              <li data-check="print"><strong>○</strong> <span data-i18n="out.checkPrint">Druckbereit (A4)</span></li>
             </ul>
             <div class="btn-row sticky-actions">
-              <button type="button" class="primary glossy" id="btnPrintSide">Drucken</button>
-              <button type="button" class="glossy-secondary" id="btnPdfSide">PDF</button>
+              <button type="button" class="primary glossy" id="btnPrintSide" data-i18n="common.print">Drucken</button>
+              <button type="button" class="glossy-secondary" id="btnPdfSide" data-i18n="common.pdf">PDF</button>
             </div>
           </section>
 
@@ -320,13 +320,13 @@
               <h2 data-i18n="firma.title">Firma &amp; Mitarbeiter</h2>
             </div>
             <div class="company-flow" id="companyFlow">
-              <p class="section-hint">
+              <p class="section-hint" data-i18n="firma.flowHint" data-i18n-html>
                 <strong>Standalone:</strong> Zuerst Firma anlegen, dann Mitarbeiter &amp; Lohnarten.
                 Alles erscheint <em>live</em> auf dem A4-Blatt rechts.
               </p>
               <div class="btn-row">
-                <button type="button" class="primary" id="btnNewCompany">Neue Firma anlegen</button>
-                <button type="button" id="btnFocusEmployee">Zum Mitarbeiter</button>
+                <button type="button" class="primary" id="btnNewCompany" data-i18n="firma.newCompany">Neue Firma anlegen</button>
+                <button type="button" id="btnFocusEmployee" data-i18n="firma.focusEmployee">Zum Mitarbeiter</button>
               </div>
             </div>
             <div class="field-grid mt-block">
@@ -418,29 +418,29 @@
                 <input id="employeeBirthDate" type="date" />
               </div>
               <div>
-                <label for="employeeEntryDate">Eintritt</label>
+                <label for="employeeEntryDate" data-i18n="lohn.entryDate">Eintritt</label>
                 <input id="employeeEntryDate" type="date" />
               </div>
               <div>
-                <label for="churchTaxRate">KiSt %</label>
+                <label for="churchTaxRate" data-i18n="lohn.churchTax">KiSt %</label>
                 <input id="churchTaxRate" type="number" min="0" step="1" value="0" />
               </div>
               <div>
-                <label for="healthFund">Krankenkasse</label>
+                <label for="healthFund" data-i18n="lohn.healthFund">Krankenkasse</label>
                 <select id="healthFund">
-                  <option value="">— bitte wählen —</option>
+                  <option value="" data-i18n="lohn.healthFundPick">— bitte wählen —</option>
                 </select>
               </div>
               <div>
-                <label for="healthPercent">KV AN % (optional)</label>
+                <label for="healthPercent" data-i18n="lohn.healthPercent">KV AN % (optional)</label>
                 <input id="healthPercent" type="number" min="0" step="0.01" placeholder="auto" />
               </div>
               <div>
-                <label for="workDays">Arbeitstage</label>
+                <label for="workDays" data-i18n="lohn.workDays">Arbeitstage</label>
                 <input id="workDays" type="number" min="0" step="1" />
               </div>
               <div>
-                <label for="workHours">Stunden</label>
+                <label for="workHours" data-i18n="lohn.workHours">Stunden</label>
                 <input id="workHours" type="number" min="0" step="0.01" />
               </div>
             </div>
@@ -455,8 +455,8 @@
               <thead>
                 <tr>
                   <th>LA</th>
-                  <th>Bezeichnung</th>
-                  <th>Anz.</th>
+                  <th data-i18n="lohn.wageName">Bezeichnung</th>
+                  <th data-i18n="lohn.wageQty">Anz.</th>
                   <th>€</th>
                   <th>St</th>
                   <th>SV</th>
@@ -466,10 +466,10 @@
               <tbody id="wageBody"></tbody>
             </table>
             <div class="btn-row">
-              <button type="button" id="btnAddWage">+ Lohnart</button>
+              <button type="button" id="btnAddWage" data-i18n="lohn.addWage">+ Lohnart</button>
             </div>
             <div class="wage-presets" id="wagePresets" aria-label="Schnell-Lohnarten"></div>
-            <p class="section-hint tiny">Hinweis: Lohnart „Abzug / Einbehalt“ (St=F, SV=N) reduziert nur den Auszahlungsbetrag – nicht das Steuer-/SV-Brutto. VWL als Bezug bleibt bruttowirksam.</p>
+            <p class="section-hint tiny" data-i18n="lohn.wageHint">Hinweis: Lohnart „Abzug / Einbehalt“ (St=F, SV=N) reduziert nur den Auszahlungsbetrag – nicht das Steuer-/SV-Brutto. VWL als Bezug bleibt bruttowirksam.</p>
           </section>
 
           <section class="form-section step" id="secSteuerSv">
@@ -479,15 +479,15 @@
             </div>
             <div class="field-grid">
               <div>
-                <label for="churchConfession">Konfession</label>
+                <label for="churchConfession" data-i18n="lohn.confession">Konfession</label>
                 <select id="churchConfession">
-                  <option value="">— keine / ohne KiSt —</option>
+                  <option value="" data-i18n="lohn.confessionNone">— keine / ohne KiSt —</option>
                   <option value="ev">evangelisch (ev)</option>
                   <option value="rk">römisch-katholisch (rk)</option>
                 </select>
               </div>
               <div>
-                <label for="employmentType">Beschäftigung</label>
+                <label for="employmentType" data-i18n="lohn.employment">Beschäftigung</label>
                 <select id="employmentType">
                   <option value="auto">Auto (nach SV-Brutto)</option>
                   <option value="regular">Voll SV-pflichtig</option>
@@ -604,10 +604,10 @@
           </div>
           <div class="preview-stage">
             <div id="previewEmpty" class="preview-empty" hidden>
-              <strong>Noch keine Abrechnung geladen</strong>
-              <span>Echte Daten von der Plattform empfangen, Datei importieren oder manuell erfassen.</span>
+              <strong data-i18n="lohn.previewEmpty">Noch keine Abrechnung geladen</strong>
+              <span data-i18n="lohn.previewEmptyHint">Echte Daten von der Plattform empfangen, Datei importieren oder manuell erfassen.</span>
               <div class="preview-empty-actions">
-                <button type="button" class="primary glossy" id="btnPreviewEmpfang">Zum Empfang</button>
+                <button type="button" class="primary glossy" id="btnPreviewEmpfang" data-i18n="lohn.toInbox">Zum Empfang</button>
               </div>
             </div>
             <div id="datevSheetHost" class="datev-sheet-host" aria-label="Abrechnungsvorschau"></div>
@@ -626,13 +626,13 @@
     <script src="templates.js?v=1"></script>
     <script src="datev-sheet.js?v=42"></script>
     <script src="payroll-core.js?v=22"></script>
-    <script src="workpass-i18n-packs.js?v=4"></script>
+    <script src="workpass-i18n-packs.js?v=5"></script>
     <script src="workpass-i18n.js?v=5"></script>
     <script src="auth-gate.js?v=13"></script>
     <script src="mandant-checklist.js?v=3"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="workpass-pwa.js?v=1"></script>
-    <script src="lohn-app.js?v=61"></script>
+    <script src="lohn-app.js?v=62"></script>
   </body>
 </html>

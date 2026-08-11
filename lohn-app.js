@@ -899,10 +899,10 @@
   }
 
   const MONTH_STEPS = [
-    { id: "pull", label: "Daten von Plattform holen" },
-    { id: "calc", label: "Abrechnungen berechnen" },
-    { id: "release", label: "An Plattform / Mitarbeiter senden" },
-    { id: "done", label: "Abschluss" },
+    { id: "pull", labelKey: "month.stepPull", label: "Daten von Plattform holen" },
+    { id: "calc", labelKey: "month.stepCalc", label: "Abrechnungen berechnen" },
+    { id: "release", labelKey: "month.stepRelease", label: "An Plattform / Mitarbeiter senden" },
+    { id: "done", labelKey: "month.stepDone", label: "Abschluss" },
   ];
 
   function renderMonthProgress(activeId, opts = {}) {
@@ -916,7 +916,7 @@
       : Math.round(((activeIdx + (opts.partial || 0)) / MONTH_STEPS.length) * 100);
     host.innerHTML = `
       <div class="month-progress-head">
-        <span>${esc(opts.title || "Monatsabschluss läuft")}</span>
+        <span>${esc(opts.title || uiT("month.running", "Monatsabschluss läuft"))}</span>
         <strong>${pct}%</strong>
       </div>
       <div class="month-progress-track" aria-hidden="true">
@@ -926,7 +926,8 @@
         ${MONTH_STEPS.map((step, i) => {
           const st = states[step.id] || (i < activeIdx ? "done" : (i === activeIdx ? "active" : "todo"));
           const mark = st === "done" ? "✓" : st === "active" ? "●" : st === "skip" ? "–" : "○";
-          return `<li class="mp-step mp-${st}"><span class="mp-mark">${mark}</span><span>${esc(step.label)}</span></li>`;
+          const label = uiT(step.labelKey, step.label);
+          return `<li class="mp-step mp-${st}"><span class="mp-mark">${mark}</span><span>${esc(label)}</span></li>`;
         }).join("")}
       </ol>`;
   }
