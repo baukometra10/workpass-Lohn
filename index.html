@@ -12,7 +12,7 @@
     />
     <link rel="stylesheet" href="styles.css?v=42" />
     <link rel="stylesheet" href="agenda-reference.css?v=6" />
-    <link rel="stylesheet" href="app-ui.css?v=16" />
+    <link rel="stylesheet" href="app-ui.css?v=17" />
     <link rel="stylesheet" href="payroll-layouts.css?v=21" />
     <link rel="stylesheet" href="datev-layout.css?v=10" />
     <link rel="stylesheet" href="datev-ref-overlay.css?v=2" />
@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="verdienst-sheet.css?v=1" />
     <link rel="stylesheet" href="annual-certificate.css?v=3" />
     <link rel="stylesheet" href="documents-bw.css?v=1" />
-    <link rel="stylesheet" href="workpass-theme.css?v=14" />
+    <link rel="stylesheet" href="workpass-theme.css?v=15" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0b1220" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -190,10 +190,10 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H8c-1.1 0-2 .9-2 2v4H4v12h16V8h-4V4h2v4h4v12H6V8h2V4c0-1.1.9-2 2-2h10zM10 10h8v2h-8v-2zm0 4h8v2h-8v-2z" fill="currentColor"/></svg>
                 PDF
               </button>
-              <button id="printVerdienstBtn" type="button" class="lex-ribbon-btn mode-payroll-only hidden" title="Verdienstbescheinigung drucken">
+              <button id="printVerdienstBtn" type="button" class="lex-ribbon-btn mode-payroll-only hidden" title="Verdienstbescheinigung drucken" data-i18n-title="hub.printVbTitle">
                 VB
               </button>
-              <button id="previewVerdienstBtn" type="button" class="lex-ribbon-btn mode-payroll-only hidden" title="Verdienstbescheinigung anzeigen">
+              <button id="previewVerdienstBtn" type="button" class="lex-ribbon-btn lex-ribbon-btn-wide mode-payroll-only hidden" title="Verdienstbescheinigung anzeigen" data-i18n="hub.showVb" data-i18n-title="hub.showVbTitle">
                 VB anzeigen
               </button>
               <button id="printBtn" type="button" class="lex-ribbon-btn lex-ribbon-btn-primary" title="Drucken (Strg+P)" data-i18n="common.print">
@@ -396,54 +396,54 @@
             </section>
 
             <section class="form-section">
-            <h2 class="form-section-title">Dokumenttyp</h2>
-            <div class="doc-type-picker" role="radiogroup" aria-label="Dokumenttyp">
+            <h2 class="form-section-title" data-i18n="doc.typeTitle">Dokumenttyp</h2>
+            <div class="doc-type-picker" role="radiogroup" data-i18n-aria="doc.typeTitle" aria-label="Dokumenttyp">
               <button type="button" class="doc-type-card active" data-doc-type="invoice" aria-pressed="true">
-                <strong>Rechnung</strong>
-                <span>§ 14 UStG · PDF &amp; CSV</span>
+                <strong data-i18n="doc.invoice">Rechnung</strong>
+                <span data-i18n="doc.invoiceSub">§ 14 UStG · PDF &amp; CSV</span>
               </button>
               <button type="button" class="doc-type-card" data-doc-type="payroll" aria-pressed="false">
-                <strong>Lohnabrechnung</strong>
-                <span>Monatlich · Agenda-Standard</span>
+                <strong data-i18n="doc.payroll">Lohnabrechnung</strong>
+                <span data-i18n="doc.payrollSub">Monatlich · Agenda-Standard</span>
               </button>
               <button type="button" class="doc-type-card" data-doc-type="payroll-annual" aria-pressed="false">
-                <strong>Lohnsteuerbescheinigung</strong>
-                <span>Jährlich · ELSTER-Format</span>
+                <strong data-i18n="doc.payrollAnnual">Lohnsteuerbescheinigung</strong>
+                <span data-i18n="doc.payrollAnnualSub">Jährlich · ELSTER-Format</span>
               </button>
             </div>
             <select id="documentType" class="doc-type-select-hidden" aria-hidden="true" tabindex="-1">
-              <option value="invoice" selected>Normale Rechnung (§ 14 UStG)</option>
-              <option value="payroll">Lohnabrechnung (monatlich)</option>
-              <option value="payroll-annual">Lohnsteuerbescheinigung (jährlich)</option>
+              <option value="invoice" selected data-i18n="doc.optInvoice">Normale Rechnung (§ 14 UStG)</option>
+              <option value="payroll" data-i18n="doc.optPayroll">Lohnabrechnung (monatlich)</option>
+              <option value="payroll-annual" data-i18n="doc.optAnnual">Lohnsteuerbescheinigung (jährlich)</option>
             </select>
             </section>
 
             <section class="form-section">
-            <h2 class="form-section-title">Dokumentdaten</h2>
+            <h2 class="form-section-title" data-i18n="doc.dataTitle">Dokumentdaten</h2>
 
             <div class="grid two-col">
               <label>
-                Dokumentnummer
+                <span data-i18n="doc.number">Dokumentnummer</span>
                 <input id="invoiceNumber" type="text" placeholder="RE-2026-0001" />
               </label>
               <label>
-                Erstellungsdatum
+                <span data-i18n="doc.created">Erstellungsdatum</span>
                 <input id="invoiceDate" type="date" />
               </label>
               <label class="mode-invoice-only">
-                Leistungsdatum
+                <span data-i18n="doc.serviceDate">Leistungsdatum</span>
                 <input id="serviceDate" type="date" />
               </label>
               <label class="mode-invoice-only">
-                Fälligkeitsdatum
+                <span data-i18n="doc.dueDate">Fälligkeitsdatum</span>
                 <input id="dueDate" type="date" />
               </label>
               <label class="mode-invoice-only">
-                Umsatzsteuer
+                <span data-i18n="doc.vat">Umsatzsteuer</span>
                 <select id="taxRate">
-                  <option value="0">0 % (steuerfrei / § 19 UStG)</option>
-                  <option value="7">7 % (ermäßigt)</option>
-                  <option value="19" selected>19 % (Regelsteuersatz)</option>
+                  <option value="0" data-i18n="doc.vat0">0 % (steuerfrei / § 19 UStG)</option>
+                  <option value="7" data-i18n="doc.vat7">7 % (ermäßigt)</option>
+                  <option value="19" selected data-i18n="doc.vat19">19 % (Regelsteuersatz)</option>
                 </select>
               </label>
             </div>
@@ -451,38 +451,38 @@
             <div class="grid two-col mode-invoice-only">
               <label>
                 <input id="kleinunternehmer" type="checkbox" />
-                Kleinunternehmer (§ 19 UStG – keine USt ausweisen)
+                <span data-i18n="doc.klein">Kleinunternehmer (§ 19 UStG – keine USt ausweisen)</span>
               </label>
               <label>
                 <input id="reverseCharge" type="checkbox" />
-                Reverse-Charge (§ 13b UStG)
+                <span data-i18n="doc.reverse">Reverse-Charge (§ 13b UStG)</span>
               </label>
             </div>
 
             <div class="grid two-col">
               <label>
-                Absender / Arbeitgeber
+                <span data-i18n="doc.seller">Absender / Arbeitgeber</span>
                 <textarea id="seller" rows="5" placeholder="Muster GmbH&#10;Musterstraße 1&#10;12345 Musterstadt"></textarea>
               </label>
               <label>
-                Empfänger / Mitarbeiter-Adresse
+                <span data-i18n="doc.customer">Empfänger / Mitarbeiter-Adresse</span>
                 <textarea id="customer" rows="5" placeholder="Kunde GmbH&#10;Beispielweg 7&#10;54321 Ort"></textarea>
               </label>
             </div>
 
             <div class="items-header mode-invoice-only">
-              <h3>Positionen</h3>
-              <button id="addItemBtn" type="button">+ Position</button>
+              <h3 data-i18n="doc.items">Positionen</h3>
+              <button id="addItemBtn" type="button" data-i18n="doc.addItem">+ Position</button>
             </div>
 
             <div class="items-table-wrap mode-invoice-only">
               <table class="items-table">
                 <thead>
                   <tr>
-                    <th>Beschreibung</th>
-                    <th>Menge</th>
-                    <th>Einzelpreis (EUR)</th>
-                    <th>Gesamt (EUR)</th>
+                    <th data-i18n="doc.desc">Beschreibung</th>
+                    <th data-i18n="doc.qty">Menge</th>
+                    <th data-i18n="doc.unitPrice">Einzelpreis (EUR)</th>
+                    <th data-i18n="doc.lineTotal">Gesamt (EUR)</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -491,19 +491,19 @@
             </div>
 
             <label>
-              Notiz / Zahlungsbedingungen
+              <span data-i18n="doc.note">Notiz / Zahlungsbedingungen</span>
               <textarea id="note" rows="3" placeholder="Zahlbar ohne Abzug innerhalb von 14 Tagen."></textarea>
             </label>
 
             <section class="signature-pad-wrap mode-invoice-only" id="signatureSection">
               <div class="signature-head">
-                <h3>Signatur</h3>
-                <button id="clearSignatureBtn" type="button" class="secondary-btn">Zurücksetzen</button>
+                <h3 data-i18n="doc.signature">Signatur</h3>
+                <button id="clearSignatureBtn" type="button" class="secondary-btn" data-i18n="action.reset">Zurücksetzen</button>
               </div>
-              <p class="signature-help">Alle Optionen: Firmen-Auto, stilvolle Namenssignatur, manuell zeichnen oder ohne Unterschrift.</p>
+              <p class="signature-help" data-i18n="doc.sigHelp">Alle Optionen: Firmen-Auto, stilvolle Namenssignatur, manuell zeichnen oder ohne Unterschrift.</p>
               <div class="sig-mode-row" id="signatureModeRow" role="radiogroup" aria-label="Signatur-Modus"></div>
               <label class="sig-name-field">
-                Name für Signatur
+                <span data-i18n="doc.sigName">Name für Signatur</span>
                 <input id="signatureName" type="text" placeholder="z. B. Alex Müller oder Jon" autocomplete="name" />
                 <div id="signatureStyleHat" class="sig-style-hat" hidden role="listbox" aria-label="Signaturstile"></div>
               </label>
@@ -511,7 +511,7 @@
               <div class="sig-style-grid" id="signatureStyleGrid" hidden aria-hidden="true"></div>
               <div class="sig-draw-panel" id="signatureDrawPanel" hidden>
                 <canvas id="signaturePad" width="700" height="220" aria-label="Signaturfeld"></canvas>
-                <p class="signature-help">Mit Maus oder Finger unterschreiben.</p>
+                <p class="signature-help" data-i18n="doc.sigDraw">Mit Maus oder Finger unterschreiben.</p>
               </div>
               <p class="signature-help" id="signatureModeHint"></p>
               <div class="sig-advanced-box" id="signatureAdvancedBox">
@@ -594,98 +594,98 @@
 
             <div class="grid two-col">
               <label>
-                Profil auswählen
+                <span data-i18n="co.pickProfile">Profil auswählen</span>
                 <select id="companyProfileSelect"></select>
               </label>
               <label>
-                Profilname
+                <span data-i18n="co.profileName">Profilname</span>
                 <input id="companyProfileName" type="text" placeholder="z. B. Müller GmbH" />
               </label>
             </div>
 
             <div class="tool-row">
-              <button id="saveCompanyProfileBtn" type="button" class="secondary-btn">Profil speichern</button>
-              <button id="syncCompanyProfileBtn" type="button" class="secondary-btn">Mit Server synchronisieren</button>
-              <button id="newCompanyProfileBtn" type="button" class="secondary-btn">Neues Profil</button>
-              <button id="deleteCompanyProfileBtn" type="button" class="secondary-btn danger-btn">Profil löschen</button>
+              <button id="saveCompanyProfileBtn" type="button" class="secondary-btn" data-i18n="co.saveProfile">Profil speichern</button>
+              <button id="syncCompanyProfileBtn" type="button" class="secondary-btn" data-i18n="co.syncServer">Mit Server synchronisieren</button>
+              <button id="newCompanyProfileBtn" type="button" class="secondary-btn" data-i18n="co.newProfile">Neues Profil</button>
+              <button id="deleteCompanyProfileBtn" type="button" class="secondary-btn danger-btn" data-i18n="co.deleteProfile">Profil löschen</button>
             </div>
-            <p class="muted small" id="mandantProfileSyncHint">Lokal gespeichert. Mit Firmen-Login zusätzlich auf dem Server.</p>
+            <p class="muted small" id="mandantProfileSyncHint" data-i18n="co.syncHint">Lokal gespeichert. Mit Firmen-Login zusätzlich auf dem Server.</p>
 
             <section class="logo-upload-box">
-              <h3>Firmenlogo</h3>
-              <p class="muted small">PNG oder JPG, max. 2 MB – erscheint auf Rechnung und Lohnabrechnung.</p>
+              <h3 data-i18n="co.logoTitle">Firmenlogo</h3>
+              <p class="muted small" data-i18n="co.logoHint">PNG oder JPG, max. 2 MB – erscheint auf Rechnung und Lohnabrechnung.</p>
               <div class="logo-upload-row">
                 <label class="logo-file-label">
-                  Logo auswählen
+                  <span data-i18n="co.logoPick">Logo auswählen</span>
                   <input id="companyLogoInput" type="file" accept="image/png,image/jpeg,image/webp" />
                 </label>
-                <button id="removeLogoBtn" type="button" class="secondary-btn danger-btn">Logo entfernen</button>
+                <button id="removeLogoBtn" type="button" class="secondary-btn danger-btn" data-i18n="co.logoRemove">Logo entfernen</button>
               </div>
               <img id="companyLogoPreview" class="company-logo-preview hidden" alt="Logo-Vorschau" />
             </section>
 
             <label>
-              Firma / Arbeitgeber (Anschrift)
+              <span data-i18n="co.sellerAddr">Firma / Arbeitgeber (Anschrift)</span>
               <textarea id="companySeller" rows="3" placeholder="Muster GmbH&#10;Musterstraße 1&#10;80331 München"></textarea>
             </label>
-            <p class="muted small">Wird mit dem Feld „Verkäufer“ im Beleg synchronisiert.</p>
+            <p class="muted small" data-i18n="co.sellerSync">Wird mit dem Feld „Verkäufer“ im Beleg synchronisiert.</p>
 
             <div class="grid two-col">
               <label>
-                Steuernummer
+                <span data-i18n="co.taxNumber">Steuernummer</span>
                 <input id="taxNumber" type="text" placeholder="12/345/67890" />
               </label>
               <label>
-                USt-IdNr.
+                <span data-i18n="co.vatId">USt-IdNr.</span>
                 <input id="vatId" type="text" placeholder="DE123456789" />
               </label>
               <label>
-                Handelsregister
+                <span data-i18n="co.register">Handelsregister</span>
                 <input id="commercialRegister" type="text" placeholder="HRB 12345 Amtsgericht …" />
               </label>
               <label>
-                Geschäftsführer
+                <span data-i18n="co.director">Geschäftsführer</span>
                 <input id="managingDirector" type="text" placeholder="Max Mustermann" />
               </label>
               <label>
-                Bank
+                <span data-i18n="co.bank">Bank</span>
                 <input id="companyBankName" type="text" placeholder="Musterbank AG" />
               </label>
               <label>
-                IBAN (Firma)
+                <span data-i18n="co.iban">IBAN (Firma)</span>
                 <input id="companyIban" type="text" placeholder="DE00 0000 0000 0000 0000 00" />
               </label>
               <label>
-                BIC (Firma)
+                <span data-i18n="co.bic">BIC (Firma)</span>
                 <input id="companyBic" type="text" placeholder="GENODE00XXX" />
               </label>
               <label>
-                DATEV-Mandant-Nr.
+                <span data-i18n="co.datevClient">DATEV-Mandant-Nr.</span>
                 <input id="datevClientNo" type="text" placeholder="z. B. 10001" />
               </label>
               <label>
-                DATEV-Berater-Nr.
+                <span data-i18n="co.datevConsultant">DATEV-Berater-Nr.</span>
                 <input id="datevConsultantNo" type="text" placeholder="z. B. 12345" />
               </label>
               <label>
-                Lohn-Vorlage
+                <span data-i18n="co.payrollLayout">Lohn-Vorlage</span>
                 <select id="payrollLayoutSelect"></select>
               </label>
             </div>
             <p id="payrollLayoutDescription" class="layout-description"></p>
 
             <section class="letterhead-box">
-              <h3>Briefkopf &amp; Fußzeile (Lohnabrechnung)</h3>
-              <p class="muted small">Erscheint auf jeder Lohnabrechnung im PDF – z. B. Abteilung im Kopf, Impressum in der Fußzeile.</p>
+              <h3 data-i18n="co.letterhead">Briefkopf &amp; Fußzeile (Lohnabrechnung)</h3>
+              <p class="muted small" data-i18n="co.letterheadHint">Erscheint auf jeder Lohnabrechnung im PDF – z. B. Abteilung im Kopf, Impressum in der Fußzeile.</p>
               <label>
-                Zusatzzeile unter Firmenname
+                <span data-i18n="co.headerLine">Zusatzzeile unter Firmenname</span>
                 <input id="payrollHeaderLine" type="text" placeholder="z. B. Personalabteilung · Lohnbuchhaltung" />
               </label>
               <label>
-                Fußzeile (mehrzeilig)
+                <span data-i18n="co.footerLine">Fußzeile (mehrzeilig)</span>
                 <textarea id="payrollFooterLine" rows="3" placeholder="Geschäftsführer · Handelsregister · Bankverbindung"></textarea>
               </label>
-              <p class="muted small">Leer lassen = Fußzeile wird automatisch aus Geschäftsführer, HRB und Firmenbank erzeugt.</p>
+              <p class="muted small" data-i18n="co.footerAuto">Leer lassen = Fußzeile wird automatisch aus Geschäftsführer, HRB und Firmenbank erzeugt.</p>
             </section>
 
             <section class="data-backup-box">
@@ -1745,14 +1745,14 @@
     <script src="elster-export.js?v=1"></script>
     <script src="datev-sheet.js?v=42"></script>
     <script src="payroll-core.js?v=22"></script>
-    <script src="workpass-i18n-packs.js?v=6"></script>
+    <script src="workpass-i18n-packs.js?v=7"></script>
     <script src="workpass-i18n.js?v=6"></script>
     <script src="workpass-pwa.js?v=2"></script>
     <script src="auth-gate.js?v=13"></script>
     <script src="mandant-checklist.js?v=4"></script>
-    <script src="workpass-hub.js?v=10"></script>
+    <script src="workpass-hub.js?v=11"></script>
     <script src="templates.js?v=1" defer></script>
     <script src="signature-engine.js?v=4"></script>
-    <script src="script.js?v=83" defer></script>
+    <script src="script.js?v=84" defer></script>
   </body>
 </html>

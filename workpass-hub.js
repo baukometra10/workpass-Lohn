@@ -318,7 +318,7 @@ body { margin: 0; font-family: "Barlow", "Segoe UI", sans-serif; color: #121518;
         if (badge) {
           if (companyUser) {
             badge.hidden = false;
-            badge.textContent = `Firma · ${user.companyId}`;
+            badge.textContent = t("hub.firmLine", "Firma · {id}", { id: user.companyId });
           } else {
             badge.hidden = true;
           }

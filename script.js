@@ -540,26 +540,26 @@ function initLexShell() {
   const menuPortal = document.getElementById("lexMenuPortal");
   const menuActions = {
     file: [
-      { label: "Entwurf speichern", action: () => saveDraft(true) },
-      { label: "Entwurf laden", action: () => loadDraft(true) },
-      { label: "Als Vorlage duplizieren", action: () => duplicateDocBtn?.click() },
-      { label: "Datensicherung exportieren", action: () => exportDataBtn?.click() },
+      { key: "menu.saveDraft", fb: "Entwurf speichern", action: () => saveDraft(true) },
+      { key: "menu.loadDraft", fb: "Entwurf laden", action: () => loadDraft(true) },
+      { key: "menu.dupTemplate", fb: "Als Vorlage duplizieren", action: () => duplicateDocBtn?.click() },
+      { key: "menu.exportBackup", fb: "Datensicherung exportieren", action: () => exportDataBtn?.click() },
     ],
     edit: [
-      { label: "Zurücksetzen", action: () => resetBtn?.click() },
-      { label: "Gesetzliche Sätze übernehmen", action: () => applyLegalRatesBtn?.click() },
+      { key: "action.reset", fb: "Zurücksetzen", action: () => resetBtn?.click() },
+      { key: "menu.applyLegal", fb: "Gesetzliche Sätze übernehmen", action: () => applyLegalRatesBtn?.click() },
     ],
     view: [
-      { label: "Übersicht", action: () => document.querySelector('.form-tab[data-tab="dashboard"]')?.click() },
-      { label: "Beleg erfassen", action: () => document.querySelector('.form-tab[data-tab="document"]')?.click() },
-      { label: "Vorschau 100 %", action: () => { if (previewZoomInput) { previewZoomInput.value = "100"; applyPreviewZoom(); } } },
+      { key: "menu.overview", fb: "Übersicht", action: () => document.querySelector('.form-tab[data-tab="dashboard"]')?.click() },
+      { key: "menu.createDoc", fb: "Beleg erfassen", action: () => document.querySelector('.form-tab[data-tab="document"]')?.click() },
+      { key: "menu.zoom100", fb: "Vorschau 100 %", action: () => { if (previewZoomInput) { previewZoomInput.value = "100"; applyPreviewZoom(); } } },
     ],
     export: [
-      { label: "PDF exportieren", action: () => pdfExportBtn?.click() },
-      { label: "Drucken", action: () => printBtn?.click() },
-      { label: "Rechnung CSV", action: () => csvExportBtn?.click() },
-      { label: "DATEV CSV (Lohn)", action: () => datevCsvExportBtn?.click() },
-      { label: "ELSTER-XML", action: () => elsterXmlExportBtn?.click() },
+      { key: "menu.exportPdf", fb: "PDF exportieren", action: () => pdfExportBtn?.click() },
+      { key: "menu.print", fb: "Drucken", action: () => printBtn?.click() },
+      { key: "menu.invoiceCsv", fb: "Rechnung CSV", action: () => csvExportBtn?.click() },
+      { key: "menu.datevCsv", fb: "DATEV CSV (Lohn)", action: () => datevCsvExportBtn?.click() },
+      { key: "menu.elsterXml", fb: "ELSTER-XML", action: () => elsterXmlExportBtn?.click() },
     ],
   };
 
@@ -574,11 +574,16 @@ function initLexShell() {
       if (!menuPortal || !menuActions[menu]) return;
       const rect = btn.getBoundingClientRect();
       menuPortal.innerHTML = menuActions[menu].map((item, i) => (
-        `<button type="button" data-menu-idx="${i}">${item.label}</button>`
+        `<button type="button" data-menu-idx="${i}">${escapeHtmlLite(hubT(item.key, item.fb))}</button>`
       )).join("");
       menuPortal.hidden = false;
-      menuPortal.style.left = `${rect.left}px`;
+      menuPortal.style.visibility = "hidden";
+      menuPortal.style.left = "0px";
       menuPortal.style.top = `${rect.bottom + 2}px`;
+      const mw = Math.max(menuPortal.offsetWidth || 220, 220);
+      const left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - mw - 8));
+      menuPortal.style.left = `${left}px`;
+      menuPortal.style.visibility = "";
       menuPortal.querySelectorAll("button").forEach((itemBtn, idx) => {
         itemBtn.addEventListener("click", () => {
           menuPortal.hidden = true;
@@ -1329,13 +1334,13 @@ async function pullCompanyProfileFromBridge({ force = false } = {}) {
     renderMandantAccountingStatus();
     setMandantSyncHint(
       company.meta?.hubProfile
-        ? `Vom Server geladen · ${company.name || companyId}`
-        : `Firma vom Server · Stammdaten-Erweiterung noch lokal`,
+        ? hubT("hub.loadedFromServer", "Vom Server geladen · {name}", { name: company.name || companyId })
+        : hubT("hub.fromServerLocal", "Firma vom Server · Stammdaten-Erweiterung noch lokal"),
       { error: false }
     );
     return { ok: true, company };
   } catch (err) {
-    setMandantSyncHint(err?.message || "Laden vom Server fehlgeschlagen.", { error: true });
+    setMandantSyncHint(err?.message || hubT("hub.loadServerFail", "Laden vom Server fehlgeschlagen."), { error: true });
     return { ok: false, error: err?.message };
   }
 }
@@ -1389,17 +1394,31 @@ async function updateDashboard() {
 
   const localMeta = document.getElementById("dashLocalMeta");
   if (!firm) {
-    hubSetText("dashWelcomeText", `Mandant „${profileName}“ · ${monthCount} gespeicherte Lohn-Monate`);
+    hubSetText("dashWelcomeText", hubT("hub.welcomeLocal", "Mandant „{name}“ · {n} gespeicherte Lohn-Monate", {
+      name: profileName,
+      n: monthCount,
+    }));
     if (localMeta) localMeta.textContent = "";
     return;
   }
 
   const user = window.WorkPassAuth?.getSessionUser?.();
   const companyId = user?.companyId || hubApiConfig().companyId || "—";
-  hubSetText("dashWelcomeText", `Firma · ${companyId}`);
+  hubSetText("dashWelcomeText", hubT("hub.firmLine", "Firma · {id}", { id: companyId }));
   if (localMeta) {
-    const ws = hubWorkspace?.accountingEnabled === false ? "Buchhaltung inaktiv" : "Buchhaltung aktiv";
-    localMeta.textContent = `${ws} · Lokal: Mandant „${profileName}“ · ${monthCount} Lohn-Monate · Archiv ${window.WorkPassHub?.readInvoiceArchive?.()?.length || 0}`;
+    const ws = hubWorkspace?.accountingEnabled === false
+      ? hubT("hub.accountingOff", "Buchhaltung inaktiv")
+      : hubT("hub.accountingOn", "Buchhaltung aktiv");
+    localMeta.textContent = hubT(
+      "hub.localMeta",
+      "{ws} · Lokal: Mandant „{name}“ · {n} Lohn-Monate · Archiv {a}",
+      {
+        ws,
+        name: profileName,
+        n: monthCount,
+        a: window.WorkPassHub?.readInvoiceArchive?.()?.length || 0,
+      }
+    );
   }
 
   const period = hubCurrentPeriod();
@@ -1431,13 +1450,13 @@ async function updateDashboard() {
     const pending = Number(sync?.pending?.messages || 0) + Number(sync?.pending?.deliveries || 0);
     const wh = sync?.webhook?.last || {};
     let statusLine = syncLabel === "OK"
-      ? `Sync OK · Monat ${period}`
+      ? hubT("hub.syncOkMonth", "Sync OK · Monat {period}", { period })
       : syncLabel === "Wartet"
-        ? `Warte auf Plattform · ${pending} offen · Monat ${period}`
+        ? hubT("hub.waitMonth", "Warte auf Plattform · {n} offen · Monat {period}", { n: pending, period })
         : syncLabel === "Fehler"
-          ? `Webhook-Fehler ${wh.status || ""} · Monat ${period}`
-          : `Sync ${syncLabel} · Monat ${period}`;
-    hubSetText("dashWelcomeText", `Firma · ${companyId} · ${statusLine}`);
+          ? hubT("hub.webhookMonth", "Webhook-Fehler {status} · Monat {period}", { status: wh.status || "", period })
+          : hubT("hub.syncMonth", "Sync {label} · Monat {period}", { label: syncLabel, period });
+    hubSetText("dashWelcomeText", `${hubT("hub.firmLine", "Firma · {id}", { id: companyId })} · ${statusLine}`);
     const hint = hubFormatAutoSyncHint(sync);
     if (!document.getElementById("dashSyncStatus")?.textContent || document.getElementById("dashSyncStatus")?.hidden) {
       hubShowSyncStatus(hint.text, { error: hint.error, nextActions: hint.nextActions });
@@ -1454,8 +1473,11 @@ async function updateDashboard() {
     hubSetText("dashKpiFirmReleased", "—");
     hubSetText("dashKpiFirmInvoices", "—");
     hubSetText("dashKpiFirmMessages", "—");
-    hubSetText("dashKpiFirmSync", "Offline");
-    hubSetText("dashWelcomeText", `Firma · ${companyId} · Bridge offline (${err?.message || "Login/API"})`);
+    hubSetText("dashKpiFirmSync", hubT("hub.offline", "Offline"));
+    hubSetText("dashWelcomeText", hubT("hub.bridgeOffline", "Firma · {id} · Bridge offline ({err})", {
+      id: companyId,
+      err: err?.message || "Login/API",
+    }));
   }
 }
 
@@ -4511,21 +4533,25 @@ function updateInvoiceComplianceList() {
   if (!invoiceComplianceList) return;
   const isKlein = kleinunternehmerInput?.checked;
   const checks = [
-    { ok: Boolean(sellerInput.value.trim()), label: "Name und Anschrift des leistenden Unternehmers" },
-    { ok: Boolean(customerInput.value.trim()), label: "Name und Anschrift des Leistungsempfängers" },
-    { ok: Boolean(invoiceNumberInput.value.trim()), label: "Fortlaufende Rechnungsnummer" },
-    { ok: Boolean(invoiceDateInput.value), label: "Ausstellungsdatum" },
-    { ok: Boolean(serviceDateInput?.value || invoiceDateInput.value), label: "Leistungsdatum" },
-    { ok: getRowsData().some((i) => i.description && i.quantity > 0), label: "Menge und Art der Leistung" },
-    { ok: getRowsData().some((i) => i.price >= 0 && i.total >= 0), label: "Entgelt (netto)" },
-    { ok: isKlein || Boolean(taxRateInput.value), label: isKlein ? "Hinweis § 19 UStG" : "Steuersatz und Steuerbetrag" },
-    { ok: Boolean(taxNumberInput?.value?.trim() || vatIdInput?.value?.trim()), label: "Steuernummer oder USt-IdNr." },
+    { ok: Boolean(sellerInput.value.trim()), key: "comp.seller", fb: "Name und Anschrift des leistenden Unternehmers" },
+    { ok: Boolean(customerInput.value.trim()), key: "comp.customer", fb: "Name und Anschrift des Leistungsempfängers" },
+    { ok: Boolean(invoiceNumberInput.value.trim()), key: "comp.number", fb: "Fortlaufende Rechnungsnummer" },
+    { ok: Boolean(invoiceDateInput.value), key: "comp.issueDate", fb: "Ausstellungsdatum" },
+    { ok: Boolean(serviceDateInput?.value || invoiceDateInput.value), key: "comp.serviceDate", fb: "Leistungsdatum" },
+    { ok: getRowsData().some((i) => i.description && i.quantity > 0), key: "comp.qtyType", fb: "Menge und Art der Leistung" },
+    { ok: getRowsData().some((i) => i.price >= 0 && i.total >= 0), key: "comp.net", fb: "Entgelt (netto)" },
+    {
+      ok: isKlein || Boolean(taxRateInput.value),
+      key: isKlein ? "comp.hint19" : "comp.tax",
+      fb: isKlein ? "Hinweis § 19 UStG" : "Steuersatz und Steuerbetrag",
+    },
+    { ok: Boolean(taxNumberInput?.value?.trim() || vatIdInput?.value?.trim()), key: "comp.taxId", fb: "Steuernummer oder USt-IdNr." },
   ];
   invoiceComplianceList.innerHTML = "";
-  checks.forEach(({ ok, label }) => {
+  checks.forEach(({ ok, key, fb }) => {
     const li = document.createElement("li");
     li.className = ok ? "compliance-ok" : "compliance-missing";
-    li.textContent = `${ok ? "✓" : "○"} ${label}`;
+    li.textContent = `${ok ? "✓" : "○"} ${hubT(key, fb)}`;
     invoiceComplianceList.appendChild(li);
   });
 }
@@ -6844,6 +6870,7 @@ window.addEventListener("workpass:locale", () => {
   try { updateLexShellUI(); } catch { /* ignore */ }
   try { updateTopbarForMode(); } catch { /* ignore */ }
   try { updateUiStatusBar(); } catch { /* ignore */ }
+  try { updateInvoiceComplianceList(); } catch { /* ignore */ }
   try { updateDashboard(); } catch { /* ignore */ }
   try { window.WorkPassHub?.renderSyncLog?.(); } catch { /* ignore */ }
 });
