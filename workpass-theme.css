@@ -208,6 +208,7 @@ body.workpass-hub .workspace {
 body.workpass-hub .lex-ribbon {
   background: var(--wp-bg-elev) !important;
   border-bottom: 1px solid var(--wp-line) !important;
+  overflow-x: hidden;
 }
 body.workpass-hub .lex-ribbon-caption,
 body.workpass-hub .lex-breadcrumb,
@@ -400,6 +401,24 @@ body.workpass-hub.hub-ribbon-compact .lex-ribbon-compact {
 body.workpass-hub.hub-ribbon-compact .lex-ribbon-full {
   display: none !important;
 }
+
+/* CSS fallback: never show overflowing tile ribbon on mid widths */
+@media (max-width: 1400px) {
+  body.workpass-hub .lex-ribbon {
+    min-height: 0;
+    padding: 8px 12px;
+    overflow: visible !important;
+  }
+  body.workpass-hub .lex-ribbon-compact,
+  body.workpass-hub .lex-ribbon-compact[hidden] {
+    display: flex !important;
+  }
+  body.workpass-hub .lex-ribbon-full,
+  body.workpass-hub .lex-ribbon-full[hidden] {
+    display: none !important;
+  }
+}
+
 body.workpass-hub .lex-ribbon-compact-primary,
 body.workpass-hub .lex-ribbon-compact-menus {
   display: flex;
@@ -796,6 +815,39 @@ body.workpass-hub .lex-appbar {
   body.workpass-hub .app-frame {
     flex-direction: column;
     overflow: visible;
+  }
+  body.workpass-hub .lex-module-panel,
+  body.workpass-hub .app-sidebar {
+    width: 100%;
+    max-height: none !important;
+    overflow: visible !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--wp-line) !important;
+    background: rgba(8, 14, 26, 0.92) !important;
+  }
+  body.workpass-hub .lex-module-head {
+    background: transparent !important;
+    border-bottom: none !important;
+    padding: 10px 14px 2px !important;
+  }
+  body.workpass-hub .lex-module-nav {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    gap: 6px;
+    padding: 6px 12px 12px !important;
+    scrollbar-width: thin;
+  }
+  body.workpass-hub .sidebar-nav-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    min-height: 36px;
+    padding: 8px 12px !important;
+  }
+  body.workpass-hub .lex-sidebar-footer {
+    display: none !important;
   }
   body.workpass-hub .app-main,
   body.workpass-hub .workspace,

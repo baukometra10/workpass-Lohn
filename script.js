@@ -238,7 +238,7 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2.31.1";
+const APP_VERSION = "2.31.3";
 const APP_VERSION_BUILD = "2026.45";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
@@ -769,13 +769,18 @@ function initRibbonResponsive() {
   const compact = document.getElementById("lexRibbonCompact");
   const full = document.querySelector(".lex-ribbon-full");
   if (!compact || !full) return;
-  const mq = window.matchMedia("(max-width: 1180px)");
+  const mq = window.matchMedia("(max-width: 1400px)");
 
   const apply = () => {
-    const narrow = mq.matches;
+    const narrow = mq.matches || window.innerWidth <= 1400;
     document.body.classList.toggle("hub-ribbon-compact", narrow);
-    compact.hidden = !narrow;
-    full.hidden = narrow;
+    if (narrow) {
+      compact.removeAttribute("hidden");
+      full.setAttribute("hidden", "");
+    } else {
+      compact.setAttribute("hidden", "");
+      full.removeAttribute("hidden");
+    }
     const portal = document.getElementById("lexMenuPortal");
     if (portal) portal.hidden = true;
   };
@@ -796,9 +801,9 @@ function initRibbonResponsive() {
   apply();
   if (typeof mq.addEventListener === "function") mq.addEventListener("change", apply);
   else if (typeof mq.addListener === "function") mq.addListener(apply);
-  window.addEventListener("resize", () => {
-    if (mq.matches) apply();
-  });
+  window.addEventListener("resize", apply);
+  setTimeout(apply, 0);
+  setTimeout(apply, 400);
 }
 
 const HUB_API_CFG_KEY = "workpass.lohn.apiConfig.v1";

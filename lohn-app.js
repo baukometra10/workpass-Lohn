@@ -1998,6 +1998,7 @@
   async function applyCompanyPortalMode() {
     companyPortalId = sessionCompanyId();
     document.body.classList.toggle("company-portal", Boolean(companyPortalId));
+    window.__lohnApplyActionsLayout?.();
     document.querySelectorAll('a[href="admin.html"]').forEach((a) => {
       a.hidden = Boolean(companyPortalId);
     });
@@ -2094,9 +2095,9 @@
                 .replace("{period}", currentPayrollPeriod()))}</small>
             </div>
             <div class="month-close-actions portal-primary-actions">
-              <a href="index.html" class="primary glossy portal-hub-link" id="btnPortalOpenHub">${esc(uiT("nav.hub", "Hub"))}</a>
-              <button type="button" class="primary glossy" id="btnPortalMonthClose">${esc(t("portal.monthClose", "Monatsabschluss"))}</button>
-              <button type="button" id="btnPortalSyncTop">${esc(t("sync.now", "Jetzt synchronisieren"))}</button>
+              <button type="button" class="primary glossy portal-cta-sync" id="btnPortalSyncTop">${esc(t("sync.now", "Jetzt synchronisieren"))}</button>
+              <button type="button" class="portal-cta-secondary" id="btnPortalMonthClose">${esc(t("portal.monthClose", "Monatsabschluss"))}</button>
+              <a href="index.html" class="portal-cta-hub" id="btnPortalOpenHub">${esc(uiT("nav.hub", "Hub"))}</a>
             </div>
           </div>`;
         $("btnPortalMonthClose")?.addEventListener("click", () => runMonthClose({ pull: true, autoRelease: true }));
@@ -2692,7 +2693,7 @@
     const full = document.getElementById("lohnActionsFull");
     const more = document.getElementById("lohnActionsMore");
     if (!compact || !full) return;
-    const mq = window.matchMedia("(max-width: 1180px)");
+    const mq = window.matchMedia("(max-width: 1400px)");
     let menuEl = document.getElementById("lohnCompactMenu");
     if (!menuEl) {
       menuEl = document.createElement("div");
@@ -2702,7 +2703,8 @@
       document.body.appendChild(menuEl);
     }
     const apply = () => {
-      const narrow = mq.matches || window.innerWidth <= 1180;
+      const portal = document.body.classList.contains("company-portal");
+      const narrow = portal || mq.matches || window.innerWidth <= 1400;
       document.body.classList.toggle("lohn-actions-compact", narrow);
       if (narrow) {
         compact.removeAttribute("hidden");
@@ -2714,6 +2716,7 @@
       menuEl.hidden = true;
       more?.setAttribute("aria-expanded", "false");
     };
+    window.__lohnApplyActionsLayout = apply;
     compact.querySelectorAll("[data-lohn-cmd]").forEach((btn) => {
       btn.addEventListener("click", () => document.getElementById(btn.dataset.lohnCmd)?.click());
     });
@@ -2731,7 +2734,7 @@
         !portal && { id: "csv", label: uiT("common.csv", "CSV"), run: () => $("btnExportCsv")?.click() },
         { id: "lock", label: uiT("nav.lock", "Sperren"), run: () => $("btnLock")?.click() },
         { id: "theme", label: uiT("common.theme", "Theme"), run: () => $("btnThemeToggle")?.click() },
-        { id: "hub", label: uiT("nav.hub", "Hub"), run: () => { window.location.href = "index.html"; } },
+        !portal && { id: "hub", label: uiT("nav.hub", "Hub"), run: () => { window.location.href = "index.html"; } },
         !portal && { id: "admin", label: uiT("nav.admin", "Admin"), run: () => { window.location.href = "admin.html"; } },
       ].filter(Boolean);
       menuEl.innerHTML = entries.map((it, i) => `<button type="button" data-i="${i}">${it.label}</button>`).join("");

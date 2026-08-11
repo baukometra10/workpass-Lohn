@@ -280,7 +280,7 @@ body.lexware-app {
 
   border-bottom: 1px solid var(--lex-border-light);
 
-  background: #efefef;
+  background: transparent;
 
 }
 
@@ -1403,7 +1403,27 @@ body.payroll-mode .workspace .preview-panel {
 
   .lex-module-panel {
 
-    max-height: 140px;
+    max-height: none;
+
+    width: 100%;
+
+    border-right: none;
+
+    border-bottom: 1px solid var(--lex-border-light);
+
+    overflow: visible;
+
+  }
+
+
+
+  .lex-module-head {
+
+    background: transparent;
+
+    border-bottom: none;
+
+    padding: 8px 14px 0;
 
   }
 
@@ -1411,11 +1431,41 @@ body.payroll-mode .workspace .preview-panel {
 
   .lex-module-nav {
 
+    display: flex !important;
+
     flex-direction: row !important;
 
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+
+    align-items: center;
+
+    gap: 6px;
 
     overflow-x: auto;
+
+    overflow-y: hidden;
+
+    padding: 8px 12px 10px !important;
+
+    scrollbar-width: thin;
+
+  }
+
+
+
+  .sidebar-nav-btn {
+
+    flex: 0 0 auto;
+
+    white-space: nowrap;
+
+  }
+
+
+
+  .lex-sidebar-footer {
+
+    display: none;
 
   }
 
