@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=9" />
-    <link rel="stylesheet" href="lohn.css?v=54" />
+    <link rel="stylesheet" href="lohn.css?v=55" />
   </head>
   <body class="auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
@@ -201,11 +201,11 @@
                 <section class="month-close-card portal-dash-card" id="portalSyncCard" style="margin-bottom:12px">
                   <div class="portal-card-head">
                     <strong data-i18n="sync.title">Automatik · Plattform-Sync</strong>
-                    <span class="portal-card-badge" id="portalSyncBadge">Status</span>
+                    <span class="portal-card-badge" id="portalSyncBadge">Bereit</span>
                   </div>
-                  <p id="portalSyncHint">Fragt die Plattform nach Mitarbeitern und Abrechnungen – berechnet und gibt frei, sobald Daten da sind.</p>
+                  <p id="portalSyncHint">WorkPass holt Mitarbeiter und Abrechnungen von der Plattform – berechnet und gibt frei, sobald Daten da sind.</p>
                   <div id="portalSyncDetail" class="api-inbox-list portal-sync-detail"></div>
-                  <div class="month-close-actions" style="margin-top:10px">
+                  <div class="month-close-actions portal-primary-actions" style="margin-top:10px">
                     <button type="button" class="primary" id="btnAutoSyncNow" data-i18n="sync.now">Jetzt synchronisieren</button>
                     <button type="button" id="btnPingPlatform" data-i18n="sync.ping">Webhook prüfen</button>
                   </div>
@@ -214,7 +214,7 @@
                 <div class="portal-dash-grid">
                   <section class="month-close-card portal-dash-card">
                     <strong>Mitarbeiter</strong>
-                    <p>Nur echte Mitarbeiter von der Plattform (Name + Badge). Keine Beispieldaten.</p>
+                    <p>Ihre Mitarbeiter von der Plattform.</p>
                     <div id="portalEmployeeList" class="api-inbox-list"></div>
                   </section>
                   <section class="month-close-card portal-dash-card">
@@ -229,7 +229,7 @@
                   <div id="portalArchiveList" class="api-inbox-list"></div>
                   <div class="month-close-actions" style="margin-top:10px">
                     <button type="button" id="btnPurgeDemo">Beispieldaten entfernen</button>
-                    <button type="button" id="btnRefreshPortal" class="primary">Portal aktualisieren</button>
+                    <button type="button" id="btnRefreshPortal" class="primary" data-i18n="sync.refresh">Portal aktualisieren</button>
                   </div>
                 </section>
               </div>
@@ -620,10 +620,10 @@
     <script src="datev-sheet.js?v=42"></script>
     <script src="payroll-core.js?v=22"></script>
     <script src="workpass-i18n.js?v=1"></script>
-    <script src="auth-gate.js?v=9"></script>
+    <script src="auth-gate.js?v=10"></script>
     <script src="mandant-checklist.js?v=3"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="lohn-app.js?v=53"></script>
+    <script src="lohn-app.js?v=54"></script>
   </body>
 </html>

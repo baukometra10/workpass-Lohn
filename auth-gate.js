@@ -11,6 +11,11 @@
     if (!m) return;
     const data = JSON.parse(decodeURIComponent(m[1]));
     if (!data || !data.token) return;
+    const expMs = data.expiresAt ? Date.parse(data.expiresAt) : NaN;
+    if (Number.isFinite(expMs) && expMs < Date.now() - 30_000) {
+      history.replaceState(null, "", location.pathname + location.search);
+      return;
+    }
     localStorage.setItem(
       "workpassPlatformSessionV2",
       JSON.stringify({
@@ -20,10 +25,13 @@
         via: data.via || "suppix",
       }),
     );
+    const ttlMs = Number.isFinite(expMs)
+      ? Math.max(expMs - Date.now(), 60 * 60 * 1000)
+      : 8 * 60 * 60 * 1000;
     localStorage.setItem(
       "workpassLohnSessionV2",
       JSON.stringify({
-        until: Date.now() + 8 * 60 * 60 * 1000,
+        until: Date.now() + ttlMs,
         touchedAt: new Date().toISOString(),
       }),
     );
@@ -33,6 +41,7 @@
         "workpass.lohn.apiConfig.v1",
         JSON.stringify({ ...prev, companyId: data.user.companyId }),
       );
+      document.body.classList.add("company-portal");
     }
     const locale = String(data.preferredLocale || data.user?.locale || data.user?.language || "")
       .trim()
@@ -44,7 +53,13 @@
         localStorage.removeItem("workpass.ui.locale.manual");
       } catch { /* ignore */ }
     }
+    const path = String(location.pathname || "").toLowerCase();
+    const isFirm = Boolean(data.user?.companyId && data.user?.role !== "admin");
     history.replaceState(null, "", location.pathname + location.search);
+    if (isFirm && !/lohn\.html$/i.test(path)) {
+      location.replace(`${location.origin}/lohn.html`);
+      return;
+    }
     location.reload();
   } catch (e) {
     /* ignore malformed handoff */

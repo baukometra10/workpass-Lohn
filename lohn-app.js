@@ -447,14 +447,18 @@
       }
       if ($("portalKpiMessages")) $("portalKpiMessages").textContent = String((msgs.messages || []).length);
       const pending = Number(sync?.pending?.messages || 0) + Number(sync?.pending?.deliveries || 0);
-      const syncLabel = pending ? `${pending} offen` : (sync?.webhook?.configured ? (sync?.status === "error" ? "Fehler" : "OK") : "—");
-      if ($("portalKpiSync")) $("portalKpiSync").textContent = syncLabel;
+      const firmFriendlySync = pending
+        ? `${pending} offen`
+        : (Number(emps.count || 0) > 0 || cur.total
+          ? "Verbunden"
+          : "Bereit");
+      if ($("portalKpiSync")) $("portalKpiSync").textContent = firmFriendlySync;
       if ($("portalSyncBadge")) {
-        $("portalSyncBadge").textContent = sync?.status === "error"
-          ? "Fehler"
-          : (sync?.status === "waiting" ? "Wartet" : (sync?.status === "ok" ? "OK" : "Status"));
-        $("portalSyncBadge").classList.toggle("is-error", sync?.status === "error");
-        $("portalSyncBadge").classList.toggle("is-ok", sync?.status === "ok");
+        $("portalSyncBadge").textContent = pending
+          ? "Offen"
+          : (Number(emps.count || 0) || cur.total ? "Aktiv" : "Bereit");
+        $("portalSyncBadge").classList.remove("is-error");
+        $("portalSyncBadge").classList.toggle("is-ok", !pending && Boolean(Number(emps.count || 0) || cur.total));
       }
 
       renderAuditOverview({
@@ -462,7 +466,7 @@
         employees: Number(emps.count || 0),
         released: Number(cur.released || arch.count || 0),
         openMessages: Number((msgs.messages || []).length),
-        syncLabel,
+        syncLabel: firmFriendlySync,
         hasData: Boolean(cur.total),
       });
 
@@ -472,8 +476,8 @@
         if ($("portalTotalsPeriod")) $("portalTotalsPeriod").textContent = period;
         if ($("portalTotalsHint")) {
           $("portalTotalsHint").textContent = cur.total
-            ? `${cur.total} echte Abrechnung(en) · Status ${cur.status || "—"}`
-            : "Noch keine echten Abrechnungen in diesem Monat.";
+            ? `${cur.total} Abrechnung(en) · ${cur.status === "released" ? "freigegeben" : (cur.status || "in Bearbeitung")}`
+            : "Noch keine Abrechnungen in diesem Monat – Sync holt Daten von der Plattform.";
         }
         if ($("portalTotalsGrid")) {
           $("portalTotalsGrid").innerHTML = `
@@ -505,53 +509,29 @@
       }
 
       if ($("portalSyncHint")) {
-        const autoOn = sync?.autoPipeline?.enabled !== false;
-        const wh = sync?.webhook?.last || sync?.lastWebhook || {};
-        if (sync?.message) {
-          $("portalSyncHint").textContent = sync.message;
-        } else if (wh.ok === false && sync?.webhook?.configured) {
+        if (Number(emps.count || 0) === 0 && !cur.total) {
           $("portalSyncHint").textContent =
-            `Verbindung zur Plattform kaputt: Webhook ${wh.status || ""} ${wh.error || wh.hint || ""}. `
-            + `WorkPass fragt trotzdem – die Plattform muss den Endpoint live schalten und Daten zurücksenden.`;
+            "Noch keine Mitarbeiterdaten – tippen Sie auf „Jetzt synchronisieren“. WorkPass fragt die Plattform und berechnet automatisch.";
+        } else if (pending) {
+          $("portalSyncHint").textContent =
+            "Einige Angaben fehlen noch. WorkPass fragt die Plattform gezielt nach – der Monat läuft weiter für alle vollständigen Personen.";
         } else {
-          $("portalSyncHint").textContent = autoOn
-            ? "Automatik an: WorkPass Lohn fragt die Plattform nach Mitarbeitern und Abrechnungen. Eingehende Daten werden sofort berechnet und freigegeben."
-            : "Automatik aus. Bitte manuell synchronisieren oder WORKPASS_AUTO_PIPELINE=1 setzen.";
+          $("portalSyncHint").textContent =
+            "Verbunden mit der Plattform. Neue Daten werden automatisch berechnet und freigegeben.";
         }
       }
       if ($("portalSyncDetail")) {
-        const hints = sync?.hints || [
-          "Plattform: POST /v1/payroll/batch und/oder /v1/employees/import",
-          "WorkPass Lohn fragt per Webhook: employees.list.requested + payroll.month.requested",
-        ];
-        const auto = sync?.autoPipeline || {};
-        const last = auto.lastResult || {};
-        const wh = sync?.webhook?.last || {};
-        $("portalSyncDetail").innerHTML = `
-          <div class="api-inbox-item"><div><strong>Automatik</strong><span>${esc(auto.enabled === false ? "aus" : `an · alle ${auto.intervalMinutes || 15} Min.`)}</span></div></div>
-          <div class="api-inbox-item"><div><strong>Webhook</strong><span>${esc(
-            !sync?.webhook?.configured
-              ? "nicht gesetzt"
-              : (wh.ok === false
-                ? `FEHLER ${wh.status || ""} ${wh.error || ""}`
-                : (wh.ok === true ? "OK" : "konfiguriert"))
-          )}</span></div></div>
-          <div class="api-inbox-item"><div><strong>Letzter Sync</strong><span>${esc(auto.lastTickAt || "—")}</span></div></div>
-          <div class="api-inbox-item"><div><strong>Letzter Erfolg</strong><span>${esc(auto.lastSuccessAt || "—")}</span></div></div>
-          <div class="api-inbox-item"><div><strong>Status</strong><span>${esc(last.message || (pending ? `${pending} offen` : "bereit"))}</span></div></div>
-          <div class="api-inbox-item"><div><strong>Pull-URL</strong><span>${esc(sync?.pullUrlConfigured ? "gesetzt" : "nicht gesetzt (Push empfohlen)")}</span></div></div>
-          <div class="api-inbox-item"><div><strong>Offen</strong><span>Messages ${Number(sync?.pending?.messages || 0)} · Deliveries ${Number(sync?.pending?.deliveries || 0)}</span></div></div>
-          ${hints.slice(0, 3).map((h) => `<div class="api-inbox-item"><div><span>${esc(h)}</span></div></div>`).join("")}
-        `;
+        // Technical webhook/API detail stays hidden for firm users (CSS); keep minimal for admins if ever shown.
+        $("portalSyncDetail").innerHTML = "";
+        const firmNext = pending
+          ? ["Plattform liefert fehlende Angaben nach", "Danach erneut „Jetzt synchronisieren“"]
+          : (Number(emps.count || 0) === 0
+            ? ["Jetzt synchronisieren", "In der Plattform Mitarbeiter freigeben"]
+            : []);
         renderPortalNextActions(
-          last.nextActions?.length
-            ? last.nextActions
-            : (sync?.nextActions?.length
-              ? sync.nextActions
-              : (wh.ok === false ? [
-                "Webhook-Endpoint auf der Plattform live schalten",
-                "Dann „Jetzt synchronisieren“ erneut tippen",
-              ] : []))
+          sync?.autoPipeline?.lastResult?.nextActions?.length
+            ? sync.autoPipeline.lastResult.nextActions.filter((a) => !/webhook|WORKPASS_|Endpoint|Pull-URL|batch/i.test(String(a)))
+            : firmNext
         );
       }
 
@@ -903,22 +883,23 @@
     }
   }
 
-  async function runAutoSyncNow() {
+  async function runAutoSyncNow(opts = {}) {
+    const quiet = Boolean(opts.quiet);
     const companyId = companyPortalId || apiConfig().companyId;
     if (!companyId) {
-      toast("Keine Firma – bitte anmelden.", "error");
+      if (!quiet) toast("Keine Firma – bitte anmelden.", "error");
       return;
     }
     const period = currentPayrollPeriod();
     const btn = $("btnAutoSyncNow");
-    if (btn) {
+    if (btn && !quiet) {
       btn.disabled = true;
       btn.classList.add("is-busy");
       btn.setAttribute("aria-busy", "true");
       btn.textContent = "Synchronisiert…";
     }
     try {
-      setStatus("Automatik: frage Plattform nach Mitarbeitern und Abrechnungen…", true);
+      if (!quiet) setStatus("Automatik: frage Plattform nach Mitarbeitern und Abrechnungen…", true);
       const data = await apiFetch("/v1/payroll/auto-sync", {
         method: "POST",
         body: JSON.stringify({
@@ -927,24 +908,39 @@
           pull: true,
           autoRelease: true,
           forceAsk: true,
-          reason: "portal_manual_sync",
+          reason: quiet ? "portal_boot_sync" : "portal_manual_sync",
         }),
       });
       renderMonthCloseStatus(data.close || data);
       await loadPortalDashboard(true);
       await loadApiInbox(true);
       await loadPlatformMessages(true);
-      toast(data.message || "Sync fertig", data.ok ? "ok" : "info");
-      setStatus(data.message || "Sync fertig", Boolean(data.ok || data.waitingForPlatform));
-      renderPortalNextActions(data.nextActions || (data.waitingForPlatform ? [
-        "Plattform muss Import/Batch senden",
-        "Webhook und Pending-Messages prüfen",
-      ] : []));
+      const firmActions = (data.nextActions || []).filter(
+        (a) => !/webhook|WORKPASS_|Endpoint|Pull-URL|batch|Import\/Batch/i.test(String(a))
+      );
+      if (!quiet) {
+        toast(data.message || "Sync fertig", data.ok ? "ok" : "info");
+        setStatus(data.message || "Sync fertig", Boolean(data.ok || data.waitingForPlatform));
+      } else {
+        setStatus(
+          data.waitingForPlatform
+            ? `Monat ${period}: warte auf Plattform-Daten`
+            : (data.message || `Monat ${period}: aktualisiert`),
+          Boolean(data.ok || data.waitingForPlatform)
+        );
+      }
+      renderPortalNextActions(firmActions.length
+        ? firmActions
+        : (data.waitingForPlatform ? [
+          "Mitarbeiter in der Plattform freigeben / senden",
+          "Danach erscheint die Abrechnung hier automatisch",
+        ] : []));
       if (data.waitingForPlatform) startMonthWaitRetry(period);
     } catch (e) {
-      toast(String(e.message || e), "error");
+      if (!quiet) toast(String(e.message || e), "error");
+      else setStatus("Sync später erneut – Übersicht ist geladen.", false);
     } finally {
-      if (btn) {
+      if (btn && !quiet) {
         btn.disabled = false;
         btn.classList.remove("is-busy");
         btn.removeAttribute("aria-busy");
@@ -1884,26 +1880,41 @@
     $("btnApiCompanies")?.setAttribute("hidden", "hidden");
     $("btnNewCompany")?.setAttribute("hidden", "hidden");
 
-    const t = (k) => window.WorkPassI18n?.t?.(k) || k;
+    const t = (k, fallback) => {
+      const v = window.WorkPassI18n?.t?.(k);
+      return (v && v !== k) ? v : (fallback || k);
+    };
+    document.body.classList.add("portal-sync-friendly");
+    document.querySelectorAll(".lohn-actions-group").forEach((group) => {
+      if (group.querySelector("#importPlatformInput, #importCsvInput, #btnNew, #btnExportJson")) {
+        group.hidden = true;
+      }
+    });
     const hint = $("recvSectionHint") || document.querySelector("#secEmpfang .section-hint");
     if (hint) {
-      hint.textContent = t("empfang.firmHint");
+      hint.textContent = t(
+        "empfang.firmHint",
+        "Ihre Abrechnungen erscheinen automatisch – Sync holt Mitarbeiter von der Plattform."
+      );
     }
     const apiHint = $("apiBridgeHint");
     if (apiHint) {
-      apiHint.textContent = "Hier sehen Sie nur Abrechnungen Ihrer Firma. Öffnen → prüfen → freigeben an die Plattform.";
+      apiHint.hidden = true;
     }
 
     const flowHint = document.querySelector("#companyFlow .section-hint");
     if (flowHint) {
-      flowHint.innerHTML = "<strong>Firmen-Portal:</strong> Nur Ihre Firma und Ihre Mitarbeiter. Automatische Abrechnungen von der Plattform erscheinen unter „Meine Abrechnungen“.";
+      flowHint.textContent = "Nur Ihre Firma und Ihre Mitarbeiter.";
     }
 
     const recvApiTab = $("recvApi");
     if (recvApiTab) {
       recvApiTab.setAttribute("data-i18n", "recv.apiFirm");
-      recvApiTab.textContent = t("recv.apiFirm");
+      recvApiTab.textContent = t("recv.apiFirm", "Meine Abrechnungen");
     }
+
+    const empfangTitle = document.querySelector("#secEmpfang .step-head h2");
+    if (empfangTitle) empfangTitle.textContent = "Übersicht";
 
     persistApiConfig();
 
@@ -1917,20 +1928,17 @@
         banner.innerHTML = `
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
-              <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live"))}</span>
+              <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
               <strong>${esc(companyName)}</strong>
-              <small>${esc(t("portal.onlyYourData"))} · ${esc(me.user?.email || "")} · Monat ${esc(currentPayrollPeriod())}</small>
+              <small>${esc(t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))} · Monat ${esc(currentPayrollPeriod())}</small>
             </div>
-            <div class="month-close-actions">
-              <button type="button" class="primary glossy" id="btnPortalMonthClose">${esc(t("portal.monthClose"))}</button>
-              <button type="button" id="btnPortalRefreshInbox">${esc(t("portal.inbox"))}</button>
+            <div class="month-close-actions portal-primary-actions">
+              <button type="button" class="primary glossy" id="btnPortalMonthClose">${esc(t("portal.monthClose", "Monatsabschluss"))}</button>
+              <button type="button" id="btnPortalSyncTop">${esc(t("sync.now", "Jetzt synchronisieren"))}</button>
             </div>
           </div>`;
         $("btnPortalMonthClose")?.addEventListener("click", () => runMonthClose({ pull: true, autoRelease: true }));
-        $("btnPortalRefreshInbox")?.addEventListener("click", () => {
-          loadApiInbox();
-          loadPlatformMessages();
-        });
+        $("btnPortalSyncTop")?.addEventListener("click", () => runAutoSyncNow());
       }
       if ($("companyName") && (!$("companyName").value.trim() || String(state.mandantId || "").toLowerCase() !== companyPortalId)) {
         $("companyName").value = companyName;
@@ -1987,19 +1995,31 @@
       }
       if ($("monthCloseHint")) {
         $("monthCloseHint").textContent =
-          `Zieht vorhandene Daten für ${period} von der Plattform – auch unvollständig. `
-          + `Fertige Abrechnungen werden freigegeben; bei Lücken fragt das System die Plattform gezielt nach dieser Person.`;
+          `Ein Klick: vorhandene Daten für ${period} von der Plattform holen, berechnen und freigeben. `
+          + `Fehlen Angaben bei einer Person, fragt WorkPass die Plattform gezielt nach – der Rest läuft weiter.`;
       }
     }
 
     setModePill("Firmen-Portal", companyName || companyPortalId);
     setRecvMode("api");
+    setStatus(`Firmen-Portal · ${companyName || companyPortalId} · ${period}`, true);
     await loadPlatformCompanies();
     await loadApiInbox(true);
     await loadPlatformMessages(true);
     await loadPortalDashboard(true);
     refreshCompanySelect();
     renderArchiveBoard();
+
+    // Quiet first sync after SSO / login – once per Monat/Firma in dieser Sitzung
+    try {
+      const bootKey = `workpass.portal.bootSync.${companyPortalId}.${period}`;
+      if (!sessionStorage.getItem(bootKey)) {
+        sessionStorage.setItem(bootKey, "1");
+        await runAutoSyncNow({ quiet: true });
+      }
+    } catch {
+      /* dashboard already loaded */
+    }
 
     if (inboxPollTimer) clearInterval(inboxPollTimer);
     inboxPollTimer = setInterval(() => {
@@ -2010,7 +2030,7 @@
       }
     }, 45000);
 
-    toast(`Angemeldet als Firma · ${companyName || companyPortalId}`, "ok");
+    toast(`Willkommen · ${companyName || companyPortalId}`, "ok");
   }
 
   async function openApiPayrollJob(jobId) {
