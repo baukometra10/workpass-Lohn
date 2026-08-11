@@ -610,6 +610,82 @@ function initLexShell() {
     }
   });
   updateLexShellUI();
+  initRibbonResponsive();
+}
+
+function ribbonBtnLabel(btn) {
+  const text = (btn.querySelector(".i18n-text")?.textContent
+    || [...btn.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("")
+    || btn.textContent
+    || "").replace(/\s+/g, " ").trim();
+  return text || btn.title || btn.id || "…";
+}
+
+function openRibbonGroupMenu(groupIndex, anchorBtn) {
+  const menuPortal = document.getElementById("lexMenuPortal");
+  const groups = document.querySelectorAll(".lex-ribbon-full .lex-ribbon-group");
+  const group = groups[groupIndex];
+  if (!menuPortal || !group || !anchorBtn) return;
+  const buttons = [...group.querySelectorAll(".lex-ribbon-btn")].filter((b) => {
+    if (b.hidden || b.classList.contains("hidden")) return false;
+    const style = window.getComputedStyle(b);
+    return style.display !== "none" && style.visibility !== "hidden";
+  });
+  if (!buttons.length) return;
+  menuPortal.innerHTML = buttons.map((b, i) => (
+    `<button type="button" data-ribbon-idx="${i}">${escapeHtmlLite(ribbonBtnLabel(b))}</button>`
+  )).join("");
+  menuPortal.hidden = false;
+  menuPortal.style.visibility = "hidden";
+  const rect = anchorBtn.getBoundingClientRect();
+  menuPortal.style.left = "0px";
+  menuPortal.style.top = `${rect.bottom + 4}px`;
+  const mw = Math.max(menuPortal.offsetWidth || 220, 220);
+  const left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - mw - 8));
+  menuPortal.style.left = `${left}px`;
+  menuPortal.style.visibility = "";
+  menuPortal.querySelectorAll("button").forEach((itemBtn, idx) => {
+    itemBtn.addEventListener("click", () => {
+      menuPortal.hidden = true;
+      buttons[idx]?.click();
+    });
+  });
+}
+
+function initRibbonResponsive() {
+  const compact = document.getElementById("lexRibbonCompact");
+  const full = document.querySelector(".lex-ribbon-full");
+  if (!compact || !full) return;
+  const mq = window.matchMedia("(max-width: 1180px)");
+
+  const apply = () => {
+    const narrow = mq.matches;
+    document.body.classList.toggle("hub-ribbon-compact", narrow);
+    compact.hidden = !narrow;
+    full.hidden = narrow;
+    const portal = document.getElementById("lexMenuPortal");
+    if (portal) portal.hidden = true;
+  };
+
+  compact.querySelectorAll("[data-cmd]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      document.getElementById(btn.dataset.cmd)?.click();
+    });
+  });
+  compact.querySelectorAll("[data-ribbon-group]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openRibbonGroupMenu(Number(btn.dataset.ribbonGroup), btn);
+    });
+  });
+
+  apply();
+  if (typeof mq.addEventListener === "function") mq.addEventListener("change", apply);
+  else if (typeof mq.addListener === "function") mq.addListener(apply);
+  window.addEventListener("resize", () => {
+    if (mq.matches) apply();
+  });
 }
 
 const HUB_API_CFG_KEY = "workpass.lohn.apiConfig.v1";

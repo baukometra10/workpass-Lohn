@@ -365,29 +365,98 @@ body.workpass-hub .preview-document {
 
 body.workpass-hub .lex-ribbon {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: stretch;
-  gap: 8px 0;
+  gap: 0;
   height: auto;
   min-height: var(--ribbon-h, 72px);
-  overflow-x: visible;
+  overflow-x: auto;
   overflow-y: visible;
   padding: 8px 12px 10px;
 }
+body.workpass-hub .lex-ribbon-full {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: 100%;
+  gap: 0;
+}
+body.workpass-hub .lex-ribbon-compact {
+  display: none;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+body.workpass-hub.hub-ribbon-compact .lex-ribbon {
+  min-height: 0;
+  padding: 8px 12px;
+  overflow: visible;
+}
+body.workpass-hub.hub-ribbon-compact .lex-ribbon-compact {
+  display: flex;
+}
+body.workpass-hub.hub-ribbon-compact .lex-ribbon-full {
+  display: none !important;
+}
+body.workpass-hub .lex-ribbon-compact-primary,
+body.workpass-hub .lex-ribbon-compact-menus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+body.workpass-hub .lex-cmd,
+body.workpass-hub .lex-cmd-menu {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(90, 140, 200, 0.28);
+  background: linear-gradient(180deg, #182338 0%, #101a2c 100%);
+  color: #e8eef8;
+  font: 600 0.78rem/1.2 var(--wp-sans, "Barlow", system-ui, sans-serif);
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+}
+body.workpass-hub .lex-cmd:hover,
+body.workpass-hub .lex-cmd-menu:hover {
+  border-color: rgba(93, 180, 255, 0.55);
+  color: #fff;
+  box-shadow: var(--wp-shine);
+}
+body.workpass-hub .lex-cmd-primary {
+  border-color: rgba(59, 158, 255, 0.55);
+  background: linear-gradient(180deg, #1a4f8a 0%, #123a68 100%);
+}
+body.workpass-hub .lex-cmd-accent {
+  border-color: rgba(93, 180, 255, 0.45);
+}
+body.workpass-hub .lex-cmd-menu::after {
+  content: "▾";
+  margin-inline-start: 4px;
+  opacity: 0.75;
+  font-size: 0.7em;
+}
 body.workpass-hub .lex-ribbon-group {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   min-width: 0;
-  max-width: 100%;
 }
 body.workpass-hub .lex-ribbon-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: stretch;
   gap: 6px;
 }
 body.workpass-hub .lex-ribbon-sep {
   align-self: stretch;
   margin: 4px 6px;
+  flex: 0 0 1px;
 }
 body.workpass-hub .lex-ribbon-btn {
   display: inline-flex !important;
@@ -417,32 +486,47 @@ body.workpass-hub .lex-ribbon-btn-wide {
   max-width: 160px;
 }
 body.workpass-hub .lex-ribbon-btn.lex-ribbon-text {
-  /* product acronyms DATEV/LODAS/ELSTER/VB – same tile size */
   letter-spacing: 0.02em;
 }
-@media (max-width: 1100px) {
-  body.workpass-hub .lex-ribbon-sep {
+
+/* Appbar: stay calm on narrow widths */
+@media (max-width: 1180px) {
+  body.workpass-hub .lex-appbar-brand .lex-app-sub {
     display: none;
   }
-  body.workpass-hub .lex-ribbon-group {
-    width: 100%;
-    padding: 4px 0;
-    border-bottom: 1px solid rgba(90, 140, 200, 0.18);
+  body.workpass-hub .lex-appbar-mandant {
+    max-width: 9rem;
   }
-  body.workpass-hub .lex-ribbon-group:last-child {
-    border-bottom: none;
-  }
-  body.workpass-hub .lex-ribbon-caption {
-    text-align: start;
-    padding-inline: 2px;
+  body.workpass-hub #hubCompanyBadge {
+    max-width: 8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
-@media (max-width: 720px) {
-  body.workpass-hub .lex-ribbon-btn {
-    min-width: 56px;
-    max-width: calc(33.33% - 6px);
-    min-height: 52px;
-    font-size: 0.68rem !important;
+@media (max-width: 900px) {
+  body.workpass-hub .lex-menubar {
+    display: none;
+  }
+  body.workpass-hub .lex-appbar-mandant {
+    display: none;
+  }
+  body.workpass-hub #hubCompanyBadge {
+    display: none !important;
+  }
+  body.workpass-hub .lex-ribbon-compact {
+    justify-content: flex-start;
+  }
+  body.workpass-hub .lex-cmd,
+  body.workpass-hub .lex-cmd-menu {
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: 0.74rem;
+  }
+}
+@media (max-width: 640px) {
+  body.workpass-hub .lex-ribbon-compact-primary .lex-cmd[data-cmd="loadDraftBtn"] {
+    display: none;
   }
 }
 body.workpass-hub .tool-row {

@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="verdienst-sheet.css?v=1" />
     <link rel="stylesheet" href="annual-certificate.css?v=3" />
     <link rel="stylesheet" href="documents-bw.css?v=1" />
-    <link rel="stylesheet" href="workpass-theme.css?v=16" />
+    <link rel="stylesheet" href="workpass-theme.css?v=17" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0b1220" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -149,7 +149,21 @@
       </aside>
 
       <div class="app-main">
-        <div class="lex-ribbon" role="toolbar" aria-label="Aktionen">
+        <div class="lex-ribbon" id="lexRibbon" role="toolbar" aria-label="Aktionen">
+          <div class="lex-ribbon-compact" id="lexRibbonCompact" hidden>
+            <div class="lex-ribbon-compact-primary" role="group" aria-label="Primär">
+              <button type="button" class="lex-cmd" data-cmd="saveDraftBtn" data-i18n="action.save">Speichern</button>
+              <button type="button" class="lex-cmd" data-cmd="loadDraftBtn" data-i18n="action.open">Öffnen</button>
+              <button type="button" class="lex-cmd lex-cmd-accent" data-cmd="pdfExportBtn" data-i18n="common.pdf">PDF</button>
+              <button type="button" class="lex-cmd lex-cmd-primary" data-cmd="printBtn" data-i18n="common.print">Drucken</button>
+            </div>
+            <div class="lex-ribbon-compact-menus" role="group" aria-label="Menüs">
+              <button type="button" class="lex-cmd-menu" data-ribbon-group="0" data-i18n="menu.file">Datei</button>
+              <button type="button" class="lex-cmd-menu" data-ribbon-group="1" data-i18n="menu.export">Export</button>
+              <button type="button" class="lex-cmd-menu" data-ribbon-group="2" data-i18n="menu.edit">Bearbeiten</button>
+            </div>
+          </div>
+          <div class="lex-ribbon-full">
           <div class="lex-ribbon-group">
             <span class="lex-ribbon-caption" data-i18n="menu.file">Datei</span>
             <div class="lex-ribbon-actions">
@@ -211,6 +225,7 @@
                 Zurücksetzen
               </button>
             </div>
+          </div>
           </div>
         </div>
 
@@ -1753,6 +1768,6 @@
     <script src="workpass-hub.js?v=11"></script>
     <script src="templates.js?v=1" defer></script>
     <script src="signature-engine.js?v=4"></script>
-    <script src="script.js?v=84" defer></script>
+    <script src="script.js?v=85" defer></script>
   </body>
 </html>
