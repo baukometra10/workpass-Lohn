@@ -1152,12 +1152,11 @@ body.company-portal .lohn-status {
 body.company-portal .kpi-strip {
   gap: 10px;
 }
-body.company-portal .kpi {
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: linear-gradient(160deg, rgba(20, 36, 58, 0.9), rgba(12, 20, 34, 0.95));
-  border: 1px solid rgba(90, 140, 200, 0.2);
-  transition: transform 0.2s ease, border-color 0.2s ease;
+body.company-portal .kpi span,
+body.company-portal .portal-totals-grid .kpi span {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: 0.72rem;
 }
 body.company-portal .kpi:hover {
   transform: translateY(-1px);

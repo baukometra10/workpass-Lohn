@@ -6,6 +6,7 @@ import { listPayrollJobs, listInvoiceJobs } from "./db/repository.mjs";
 import { normalizeCompanyId, normalizeEmployeeId } from "./tenant.mjs";
 import { currentPeriod } from "./month-close.mjs";
 import { isDemoPayrollJob } from "./demo-detect.mjs";
+import { listEmployees as listRegisteredEmployees } from "./employee-registry.mjs";
 
 function periodsAround(center, count = 6) {
   const [y0, m0] = String(center).split("-").map(Number);
@@ -22,6 +23,28 @@ function realJobs(jobs, includeDemo = false) {
   return (jobs || []).filter((j) => !isDemoPayrollJob(j));
 }
 
+function looksLikeIdOnly(name, id) {
+  const n = String(name || "").trim();
+  const i = String(id || "").trim();
+  if (!n) return true;
+  if (i && n.toLowerCase() === i.toLowerCase()) return true;
+  return false;
+}
+
+function bestEmployeeName(job, fallbackId) {
+  const candidates = [
+    job?.employee?.name,
+    job?.state?.employeeName,
+    job?.payslip?.employee?.name,
+    job?.state?.employee?.name,
+  ];
+  for (const c of candidates) {
+    const n = String(c || "").trim();
+    if (n && !looksLikeIdOnly(n, fallbackId)) return n;
+  }
+  return "";
+}
+
 export function listCompanyEmployees(companyId, opts = {}) {
   const cid = normalizeCompanyId(companyId);
   if (!cid) return { ok: false, error: "companyId fehlt", employees: [] };
@@ -29,13 +52,15 @@ export function listCompanyEmployees(companyId, opts = {}) {
   const jobs = realJobs(listPayrollJobs({ companyId: cid, period }), opts.includeDemo);
   const byEmp = new Map();
   for (const j of jobs) {
-    const eid = normalizeEmployeeId(j.employee?.id || j.state?.employeeId || "");
+    const eid = normalizeEmployeeId(j.employee?.id || j.state?.employeeId || j.state?.badgeId || "");
     if (!eid) continue;
     const prev = byEmp.get(eid);
+    const name = bestEmployeeName(j, eid);
     const entry = {
       id: eid,
       badgeId: j.state?.badgeId || j.employee?.badgeId || eid,
-      name: j.employee?.name || j.state?.employeeName || eid,
+      name: name || eid,
+      hasName: Boolean(name),
       personnelNumber: j.state?.personnelNumber || j.employee?.personnelNumber || "",
       lastPeriod: j.period || "",
       lastStatus: j.status || "",
@@ -51,9 +76,54 @@ export function listCompanyEmployees(companyId, opts = {}) {
       byEmp.set(eid, entry);
     } else {
       prev.jobCount = entry.jobCount;
+      if (!prev.hasName && entry.hasName) {
+        prev.name = entry.name;
+        prev.hasName = true;
+      }
       byEmp.set(eid, prev);
     }
   }
+
+  // Enrich / include registry employees (name + badge) even without a job yet
+  try {
+    for (const reg of listRegisteredEmployees(cid)) {
+      const eid = normalizeEmployeeId(reg.badgeId || reg.id || "");
+      if (!eid) continue;
+      const regName = String(reg.name || "").trim();
+      const prev = byEmp.get(eid);
+      if (!prev) {
+        byEmp.set(eid, {
+          id: eid,
+          badgeId: eid,
+          name: regName || eid,
+          hasName: Boolean(regName) && !looksLikeIdOnly(regName, eid),
+          personnelNumber: reg.personnelNumber || "",
+          lastPeriod: period || "",
+          lastStatus: "empty",
+          lastJobId: "",
+          net: null,
+          gross: null,
+          updatedAt: reg.updatedAt || "",
+          jobCount: 0,
+          source: "registry",
+          demo: false,
+        });
+        continue;
+      }
+      if ((!prev.hasName || looksLikeIdOnly(prev.name, eid)) && regName && !looksLikeIdOnly(regName, eid)) {
+        prev.name = regName;
+        prev.hasName = true;
+        byEmp.set(eid, prev);
+      }
+      if (!prev.personnelNumber && reg.personnelNumber) {
+        prev.personnelNumber = reg.personnelNumber;
+        byEmp.set(eid, prev);
+      }
+    }
+  } catch {
+    /* registry optional */
+  }
+
   const employees = [...byEmp.values()].sort((a, b) =>
     String(a.name).localeCompare(String(b.name), "de")
   );
@@ -120,20 +190,39 @@ export function listReleasedArchive(companyId, opts = {}) {
   )
     .filter((j) => j.status === "released" || opts.includeAll)
     .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+  let registry = [];
+  try {
+    registry = listRegisteredEmployees(cid);
+  } catch {
+    registry = [];
+  }
+  const byBadge = new Map(
+    registry.map((r) => [normalizeEmployeeId(r.badgeId || r.id), r])
+  );
   return {
     ok: true,
     companyId: cid,
     count: jobs.length,
-    items: jobs.map((j) => ({
-      jobId: j.jobId,
-      period: j.period,
-      employee: j.employee,
-      status: j.status,
-      net: j.payslip?.totals?.net ?? null,
-      gross: j.payslip?.totals?.gross ?? null,
-      releasedAt: j.releasedAt,
-      updatedAt: j.updatedAt,
-    })),
+    items: jobs.map((j) => {
+      const eid = normalizeEmployeeId(j.employee?.id || j.employee?.badgeId || "");
+      let emp = { ...(j.employee || {}) };
+      if (looksLikeIdOnly(emp.name, eid) && eid) {
+        const reg = byBadge.get(eid);
+        if (reg?.name && !looksLikeIdOnly(reg.name, eid)) {
+          emp = { ...emp, name: reg.name, badgeId: emp.badgeId || eid, id: emp.id || eid };
+        }
+      }
+      return {
+        jobId: j.jobId,
+        period: j.period,
+        employee: emp,
+        status: j.status,
+        net: j.payslip?.totals?.net ?? null,
+        gross: j.payslip?.totals?.gross ?? null,
+        releasedAt: j.releasedAt,
+        updatedAt: j.updatedAt,
+      };
+    }),
   };
 }
 

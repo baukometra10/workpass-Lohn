@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="verdienst-sheet.css?v=1" />
     <link rel="stylesheet" href="annual-certificate.css?v=3" />
     <link rel="stylesheet" href="documents-bw.css?v=1" />
-    <link rel="stylesheet" href="workpass-theme.css?v=12" />
+    <link rel="stylesheet" href="workpass-theme.css?v=13" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0b1220" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -249,7 +249,7 @@
               </div>
             </section>
 
-            <p class="wp-hub-banner" id="dashHubBanner">
+            <p class="wp-hub-banner" id="dashHubBanner" data-i18n="hub.banner" data-i18n-html>
               <strong>Hub:</strong> Belege &amp; Sync auf einen Blick ·
               <a href="lohn.html">Zum Lohn-Portal</a>
             </p>
@@ -308,23 +308,23 @@
             </div>
 
             <section class="form-section dash-actions-section">
-              <h2 class="form-section-title">Schnellzugriff</h2>
+              <h2 class="form-section-title" data-i18n="hub.quickAccess">Schnellzugriff</h2>
               <div class="dash-quick-actions">
                 <button type="button" class="dash-action-btn" data-dash-go="document" data-dash-mode="invoice">
-                  <strong>Neue Rechnung</strong>
-                  <span>§ 14 UStG · PDF &amp; CSV</span>
+                  <strong data-i18n="hub.newInvoice">Neue Rechnung</strong>
+                  <span data-i18n="hub.newInvoiceSub">§ 14 UStG · PDF &amp; CSV</span>
                 </button>
                 <a href="lohn.html" class="dash-action-btn" style="text-decoration:none;color:inherit">
-                  <strong>Lohn-Portal</strong>
-                  <span>Empfang · Freigabe · A4</span>
+                  <strong data-i18n="hub.lohnPortal">Lohn-Portal</strong>
+                  <span data-i18n="hub.lohnPortalSub">Empfang · Freigabe · A4</span>
                 </a>
                 <button type="button" class="dash-action-btn" data-dash-go="company">
-                  <strong>Mandant verwalten</strong>
-                  <span>Stammdaten, Bank, Logo</span>
+                  <strong data-i18n="hub.manageClient">Mandant verwalten</strong>
+                  <span data-i18n="hub.manageClientSub">Stammdaten, Bank, Logo</span>
                 </button>
                 <button type="button" class="dash-action-btn" id="dashSyncCheckBtn" data-dash-sync>
-                  <strong>Sync prüfen</strong>
-                  <span>Plattform · Webhook · Pending</span>
+                  <strong data-i18n="hub.syncCheck">Sync prüfen</strong>
+                  <span data-i18n="hub.syncCheckSub">Plattform · Webhook · Pending</span>
                 </button>
               </div>
               <p class="muted small dash-secondary-actions">
@@ -1744,14 +1744,14 @@
     <script src="elster-export.js?v=1"></script>
     <script src="datev-sheet.js?v=42"></script>
     <script src="payroll-core.js?v=22"></script>
-    <script src="workpass-i18n-packs.js?v=3"></script>
-    <script src="workpass-i18n.js?v=4"></script>
+    <script src="workpass-i18n-packs.js?v=4"></script>
+    <script src="workpass-i18n.js?v=5"></script>
     <script src="workpass-pwa.js?v=1"></script>
     <script src="auth-gate.js?v=13"></script>
     <script src="mandant-checklist.js?v=3"></script>
     <script src="workpass-hub.js?v=8"></script>
     <script src="templates.js?v=1" defer></script>
     <script src="signature-engine.js?v=4"></script>
-    <script src="script.js?v=80" defer></script>
+    <script src="script.js?v=81" defer></script>
   </body>
 </html>

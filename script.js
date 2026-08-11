@@ -730,6 +730,11 @@ function hubShowSyncStatus(text, { error = false, nextActions = [] } = {}) {
   }
 }
 
+function hubT(key, fallback, vars) {
+  const v = window.WorkPassI18n?.t?.(key, vars);
+  return (v && v !== key) ? v : (fallback || key);
+}
+
 function hubFormatAutoSyncHint(sync, autoResult = null) {
   const auto = sync?.autoPipeline || {};
   const last = autoResult || auto.lastResult || null;
@@ -740,30 +745,40 @@ function hubFormatAutoSyncHint(sync, autoResult = null) {
     ? last.nextActions
     : fromStatus;
   if (sync?.status === "error" || (wh.ok === false && sync?.webhook?.configured)) {
+    const raw = String(sync?.message || "");
+    let text = hubT("hub.webhookError", "Webhook-Fehler {status} · Plattform-Endpoint prüfen", { status: wh.status || "" });
+    if (/401/.test(raw) || wh.status === 401) {
+      text = hubT(
+        "hub.webhook401",
+        "Plattform-Webhook antwortet nicht (401). Die Plattform muss den Endpoint reparieren und Daten senden."
+      );
+    } else if (raw && !/WORKPASS_|Endpoint|GET \/v1/i.test(raw)) {
+      text = raw;
+    }
     return {
-      text: sync?.message || `Webhook-Fehler ${wh.status || ""} · Plattform-Endpoint prüfen`,
+      text,
       error: true,
-      nextActions: actions.length ? actions : [
-        "Auf der Plattform den Webhook-Endpoint live schalten",
-        "Danach Sync erneut prüfen oder in Lohn „Jetzt synchronisieren“",
+      nextActions: actions.length ? actions.filter((a) => !/WORKPASS_|Endpoint|Pull-URL|batch/i.test(String(a))) : [
+        hubT("hub.fixWebhook", "Auf der Plattform den Webhook-Endpoint live schalten"),
+        hubT("hub.thenSync", "Danach Sync erneut prüfen oder in Lohn „Jetzt synchronisieren“"),
       ],
     };
   }
   if (sync?.status === "waiting" || last?.waitingForPlatform || (pending > 0 && !last?.ok)) {
     return {
-      text: sync?.message || last?.message || `Warte auf Plattform · ${pending} offene Nachricht(en)`,
+      text: sync?.message || last?.message || hubT("hub.waitPlatform", "Warte auf Plattform · {n} offene Nachricht(en)", { n: pending }),
       error: false,
       nextActions: actions.length ? actions : [
-        "Plattform soll Import/Batch senden (Mitarbeiter, Monat, Rechnungen)",
-        "In Lohn-Portal: Empfang → API-Bridge → Jetzt synchronisieren",
+        hubT("hub.platformShouldSend", "Plattform soll Import/Batch senden (Mitarbeiter, Monat, Rechnungen)"),
+        hubT("hub.syncInLohn", "In Lohn-Portal: Empfang → API-Bridge → Jetzt synchronisieren"),
       ],
     };
   }
   if (sync?.status === "manual" || auto.enabled === false) {
     return {
-      text: sync?.message || "Automatik aus · manuell in Lohn synchronisieren oder WORKPASS_AUTO_PIPELINE=1",
+      text: sync?.message || hubT("hub.autoOff", "Automatik aus · manuell in Lohn synchronisieren"),
       error: false,
-      nextActions: actions.length ? actions : ["Lohn-Portal öffnen und „Jetzt synchronisieren“ tippen"],
+      nextActions: actions.length ? actions : [hubT("hub.openLohnSync", "Lohn-Portal öffnen und „Jetzt synchronisieren“ tippen")],
     };
   }
   if (sync?.message || last?.message) {
@@ -771,16 +786,14 @@ function hubFormatAutoSyncHint(sync, autoResult = null) {
   }
   if (auto.lastSuccessAt) {
     return {
-      text: `Automatik an · letzter Erfolg ${auto.lastSuccessAt}`,
+      text: hubT("hub.autoOk", "Automatik an · letzter Erfolg {at}", { at: auto.lastSuccessAt }),
       error: false,
       nextActions: actions,
     };
   }
   return {
-    text: sync?.webhook?.configured
-      ? `Automatik an · Pending ${pending}`
-      : "Webhook nicht gesetzt · Sync nur begrenzt möglich",
-    error: !sync?.webhook?.configured,
+    text: hubT("hub.syncLimited", "Webhook nicht gesetzt · Sync nur begrenzt möglich"),
+    error: false,
     nextActions: actions,
   };
 }
@@ -1809,10 +1822,12 @@ function setVerdienstPreviewMode(active) {
   verdienstPreviewMode = Boolean(active);
   document.body.classList.toggle("verdienst-preview-mode", verdienstPreviewMode);
   if (previewVerdienstBtn) {
-    previewVerdienstBtn.textContent = verdienstPreviewMode ? "Abrechnung" : "VB anzeigen";
+    const tt = (k, fb) => (window.WorkPassI18n?.t?.(k) && window.WorkPassI18n.t(k) !== k)
+      ? window.WorkPassI18n.t(k) : fb;
+    previewVerdienstBtn.textContent = verdienstPreviewMode ? tt("hub.showPayslip", "Abrechnung") : tt("hub.showVb", "VB anzeigen");
     previewVerdienstBtn.title = verdienstPreviewMode
-      ? "Zur Monatsabrechnung zurück"
-      : "Verdienstbescheinigung anzeigen";
+      ? tt("hub.backPayslip", "Zur Monatsabrechnung zurück")
+      : tt("hub.showVbTitle", "Verdienstbescheinigung anzeigen");
   }
   if (!verdienstPreviewMode && getCurrentMode() === "payroll") {
     payrollSheet?.classList.remove("hidden");
@@ -5972,16 +5987,20 @@ function setInvoiceItemIncomplete(isIncomplete) {
 
 function updateUiStatusBar() {
   const isPayroll = getCurrentMode() === "payroll";
-  const modeLabel = isPayroll ? "Lohnabrechnung" : "Rechnung";
+  const tt = (k, fb, vars) => {
+    const v = window.WorkPassI18n?.t?.(k, vars);
+    return (v && v !== k) ? v : fb;
+  };
+  const modeLabel = isPayroll ? tt("nav.payrollFull", "Lohnabrechnung") : tt("doc.invoice", "Rechnung");
   const visibleIncomplete = document.querySelectorAll(
     ".form-panel input.field-incomplete, .form-panel textarea.field-incomplete, .form-panel select.field-incomplete"
   ).length;
 
-  if (modeChip) modeChip.textContent = `Modus: ${modeLabel}`;
+  if (modeChip) modeChip.textContent = tt("status.modeOf", "Modus: {mode}", { mode: modeLabel });
   if (completionChip) {
     completionChip.textContent = visibleIncomplete === 0
-      ? "Status: Vollständig"
-      : `Status: ${visibleIncomplete} Feld(er) offen`;
+      ? tt("status.complete", "Status: Vollständig")
+      : tt("status.fieldsOpen", "Status: {n} Feld(er) offen", { n: visibleIncomplete });
     completionChip.classList.toggle("ui-chip-ok", visibleIncomplete === 0);
     completionChip.classList.toggle("ui-chip-warn", visibleIncomplete > 0);
   }

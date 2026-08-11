@@ -481,15 +481,19 @@
         if ($("portalTotalsPeriod")) $("portalTotalsPeriod").textContent = period;
         if ($("portalTotalsHint")) {
           $("portalTotalsHint").textContent = cur.total
-            ? `${cur.total} Abrechnung(en) · ${cur.status === "released" ? "freigegeben" : (cur.status || "in Bearbeitung")}`
-            : "Noch keine Abrechnungen in diesem Monat – Sync holt Daten von der Plattform.";
+            ? uiT("portal.totalsHintCount", "{count} Abrechnung(en) · {status}")
+              .replace("{count}", String(cur.total))
+              .replace("{status}", cur.status === "released"
+                ? uiT("audit.released", "freigegeben")
+                : firmStatusLabel(cur.status || "partial"))
+            : uiT("portal.totalsHintEmpty", "Noch keine Abrechnungen in diesem Monat – Sync holt Daten von der Plattform.");
         }
         if ($("portalTotalsGrid")) {
           $("portalTotalsGrid").innerHTML = `
-            <div class="kpi"><span>Brutto</span><strong>${esc(PayrollCore.formatAmount(cur.grossSum || 0))}</strong></div>
-            <div class="kpi"><span>Netto</span><strong>${esc(PayrollCore.formatAmount(cur.netSum || 0))}</strong></div>
-            <div class="kpi"><span>Lohnsteuer</span><strong>${esc(PayrollCore.formatAmount(cur.taxSum || 0))}</strong></div>
-            <div class="kpi"><span>SV AN</span><strong>${esc(PayrollCore.formatAmount(cur.svAnSum || 0))}</strong></div>
+            <div class="kpi"><span>${esc(uiT("kpi.gross", "Brutto"))}</span><strong>${esc(PayrollCore.formatAmount(cur.grossSum || 0))}</strong></div>
+            <div class="kpi"><span>${esc(uiT("kpi.netShort", "Netto"))}</span><strong>${esc(PayrollCore.formatAmount(cur.netSum || 0))}</strong></div>
+            <div class="kpi"><span>${esc(uiT("kpi.lohnsteuer", "Lohnsteuer"))}</span><strong>${esc(PayrollCore.formatAmount(cur.taxSum || 0))}</strong></div>
+            <div class="kpi"><span>${esc(uiT("kpi.svAn", "SV AN"))}</span><strong>${esc(PayrollCore.formatAmount(cur.svAnSum || 0))}</strong></div>
           `;
         }
       }
@@ -535,9 +539,9 @@
         // Technical webhook/API detail stays hidden for firm users (CSS); keep minimal for admins if ever shown.
         $("portalSyncDetail").innerHTML = "";
         const firmNext = pending
-          ? ["Plattform liefert fehlende Angaben nach", "Danach erneut „Jetzt synchronisieren“"]
+          ? [uiT("portal.nextPlatformGaps", "Plattform liefert fehlende Angaben nach"), uiT("portal.nextSyncAgain", "Danach erneut „Jetzt synchronisieren“")]
           : (Number(emps.count || 0) === 0
-            ? ["Jetzt synchronisieren", "In der Plattform Mitarbeiter freigeben"]
+            ? [uiT("sync.now", "Jetzt synchronisieren"), uiT("portal.nextReleaseEmployees", "In der Plattform Mitarbeiter freigeben")]
             : []);
         renderPortalNextActions(
           sync?.autoPipeline?.lastResult?.nextActions?.length
@@ -551,20 +555,26 @@
         const list = emps.employees || [];
         const shown = list.slice(0, 50);
         empHost.innerHTML = list.length
-          ? `<p class="portal-list-meta">${esc(String(list.length))} Mitarbeiter · Anzeige ${esc(String(shown.length))} (Mandantentrennung)</p>`
-            + shown.map((e) => `
+          ? `<p class="portal-list-meta">${esc(uiT("portal.empMeta", "{count} Mitarbeiter · Anzeige {shown} (Mandantentrennung)")
+              .replace("{count}", String(list.length))
+              .replace("{shown}", String(shown.length)))}</p>`
+            + shown.map((e) => {
+              const title = employeeTitle(e);
+              const idLine = employeeIdLine(e);
+              return `
             <div class="api-inbox-item">
               <div>
-                <strong>${esc(e.name || e.id)}</strong>
-                <span class="portal-item-meta">Badge ${esc(e.badgeId || e.id)}${e.personnelNumber ? ` · Pers.-Nr. ${esc(e.personnelNumber)}` : ""} · ${esc(e.lastPeriod || "—")} · ${esc(firmStatusLabel(e.lastStatus))}</span>
-                <span>Netto ${e.net != null ? PayrollCore.formatAmount(e.net) : "—"}</span>
+                <strong>${esc(title)}</strong>
+                <span class="portal-item-meta">${esc(idLine)}${e.personnelNumber ? ` · ${esc(uiT("lohn.persNr", "Pers.-Nr."))} ${esc(e.personnelNumber)}` : ""} · ${esc(e.lastPeriod || "—")} · ${esc(firmStatusLabel(e.lastStatus))}</span>
+                <span>${esc(uiT("kpi.netShort", "Netto"))} ${e.net != null ? PayrollCore.formatAmount(e.net) : "—"}</span>
               </div>
               <div class="api-inbox-actions">
                 <button type="button" class="api-open-emp primary" data-id="${esc(e.lastJobId || "")}">${esc(uiT("lohn.open", "Öffnen"))}</button>
               </div>
-            </div>`).join("")
-            + (list.length > shown.length ? `<p class="portal-list-more">+ ${list.length - shown.length} weitere – für große Firmen seitenweise</p>` : "")
-          : '<div class="company-empty-inbox"><strong>Noch keine Mitarbeiter</strong><p>Tippen Sie auf „Jetzt synchronisieren“. Sobald die Plattform Daten sendet, erscheinen Ihre Mitarbeiter hier.</p></div>';
+            </div>`;
+            }).join("")
+            + (list.length > shown.length ? `<p class="portal-list-more">${esc(uiT("portal.moreEmployees", "+ {n} weitere – für große Firmen seitenweise").replace("{n}", String(list.length - shown.length)))}</p>` : "")
+          : `<div class="company-empty-inbox"><strong>${esc(uiT("portal.noEmployees", "Noch keine Mitarbeiter"))}</strong><p>${esc(uiT("portal.noEmployeesHint", "Tippen Sie auf „Jetzt synchronisieren“. Sobald die Plattform Daten sendet, erscheinen Ihre Mitarbeiter hier."))}</p></div>`;
         empHost.querySelectorAll(".api-open-emp").forEach((btn) => {
           btn.addEventListener("click", () => openApiPayrollJob(btn.dataset.id));
         });
@@ -575,7 +585,7 @@
           <button type="button" class="month-chip status-${esc(m.status)}${m.period === period ? " active" : ""}" data-period="${esc(m.period)}">
             <strong>${esc(m.period)}</strong>
             <span>${esc(firmStatusLabel(m.status))} · ${m.released}/${m.total}</span>
-          </button>`).join("") || "<p class='section-hint'>Keine Monate</p>";
+          </button>`).join("") || `<p class='section-hint'>${esc(uiT("portal.noMonths", "Keine Monate"))}</p>`;
         monthHost.querySelectorAll(".month-chip").forEach((btn) => {
           btn.addEventListener("click", () => {
             if ($("payrollMonth")) $("payrollMonth").value = btn.dataset.period;
@@ -589,18 +599,22 @@
       if (archHost) {
         const items = arch.items || [];
         archHost.innerHTML = items.length
-          ? items.map((it) => `
+          ? items.map((it) => {
+            const title = employeeTitle(it.employee);
+            const idLine = employeeIdLine(it.employee);
+            return `
             <div class="api-inbox-item">
               <div>
-                <strong>${esc(it.employee?.name || it.employee?.id || "MA")}</strong>
-                <span>${esc(it.period)} · ${esc(firmStatusLabel(it.status))} · Netto ${it.net != null ? PayrollCore.formatAmount(it.net) : "—"}</span>
+                <strong>${esc(title)}</strong>
+                <span>${esc(idLine ? `${idLine} · ` : "")}${esc(it.period)} · ${esc(firmStatusLabel(it.status))} · ${esc(uiT("kpi.netShort", "Netto"))} ${it.net != null ? PayrollCore.formatAmount(it.net) : "—"}</span>
               </div>
               <div class="api-inbox-actions">
                 <button type="button" class="api-arch-open" data-id="${esc(it.jobId)}">${esc(uiT("lohn.open", "Öffnen"))}</button>
                 <button type="button" class="api-arch-pdf primary" data-id="${esc(it.jobId)}">PDF</button>
               </div>
-            </div>`).join("")
-          : '<div class="company-empty-inbox"><strong>Archiv leer</strong><p>Nach Freigabe erscheinen hier die Abrechnungen.</p></div>';
+            </div>`;
+          }).join("")
+          : `<div class="company-empty-inbox"><strong>${esc(uiT("portal.archiveEmpty", "Archiv leer"))}</strong><p>${esc(uiT("portal.archiveEmptyHint", "Nach Freigabe erscheinen hier die Abrechnungen."))}</p></div>`;
         archHost.querySelectorAll(".api-arch-open").forEach((btn) => {
           btn.addEventListener("click", () => openApiPayrollJob(btn.dataset.id));
         });
@@ -690,14 +704,70 @@
     return (v && v !== key) ? v : (fallback || key);
   }
 
+  function looksLikeIdOnly(name, id) {
+    const n = String(name || "").trim();
+    const i = String(id || "").trim();
+    if (!n) return true;
+    if (i && n.toLowerCase() === i.toLowerCase()) return true;
+    return false;
+  }
+
+  /** Display name for lists; never treat bare ID as a personal name. */
+  function employeeTitle(emp) {
+    if (!emp) return uiT("lohn.nameMissing", "Name fehlt");
+    const id = String(emp.badgeId || emp.id || emp.employeeId || "").trim();
+    const name = String(emp.name || emp.employeeName || "").trim();
+    if (emp.hasName === false || looksLikeIdOnly(name, id)) {
+      return uiT("lohn.nameMissing", "Name fehlt");
+    }
+    return name;
+  }
+
+  function employeeIdLine(emp) {
+    const id = String(emp?.badgeId || emp?.id || emp?.employeeId || "").trim();
+    if (!id) return "";
+    return `${uiT("lohn.id", "ID")}: ${id}`;
+  }
+
+  function localizeGapLabel(g) {
+    if (!g) return "";
+    const code = String(g.code || "").trim();
+    if (code) {
+      const keyed = uiT(`gap.${code}`, "");
+      if (keyed && keyed !== `gap.${code}`) return keyed;
+    }
+    return String(g.label || g.detail || "")
+      .replace(/\s*\([a-z0-9_.]+\)\s*/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function localizeMessageTitle(m) {
+    const period = m?.period || "";
+    const type = String(m?.type || "");
+    const title = String(m?.title || "");
+    if (type.includes("invoice") || /^Rechnungen anfordern/i.test(title)) {
+      return period
+        ? uiT("msg.invoicesRequestPeriod", "Rechnungen anfordern · {period}").replace("{period}", period)
+        : uiT("msg.invoicesRequest", "Rechnungen anfordern");
+    }
+    if (type === "data.gap" || /^Fehlende Daten/i.test(title)) {
+      const who = employeeTitle(m.employee);
+      const id = String(m.employee?.badgeId || m.employee?.id || "").trim();
+      const suffix = looksLikeIdOnly(who, id) && id ? id : who;
+      return `${uiT("msg.missingData", "Fehlende Daten")} · ${suffix}`;
+    }
+    return title || uiT("msg.message", "Nachricht");
+  }
+
   function firmStatusLabel(status) {
     const s = String(status || "").toLowerCase();
     if (s === "released") return uiT("audit.released", "Freigegeben");
-    if (s === "calculated" || s === "ready") return "Berechnet";
+    if (s === "calculated" || s === "ready") return uiT("status.calculated", "Berechnet");
     if (s === "empty" || s === "none" || !s) return uiT("audit.dataNo", "Keine Daten");
-    if (s === "waiting" || s === "pending") return "Wartet";
-    if (s === "error" || s === "failed") return "Bitte prüfen";
-    if (s === "draft") return "Entwurf";
+    if (s === "waiting" || s === "pending" || s === "partial") return uiT("status.waiting", "Wartet");
+    if (s === "error" || s === "failed") return uiT("status.check", "Bitte prüfen");
+    if (s === "draft") return uiT("status.draft", "Entwurf");
     return status;
   }
 
@@ -799,16 +869,25 @@
       }
       const shownMsg = messages.slice(0, 40);
       host.innerHTML = `
-        <p class="portal-list-meta">${esc(String(messages.length))} offen · Anzeige ${esc(String(shownMsg.length))}</p>
-        ${shownMsg.map((m) => `
+        <p class="portal-list-meta">${esc(uiT("portal.openDisplay", "{open} offen · Anzeige {shown}")
+          .replace("{open}", String(messages.length))
+          .replace("{shown}", String(shownMsg.length)))}</p>
+        ${shownMsg.map((m) => {
+          const gapsText = (m.gaps || []).map((g) => localizeGapLabel(g)).filter(Boolean).join(" · ")
+            || (m.type?.includes("invoice")
+              ? uiT("msg.invoicesMissing", "Rechnungen fehlen / Export ausstehend")
+              : String(m.body || "").slice(0, 180));
+          const idLine = employeeIdLine(m.employee);
+          return `
         <div class="api-inbox-item" data-message-id="${esc(m.messageId)}">
           <div>
-            <strong>${esc(m.title || "Nachricht")}</strong>
-            <span class="portal-item-meta">${esc(m.employee?.name || m.employee?.id || "—")} · Badge ${esc(m.employee?.badgeId || m.employee?.id || "—")} · ${esc(m.period || "—")}</span>
-            <span>${esc((m.gaps || []).map((g) => g.label).join(" · ") || m.body || "").slice(0, 180)}</span>
+            <strong>${esc(localizeMessageTitle(m))}</strong>
+            <span class="portal-item-meta">${esc(employeeTitle(m.employee))}${idLine ? ` · ${esc(idLine)}` : ""} · ${esc(m.period || "—")}</span>
+            <span>${esc(gapsText)}</span>
           </div>
-        </div>`).join("")}
-        ${messages.length > shownMsg.length ? `<p class="portal-list-more">+ ${messages.length - shownMsg.length} weitere (Mandanten-Isolation aktiv)</p>` : ""}
+        </div>`;
+        }).join("")}
+        ${messages.length > shownMsg.length ? `<p class="portal-list-more">${esc(uiT("portal.moreMessages", "+ {n} weitere (Mandanten-Isolation aktiv)").replace("{n}", String(messages.length - shownMsg.length)))}</p>` : ""}
       `;
       if (!silent) setStatus(`Offene Plattform-Aufträge: ${messages.length} · Gesehen: ${seen.length}`, true);
       return data;
@@ -1331,17 +1410,26 @@
     const current = PayrollCore.archiveKey(state);
     if (!entries.length) {
       board.innerHTML = companyPortalId
-        ? '<p class="section-hint">Noch keine Abrechnungen für Ihre Firma. Sobald die Plattform Daten sendet, erscheinen sie unter „Meine Abrechnungen“.</p>'
-        : '<p class="section-hint">Noch keine gespeicherten Abrechnungen.</p>';
+        ? `<p class="section-hint">${esc(uiT("portal.archiveLocalEmptyFirm", "Noch keine Abrechnungen für Ihre Firma. Sobald die Plattform Daten sendet, erscheinen sie unter „Meine Abrechnungen“."))}</p>`
+        : `<p class="section-hint">${esc(uiT("portal.archiveLocalEmpty", "Noch keine gespeicherten Abrechnungen."))}</p>`;
       return;
     }
-    board.innerHTML = entries.slice(0, 24).map((e) => `
+    board.innerHTML = entries.slice(0, 24).map((e) => {
+      const title = companyPortalId
+        ? employeeTitle({ name: e.employeeName, id: e.employeeId, badgeId: e.employeeId })
+        : (e.companyName || uiT("audit.company", "Firma"));
+      const idLine = companyPortalId ? employeeIdLine({ id: e.employeeId, badgeId: e.employeeId }) : "";
+      const sub = companyPortalId
+        ? `${idLine ? `${idLine} · ` : ""}${e.payrollMonth || "—"}`
+        : `${employeeTitle({ name: e.employeeName, id: e.employeeId })} · ${e.payrollMonth || "—"}`;
+      return `
       <button type="button" class="archive-item${e.key === current ? " active" : ""}" data-key="${esc(e.key)}">
         <div>
-          <strong>${esc(companyPortalId ? (e.employeeName || "Mitarbeiter") : (e.companyName || "Firma"))}</strong>
-          <span>${esc(companyPortalId ? (e.payrollMonth || "—") : `${e.employeeName || "MA"} · ${e.payrollMonth || "—"}`)}</span>
+          <strong>${esc(title)}</strong>
+          <span>${esc(sub)}</span>
         </div>
-      </button>`).join("");
+      </button>`;
+    }).join("");
     board.querySelectorAll(".archive-item").forEach((btn) => {
       btn.addEventListener("click", () => {
         const loaded = PayrollCore.loadArchiveEntry(btn.dataset.key);
@@ -1738,36 +1826,40 @@
     const invoices = payload?.invoices || [];
     if (!payroll.length && !invoices.length) {
       host.innerHTML = companyPortalId
-        ? '<div class="company-empty-inbox"><strong>Noch keine Abrechnungen</strong><p>Sobald die Plattform Lohn oder Rechnungen für Ihre Firma sendet, erscheinen sie hier automatisch.</p></div>'
-        : '<p class="section-hint">Keine Jobs in der Inbox.</p>';
+        ? `<div class="company-empty-inbox"><strong>${esc(uiT("portal.noPayslips", "Noch keine Abrechnungen"))}</strong><p>${esc(uiT("portal.noPayslipsHint", "Sobald die Plattform Lohn oder Rechnungen für Ihre Firma sendet, erscheinen sie hier automatisch."))}</p></div>`
+        : `<p class="section-hint">${esc(uiT("portal.inboxEmpty", "Keine Jobs in der Inbox."))}</p>`;
       return;
     }
-    const payHtml = payroll.slice(0, 30).map((j) => `
+    const payHtml = payroll.slice(0, 30).map((j) => {
+      const title = employeeTitle(j.employee);
+      const idLine = employeeIdLine(j.employee);
+      return `
       <div class="api-inbox-item" data-type="payroll" data-id="${esc(j.jobId)}">
         <div>
-          <strong>${esc(j.employee?.name || j.employee?.id || "MA")}</strong>
-          <span>${companyPortalId ? "" : `${esc(j.company?.id || "")} · ${esc(j.company?.name || "")} · `}${esc(j.period || "")} · ${esc(j.status || "")}</span>
-          <span>Netto ${j.net != null ? PayrollCore.formatAmount(j.net) : "—"}</span>
+          <strong>${esc(title)}</strong>
+          <span>${esc(idLine ? `${idLine} · ` : "")}${companyPortalId ? "" : `${esc(j.company?.id || "")} · ${esc(j.company?.name || "")} · `}${esc(j.period || "")} · ${esc(firmStatusLabel(j.status))}</span>
+          <span>${esc(uiT("kpi.netShort", "Netto"))} ${j.net != null ? PayrollCore.formatAmount(j.net) : "—"}</span>
         </div>
         <div class="api-inbox-actions">
-          <button type="button" class="api-open" data-id="${esc(j.jobId)}">Öffnen</button>
-          <button type="button" class="api-release primary" data-id="${esc(j.jobId)}" ${j.status === "released" ? "disabled" : ""}>Freigabe</button>
+          <button type="button" class="api-open" data-id="${esc(j.jobId)}">${esc(uiT("lohn.open", "Öffnen"))}</button>
+          <button type="button" class="api-release primary" data-id="${esc(j.jobId)}" ${j.status === "released" ? "disabled" : ""}>${esc(uiT("lohn.release", "Freigabe"))}</button>
         </div>
-      </div>`).join("");
+      </div>`;
+    }).join("");
     const invHtml = invoices.slice(0, 20).map((j) => `
       <div class="api-inbox-item" data-type="invoice" data-id="${esc(j.id)}">
         <div>
-          <strong>RE ${esc(j.number || j.id)}</strong>
-          <span>${companyPortalId ? "" : `${esc(j.company?.id || "")} · `}${esc(j.customer || "")} · ${esc(j.status || "")}</span>
+          <strong>${esc(uiT("doc.invoiceShort", "RE"))} ${esc(j.number || j.id)}</strong>
+          <span>${companyPortalId ? "" : `${esc(j.company?.id || "")} · `}${esc(j.customer || "")} · ${esc(firmStatusLabel(j.status))}</span>
           <span>${j.gross != null ? Number(j.gross).toLocaleString("de-DE", { minimumFractionDigits: 2 }) : ""}</span>
         </div>
         <div class="api-inbox-actions">
-          <button type="button" class="api-inv-release primary" data-id="${esc(j.id)}" ${j.status === "released" ? "disabled" : ""}>Freigabe → Plattform</button>
+          <button type="button" class="api-inv-release primary" data-id="${esc(j.id)}" ${j.status === "released" ? "disabled" : ""}>${esc(uiT("lohn.releasePlatform", "Freigabe → Plattform"))}</button>
         </div>
       </div>`).join("");
     host.innerHTML = `
-      ${payroll.length ? `<h3 class="api-inbox-title">${companyPortalId ? "Meine Lohnabrechnungen" : "Lohn"} (${payroll.length})</h3>${payHtml}` : ""}
-      ${invoices.length ? `<h3 class="api-inbox-title">${companyPortalId ? "Meine Rechnungen" : "Rechnungen"} (${invoices.length})</h3>${invHtml}` : ""}
+      ${payroll.length ? `<h3 class="api-inbox-title">${esc(companyPortalId ? uiT("portal.myPayslips", "Meine Lohnabrechnungen") : uiT("nav.lohn", "Lohn"))} (${payroll.length})</h3>${payHtml}` : ""}
+      ${invoices.length ? `<h3 class="api-inbox-title">${esc(companyPortalId ? uiT("portal.myInvoices", "Meine Rechnungen") : uiT("doc.invoice", "Rechnungen"))} (${invoices.length})</h3>${invHtml}` : ""}
     `;
 
     host.querySelectorAll(".api-open").forEach((btn) => {
