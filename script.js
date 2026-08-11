@@ -611,6 +611,98 @@ function initLexShell() {
   });
   updateLexShellUI();
   initRibbonResponsive();
+  initAppbarResponsive();
+}
+
+function openAppbarOverflowMenu(anchorBtn) {
+  const menuPortal = document.getElementById("lexMenuPortal");
+  const overflow = document.getElementById("wpAppbarOverflow");
+  if (!menuPortal || !overflow || !anchorBtn) return;
+  const items = [];
+  const mandant = document.getElementById("lexAppbarMandant");
+  if (mandant?.textContent?.trim()) {
+    items.push({
+      label: mandant.textContent.trim(),
+      action: () => document.querySelector('.form-tab[data-tab="company"]')?.click(),
+    });
+  }
+  const admin = overflow.querySelector('a[href="admin.html"]');
+  if (admin && !admin.hidden) {
+    items.push({
+      label: ribbonBtnLabel(admin) || hubT("nav.admin", "Admin"),
+      action: () => { window.location.href = admin.href; },
+    });
+  }
+  const badge = document.getElementById("hubCompanyBadge");
+  if (badge && !badge.hidden && badge.textContent?.trim()) {
+    items.push({
+      label: badge.textContent.trim(),
+      action: () => document.querySelector('.form-tab[data-tab="company"]')?.click(),
+    });
+  }
+  if (!items.length) return;
+  menuPortal.innerHTML = items.map((it, i) => (
+    `<button type="button" data-appbar-idx="${i}">${escapeHtmlLite(it.label)}</button>`
+  )).join("");
+  menuPortal.hidden = false;
+  menuPortal.style.visibility = "hidden";
+  const rect = anchorBtn.getBoundingClientRect();
+  menuPortal.style.left = "0px";
+  menuPortal.style.top = `${rect.bottom + 4}px`;
+  const mw = Math.max(menuPortal.offsetWidth || 220, 220);
+  const left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - mw - 8));
+  menuPortal.style.left = `${left}px`;
+  menuPortal.style.visibility = "";
+  anchorBtn.setAttribute("aria-expanded", "true");
+  menuPortal.querySelectorAll("button").forEach((itemBtn, idx) => {
+    itemBtn.addEventListener("click", () => {
+      menuPortal.hidden = true;
+      anchorBtn.setAttribute("aria-expanded", "false");
+      items[idx]?.action?.();
+    });
+  });
+}
+
+function initAppbarResponsive() {
+  const moreBtn = document.getElementById("wpAppbarMore");
+  if (!moreBtn) return;
+  const mqCompact = window.matchMedia("(max-width: 1280px)");
+  const mqTight = window.matchMedia("(max-width: 900px)");
+
+  const apply = () => {
+    const compact = mqCompact.matches;
+    const tight = mqTight.matches;
+    document.body.classList.toggle("hub-appbar-compact", compact);
+    document.body.classList.toggle("hub-appbar-tight", tight);
+    moreBtn.hidden = !compact;
+    moreBtn.setAttribute("aria-expanded", "false");
+    const portal = document.getElementById("lexMenuPortal");
+    if (portal && compact) {
+      /* keep portal usable */
+    } else if (portal && !compact) {
+      /* no-op */
+    }
+  };
+
+  moreBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const portal = document.getElementById("lexMenuPortal");
+    if (portal && !portal.hidden && moreBtn.getAttribute("aria-expanded") === "true") {
+      portal.hidden = true;
+      moreBtn.setAttribute("aria-expanded", "false");
+      return;
+    }
+    openAppbarOverflowMenu(moreBtn);
+  });
+
+  apply();
+  if (typeof mqCompact.addEventListener === "function") {
+    mqCompact.addEventListener("change", apply);
+    mqTight.addEventListener("change", apply);
+  } else {
+    mqCompact.addListener(apply);
+    mqTight.addListener(apply);
+  }
 }
 
 function ribbonBtnLabel(btn) {
