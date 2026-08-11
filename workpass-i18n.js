@@ -97,6 +97,7 @@
       "common.new": "Neu",
       "common.theme": "Theme",
       "status.ready": "Bereit – manuell, Datei oder Inbox.",
+      "status.firmReady": "Firmen-Portal bereit – Sync holt Ihre Daten.",
       "legal.note": "Berechnung bleibt nach deutschem Recht (BMF PAP / SGB IV).",
     },
     en: {
@@ -177,6 +178,7 @@
       "common.new": "New",
       "common.theme": "Theme",
       "status.ready": "Ready – manual, file or inbox.",
+      "status.firmReady": "Company portal ready – sync pulls your data.",
       "legal.note": "Calculations stay under German law (BMF PAP / SGB IV).",
     },
     tr: {
@@ -257,6 +259,7 @@
       "common.new": "Yeni",
       "common.theme": "Tema",
       "status.ready": "Hazır – manuel, dosya veya gelen.",
+      "status.firmReady": "Firma portalı hazır – senkron verilerinizi çeker.",
       "legal.note": "Hesaplama Alman hukukuna göre kalır (BMF PAP / SGB IV).",
     },
     ar: {
@@ -337,6 +340,7 @@
       "common.new": "جديد",
       "common.theme": "المظهر",
       "status.ready": "جاهز – يدوي أو ملف أو وارد.",
+      "status.firmReady": "بوابة الشركة جاهزة – المزامنة تجلب بياناتكم.",
       "legal.note": "الحساب يبقى وفق القانون الألماني (BMF PAP / SGB IV).",
     },
     fr: {
@@ -417,6 +421,7 @@
       "common.new": "Nouveau",
       "common.theme": "Thème",
       "status.ready": "Prêt – manuel, fichier ou boîte.",
+      "status.firmReady": "Portail entreprise prêt – la sync charge vos données.",
       "legal.note": "Le calcul reste selon le droit allemand (BMF PAP / SGB IV).",
     },
     es: {
@@ -497,6 +502,7 @@
       "common.new": "Nuevo",
       "common.theme": "Tema",
       "status.ready": "Listo – manual, archivo o bandeja.",
+      "status.firmReady": "Portal empresa listo – la sync trae sus datos.",
       "legal.note": "El cálculo sigue el derecho alemán (BMF PAP / SGB IV).",
     },
     it: {
@@ -577,6 +583,7 @@
       "common.new": "Nuovo",
       "common.theme": "Tema",
       "status.ready": "Pronto – manuale, file o inbox.",
+      "status.firmReady": "Portale azienda pronto – la sync recupera i dati.",
       "legal.note": "Il calcolo resta secondo il diritto tedesco (BMF PAP / SGB IV).",
     },
     pl: {
@@ -657,6 +664,7 @@
       "common.new": "Nowy",
       "common.theme": "Motyw",
       "status.ready": "Gotowe – ręcznie, plik lub skrzynka.",
+      "status.firmReady": "Portal firmowy gotowy – sync pobiera dane.",
       "legal.note": "Obliczenia pozostają według prawa niemieckiego (BMF PAP / SGB IV).",
     },
   };

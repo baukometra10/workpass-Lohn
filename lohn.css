@@ -36,17 +36,25 @@
 
 html, body {
   margin: 0;
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
   font-family: var(--sans);
   color: var(--text);
   background: var(--bg);
 }
 
+body.lohn-desktop {
+  overflow: hidden;
+}
+
 #lohnApp.lohn-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
   width: 100%;
+  overflow: hidden;
 }
 
 /* Formulare immer bedienbar (außer berechnete Readonly-Felder) */
@@ -85,6 +93,7 @@ body.auth-locked { overflow: hidden; }
   color: var(--text);
   border-bottom: 1px solid var(--border);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
 }
 
 .lohn-brand { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
@@ -212,20 +221,26 @@ select option:checked,
 .lohn-layout {
   display: grid;
   grid-template-columns: minmax(340px, 372px) minmax(0, 1fr);
-  min-height: calc(100vh - var(--appbar-h));
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .lohn-form {
   background: var(--bg-elev);
   border-right: 1px solid var(--border);
   padding: 0 12px 16px;
+  overflow-x: hidden;
   overflow-y: auto;
-  max-height: calc(100vh - var(--appbar-h));
+  min-height: 0;
+  height: 100%;
+  max-height: none;
   scroll-behavior: smooth;
   scroll-padding-top: 120px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  overscroll-behavior: contain;
 }
 .lohn-form > .form-section:not(.form-fill),
 .lohn-form > .pin-details {
@@ -597,8 +612,9 @@ textarea { min-height: 58px; resize: vertical; }
   display: flex; flex-direction: column; align-items: center;
   justify-content: flex-start;
   padding: 10px 12px 12px; overflow: hidden;
-  height: calc(100vh - var(--appbar-h));
-  max-height: calc(100vh - var(--appbar-h));
+  min-height: 0;
+  height: 100%;
+  max-height: none;
   background:
     radial-gradient(ellipse at 42% 8%, rgba(59, 158, 255, 0.12), transparent 38%),
     radial-gradient(ellipse at 70% 85%, rgba(30, 64, 120, 0.18), transparent 45%),
@@ -923,6 +939,7 @@ textarea.field-invalid {
     linear-gradient(135deg, rgba(18, 42, 36, 0.92), rgba(12, 22, 38, 0.95)),
     radial-gradient(circle at 12% 20%, rgba(125, 222, 162, 0.18), transparent 45%);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+  flex-shrink: 0;
 }
 .company-portal-banner[hidden] { display: none !important; }
 .company-portal-banner-inner {
@@ -1834,4 +1851,68 @@ body.company-portal .audit-overview {
     gap: 12px;
   }
 }
+
+/* —— Desktop-App Shell + Arabic RTL (text RTL, layout columns stable) —— */
+body.is-rtl .lohn-layout {
+  direction: ltr; /* Form left, A4 right – payslip stays German LTR */
+}
+body.is-rtl .lohn-appbar,
+body.is-rtl .company-portal-banner,
+body.is-rtl .lohn-form,
+body.is-rtl .lohn-form-sticky,
+body.is-rtl .lohn-form-summary,
+body.is-rtl .form-section,
+body.is-rtl .audit-overview,
+body.is-rtl .kpi-strip,
+body.is-rtl .portal-dash-grid,
+body.is-rtl .month-close-card {
+  direction: rtl;
+  text-align: right;
+}
+body.is-rtl .lohn-preview,
+body.is-rtl .preview-stage,
+body.is-rtl #datevSheetHost,
+body.is-rtl .a4-sheet {
+  direction: ltr;
+  text-align: left;
+}
+body.is-rtl .lohn-form {
+  border-right: none;
+  border-left: 1px solid var(--border);
+}
+body.is-rtl .audit-chip span,
+body.is-rtl .kpi span,
+body.is-rtl .portal-card-head,
+body.is-rtl .step-head {
+  text-align: right;
+}
+body.is-rtl .audit-overview-grid,
+body.is-rtl .portal-kpi-row,
+body.is-rtl .portal-totals-grid {
+  direction: rtl;
+}
+body.is-rtl .company-portal-banner-inner {
+  flex-direction: row-reverse;
+}
+body.is-rtl .wp-lang-wrap {
+  flex-direction: row-reverse;
+}
+body.is-rtl .lohn-status,
+body.is-rtl .section-hint,
+body.is-rtl #recvSectionHint {
+  text-align: right;
+}
+
+body.company-portal .lohn-layout {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+body.company-portal .lohn-form,
+body.company-portal .lohn-preview {
+  height: 100%;
+  max-height: none;
+  min-height: 0;
+}
+
 

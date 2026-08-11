@@ -674,15 +674,39 @@
     return [...groups.values()].sort((a, b) => String(b.latestAt).localeCompare(String(a.latestAt)));
   }
 
+  function uiT(key, fallback) {
+    const v = window.WorkPassI18n?.t?.(key);
+    return (v && v !== key) ? v : (fallback || key);
+  }
+
   function firmStatusLabel(status) {
     const s = String(status || "").toLowerCase();
-    if (s === "released") return "Freigegeben";
+    if (s === "released") return uiT("audit.released", "Freigegeben");
     if (s === "calculated" || s === "ready") return "Berechnet";
-    if (s === "empty" || s === "none" || !s) return "Keine Daten";
+    if (s === "empty" || s === "none" || !s) return uiT("audit.dataNo", "Keine Daten");
     if (s === "waiting" || s === "pending") return "Wartet";
     if (s === "error" || s === "failed") return "Bitte prüfen";
     if (s === "draft") return "Entwurf";
     return status;
+  }
+
+  function applyPortalUiCopy() {
+    if (!companyPortalId) return;
+    const status = $("statusBar");
+    if (status) {
+      status.setAttribute("data-i18n", "status.firmReady");
+      status.textContent = uiT("status.firmReady", "Firmen-Portal bereit – Sync holt Ihre Daten.");
+    }
+    const hint = $("recvSectionHint");
+    if (hint) {
+      hint.setAttribute("data-i18n", "empfang.firmHint");
+      hint.textContent = uiT("empfang.firmHint", "Ihre Abrechnungen erscheinen automatisch.");
+    }
+    const title = document.querySelector("#secEmpfang .step-head h2");
+    if (title) {
+      title.setAttribute("data-i18n", "nav.overview");
+      title.textContent = uiT("nav.overview", "Übersicht");
+    }
   }
 
   function renderAuditOverview({ period, employees = 0, released = 0, openMessages = 0, syncLabel = "—", hasData = false } = {}) {
@@ -694,16 +718,16 @@
       return;
     }
     host.hidden = false;
-    const dataState = hasData ? "Daten vorhanden" : "Noch keine Monatsdaten";
+    const dataState = hasData ? uiT("audit.dataYes", "Daten vorhanden") : uiT("audit.dataNo", "Noch keine Monatsdaten");
     grid.innerHTML = `
-      <div class="audit-chip"><span>Firma</span><strong>${esc(companyPortalId)}</strong></div>
-      <div class="audit-chip"><span>Monat</span><strong>${esc(period || currentPayrollPeriod())}</strong></div>
-      <div class="audit-chip"><span>Mitarbeiter</span><strong>${esc(String(employees))}</strong></div>
-      <div class="audit-chip"><span>Freigegeben</span><strong>${esc(String(released))}</strong></div>
-      <div class="audit-chip"><span>Offene Aufträge</span><strong>${esc(String(openMessages))}</strong></div>
-      <div class="audit-chip"><span>Sync</span><strong>${esc(syncLabel)}</strong></div>
-      <div class="audit-chip audit-chip-wide"><span>Datenlage</span><strong>${esc(dataState)}</strong></div>
-      <div class="audit-chip audit-chip-wide"><span>Mandant</span><strong>Nur diese Firma sichtbar (Isolation)</strong></div>
+      <div class="audit-chip"><span>${esc(uiT("audit.company", "Firma"))}</span><strong>${esc(companyPortalId)}</strong></div>
+      <div class="audit-chip"><span>${esc(uiT("audit.month", "Monat"))}</span><strong>${esc(period || currentPayrollPeriod())}</strong></div>
+      <div class="audit-chip"><span>${esc(uiT("audit.employees", "Mitarbeiter"))}</span><strong>${esc(String(employees))}</strong></div>
+      <div class="audit-chip"><span>${esc(uiT("audit.released", "Freigegeben"))}</span><strong>${esc(String(released))}</strong></div>
+      <div class="audit-chip"><span>${esc(uiT("audit.open", "Offene Aufträge"))}</span><strong>${esc(String(openMessages))}</strong></div>
+      <div class="audit-chip"><span>${esc(uiT("audit.sync", "Sync"))}</span><strong>${esc(syncLabel)}</strong></div>
+      <div class="audit-chip audit-chip-wide"><span>${esc(uiT("audit.data", "Datenlage"))}</span><strong>${esc(dataState)}</strong></div>
+      <div class="audit-chip audit-chip-wide"><span>${esc(uiT("audit.mandant", "Mandant"))}</span><strong>${esc(uiT("audit.isolation", "Nur diese Firma sichtbar (Isolation)"))}</strong></div>
     `;
   }
 
@@ -1925,9 +1949,10 @@
     }
 
     const empfangTitle = document.querySelector("#secEmpfang .step-head h2");
-    if (empfangTitle) empfangTitle.textContent = "Übersicht";
+    if (empfangTitle) empfangTitle.textContent = uiT("nav.overview", "Übersicht");
 
     persistApiConfig();
+    applyPortalUiCopy();
 
     let companyName = "";
     try {
@@ -2514,15 +2539,24 @@
     renderArchiveBoard();
     applyCompanyPortalMode();
     window.WorkPassI18n?.applyDom?.(document);
+    applyPortalUiCopy();
   }
 
   function bootI18n() {
+    document.body.classList.add("lohn-desktop");
     if (!window.WorkPassI18n) return;
     window.WorkPassI18n.init();
     const host = document.getElementById("wpLangHost")
       || document.querySelector(".lohn-actions");
     window.WorkPassI18n.mountSelect(host, "wpLangSelectLohn");
     window.WorkPassI18n.applyDom(document);
+    applyPortalUiCopy();
+    window.addEventListener("workpass:locale", () => {
+      applyPortalUiCopy();
+      if (companyPortalId) {
+        loadPortalDashboard(true).catch(() => {});
+      }
+    });
   }
 
   function init() {

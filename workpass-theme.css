@@ -515,7 +515,11 @@ body.is-rtl .wp-lang-select {
   background-position: left 10px center;
 }
 
-body.is-rtl .lohn-appbar,
+/* Lohn: do not flip the whole workspace – columns stay Form | A4 */
+body.is-rtl .lohn-layout {
+  direction: ltr;
+}
+
 body.is-rtl .lex-appbar,
 body.is-rtl .admin-topbar {
   direction: rtl;
