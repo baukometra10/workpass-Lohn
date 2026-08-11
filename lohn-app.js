@@ -51,9 +51,14 @@
       window.alert(message);
       return;
     }
+    const title = type === "error"
+      ? uiT("toast.error", "Bitte ergänzen")
+      : type === "ok"
+        ? uiT("toast.ok", "Erledigt")
+        : uiT("toast.info", "Hinweis");
     const el = document.createElement("div");
     el.className = `wp-toast wp-toast-${type}`;
-    el.innerHTML = `<strong>${type === "error" ? "Bitte ergänzen" : type === "ok" ? "Erledigt" : "Hinweis"}</strong><span>${esc(message)}</span><button type="button" class="wp-toast-x" aria-label="Schließen">×</button>`;
+    el.innerHTML = `<strong>${esc(title)}</strong><span>${esc(message)}</span><button type="button" class="wp-toast-x" aria-label="${esc(uiT("toast.close", "Schließen"))}">×</button>`;
     el.querySelector(".wp-toast-x")?.addEventListener("click", () => el.remove());
     host.appendChild(el);
     setTimeout(() => el.classList.add("show"), 20);
@@ -498,26 +503,32 @@
         successCard.classList.toggle("portal-success", done);
         if ($("portalSuccessTitle")) {
           $("portalSuccessTitle").textContent = done
-            ? `Monat ${period} komplett`
-            : "Alles erledigt";
+            ? uiT("portal.monthCloseTitlePeriod", `Monatsabschluss ${period}`).replace("{period}", period)
+            : uiT("portal.successTitle", "Alles erledigt");
         }
         if ($("portalSuccessHint")) {
           $("portalSuccessHint").textContent = done
-            ? `${released} Abrechnung(en) berechnet und an die Plattform / Mitarbeiter gesendet.`
+            ? uiT("portal.successHint", "Abrechnungen wurden berechnet und an die Plattform gesendet.")
             : "";
         }
       }
 
       if ($("portalSyncHint")) {
         if (Number(emps.count || 0) === 0 && !cur.total) {
-          $("portalSyncHint").textContent =
-            "Noch keine Mitarbeiterdaten – tippen Sie auf „Jetzt synchronisieren“. WorkPass fragt die Plattform und berechnet automatisch.";
+          $("portalSyncHint").textContent = uiT(
+            "portal.syncHintEmpty",
+            "Noch keine Mitarbeiterdaten – tippen Sie auf „Jetzt synchronisieren“. WorkPass fragt die Plattform und berechnet automatisch."
+          );
         } else if (pending) {
-          $("portalSyncHint").textContent =
-            "Einige Angaben fehlen noch. WorkPass fragt die Plattform gezielt nach – der Monat läuft weiter für alle vollständigen Personen.";
+          $("portalSyncHint").textContent = uiT(
+            "portal.syncHintPending",
+            "Einige Angaben fehlen noch. WorkPass fragt die Plattform gezielt nach – der Monat läuft weiter für alle vollständigen Personen."
+          );
         } else {
-          $("portalSyncHint").textContent =
-            "Verbunden mit der Plattform. Neue Daten werden automatisch berechnet und freigegeben.";
+          $("portalSyncHint").textContent = uiT(
+            "portal.syncHintOk",
+            "Verbunden mit der Plattform. Neue Daten werden automatisch berechnet und freigegeben."
+          );
         }
       }
       if ($("portalSyncDetail")) {
@@ -707,6 +718,17 @@
       title.setAttribute("data-i18n", "nav.overview");
       title.textContent = uiT("nav.overview", "Übersicht");
     }
+    const flowHint = document.querySelector("#companyFlow .section-hint");
+    if (flowHint) flowHint.textContent = uiT("portal.onlyFirm", "Nur Ihre Firma und Ihre Mitarbeiter.");
+    const btnLoad = $("btnPortalApplyPeriod");
+    if (btnLoad) btnLoad.textContent = uiT("portal.loadMonth", "Monat laden");
+    const btnClose = $("btnMonthClose");
+    if (btnClose) btnClose.textContent = uiT("portal.monthCloseNow", "Monatsabschluss jetzt");
+    const btnPortalClose = $("btnPortalMonthClose");
+    if (btnPortalClose) btnPortalClose.textContent = uiT("portal.monthClose", "Monatsabschluss");
+    const printNote = document.querySelector(".preview-note");
+    if (printNote) printNote.textContent = uiT("preview.printNote", "Druck & PDF = nur dieses Blatt");
+    window.WorkPassI18n?.applyDom?.(document);
   }
 
   function renderAuditOverview({ period, employees = 0, released = 0, openMessages = 0, syncLabel = "—", hasData = false } = {}) {
@@ -747,11 +769,13 @@
       const seen = data.seenConfirmations || [];
       const grouped = groupSeenConfirmations(seen);
       if (badge) {
-        badge.textContent = `${messages.length} offen · ${seen.length} gesehen`;
+        badge.textContent = uiT("portal.openSeenBadge", "{open} offen · {seen} gesehen")
+          .replace("{open}", String(messages.length))
+          .replace("{seen}", String(seen.length));
       }
       if (seenHost) {
         if (!grouped.length) {
-          seenHost.innerHTML = `<div class="company-empty-inbox"><strong>Noch keine Lesebestätigung</strong><p>Sobald die Plattform eine Mitteilung öffnet, erscheint hier eine klare Bestätigung – gruppiert nach Vorgang.</p></div>`;
+          seenHost.innerHTML = `<div class="company-empty-inbox"><strong>${esc(uiT("portal.noSeen", "Noch keine Lesebestätigung"))}</strong><p>${esc(uiT("portal.noSeenHint", "Sobald die Plattform eine Mitteilung öffnet, erscheint hier eine klare Bestätigung – gruppiert nach Vorgang."))}</p></div>`;
         } else {
           const shown = grouped.slice(0, 12);
           seenHost.innerHTML = `
@@ -770,7 +794,7 @@
       }
       if (!host) return data;
       if (!messages.length) {
-        host.innerHTML = '<div class="company-empty-inbox"><strong>Keine offenen Aufträge</strong><p>Fehlende Daten werden gebündelt pro Mitarbeiter gemeldet. Die Liste bleibt leer, wenn nichts offen ist.</p></div>';
+        host.innerHTML = `<div class="company-empty-inbox"><strong>${esc(uiT("portal.noOpen", "Keine offenen Aufträge"))}</strong><p>${esc(uiT("portal.noOpenHint", "Fehlende Daten werden gebündelt pro Mitarbeiter gemeldet. Die Liste bleibt leer, wenn nichts offen ist."))}</p></div>`;
         return data;
       }
       const shownMsg = messages.slice(0, 40);
@@ -1170,8 +1194,8 @@
         b.disabled = false;
         b.classList.remove("is-busy");
         b.removeAttribute("aria-busy");
-        if (b.id === "btnMonthClose") b.textContent = "Monatsabschluss jetzt";
-        if (b.id === "btnPortalMonthClose") b.textContent = "Monatsabschluss";
+        if (b.id === "btnMonthClose") b.textContent = uiT("portal.monthCloseNow", "Monatsabschluss jetzt");
+        if (b.id === "btnPortalMonthClose") b.textContent = uiT("portal.monthClose", "Monatsabschluss");
       });
     }
   }
@@ -1863,7 +1887,7 @@
         const active = (data.workspaces || []).filter((w) => w.accountingEnabled).length;
         setStatus(
           companyPortalId
-            ? `Ihre Firma geladen · ${data.companies?.[0]?.name || companyPortalId}`
+            ? uiT("portal.companyLoaded", "Ihre Firma geladen · {name}").replace("{name}", data.companies?.[0]?.name || companyPortalId)
             : `Firmenregister: ${n} · aktiv ${active}`,
           true
         );
@@ -1944,7 +1968,7 @@
 
     const flowHint = document.querySelector("#companyFlow .section-hint");
     if (flowHint) {
-      flowHint.textContent = "Nur Ihre Firma und Ihre Mitarbeiter.";
+      flowHint.textContent = uiT("portal.onlyFirm", "Nur Ihre Firma und Ihre Mitarbeiter.");
     }
 
     const recvApiTab = $("recvApi");
@@ -1971,7 +1995,10 @@
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
               <strong>${esc(companyName)}</strong>
-              <small>${esc(t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))} · Monat ${esc(currentPayrollPeriod())}</small>
+              <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
+                .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
+                .replace("{monthLabel}", uiT("lohn.month", "Monat"))
+                .replace("{period}", currentPayrollPeriod()))}</small>
             </div>
             <div class="month-close-actions portal-primary-actions">
               <a href="index.html" class="primary glossy portal-hub-link" id="btnPortalOpenHub">${esc(uiT("nav.hub", "Hub"))}</a>
@@ -2035,12 +2062,13 @@
     if (monthCard) {
       monthCard.hidden = false;
       if ($("monthCloseTitle")) {
-        $("monthCloseTitle").textContent = `Monatsabschluss ${period}`;
+        $("monthCloseTitle").textContent = uiT("portal.monthCloseTitlePeriod", `Monatsabschluss ${period}`).replace("{period}", period);
       }
       if ($("monthCloseHint")) {
-        $("monthCloseHint").textContent =
-          `Ein Klick: vorhandene Daten für ${period} von der Plattform holen, berechnen und freigeben. `
-          + `Fehlen Angaben bei einer Person, fragt WorkPass die Plattform gezielt nach – der Rest läuft weiter.`;
+        $("monthCloseHint").textContent = uiT(
+          "portal.monthCloseHintPeriod",
+          `Ein Klick: vorhandene Daten für ${period} von der Plattform holen, berechnen und freigeben. Fehlen Angaben bei einer Person, fragt WorkPass die Plattform gezielt nach – der Rest läuft weiter.`
+        ).replaceAll("{period}", period);
       }
     }
 
@@ -2074,7 +2102,7 @@
       }
     }, 45000);
 
-    toast(`Willkommen · ${companyName || companyPortalId}`, "ok");
+    toast(uiT("toast.welcome", "Willkommen · {name}").replace("{name}", companyName || companyPortalId), "ok");
   }
 
   async function openApiPayrollJob(jobId) {

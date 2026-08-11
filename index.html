@@ -21,7 +21,14 @@
     <link rel="stylesheet" href="verdienst-sheet.css?v=1" />
     <link rel="stylesheet" href="annual-certificate.css?v=3" />
     <link rel="stylesheet" href="documents-bw.css?v=1" />
-    <link rel="stylesheet" href="workpass-theme.css?v=11" />
+    <link rel="stylesheet" href="workpass-theme.css?v=12" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#0b1220" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="WorkPass" />
+    <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
   </head>
   <body class="lexware-app workpass-hub auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
@@ -987,47 +994,47 @@
           </div>
 
           <div class="tab-panel" data-tab-panel="help">
-            <h2>Hilfe &amp; Dokumentation</h2>
+            <h2 data-i18n="help.title">Hilfe &amp; Dokumentation</h2>
             <section class="help-card">
-              <h3>Schnellstart (5 Schritte)</h3>
+              <h3 data-i18n="help.quickstart">Schnellstart (5 Schritte)</h3>
               <ol class="help-steps">
-                <li><strong>Übersicht</strong> – Mandant prüfen, Schnellzugriff nutzen</li>
-                <li><strong>Mandantenverwaltung</strong> – Firma, Logo, Bank, Lohn-Vorlage (Agenda empfohlen)</li>
-                <li><strong>Beleg erfassen</strong> – Rechnung, Lohnabrechnung oder Jahresbescheinigung wählen</li>
-                <li><strong>Lohn</strong> – Mitarbeiterdaten, „Gesetzliche Sätze übernehmen“, Monat speichern</li>
-                <li><strong>PDF / Druck</strong> – Vorschau prüfen, exportieren (Strg+S speichern, Strg+P drucken)</li>
+                <li data-i18n="help.step1" data-i18n-html><strong>Übersicht</strong> – Mandant prüfen, Schnellzugriff nutzen</li>
+                <li data-i18n="help.step2" data-i18n-html><strong>Mandantenverwaltung</strong> – Firma, Logo, Bank, Lohn-Vorlage (Agenda empfohlen)</li>
+                <li data-i18n="help.step3" data-i18n-html><strong>Beleg erfassen</strong> – Rechnung, Lohnabrechnung oder Jahresbescheinigung wählen</li>
+                <li data-i18n="help.step4" data-i18n-html><strong>Lohn</strong> – Mitarbeiterdaten, „Gesetzliche Sätze übernehmen“, Monat speichern</li>
+                <li data-i18n="help.step5" data-i18n-html><strong>PDF / Druck</strong> – Vorschau prüfen, exportieren (Strg+S speichern, Strg+P drucken)</li>
               </ol>
             </section>
             <section class="help-card">
-              <h3>Tastenkürzel</h3>
+              <h3 data-i18n="help.shortcuts">Tastenkürzel</h3>
               <ul class="help-steps">
-                <li><kbd>Strg+S</kbd> – Entwurf speichern</li>
-                <li><kbd>Strg+P</kbd> – Drucken / PDF</li>
+                <li data-i18n="help.shortcutSave" data-i18n-html><kbd>Strg+S</kbd> – Entwurf speichern</li>
+                <li data-i18n="help.shortcutPrint" data-i18n-html><kbd>Strg+P</kbd> – Drucken / PDF</li>
               </ul>
             </section>
             <section class="help-card">
-              <h3>Rechnung – Pflichtangaben § 14 UStG</h3>
+              <h3 data-i18n="help.invoiceDuty">Rechnung – Pflichtangaben § 14 UStG</h3>
               <ul id="invoiceComplianceList" class="compliance-list"></ul>
             </section>
             <section class="help-card">
-              <h3>Lohnabrechnung</h3>
-              <p class="small">6 Layouts auf Agenda-Struktur: <strong>Agenda</strong>, DATEV, Standard, Kompakt, Modern, Formal – Druck/PDF <strong>schwarz/weiß</strong>.</p>
-              <p class="small">Lohnsteuer: BMF-Programmablaufplan 2026 · SV: gesetzliche Beitragssätze 2026.</p>
-              <p class="small">Monatsdaten speichern aktiviert Jahres-YTD auf der Abrechnung und die Lohnsteuerbescheinigung.</p>
+              <h3 data-i18n="help.payrollTitle">Lohnabrechnung</h3>
+              <p class="small" data-i18n="help.payrollP1" data-i18n-html>6 Layouts auf Agenda-Struktur: <strong>Agenda</strong>, DATEV, Standard, Kompakt, Modern, Formal – Druck/PDF <strong>schwarz/weiß</strong>.</p>
+              <p class="small" data-i18n="help.payrollP2">Lohnsteuer: BMF-Programmablaufplan 2026 · SV: gesetzliche Beitragssätze 2026.</p>
+              <p class="small" data-i18n="help.payrollP3">Monatsdaten speichern aktiviert Jahres-YTD auf der Abrechnung und die Lohnsteuerbescheinigung.</p>
             </section>
             <section class="help-card">
-              <h3>Export &amp; Schnittstellen</h3>
+              <h3 data-i18n="help.exportTitle">Export &amp; Schnittstellen</h3>
               <ul class="help-steps">
-                <li><strong>PDF</strong> – Drucklayout 1:1 aus Vorschau</li>
-                <li><strong>Rechnung CSV</strong> – Buchhaltungsimport</li>
-                <li><strong>DATEV CSV / LODAS</strong> – Lohn Bewegungsdaten (Lohnmodus)</li>
-                <li><strong>ELSTER-XML</strong> – Vorbereitungsdatei Lohnsteuerbescheinigung (kein direkter ELSTER-Versand)</li>
-                <li><strong>Datensicherung</strong> – JSON unter Mandantenverwaltung</li>
+                <li data-i18n="help.exportPdf" data-i18n-html><strong>PDF</strong> – Drucklayout 1:1 aus Vorschau</li>
+                <li data-i18n="help.exportCsv" data-i18n-html><strong>Rechnung CSV</strong> – Buchhaltungsimport</li>
+                <li data-i18n="help.exportDatev" data-i18n-html><strong>DATEV CSV / LODAS</strong> – Lohn Bewegungsdaten (Lohnmodus)</li>
+                <li data-i18n="help.exportElster" data-i18n-html><strong>ELSTER-XML</strong> – Vorbereitungsdatei Lohnsteuerbescheinigung (kein direkter ELSTER-Versand)</li>
+                <li data-i18n="help.exportBackup" data-i18n-html><strong>Datensicherung</strong> – JSON unter Mandantenverwaltung</li>
               </ul>
             </section>
             <section class="help-card help-legal">
-              <h3>Rechtlicher Hinweis</h3>
-              <p class="small">WorkPass Steuerprogramm (Suppix AI) ist ein Buchhaltungs-Arbeitsplatz für Steuerberater und Firmen. Es ersetzt keine zertifizierte Voll-Lohnsoftware und keine individuelle Steuerberatung. ELSTER-Exporte sind Vorbereitungsdateien zur manuellen Prüfung.</p>
+              <h3 data-i18n="help.legalTitle">Rechtlicher Hinweis</h3>
+              <p class="small" data-i18n="help.legalText">WorkPass Steuerprogramm (Suppix AI) ist ein Buchhaltungs-Arbeitsplatz für Steuerberater und Firmen. Es ersetzt keine zertifizierte Voll-Lohnsoftware und keine individuelle Steuerberatung. ELSTER-Exporte sind Vorbereitungsdateien zur manuellen Prüfung.</p>
             </section>
           </div>
         </section>
@@ -1737,8 +1744,9 @@
     <script src="elster-export.js?v=1"></script>
     <script src="datev-sheet.js?v=42"></script>
     <script src="payroll-core.js?v=22"></script>
-    <script src="workpass-i18n-packs.js?v=2"></script>
-    <script src="workpass-i18n.js?v=3"></script>
+    <script src="workpass-i18n-packs.js?v=3"></script>
+    <script src="workpass-i18n.js?v=4"></script>
+    <script src="workpass-pwa.js?v=1"></script>
     <script src="auth-gate.js?v=13"></script>
     <script src="mandant-checklist.js?v=3"></script>
     <script src="workpass-hub.js?v=8"></script>

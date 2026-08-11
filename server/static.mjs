@@ -26,6 +26,7 @@ const MIME = {
   ".map": "application/json",
   ".txt": "text/plain; charset=utf-8",
   ".pdf": "application/pdf",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
 };
 
 const BLOCKED_PREFIXES = [
@@ -69,12 +70,16 @@ export function tryServeStatic(req, res, urlPath) {
 
   const ext = path.extname(abs).toLowerCase();
   const type = MIME[ext] || "application/octet-stream";
+  const noCache = ext === ".html" || abs.endsWith(`${path.sep}sw.js`) || ext === ".webmanifest";
   const headers = {
     "Content-Type": type,
-    "Cache-Control": ext === ".html" ? "no-cache" : "public, max-age=300",
+    "Cache-Control": noCache ? "no-cache" : "public, max-age=300",
     ...uiSecurityHeaders(),
     ...corsHeaders(req),
   };
+  if (abs.endsWith(`${path.sep}sw.js`)) {
+    headers["Service-Worker-Allowed"] = "/";
+  }
 
   if (req.method === "HEAD") {
     res.writeHead(200, headers);

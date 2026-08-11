@@ -600,3 +600,47 @@ body.workpass-hub .lex-appbar {
   }
 }
 
+/* Help tab: full width, readable cards (no light-on-white) */
+body.workpass-hub.help-tab .workspace {
+  grid-template-columns: 1fr !important;
+}
+body.workpass-hub.help-tab .preview-panel {
+  display: none !important;
+}
+body.workpass-hub .help-card {
+  background: var(--wp-bg-panel) !important;
+  border: 1px solid var(--wp-line) !important;
+  color: var(--wp-text) !important;
+  border-radius: var(--wp-radius) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+body.workpass-hub .help-card h3,
+body.workpass-hub .tab-panel[data-tab-panel="help"] h2 {
+  color: #fff !important;
+}
+body.workpass-hub .help-card,
+body.workpass-hub .help-card li,
+body.workpass-hub .help-card p,
+body.workpass-hub .help-card .small,
+body.workpass-hub .help-card strong,
+body.workpass-hub .help-steps,
+body.workpass-hub .compliance-list {
+  color: var(--wp-text) !important;
+}
+body.workpass-hub .help-card kbd {
+  background: rgba(59, 158, 255, 0.14);
+  border: 1px solid var(--wp-line);
+  color: #fff !important;
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-family: var(--wp-mono);
+  font-size: 0.78em;
+}
+body.workpass-hub .tab-panel[data-tab-panel="help"] {
+  max-width: 920px;
+  padding-bottom: 24px;
+}
+body.workpass-hub .wp-install-btn {
+  white-space: nowrap;
+}
+

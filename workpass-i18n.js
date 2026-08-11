@@ -720,6 +720,8 @@
           el.appendChild(textEl);
         }
         textEl.textContent = val;
+      } else if (el.hasAttribute("data-i18n-html")) {
+        el.innerHTML = val;
       } else {
         el.textContent = val;
       }

@@ -1431,12 +1431,14 @@ function initTabs() {
         panel.classList.toggle("active", panel.dataset.tabPanel === target);
       });
       document.body.classList.toggle("dashboard-tab", target === "dashboard");
+      document.body.classList.toggle("help-tab", target === "help");
       updateTopbarForMode();
       updateDashboard();
     });
   });
   const initialTab = document.querySelector(".form-tab.active")?.dataset.tab || "dashboard";
   document.body.classList.toggle("dashboard-tab", initialTab === "dashboard");
+  document.body.classList.toggle("help-tab", initialTab === "help");
 }
 
 function syncDocTypeCards(mode) {
@@ -1515,13 +1517,13 @@ function updateTopbarForMode() {
     help: tt("nav.help", "Hilfe"),
   };
   const tabSubs = {
-    dashboard: "Dashboard · Mandant, Mitarbeiter & Schnellzugriff",
+    dashboard: tt("hub.sub.dashboard", "Dashboard · Mandant, Mitarbeiter & Schnellzugriff"),
     document: mode === "payroll-annual"
-      ? "Jahres-Lohnsteuerbescheinigung · ELSTER-kompatibel"
-      : (mode === "payroll" ? "Monatsabrechnung · DATEV LOHN17 (1:1 Referenz)" : "Ausgangsrechnungen nach § 14 UStG"),
-    company: "Stammdaten, Bankverbindung, Layout-Vorlagen",
-    payroll: "Monatsabrechnung · DATEV LOHN17 · Referenz Mustermann",
-    help: "Schnellstart, Pflichtfelder, Export & Recht",
+      ? tt("hub.sub.annual", "Jahres-Lohnsteuerbescheinigung · ELSTER-kompatibel")
+      : (mode === "payroll" ? tt("hub.sub.payroll", "Monatsabrechnung · DATEV LOHN17 (1:1 Referenz)") : tt("hub.sub.invoice", "Ausgangsrechnungen nach § 14 UStG")),
+    company: tt("hub.sub.company", "Stammdaten, Bankverbindung, Layout-Vorlagen"),
+    payroll: tt("hub.sub.payrollMenu", "Monatsabrechnung · DATEV LOHN17 · Referenz Mustermann"),
+    help: tt("hub.sub.help", "Schnellstart, Pflichtfelder, Export & Recht"),
   };
   if (topbarHeading) topbarHeading.textContent = tabTitles[activeTab] || tabTitles.document;
   if (topbarSubheading) topbarSubheading.textContent = tabSubs[activeTab] || tabSubs.document;
@@ -5373,11 +5375,14 @@ function setDefaultInvoiceNumber() {
 
 function setDraftSaveState(saved) {
   if (!draftSaveState) return;
-  draftSaveState.textContent = saved ? "Gespeichert" : "Nicht gespeichert";
+  const tt = (k, fb) => (window.WorkPassI18n?.t?.(k) && window.WorkPassI18n.t(k) !== k)
+    ? window.WorkPassI18n.t(k)
+    : fb;
+  draftSaveState.textContent = saved ? tt("status.saved", "Gespeichert") : tt("status.unsaved", "Nicht gespeichert");
   draftSaveState.classList.toggle("saved", saved);
   draftSaveState.classList.toggle("unsaved", !saved);
   if (lexStatusMessage) {
-    lexStatusMessage.textContent = saved ? "Entwurf gespeichert" : "Bereit";
+    lexStatusMessage.textContent = saved ? tt("status.draftSaved", "Entwurf gespeichert") : tt("status.readyShort", "Bereit");
   }
 }
 
