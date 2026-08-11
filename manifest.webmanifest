@@ -9,6 +9,7 @@
   "background_color": "#060b16",
   "theme_color": "#0b1220",
   "lang": "de",
+  "dir": "ltr",
   "categories": ["business", "finance", "productivity"],
   "icons": [
     {
@@ -34,6 +35,20 @@
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Hub",
+      "short_name": "Hub",
+      "url": "./index.html",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Lohn",
+      "short_name": "Lohn",
+      "url": "./lohn.html",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

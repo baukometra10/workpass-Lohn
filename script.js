@@ -238,7 +238,8 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2026.45";
+const APP_VERSION = "2.31.0";
+const APP_VERSION_BUILD = "2026.45";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
 let appBootstrapping = true;
@@ -957,9 +958,18 @@ function hubFormatAutoSyncHint(sync, autoResult = null) {
       text = localizeHubSyncMessage(raw) !== raw
         ? localizeHubSyncMessage(raw)
         : hubT(
-          "hub.webhook401",
-          "Plattform-Webhook antwortet nicht (401). Die Plattform muss den Endpoint reparieren und Daten senden."
+          "hub.webhook401Firm",
+          "Die Plattform antwortet nicht (401). Bitte den Webhook auf der Plattform prüfen und Daten erneut senden."
         );
+      return {
+        text,
+        error: true,
+        nextActions: [
+          hubT("hub.webhook401Next1", "Auf der Plattform: Webhook-URL und Secret prüfen"),
+          hubT("hub.webhook401Next2", "Secret muss mit WORKPASS_PLATFORM_WEBHOOK_KEY übereinstimmen"),
+          hubT("hub.webhook401Next3", "Danach Sync erneut prüfen oder in Lohn „Jetzt synchronisieren“"),
+        ],
+      };
     } else if (raw && !/WORKPASS_|Endpoint|GET \/v1/i.test(raw)) {
       text = localizeHubSyncMessage(raw);
     }

@@ -15,6 +15,12 @@
       || window.navigator.standalone === true;
   }
 
+  function markStandalone() {
+    if (!isStandalone()) return;
+    document.documentElement.classList.add("wp-standalone");
+    document.body?.classList.add("wp-standalone");
+  }
+
   function ensureBtn() {
     let btn = document.getElementById("wpInstallApp");
     if (!btn) {
@@ -37,6 +43,8 @@
       btn.addEventListener("click", onInstallClick);
     }
     btn.className = "wp-install-btn";
+    btn.setAttribute("aria-label", t("pwa.install", "App installieren"));
+    btn.title = t("pwa.install", "App installieren");
     btn.textContent = t("pwa.install", "App installieren");
     return btn;
   }
@@ -92,13 +100,18 @@
   }
 
   function boot() {
+    markStandalone();
     registerSw();
     const existing = document.getElementById("wpInstallApp");
     if (existing && !existing.dataset.bound) {
       existing.dataset.bound = "1";
       existing.addEventListener("click", onInstallClick);
     }
-    if (!isStandalone()) setTimeout(showInstall, 800);
+    if (isStandalone()) {
+      if (existing) existing.hidden = true;
+      return;
+    }
+    setTimeout(showInstall, 800);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

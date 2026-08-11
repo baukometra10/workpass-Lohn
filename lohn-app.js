@@ -2680,14 +2680,74 @@
     applyPortalUiCopy();
     window.addEventListener("workpass:locale", () => {
       applyPortalUiCopy();
+      window.WorkPassI18n?.applyDom?.(document);
       if (companyPortalId) {
         loadPortalDashboard(true).catch(() => {});
       }
     });
   }
 
+  function initLohnActionsResponsive() {
+    const compact = document.getElementById("lohnActionsCompact");
+    const full = document.getElementById("lohnActionsFull");
+    const more = document.getElementById("lohnActionsMore");
+    if (!compact || !full) return;
+    const mq = window.matchMedia("(max-width: 1180px)");
+    let menuEl = document.getElementById("lohnCompactMenu");
+    if (!menuEl) {
+      menuEl = document.createElement("div");
+      menuEl.id = "lohnCompactMenu";
+      menuEl.className = "lohn-compact-menu";
+      menuEl.hidden = true;
+      document.body.appendChild(menuEl);
+    }
+    const apply = () => {
+      const narrow = mq.matches || window.innerWidth <= 1180;
+      document.body.classList.toggle("lohn-actions-compact", narrow);
+      compact.hidden = !narrow;
+      full.hidden = narrow;
+      menuEl.hidden = true;
+    };
+    compact.querySelectorAll("[data-lohn-cmd]").forEach((btn) => {
+      btn.addEventListener("click", () => document.getElementById(btn.dataset.lohnCmd)?.click());
+    });
+    more?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!menuEl.hidden) {
+        menuEl.hidden = true;
+        return;
+      }
+      const entries = [
+        { label: uiT("common.new", "Neu"), run: () => $("btnNew")?.click() },
+        { label: uiT("common.export", "Export"), run: () => $("btnExportJson")?.click() },
+        { label: uiT("common.csv", "CSV"), run: () => $("btnExportCsv")?.click() },
+        { label: uiT("nav.lock", "Sperren"), run: () => $("btnLock")?.click() },
+        { label: uiT("common.theme", "Theme"), run: () => $("btnThemeToggle")?.click() },
+        { label: uiT("nav.hub", "Hub"), run: () => { window.location.href = "index.html"; } },
+        { label: uiT("nav.admin", "Admin"), run: () => { window.location.href = "admin.html"; } },
+      ];
+      menuEl.innerHTML = entries.map((it, i) => `<button type="button" data-i="${i}">${it.label}</button>`).join("");
+      menuEl.querySelectorAll("button").forEach((b) => {
+        b.addEventListener("click", () => {
+          menuEl.hidden = true;
+          entries[Number(b.dataset.i)]?.run?.();
+        });
+      });
+      const rect = more.getBoundingClientRect();
+      menuEl.style.left = `${Math.min(rect.left, window.innerWidth - 220)}px`;
+      menuEl.style.top = `${rect.bottom + 4}px`;
+      menuEl.hidden = false;
+    });
+    document.addEventListener("click", () => { menuEl.hidden = true; });
+    apply();
+    window.addEventListener("resize", apply);
+    if (typeof mq.addEventListener === "function") mq.addEventListener("change", apply);
+    else mq.addListener?.(apply);
+  }
+
   function init() {
     bootI18n();
+    initLohnActionsResponsive();
     // onUnlock startet die App nach PIN; bei aktiver Sitzung/E2E sofort
     if (!window.WorkPassAuth) {
       startApp();

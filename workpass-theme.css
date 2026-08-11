@@ -489,7 +489,12 @@ body.workpass-hub .lex-ribbon-btn.lex-ribbon-text {
   letter-spacing: 0.02em;
 }
 
-/* Appbar: stay calm on narrow widths */
+/*
+ * Responsive chrome — three shared breakpoints:
+ * 1180px: overflow menus / compact primary actions
+ * 900px: hide secondary chrome (menubar, badges)
+ * 640px: phone — keep only essential commands
+ */
 @media (max-width: 1180px) {
   body.workpass-hub .lex-appbar-brand .lex-app-sub {
     display: none;
@@ -502,6 +507,10 @@ body.workpass-hub .lex-ribbon-btn.lex-ribbon-text {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  body.workpass-hub .lex-appbar-right {
+    max-width: none;
+    overflow: visible;
   }
 }
 @media (max-width: 900px) {
@@ -523,10 +532,23 @@ body.workpass-hub .lex-ribbon-btn.lex-ribbon-text {
     padding: 6px 10px;
     font-size: 0.74rem;
   }
+  body.workpass-hub .wp-install-btn {
+    padding: 6px 10px;
+    font-size: 0.74rem;
+  }
 }
 @media (max-width: 640px) {
   body.workpass-hub .lex-ribbon-compact-primary .lex-cmd[data-cmd="loadDraftBtn"] {
     display: none;
+  }
+  body.workpass-hub .lex-appbar-brand strong {
+    font-size: 0.95rem;
+  }
+  body.workpass-hub .wp-install-btn {
+    max-width: 9.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 body.workpass-hub .tool-row {

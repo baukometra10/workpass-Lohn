@@ -7,8 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="workpass-theme.css?v=19" />
-    <link rel="stylesheet" href="lohn.css?v=62" />
+    <link rel="stylesheet" href="workpass-theme.css?v=21" />
+    <link rel="stylesheet" href="lohn.css?v=64" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0b1220" />
     <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png" />
@@ -340,12 +340,12 @@
           </div>
           <div>
             <strong data-i18n="auth.product">WorkPass Steuerprogramm</strong>
-            <small>Suppix AI · Accounting Admin</small>
+            <small data-i18n="admin.subBrand">Suppix AI · Accounting Admin</small>
           </div>
         </div>
         <div class="auth-meta">
-          <div><span>Produkt</span>WorkPass Admin</div>
-          <div><span>Zugang</span><span data-i18n="auth.mode.admin">Nur Admin-Rolle</span></div>
+          <div><span data-i18n="admin.metaProduct">Produkt</span>WorkPass Admin</div>
+          <div><span data-i18n="admin.metaAccess">Zugang</span><span data-i18n="auth.mode.admin">Nur Admin-Rolle</span></div>
         </div>
         <h1 id="authTitle" data-i18n="auth.unlock">Admin-Zugang</h1>
         <p class="auth-hint" id="authHint" data-i18n="auth.hint">Nur Accounting-Admin · Plattform-Konto oder Geräte-PIN</p>
@@ -364,7 +364,7 @@
             <label for="authPin" data-i18n="auth.pin">PIN</label>
             <input id="authPin" type="password" inputmode="numeric" maxlength="8" />
             <div id="authConfirmWrap" hidden>
-              <label for="authPinConfirm">PIN bestätigen</label>
+              <label for="authPinConfirm" data-i18n="auth.pinConfirmLabel">PIN bestätigen</label>
               <input id="authPinConfirm" type="password" inputmode="numeric" maxlength="8" />
             </div>
           </div>
@@ -417,21 +417,21 @@
       </div>
       <div class="admin-panel">
         <h2 data-i18n="admin.syncTitle">Firma aus Plattform hier anlegen (Login-Sync)</h2>
-        <p class="admin-hint">
+        <p class="admin-hint" data-i18n="admin.syncHint">
           Wenn in der Plattform „Abrechnungen an WorkPass Lohn senden“ aktiv ist, die Firma aber beim Login fehlt:
           hier einmal anlegen. Später soll die Plattform das automatisch per <code>POST /v1/company/login-sync</code> machen.
         </p>
         <div class="admin-field-grid">
-          <label>Firma-ID (company.id)
+          <label><span data-i18n="admin.fieldCompanyId">Firma-ID (company.id)</span>
             <input id="syncCompanyId" type="text" placeholder="z. B. luf oder cmp-…" />
           </label>
-          <label>Firmenname
+          <label><span data-i18n="admin.fieldCompanyName">Firmenname</span>
             <input id="syncCompanyName" type="text" placeholder="Anzeigename" />
           </label>
-          <label>Login-E-Mail
+          <label><span data-i18n="admin.fieldLoginEmail">Login-E-Mail</span>
             <input id="syncLoginEmail" type="email" placeholder="luf@firma.de" />
           </label>
-          <label>Passwort / PIN (min. 4)
+          <label><span data-i18n="admin.fieldLoginPin">Passwort / PIN (min. 4)</span>
             <input id="syncLoginPassword" type="text" placeholder="4821" autocomplete="off" />
           </label>
         </div>
@@ -443,25 +443,25 @@
         <h2 data-i18n="admin.companies">Firmen / Abteilungen</h2>
         <table class="admin-table">
           <thead>
-            <tr><th>Firma</th><th>ID</th><th>Login</th><th>Status</th></tr>
+            <tr><th data-i18n="admin.thCompany">Firma</th><th data-i18n="admin.thId">ID</th><th data-i18n="admin.thLogin">Login</th><th data-i18n="admin.thStatus">Status</th></tr>
           </thead>
           <tbody id="adminCompanies"></tbody>
         </table>
       </div>
       <div class="admin-panel">
         <h2 data-i18n="admin.audit">Security-Audit (letzte Einträge)</h2>
-        <div id="adminAudit"><p class="admin-hint">Wird beim Laden der Übersicht gefüllt.</p></div>
+        <div id="adminAudit"><p class="admin-hint" data-i18n="admin.auditEmpty">Wird beim Laden der Übersicht gefüllt.</p></div>
       </div>
       <div class="admin-panel">
         <h2 data-i18n="admin.backups">Backups</h2>
         <div id="adminBackups"></div>
       </div>
-      <p class="admin-foot">WorkPass Steuerprogramm · Bridge-Admin</p>
+      <p class="admin-foot" data-i18n="admin.foot">WorkPass Steuerprogramm · Bridge-Admin</p>
     </div>
 
-    <script src="workpass-i18n-packs.js?v=10"></script>
+    <script src="workpass-i18n-packs.js?v=12"></script>
     <script src="workpass-i18n.js?v=6"></script>
-    <script src="workpass-pwa.js?v=2"></script>
+    <script src="workpass-pwa.js?v=4"></script>
     <script src="auth-gate.js?v=13"></script>
     <script>
       if (window.WorkPassI18n) {
@@ -485,6 +485,14 @@
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         return data;
       }
+      function t(key, fb, vars) {
+        let v = window.WorkPassI18n?.t?.(key, vars);
+        if (!v || v === key) v = fb || key;
+        if (vars && typeof v === "string") {
+          for (const [k, val] of Object.entries(vars)) v = v.split("{" + k + "}").join(String(val));
+        }
+        return v;
+      }
       function setStatus(msg, ok) {
         const el = document.getElementById("adminStatus");
         el.textContent = msg;
@@ -507,51 +515,49 @@
       }
       async function refresh() {
         const btn = document.getElementById("btnRefresh");
-        setBusy(btn, true, "Lädt…");
+        setBusy(btn, true, t("admin.loading", "Lädt…"));
         try {
           const data = await api("/v1/admin/overview");
           const user = window.WorkPassAuth?.getSessionUser?.();
           document.getElementById("adminWho").textContent = user
-            ? `${user.name || user.email} · Rolle: ${user.role}`
-            : "Angemeldet per API-Key / Session";
-          document.getElementById("adminKpis").innerHTML = `
-            <div class="admin-kpi"><span>Firmen</span><strong>${data.companies?.count ?? 0}</strong></div>
-            <div class="admin-kpi"><span>Aktiv</span><strong>${data.companies?.active ?? 0}</strong></div>
-            <div class="admin-kpi"><span>Backups</span><strong>${data.backup?.backups?.length ?? 0}</strong></div>
-            <div class="admin-kpi"><span>Version</span><strong>${esc(data.health?.version || "—")}</strong></div>`;
+            ? t("admin.whoRole", "{name} · Rolle: {role}", { name: user.name || user.email, role: user.role })
+            : t("admin.whoApi", "Angemeldet per API-Key / Session");
+          document.getElementById("adminKpis").innerHTML =
+            '<div class="admin-kpi"><span>' + esc(t("admin.kpiCompanies", "Firmen")) + "</span><strong>" + (data.companies?.count ?? 0) + "</strong></div>" +
+            '<div class="admin-kpi"><span>' + esc(t("admin.kpiActive", "Aktiv")) + "</span><strong>" + (data.companies?.active ?? 0) + "</strong></div>" +
+            '<div class="admin-kpi"><span>' + esc(t("admin.kpiBackups", "Backups")) + "</span><strong>" + (data.backup?.backups?.length ?? 0) + "</strong></div>" +
+            '<div class="admin-kpi"><span>' + esc(t("admin.kpiVersion", "Version")) + "</span><strong>" + esc(data.health?.version || "—") + "</strong></div>";
           const rights = data.rights || {};
           document.getElementById("adminRights").innerHTML = Object.entries(rights)
-            .map(([k, v]) => `<li>${v ? "✓" : "–"} ${esc(k)}</li>`).join("") || "<li>Keine Rechte geladen.</li>";
+            .map(([k, v]) => "<li>" + (v ? "✓" : "–") + " " + esc(k) + "</li>").join("") || ("<li>" + esc(t("admin.noRights", "Keine Rechte geladen.")) + "</li>");
           const rows = (data.companies?.items || []).map((c) => {
             const warnings = [];
-            if (!c.accountingEnabled) warnings.push("Kein Accounting");
-            if (!c.hasHubProfile) warnings.push("Kein Hub-Profil");
-            if (!c.hasLoginPassword) warnings.push("Kein PIN");
-            return `
-            <tr>
-              <td>${esc(c.name || "—")}</td>
-              <td><code>${esc(c.id || "")}</code></td>
-              <td>${esc(c.loginEmail || "—")} ${c.hasLoginPassword ? "· PIN ✓" : "· kein PIN"}</td>
-              <td>
-                <div class="admin-status-cell">
-                  <span class="badge ${c.accountingEnabled ? "badge-on" : "badge-off"}">${c.accountingEnabled ? "Aktiv" : "Inaktiv"}</span>
-                  <span class="badge ${c.hasHubProfile ? "badge-on" : "badge-warn"}">${c.hasHubProfile ? "Hub ✓" : "Hub ✗"}</span>
-                  <button type="button" class="btn-delete-company" data-id="${esc(c.id || "")}" data-name="${esc(c.name || c.id || "")}">Löschen</button>
-                  ${warnings.length ? `<div class="admin-warn">${esc(warnings.join(" · "))}</div>` : ""}
-                </div>
-              </td>
-            </tr>`;
+            if (!c.accountingEnabled) warnings.push(t("admin.warnNoAccounting", "Kein Accounting"));
+            if (!c.hasHubProfile) warnings.push(t("admin.warnNoHub", "Kein Hub-Profil"));
+            if (!c.hasLoginPassword) warnings.push(t("admin.warnNoPin", "Kein PIN"));
+            return (
+              "<tr>" +
+              "<td>" + esc(c.name || "—") + "</td>" +
+              "<td><code>" + esc(c.id || "") + "</code></td>" +
+              "<td>" + esc(c.loginEmail || "—") + " " + (c.hasLoginPassword ? esc(t("admin.hasPin", "· PIN ✓")) : esc(t("admin.noPinBadge", "· kein PIN"))) + "</td>" +
+              '<td><div class="admin-status-cell">' +
+              '<span class="badge ' + (c.accountingEnabled ? "badge-on" : "badge-off") + '">' + esc(c.accountingEnabled ? t("admin.badgeActive", "Aktiv") : t("admin.badgeInactive", "Inaktiv")) + "</span>" +
+              '<span class="badge ' + (c.hasHubProfile ? "badge-on" : "badge-warn") + '">' + esc(c.hasHubProfile ? t("admin.badgeHubOk", "Hub ✓") : t("admin.badgeHubMissing", "Hub ✗")) + "</span>" +
+              '<button type="button" class="btn-delete-company" data-id="' + esc(c.id || "") + '" data-name="' + esc(c.name || c.id || "") + '">' + esc(t("admin.delete", "Löschen")) + "</button>" +
+              (warnings.length ? '<div class="admin-warn">' + esc(warnings.join(" · ")) + "</div>" : "") +
+              "</div></td></tr>"
+            );
           }).join("");
-          document.getElementById("adminCompanies").innerHTML = rows || `<tr><td colspan="4">Noch keine Firmen – oben „Login-Sync“ nutzen oder Plattform syncen.</td></tr>`;
+          document.getElementById("adminCompanies").innerHTML = rows || ('<tr><td colspan="4">' + esc(t("admin.noCompanies", "Noch keine Firmen – oben „Login-Sync“ nutzen oder Plattform syncen.")) + "</td></tr>");
           try {
             const audit = await api("/v1/admin/audit?limit=40");
             const auditHost = document.getElementById("adminAudit");
             if (auditHost) {
               auditHost.innerHTML = (audit.entries || []).length
-                ? `<ul class="admin-audit-list">${(audit.entries || []).slice(0, 25).map((e) =>
-                  `<li><code>${esc(e.at || "")}</code> · ${esc(e.type || "?")} · ${esc(e.outcome || "")}${e.companyId ? ` · ${esc(e.companyId)}` : ""}</li>`
-                ).join("")}</ul>`
-                : "<p class=\"admin-hint\">Noch keine Audit-Einträge.</p>";
+                ? '<ul class="admin-audit-list">' + (audit.entries || []).slice(0, 25).map((e) =>
+                  "<li><code>" + esc(e.at || "") + "</code> · " + esc(e.type || "?") + " · " + esc(e.outcome || "") + (e.companyId ? (" · " + esc(e.companyId)) : "") + "</li>"
+                ).join("") + "</ul>"
+                : ('<p class="admin-hint">' + esc(t("admin.noAudit", "Noch keine Audit-Einträge.")) + "</p>");
             }
           } catch { /* optional */ }
           document.querySelectorAll(".btn-delete-company").forEach((delBtn) => {
@@ -559,92 +565,92 @@
               const id = delBtn.getAttribute("data-id");
               const name = delBtn.getAttribute("data-name") || id;
               if (!id) return;
-              if (!confirm(`Firma „${name}“ (${id}) wirklich aus WorkPass Lohn löschen?`)) return;
+              if (!confirm(t("admin.confirmDeleteCompany", "Firma „{name}“ ({id}) wirklich aus WorkPass Lohn löschen?", { name, id }))) return;
               setBusy(delBtn, true, "…");
               try {
                 await api("/v1/company/delete", {
                   method: "POST",
                   body: JSON.stringify({ companyId: id, event: "company.deleted", deletedBy: "admin-ui" }),
                 });
-                setStatus(`Firma ${id} entfernt`, true);
+                setStatus(t("admin.companyRemoved", "Firma {id} entfernt", { id }), true);
                 refresh();
               } catch (e) {
                 setStatus(e.message, false);
-                setBusy(delBtn, false, "Löschen");
+                setBusy(delBtn, false, t("admin.delete", "Löschen"));
               }
             });
           });
           const backups = data.backup?.backups || [];
           document.getElementById("adminBackups").innerHTML = backups.length
-            ? `<ul class="admin-backup-list">${backups.map((b) => `<li>
-                ${esc(b.fileName || b.name || JSON.stringify(b))}
-                <button type="button" class="btn-restore-bak" data-file="${esc(b.fileName || "")}">Wiederherstellen</button>
-              </li>`).join("")}</ul>`
-            : "<p class=\"admin-hint\">Keine Backups gefunden.</p>";
+            ? '<ul class="admin-backup-list">' + backups.map((b) =>
+              "<li>" + esc(b.fileName || b.name || JSON.stringify(b)) +
+              ' <button type="button" class="btn-restore-bak" data-file="' + esc(b.fileName || "") + '">' + esc(t("admin.restore", "Wiederherstellen")) + "</button></li>"
+            ).join("") + "</ul>"
+            : ('<p class="admin-hint">' + esc(t("admin.noBackups", "Keine Backups gefunden.")) + "</p>");
           document.querySelectorAll(".btn-restore-bak").forEach((bakBtn) => {
             bakBtn.addEventListener("click", async () => {
               const fileName = bakBtn.getAttribute("data-file");
               if (!fileName) return;
-              if (!confirm(`Backup ${fileName} wirklich wiederherstellen? Aktuelle DB wird überschrieben (Sicherheitskopie wird angelegt).`)) return;
+              if (!confirm(t("admin.confirmRestore", "Backup {file} wirklich wiederherstellen? Aktuelle DB wird überschrieben (Sicherheitskopie wird angelegt).", { file: fileName }))) return;
               setBusy(bakBtn, true, "…");
               try {
                 await api("/v1/admin/backup/restore", {
                   method: "POST",
                   body: JSON.stringify({ fileName, confirm: true }),
                 });
-                setStatus(`Backup ${fileName} wiederhergestellt`, true);
+                setStatus(t("admin.backupRestored", "Backup {file} wiederhergestellt", { file: fileName }), true);
                 refresh();
               } catch (e) {
                 setStatus(e.message, false);
-                setBusy(bakBtn, false, "Wiederherstellen");
+                setBusy(bakBtn, false, t("admin.restore", "Wiederherstellen"));
               }
             });
           });
-          setStatus("Admin-Übersicht geladen", true);
+          setStatus(t("admin.loaded", "Admin-Übersicht geladen"), true);
         } catch (e) {
           setStatus(e.message, false);
         } finally {
-          setBusy(btn, false, "Aktualisieren");
+          setBusy(btn, false, t("action.refresh", "Aktualisieren"));
         }
       }
       document.getElementById("btnRefresh")?.addEventListener("click", refresh);
       document.getElementById("btnBackup")?.addEventListener("click", async () => {
         const btn = document.getElementById("btnBackup");
-        setBusy(btn, true, "Backup…");
+        setBusy(btn, true, t("admin.backupBusy", "Backup…"));
         try {
           await api("/v1/admin/backup", { method: "POST", body: "{}" });
-          setStatus("Backup erstellt", true);
+          setStatus(t("admin.backupCreated", "Backup erstellt"), true);
           await refresh();
         } catch (e) {
           setStatus(e.message, false);
         } finally {
-          setBusy(btn, false, "Backup jetzt");
+          setBusy(btn, false, t("admin.backup", "Backup jetzt"));
         }
       });
       document.getElementById("btnClearRate")?.addEventListener("click", async () => {
         const btn = document.getElementById("btnClearRate");
-        setBusy(btn, true, "Löscht…");
+        setBusy(btn, true, t("admin.clearingRate", "Löscht…"));
         try {
           await api("/v1/admin/rate-limit/clear", { method: "POST", body: "{}" });
-          setStatus("Rate-Limit geleert", true);
+          setStatus(t("admin.rateCleared", "Rate-Limit geleert"), true);
         } catch (e) {
           setStatus(e.message, false);
         } finally {
-          setBusy(btn, false, "Rate-Limit löschen");
+          setBusy(btn, false, t("admin.clearRate", "Rate-Limit löschen"));
         }
       });
       document.getElementById("btnMonthCloseAll")?.addEventListener("click", async () => {
-        if (!confirm("Monatsabschluss für alle aktiven Firmen jetzt ausführen?")) return;
+        if (!confirm(t("admin.confirmMonthClose", "Monatsabschluss für alle aktiven Firmen jetzt ausführen?"))) return;
         const btn = document.getElementById("btnMonthCloseAll");
-        setBusy(btn, true, "Läuft…");
+        setBusy(btn, true, t("admin.monthCloseBusy", "Läuft…"));
         try {
           const data = await api("/v1/admin/month-close/run", { method: "POST", body: "{}" });
-          setStatus(`Monatsabschluss: ${data.count || 0} Firmen · ok=${data.ok}`, true);
+          setStatus(t("admin.monthCloseDone", "Monatsabschluss: {count} Firmen · ok={ok}", { count: data.count || 0, ok: data.ok }), true);
           await refresh();
         } catch (e) {
           setStatus(e.message, false);
         } finally {
-          setBusy(btn, false, "Monatsabschluss alle Firmen");
+          setBusy(btn, false, t("admin.monthCloseAll", "Monatsabschluss alle Firmen"));
         }
       });
       document.getElementById("btnSyncLogin")?.addEventListener("click", async () => {
@@ -653,11 +659,11 @@
         const email = String(document.getElementById("syncLoginEmail")?.value || "").trim();
         const password = String(document.getElementById("syncLoginPassword")?.value || "");
         if (!companyId || password.length < 4) {
-          setStatus("Firma-ID und Passwort/PIN (min. 4) sind Pflicht.", false);
+          setStatus(t("admin.syncNeedFields", "Firma-ID und Passwort/PIN (min. 4) sind Pflicht."), false);
           return;
         }
         const btn = document.getElementById("btnSyncLogin");
-        setBusy(btn, true, "Speichert…");
+        setBusy(btn, true, t("admin.syncSaving", "Speichert…"));
         try {
           const data = await api("/v1/company/login-sync", {
             method: "POST",
@@ -667,13 +673,13 @@
               login: { email: email || undefined, password },
             }),
           });
-          setStatus(`Gespeichert: ${data.login?.email || email || companyId} – jetzt in Lohn anmelden.`, true);
+          setStatus(t("admin.syncSaved", "Gespeichert: {who} – jetzt in Lohn anmelden.", { who: data.login?.email || email || companyId }), true);
           document.getElementById("syncLoginPassword").value = "";
           await refresh();
         } catch (e) {
           setStatus(e.message, false);
         } finally {
-          setBusy(btn, false, "Firma + Login speichern");
+          setBusy(btn, false, t("admin.saveLogin", "Firma + Login speichern"));
         }
       });
       window.WorkPassAuth.init({
@@ -681,7 +687,7 @@
           window.WorkPassI18n?.syncFromSession?.();
           const u = window.WorkPassAuth.getSessionUser?.();
           if (u && u.role !== "admin") {
-            setStatus("Firmen-Login hat keinen Admin-Zugang. Bitte Admin-Konto nutzen.", false);
+            setStatus(t("admin.firmNoAdmin", "Firmen-Login hat keinen Admin-Zugang. Bitte Admin-Konto nutzen."), false);
             window.location.href = "lohn.html";
             return;
           }
