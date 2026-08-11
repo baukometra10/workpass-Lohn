@@ -449,11 +449,15 @@ body.lexware-app {
 
   display: flex;
 
+  flex-wrap: wrap;
+
   align-items: stretch;
 
-  gap: 0;
+  gap: 6px 0;
 
   min-height: var(--ribbon-h);
+
+  height: auto;
 
   padding: 4px 12px 6px;
 
@@ -464,6 +468,8 @@ body.lexware-app {
   flex-shrink: 0;
 
   overflow-x: auto;
+
+  overflow-y: visible;
 
 }
 
@@ -503,9 +509,11 @@ body.lexware-app {
 
   display: flex;
 
-  align-items: flex-start;
+  flex-wrap: wrap;
 
-  gap: 2px;
+  align-items: stretch;
+
+  gap: 4px;
 
 }
 
@@ -1136,11 +1144,32 @@ body.lexware-app {
 }
 
 .checkbox-row {
-  display: flex;
+  display: flex !important;
+  flex-direction: row !important;
   align-items: center;
-  gap: 8px;
-  margin: 8px 0 0;
-  font-size: 0.88rem;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.check-label {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0 0 8px !important;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(90, 140, 200, 0.25);
+  background: rgba(12, 20, 34, 0.55);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.check-label input[type="checkbox"] {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: 0 0 auto;
 }
 
 .payroll-template-section {

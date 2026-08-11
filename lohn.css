@@ -496,8 +496,25 @@ input, select, textarea {
   font: inherit; font-size: 0.85rem;
   background: #0a101c; color: var(--text);
 }
+input[type="checkbox"],
+input[type="radio"] {
+  width: 1.05rem;
+  height: 1.05rem;
+  min-height: 0;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  flex-shrink: 0;
+  border-radius: 4px;
+  accent-color: #3b9eff;
+  cursor: pointer;
+}
 input:focus, select:focus, textarea:focus {
   outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+input[type="checkbox"]:focus,
+input[type="radio"]:focus {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 input.readonly {
@@ -852,14 +869,44 @@ textarea.field-invalid {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px 18px;
+  gap: 10px 14px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
 .check-label {
-  display: inline-flex;
+  display: flex !important;
+  flex-direction: row !important;
   align-items: center;
-  gap: 8px;
-  font-size: 0.92rem;
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 !important;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(90, 140, 200, 0.22);
+  background: rgba(12, 20, 34, 0.72);
+  font-size: 0.86rem;
+  font-weight: 500;
+  line-height: 1.35;
   color: var(--text);
+  cursor: pointer;
+}
+.check-label:hover {
+  border-color: rgba(93, 180, 255, 0.45);
+  background: rgba(59, 158, 255, 0.08);
+}
+.check-label input[type="checkbox"] {
+  width: 1.05rem;
+  height: 1.05rem;
+  min-height: 0;
+  flex: 0 0 auto;
+  margin: 0;
+}
+.check-label span,
+.check-label .i18n-text {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .section-hint.tiny { font-size: 0.8rem; opacity: 0.9; }
 #liveCheckList li.done { color: #6ee7b7; }
@@ -1620,11 +1667,17 @@ body.company-portal label {
   font-size: 0.78rem;
   color: #c5d4e8;
 }
-body.company-portal input,
+body.company-portal input:not([type="checkbox"]):not([type="radio"]),
 body.company-portal textarea,
 body.company-portal select {
   min-height: 40px;
   font-size: 0.92rem;
+}
+body.company-portal input[type="checkbox"],
+body.company-portal input[type="radio"] {
+  min-height: 0;
+  width: 1.05rem;
+  height: 1.05rem;
 }
 body.company-portal .section-hint {
   font-size: 0.86rem;

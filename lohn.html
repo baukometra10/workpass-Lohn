@@ -7,8 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="workpass-theme.css?v=15" />
-    <link rel="stylesheet" href="lohn.css?v=61" />
+    <link rel="stylesheet" href="workpass-theme.css?v=16" />
+    <link rel="stylesheet" href="lohn.css?v=62" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0b1220" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -513,37 +513,37 @@
                 <input id="departmentNo" type="text" placeholder="optional" />
               </div>
               <div>
-                <label for="netDeductions">Sonstige Netto-Abzüge €</label>
+                <label for="netDeductions" data-i18n="lohn.netDeductions">Sonstige Netto-Abzüge €</label>
                 <input id="netDeductions" type="number" min="0" step="0.01" placeholder="0" />
               </div>
               <div class="full check-row">
-                <label class="check-label">
+                <label class="check-label" for="childlessPvSurcharge">
                   <input id="childlessPvSurcharge" type="checkbox" />
-                  PV-Zuschlag kinderlos (ab 23)
+                  <span data-i18n="lohn.pvChildless">PV-Zuschlag kinderlos (ab 23)</span>
                 </label>
               </div>
               <div class="full check-row">
-                <label class="check-label">
+                <label class="check-label" for="minijobRvExempt">
                   <input id="minijobRvExempt" type="checkbox" />
-                  Minijob: RV-Befreiung (kein AN-Anteil RV)
+                  <span data-i18n="lohn.miniRvExempt">Minijob: RV-Befreiung (kein AN-Anteil RV)</span>
                 </label>
               </div>
               <div class="full check-row">
-                <label class="check-label">
+                <label class="check-label" for="minijobTaxable">
                   <input id="minijobTaxable" type="checkbox" />
-                  Minijob: individuelle Lohnsteuer (statt Pauschale)
+                  <span data-i18n="lohn.miniTaxable">Minijob: individuelle Lohnsteuer (statt Pauschale)</span>
                 </label>
               </div>
               <div class="full check-row tax-iv-only" id="taxIvBox" hidden>
-                <label class="check-label">
+                <label class="check-label" for="factorMethod">
                   <input id="factorMethod" type="checkbox" />
-                  Faktorverfahren (nur Steuerklasse IV)
+                  <span data-i18n="lohn.factorMethod">Faktorverfahren (nur Steuerklasse IV)</span>
                 </label>
-                <label for="factorValue">Faktor</label>
+                <label for="factorValue" data-i18n="lohn.factor">Faktor</label>
                 <input id="factorValue" type="number" min="0" step="0.001" value="1" />
               </div>
             </div>
-            <p class="section-hint" id="calcMethodHint">Berechnung: BMF PAP 2026 · SV SGB IV 2026 (BBG, Mini-/Midijob, AG/AN getrennt)</p>
+            <p class="section-hint" id="calcMethodHint" data-i18n="lohn.calcHintLegal">Berechnung: BMF PAP 2026 · SV SGB IV 2026 (BBG, Mini-/Midijob, AG/AN getrennt)</p>
           </section>
 
           <section class="form-section step" id="secAuszahlung">
@@ -553,17 +553,17 @@
             </div>
             <div class="field-grid">
               <div>
-                <label for="calcGross">Brutto</label>
+                <label for="calcGross" data-i18n="lohn.brutto">Brutto</label>
                 <input id="calcGross" type="text" readonly class="readonly" />
               </div>
               <div>
-                <label for="calcNet">Netto</label>
+                <label for="calcNet" data-i18n="lohn.netto">Netto</label>
                 <input id="calcNet" type="text" readonly class="readonly" />
               </div>
               <div>
-                <label for="bankName">Bank</label>
+                <label for="bankName" data-i18n="co.bank">Bank</label>
                 <select id="bankName">
-                  <option value="">— bitte wählen —</option>
+                  <option value="" data-i18n="lohn.healthFundPick">— bitte wählen —</option>
                 </select>
               </div>
               <div>
@@ -627,7 +627,7 @@
     <script src="templates.js?v=1"></script>
     <script src="datev-sheet.js?v=42"></script>
     <script src="payroll-core.js?v=22"></script>
-    <script src="workpass-i18n-packs.js?v=8"></script>
+    <script src="workpass-i18n-packs.js?v=9"></script>
     <script src="workpass-i18n.js?v=6"></script>
     <script src="auth-gate.js?v=13"></script>
     <script src="mandant-checklist.js?v=4"></script>

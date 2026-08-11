@@ -363,14 +363,87 @@ body.workpass-hub .preview-document {
   color: #fff !important;
 }
 
+body.workpass-hub .lex-ribbon {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px 0;
+  height: auto;
+  min-height: var(--ribbon-h, 72px);
+  overflow-x: visible;
+  overflow-y: visible;
+  padding: 8px 12px 10px;
+}
+body.workpass-hub .lex-ribbon-group {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+body.workpass-hub .lex-ribbon-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 6px;
+}
+body.workpass-hub .lex-ribbon-sep {
+  align-self: stretch;
+  margin: 4px 6px;
+}
 body.workpass-hub .lex-ribbon-btn {
-  max-width: none;
-  min-width: 56px;
-  white-space: nowrap;
+  display: inline-flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 64px;
+  min-height: 56px;
+  max-width: 132px;
+  height: auto !important;
+  padding: 7px 10px !important;
+  font-size: 0.72rem !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  white-space: normal !important;
+  text-align: center;
+  flex: 0 0 auto;
+}
+body.workpass-hub .lex-ribbon-btn svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
 }
 body.workpass-hub .lex-ribbon-btn-wide {
   min-width: 96px;
-  padding-inline: 10px;
+  max-width: 160px;
+}
+body.workpass-hub .lex-ribbon-btn.lex-ribbon-text {
+  /* product acronyms DATEV/LODAS/ELSTER/VB – same tile size */
+  letter-spacing: 0.02em;
+}
+@media (max-width: 1100px) {
+  body.workpass-hub .lex-ribbon-sep {
+    display: none;
+  }
+  body.workpass-hub .lex-ribbon-group {
+    width: 100%;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(90, 140, 200, 0.18);
+  }
+  body.workpass-hub .lex-ribbon-group:last-child {
+    border-bottom: none;
+  }
+  body.workpass-hub .lex-ribbon-caption {
+    text-align: start;
+    padding-inline: 2px;
+  }
+}
+@media (max-width: 720px) {
+  body.workpass-hub .lex-ribbon-btn {
+    min-width: 56px;
+    max-width: calc(33.33% - 6px);
+    min-height: 52px;
+    font-size: 0.68rem !important;
+  }
 }
 body.workpass-hub .tool-row {
   display: flex;

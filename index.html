@@ -10,9 +10,9 @@
       href="https://fonts.googleapis.com/css2?family=Allura&family=Barlow:wght@400;500;600;700&family=Dancing+Script:wght@500;600&family=Great+Vibes&family=IBM+Plex+Mono:wght@400;500&family=Pacifico&family=Pinyon+Script&family=Satisfy&family=Space+Grotesk:wght@500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=42" />
+    <link rel="stylesheet" href="styles.css?v=43" />
     <link rel="stylesheet" href="agenda-reference.css?v=6" />
-    <link rel="stylesheet" href="app-ui.css?v=17" />
+    <link rel="stylesheet" href="app-ui.css?v=18" />
     <link rel="stylesheet" href="payroll-layouts.css?v=21" />
     <link rel="stylesheet" href="datev-layout.css?v=10" />
     <link rel="stylesheet" href="datev-ref-overlay.css?v=2" />
@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="verdienst-sheet.css?v=1" />
     <link rel="stylesheet" href="annual-certificate.css?v=3" />
     <link rel="stylesheet" href="documents-bw.css?v=1" />
-    <link rel="stylesheet" href="workpass-theme.css?v=15" />
+    <link rel="stylesheet" href="workpass-theme.css?v=16" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0b1220" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -183,14 +183,14 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" fill="currentColor"/></svg>
                 CSV
               </button>
-              <button id="datevCsvExportBtn" type="button" class="lex-ribbon-btn mode-payroll-only hidden" title="DATEV Bewegungsdaten">DATEV</button>
-              <button id="datevLodasExportBtn" type="button" class="lex-ribbon-btn mode-payroll-only hidden" title="DATEV LODAS">LODAS</button>
-              <button id="elsterXmlExportBtn" type="button" class="lex-ribbon-btn lex-ribbon-btn-accent mode-annual-only hidden" title="ELSTER XML">ELSTER</button>
-              <button id="pdfExportBtn" type="button" class="lex-ribbon-btn lex-ribbon-btn-accent" title="PDF exportieren" data-i18n="common.pdf">
+              <button id="datevCsvExportBtn" type="button" class="lex-ribbon-btn lex-ribbon-text mode-payroll-only hidden" title="DATEV Bewegungsdaten">DATEV</button>
+              <button id="datevLodasExportBtn" type="button" class="lex-ribbon-btn lex-ribbon-text mode-payroll-only hidden" title="DATEV LODAS">LODAS</button>
+              <button id="elsterXmlExportBtn" type="button" class="lex-ribbon-btn lex-ribbon-btn-accent lex-ribbon-text mode-annual-only hidden" title="ELSTER XML">ELSTER</button>
+              <button id="pdfExportBtn" type="button" class="lex-ribbon-btn lex-ribbon-btn-accent" title="PDF exportieren" data-i18n="common.pdf" data-i18n-title="menu.exportPdf">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H8c-1.1 0-2 .9-2 2v4H4v12h16V8h-4V4h2v4h4v12H6V8h2V4c0-1.1.9-2 2-2h10zM10 10h8v2h-8v-2zm0 4h8v2h-8v-2z" fill="currentColor"/></svg>
                 PDF
               </button>
-              <button id="printVerdienstBtn" type="button" class="lex-ribbon-btn mode-payroll-only hidden" title="Verdienstbescheinigung drucken" data-i18n-title="hub.printVbTitle">
+              <button id="printVerdienstBtn" type="button" class="lex-ribbon-btn lex-ribbon-text mode-payroll-only hidden" title="Verdienstbescheinigung drucken" data-i18n-title="hub.printVbTitle">
                 VB
               </button>
               <button id="previewVerdienstBtn" type="button" class="lex-ribbon-btn lex-ribbon-btn-wide mode-payroll-only hidden" title="Verdienstbescheinigung anzeigen" data-i18n="hub.showVb" data-i18n-title="hub.showVbTitle">
@@ -886,20 +886,20 @@
                     <option value="9">9 % (übrige BL)</option>
                   </select>
                 </label>
-                <label>
+                <label class="check-label">
                   <input id="childlessPvSurcharge" type="checkbox" />
-                  PV-Zuschlag kinderlos (ab 23 J., +0,6 %)
+                  <span data-i18n="lohn.pvChildlessLong">PV-Zuschlag kinderlos (ab 23 J., +0,6 %)</span>
                 </label>
                 <label>
-                  KV-Zusatzbeitrag gesamt (%)
+                  <span data-i18n="lohn.kvExtra">KV-Zusatzbeitrag gesamt (%)</span>
                   <input id="healthAdditionalPercent" type="number" min="0" step="0.01" value="2.9" />
                 </label>
-                <label class="tax-class-iv-only hidden">
+                <label class="check-label tax-class-iv-only hidden">
                   <input id="factorMethod" type="checkbox" />
-                  Faktorverfahren (Steuerklasse IV)
+                  <span data-i18n="lohn.factorMethodIv">Faktorverfahren (Steuerklasse IV)</span>
                 </label>
                 <label class="tax-class-iv-only hidden">
-                  Faktor
+                  <span data-i18n="lohn.factor">Faktor</span>
                   <input id="factorValue" type="number" min="0" step="0.001" value="1" />
                 </label>
                 <label>
@@ -942,9 +942,9 @@
                   <input id="workDays" type="number" min="0" step="0.01" value="21" />
                 </label>
                 <label>
-                  Bank (Auszahlung)
+                  <span data-i18n="lohn.bankPayout">Bank (Auszahlung)</span>
                   <select id="bankName">
-                    <option value="">— bitte wählen —</option>
+                    <option value="" data-i18n="lohn.healthFundPick">— bitte wählen —</option>
                     <option>Sparkasse</option>
                     <option>Commerzbank</option>
                     <option>Deutsche Bank</option>
@@ -954,7 +954,7 @@
                     <option>Volksbank</option>
                     <option>VR-Bank</option>
                     <option>HypoVereinsbank (UniCredit)</option>
-                    <option>Andere Bank</option>
+                    <option data-i18n="lohn.otherBank">Andere Bank</option>
                   </select>
                 </label>
                 <label>
@@ -1745,7 +1745,7 @@
     <script src="elster-export.js?v=1"></script>
     <script src="datev-sheet.js?v=42"></script>
     <script src="payroll-core.js?v=22"></script>
-    <script src="workpass-i18n-packs.js?v=8"></script>
+    <script src="workpass-i18n-packs.js?v=9"></script>
     <script src="workpass-i18n.js?v=6"></script>
     <script src="workpass-pwa.js?v=2"></script>
     <script src="auth-gate.js?v=13"></script>
