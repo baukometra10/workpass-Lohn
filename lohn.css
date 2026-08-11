@@ -798,8 +798,30 @@ textarea { min-height: 58px; resize: vertical; }
   .lohn-actions { justify-content: flex-start; }
 }
 @media (max-width: 980px) {
-  .lohn-layout { grid-template-columns: 1fr; }
-  .lohn-form { max-height: none; border-right: none; border-bottom: 1px solid var(--border); }
+  body.lohn-desktop {
+    height: auto;
+    overflow: auto;
+  }
+  #lohnApp.lohn-shell {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  .lohn-layout {
+    grid-template-columns: 1fr;
+    overflow: visible;
+    flex: none;
+  }
+  .lohn-form {
+    max-height: none;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .lohn-preview {
+    height: auto;
+    min-height: 70vh;
+  }
   .recv-modes { grid-template-columns: 1fr; }
 }
 
