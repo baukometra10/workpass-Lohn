@@ -2639,35 +2639,47 @@
   }
 
   function startApp() {
-    if (appReady) {
-      refreshNow();
-      applyCompanyPortalMode();
-      return;
-    }
-    initThemeToggle();
-    fillCatalogs();
-    window.DatevSheet?.init("datevSheetHost");
-    window.DatevSheet?.setBackground("blank");
-    const saved = PayrollCore.loadState();
-    if (saved) {
-      withFreezeGuard(() => {
-        state = saved;
-        useReferenceDisplay = state.meta?.referenceDemo === "datev";
-        writeForm();
+    try {
+      if (appReady) {
+        refreshNow();
+        applyCompanyPortalMode();
+        return;
+      }
+      initThemeToggle();
+      fillCatalogs();
+      window.DatevSheet?.init("datevSheetHost");
+      window.DatevSheet?.setBackground("blank");
+      const saved = PayrollCore.loadState();
+      if (saved) {
+        withFreezeGuard(() => {
+          state = saved;
+          useReferenceDisplay = state.meta?.referenceDemo === "datev";
+          writeForm();
+          bindEvents();
+          appReady = true;
+          refreshNow();
+        });
+      } else {
         bindEvents();
         appReady = true;
-        refreshNow();
-      });
-    } else {
-      bindEvents();
-      appReady = true;
-      resetNew(false);
+        resetNew(false);
+      }
+      setRecvMode(isCompanyPortal() ? "api" : "file");
+      renderArchiveBoard();
+      applyCompanyPortalMode();
+      window.WorkPassI18n?.applyDom?.(document);
+      applyPortalUiCopy();
+      window.__lohnApplyActionsLayout?.();
+    } catch (err) {
+      console.error("WorkPass Lohn startApp failed", err);
+      const bar = $("statusBar");
+      if (bar) {
+        bar.hidden = false;
+        bar.className = "lohn-status warn";
+        bar.textContent = uiT("toast.error", "Bitte ergänzen") + ": " + (err?.message || String(err));
+      }
+      document.getElementById("lohnApp")?.style.setProperty("opacity", "1");
     }
-    setRecvMode(isCompanyPortal() ? "api" : "file");
-    renderArchiveBoard();
-    applyCompanyPortalMode();
-    window.WorkPassI18n?.applyDom?.(document);
-    applyPortalUiCopy();
   }
 
   function bootI18n() {
@@ -2693,7 +2705,6 @@
     const full = document.getElementById("lohnActionsFull");
     const more = document.getElementById("lohnActionsMore");
     if (!compact || !full) return;
-    const mq = window.matchMedia("(max-width: 1400px)");
     let menuEl = document.getElementById("lohnCompactMenu");
     if (!menuEl) {
       menuEl = document.createElement("div");
@@ -2702,65 +2713,62 @@
       menuEl.hidden = true;
       document.body.appendChild(menuEl);
     }
+    // Always compact command bar — one calm row at every width (no dual layout path).
     const apply = () => {
-      const portal = document.body.classList.contains("company-portal");
-      const narrow = portal || mq.matches || window.innerWidth <= 1400;
-      document.body.classList.toggle("lohn-actions-compact", narrow);
-      if (narrow) {
-        compact.removeAttribute("hidden");
-        full.setAttribute("hidden", "");
-      } else {
-        compact.setAttribute("hidden", "");
-        full.removeAttribute("hidden");
-      }
+      document.body.classList.add("lohn-actions-compact");
+      compact.removeAttribute("hidden");
+      full.setAttribute("hidden", "");
       menuEl.hidden = true;
       more?.setAttribute("aria-expanded", "false");
     };
     window.__lohnApplyActionsLayout = apply;
     compact.querySelectorAll("[data-lohn-cmd]").forEach((btn) => {
+      if (btn.dataset.boundCmd) return;
+      btn.dataset.boundCmd = "1";
       btn.addEventListener("click", () => document.getElementById(btn.dataset.lohnCmd)?.click());
     });
-    more?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (!menuEl.hidden) {
-        menuEl.hidden = true;
-        more.setAttribute("aria-expanded", "false");
-        return;
-      }
-      const portal = document.body.classList.contains("company-portal");
-      const entries = [
-        !portal && { id: "new", label: uiT("common.new", "Neu"), run: () => $("btnNew")?.click() },
-        !portal && { id: "export", label: uiT("common.export", "Export"), run: () => $("btnExportJson")?.click() },
-        !portal && { id: "csv", label: uiT("common.csv", "CSV"), run: () => $("btnExportCsv")?.click() },
-        { id: "lock", label: uiT("nav.lock", "Sperren"), run: () => $("btnLock")?.click() },
-        { id: "theme", label: uiT("common.theme", "Theme"), run: () => $("btnThemeToggle")?.click() },
-        !portal && { id: "hub", label: uiT("nav.hub", "Hub"), run: () => { window.location.href = "index.html"; } },
-        !portal && { id: "admin", label: uiT("nav.admin", "Admin"), run: () => { window.location.href = "admin.html"; } },
-      ].filter(Boolean);
-      menuEl.innerHTML = entries.map((it, i) => `<button type="button" data-i="${i}">${it.label}</button>`).join("");
-      menuEl.querySelectorAll("button").forEach((b) => {
-        b.addEventListener("click", () => {
+    if (more && !more.dataset.boundMore) {
+      more.dataset.boundMore = "1";
+      more.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!menuEl.hidden) {
           menuEl.hidden = true;
           more.setAttribute("aria-expanded", "false");
-          entries[Number(b.dataset.i)]?.run?.();
+          return;
+        }
+        const portal = document.body.classList.contains("company-portal");
+        const entries = [
+          !portal && { id: "new", label: uiT("common.new", "Neu"), run: () => $("btnNew")?.click() },
+          !portal && { id: "export", label: uiT("common.export", "Export"), run: () => $("btnExportJson")?.click() },
+          !portal && { id: "csv", label: uiT("common.csv", "CSV"), run: () => $("btnExportCsv")?.click() },
+          { id: "lock", label: uiT("nav.lock", "Sperren"), run: () => $("btnLock")?.click() },
+          { id: "theme", label: uiT("common.theme", "Theme"), run: () => $("btnThemeToggle")?.click() },
+          !portal && { id: "hub", label: uiT("nav.hub", "Hub"), run: () => { window.location.href = "index.html"; } },
+          !portal && { id: "admin", label: uiT("nav.admin", "Admin"), run: () => { window.location.href = "admin.html"; } },
+        ].filter(Boolean);
+        menuEl.innerHTML = entries.map((it, i) => `<button type="button" data-i="${i}">${it.label}</button>`).join("");
+        menuEl.querySelectorAll("button").forEach((b) => {
+          b.addEventListener("click", () => {
+            menuEl.hidden = true;
+            more.setAttribute("aria-expanded", "false");
+            entries[Number(b.dataset.i)]?.run?.();
+          });
         });
+        const rect = more.getBoundingClientRect();
+        menuEl.style.left = `${Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - 220))}px`;
+        menuEl.style.top = `${rect.bottom + 4}px`;
+        menuEl.hidden = false;
+        more.setAttribute("aria-expanded", "true");
       });
-      const rect = more.getBoundingClientRect();
-      menuEl.style.left = `${Math.min(rect.left, window.innerWidth - 220)}px`;
-      menuEl.style.top = `${rect.bottom + 4}px`;
-      menuEl.hidden = false;
-      more.setAttribute("aria-expanded", "true");
-    });
-    document.addEventListener("click", () => {
-      menuEl.hidden = true;
-      more?.setAttribute("aria-expanded", "false");
-    });
+    }
+    if (!document.documentElement.dataset.lohnCompactDocClick) {
+      document.documentElement.dataset.lohnCompactDocClick = "1";
+      document.addEventListener("click", () => {
+        menuEl.hidden = true;
+        more?.setAttribute("aria-expanded", "false");
+      });
+    }
     apply();
-    window.addEventListener("resize", apply);
-    if (typeof mq.addEventListener === "function") mq.addEventListener("change", apply);
-    else mq.addListener?.(apply);
-    setTimeout(apply, 0);
-    setTimeout(apply, 400);
   }
 
   function init() {

@@ -55,6 +55,8 @@ body.lohn-desktop {
   max-height: 100dvh;
   width: 100%;
   overflow: hidden;
+  opacity: 1;
+  visibility: visible;
 }
 
 /* Formulare immer bedienbar (außer berechnete Readonly-Felder) */
@@ -96,19 +98,19 @@ body.auth-locked { overflow: hidden; }
   flex-shrink: 0;
 }
 .lohn-actions-compact {
-  display: none;
+  display: flex;
   align-items: center;
   flex-wrap: nowrap;
   gap: 6px;
   flex: 0 0 auto;
 }
-body.lohn-actions-compact .lohn-actions-compact {
-  display: flex;
+body.lohn-actions-compact .lohn-actions-compact,
+.lohn-actions-compact[hidden] {
+  display: flex !important;
 }
+.lohn-actions-full,
+.lohn-actions-full[hidden],
 body.lohn-actions-compact .lohn-actions-full {
-  display: none !important;
-}
-.lohn-actions-full[hidden] {
   display: none !important;
 }
 .lohn-actions {
@@ -124,7 +126,7 @@ body.lohn-actions-compact .lohn-actions-full {
   flex: 0 0 auto;
 }
 
-/* Firm portal: always one calm command row — never wrap Drucken/PDF/Sperren/Hub */
+/* Firm portal + all widths: one calm command row */
 body.company-portal .lohn-actions-compact,
 body.company-portal .lohn-actions-compact[hidden] {
   display: flex !important;
@@ -178,7 +180,7 @@ body.company-portal .wp-install-btn:not([hidden]) .i18n-text {
   background: rgba(59, 158, 255, 0.14);
 }
 
-/* CSS fallback for non-portal + mid widths */
+/* Appbar grid: keep brand + actions readable; never hide shell */
 @media (max-width: 1400px) {
   .lohn-appbar {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -186,15 +188,6 @@ body.company-portal .wp-install-btn:not([hidden]) .i18n-text {
   }
   .lohn-brand-text span {
     display: none;
-  }
-  .lohn-actions-compact,
-  .lohn-actions-compact[hidden] {
-    display: flex !important;
-    flex-wrap: nowrap;
-  }
-  .lohn-actions-full,
-  .lohn-actions-full[hidden] {
-    display: none !important;
   }
 }
 @media (max-width: 900px) {
@@ -1301,11 +1294,8 @@ body.company-portal {
     linear-gradient(180deg, #070d18 0%, #060b16 40%, #08101c 100%);
 }
 body.company-portal #lohnApp.lohn-shell {
-  animation: portalFadeIn 0.35s ease both;
-}
-@keyframes portalFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  animation: none;
+  opacity: 1;
 }
 body.company-portal .lohn-appbar {
   backdrop-filter: blur(10px);
@@ -2042,7 +2032,8 @@ body.company-portal .form-section {
 }
 
 body.company-portal #lohnApp.lohn-shell {
-  animation: portalFadeIn 0.28s ease both;
+  animation: none;
+  opacity: 1;
 }
 
 body.company-portal .month-close-card:hover {
@@ -2103,7 +2094,7 @@ body.company-portal .company-portal-banner-inner {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 900px) {
@@ -2216,14 +2207,17 @@ body.is-rtl #recvSectionHint {
 
 body.company-portal .lohn-layout {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 12rem;
   overflow: hidden;
+  align-items: stretch;
 }
 body.company-portal .lohn-form,
 body.company-portal .lohn-preview {
-  height: 100%;
+  height: auto;
   max-height: none;
   min-height: 0;
+  align-self: stretch;
+  overflow: auto;
 }
 
 
