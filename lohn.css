@@ -107,6 +107,9 @@ body.lohn-actions-compact .lohn-actions-compact {
 body.lohn-actions-compact .lohn-actions-full {
   display: none !important;
 }
+.lohn-actions-full[hidden] {
+  display: none !important;
+}
 .lohn-compact-menu {
   position: fixed;
   z-index: 6000;
@@ -133,13 +136,34 @@ body.lohn-actions-compact .lohn-actions-full {
 .lohn-compact-menu button:hover {
   background: rgba(59, 158, 255, 0.14);
 }
-/* Responsive chrome: 1180 / 900 / 640 — collapse, don't clip */
+
+/* CSS fallback: collapse Lohn actions even if JS lags */
 @media (max-width: 1180px) {
   .lohn-appbar {
     grid-template-columns: 1fr;
     gap: 8px;
   }
   .lohn-brand-text span {
+    display: none;
+  }
+  .lohn-actions-compact,
+  .lohn-actions-compact[hidden] {
+    display: flex !important;
+  }
+  .lohn-actions-full,
+  .lohn-actions-full[hidden] {
+    display: none !important;
+  }
+  body.company-portal .wp-install-btn:not([hidden]) {
+    padding: 6px 10px;
+    min-width: 36px;
+    font-size: 0;
+    gap: 0;
+  }
+  body.company-portal .wp-install-btn:not([hidden])::before {
+    margin: 0;
+  }
+  body.company-portal .wp-install-btn:not([hidden]) .i18n-text {
     display: none;
   }
 }
@@ -155,6 +179,23 @@ body.lohn-actions-compact .lohn-actions-full {
   .form-jump a {
     font-size: 0.72rem;
     padding: 4px 8px;
+  }
+  .company-portal-banner-inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .company-portal-banner .month-close-actions,
+  .company-portal-banner .portal-primary-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+    gap: 8px;
+  }
+  .company-portal-banner .month-close-actions > *,
+  .company-portal-banner .portal-primary-actions > * {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
   }
 }
 @media (max-width: 640px) {
@@ -1997,12 +2038,20 @@ body.company-portal .portal-primary-actions {
   flex-wrap: wrap;
   gap: 10px;
   margin: 4px 0 14px;
+  min-width: 0;
+  max-width: 100%;
 }
 
-body.company-portal .portal-primary-actions .primary {
+body.company-portal .portal-primary-actions .primary,
+body.company-portal .portal-primary-actions a,
+body.company-portal .portal-primary-actions button {
   min-height: 42px;
   padding: 0 18px;
   font-weight: 600;
+  flex: 1 1 auto;
+  min-width: min(100%, 140px);
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 body.company-portal #monthCloseCard {

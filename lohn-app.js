@@ -2704,9 +2704,15 @@
     const apply = () => {
       const narrow = mq.matches || window.innerWidth <= 1180;
       document.body.classList.toggle("lohn-actions-compact", narrow);
-      compact.hidden = !narrow;
-      full.hidden = narrow;
+      if (narrow) {
+        compact.removeAttribute("hidden");
+        full.setAttribute("hidden", "");
+      } else {
+        compact.setAttribute("hidden", "");
+        full.removeAttribute("hidden");
+      }
       menuEl.hidden = true;
+      more?.setAttribute("aria-expanded", "false");
     };
     compact.querySelectorAll("[data-lohn-cmd]").forEach((btn) => {
       btn.addEventListener("click", () => document.getElementById(btn.dataset.lohnCmd)?.click());
@@ -2715,21 +2721,24 @@
       e.stopPropagation();
       if (!menuEl.hidden) {
         menuEl.hidden = true;
+        more.setAttribute("aria-expanded", "false");
         return;
       }
+      const portal = document.body.classList.contains("company-portal");
       const entries = [
-        { label: uiT("common.new", "Neu"), run: () => $("btnNew")?.click() },
-        { label: uiT("common.export", "Export"), run: () => $("btnExportJson")?.click() },
-        { label: uiT("common.csv", "CSV"), run: () => $("btnExportCsv")?.click() },
-        { label: uiT("nav.lock", "Sperren"), run: () => $("btnLock")?.click() },
-        { label: uiT("common.theme", "Theme"), run: () => $("btnThemeToggle")?.click() },
-        { label: uiT("nav.hub", "Hub"), run: () => { window.location.href = "index.html"; } },
-        { label: uiT("nav.admin", "Admin"), run: () => { window.location.href = "admin.html"; } },
-      ];
+        !portal && { id: "new", label: uiT("common.new", "Neu"), run: () => $("btnNew")?.click() },
+        !portal && { id: "export", label: uiT("common.export", "Export"), run: () => $("btnExportJson")?.click() },
+        !portal && { id: "csv", label: uiT("common.csv", "CSV"), run: () => $("btnExportCsv")?.click() },
+        { id: "lock", label: uiT("nav.lock", "Sperren"), run: () => $("btnLock")?.click() },
+        { id: "theme", label: uiT("common.theme", "Theme"), run: () => $("btnThemeToggle")?.click() },
+        { id: "hub", label: uiT("nav.hub", "Hub"), run: () => { window.location.href = "index.html"; } },
+        !portal && { id: "admin", label: uiT("nav.admin", "Admin"), run: () => { window.location.href = "admin.html"; } },
+      ].filter(Boolean);
       menuEl.innerHTML = entries.map((it, i) => `<button type="button" data-i="${i}">${it.label}</button>`).join("");
       menuEl.querySelectorAll("button").forEach((b) => {
         b.addEventListener("click", () => {
           menuEl.hidden = true;
+          more.setAttribute("aria-expanded", "false");
           entries[Number(b.dataset.i)]?.run?.();
         });
       });
@@ -2737,12 +2746,18 @@
       menuEl.style.left = `${Math.min(rect.left, window.innerWidth - 220)}px`;
       menuEl.style.top = `${rect.bottom + 4}px`;
       menuEl.hidden = false;
+      more.setAttribute("aria-expanded", "true");
     });
-    document.addEventListener("click", () => { menuEl.hidden = true; });
+    document.addEventListener("click", () => {
+      menuEl.hidden = true;
+      more?.setAttribute("aria-expanded", "false");
+    });
     apply();
     window.addEventListener("resize", apply);
     if (typeof mq.addEventListener === "function") mq.addEventListener("change", apply);
     else mq.addListener?.(apply);
+    setTimeout(apply, 0);
+    setTimeout(apply, 400);
   }
 
   function init() {

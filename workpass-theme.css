@@ -929,7 +929,7 @@ body.workpass-hub .wp-appbar-more:hover {
   color: #fff !important;
 }
 
-/* CSS fallback: show Mehr even if JS body-class lags */
+/* CSS fallback: show Mehr even if JS body-class lags — hide overflow (Lohn/Sperren/Admin) */
 @media (max-width: 1280px) {
   body.workpass-hub .wp-appbar-overflow {
     display: none !important;
@@ -939,6 +939,18 @@ body.workpass-hub .wp-appbar-more:hover {
   }
   body.workpass-hub .wp-appbar-more[hidden] {
     display: inline-flex !important;
+  }
+  body.workpass-hub .wp-install-btn:not([hidden]) {
+    padding: 7px 10px;
+    min-width: 36px;
+    font-size: 0;
+    gap: 0;
+  }
+  body.workpass-hub .wp-install-btn:not([hidden])::before {
+    margin: 0;
+  }
+  body.workpass-hub .wp-install-btn:not([hidden]) .i18n-text {
+    display: none;
   }
 }
 
@@ -974,7 +986,7 @@ body.workpass-hub a.wp-lock-btn {
   flex-shrink: 0;
 }
 
-/* ≤900: icon-only install, hide menubar (File/Edit…), keep Lohn+Lock+Lang+Mehr */
+/* ≤900: hide menubar; install already icon-only in compact */
 body.workpass-hub.hub-appbar-tight .lex-menubar {
   display: none;
 }
@@ -995,6 +1007,49 @@ body.workpass-hub.hub-appbar-tight .lex-appbar-brand {
   min-width: 0;
   border-right: none;
   padding-right: 0;
+}
+
+/* Context bar: never overlap chips / legal line */
+body.workpass-hub .lex-context-bar {
+  height: auto !important;
+  min-height: var(--context-h, 36px);
+  flex-wrap: wrap;
+  align-items: flex-start;
+  padding-block: 8px;
+  row-gap: 8px;
+}
+body.workpass-hub .lex-context-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  row-gap: 6px;
+}
+body.workpass-hub .lex-context-meta .ui-status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+body.workpass-hub #legalChip,
+body.workpass-hub .ui-chip-legal {
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.25;
+}
+@media (max-width: 900px) {
+  body.workpass-hub .lex-breadcrumb {
+    max-width: 100%;
+    flex: 1 1 100%;
+  }
+  body.workpass-hub .lex-context-meta {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+  body.workpass-hub #draftSaveState {
+    order: -1;
+  }
 }
 
 /* Install app – prominent CTA in appbar */

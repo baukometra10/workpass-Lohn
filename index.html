@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="verdienst-sheet.css?v=1" />
     <link rel="stylesheet" href="annual-certificate.css?v=3" />
     <link rel="stylesheet" href="documents-bw.css?v=1" />
-    <link rel="stylesheet" href="workpass-theme.css?v=21" />
+    <link rel="stylesheet" href="workpass-theme.css?v=22" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0b1220" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -106,10 +106,10 @@
         <span id="wpLangHost" class="wp-lang-host"></span>
         <button type="button" class="wp-appbar-more" id="wpAppbarMore" aria-haspopup="true" aria-expanded="false" data-i18n="nav.more" hidden>Mehr</button>
         <button type="button" id="wpInstallApp" class="wp-install-btn" hidden data-i18n="pwa.install">App installieren</button>
-        <a href="lohn.html" class="wp-lock-btn wp-appbar-keep" style="text-decoration:none" data-i18n="nav.lohn">Lohn</a>
-        <button type="button" class="wp-lock-btn wp-appbar-keep" id="btnLock" title="Sofort sperren" data-i18n="nav.lock">Sperren</button>
         <div class="wp-appbar-overflow" id="wpAppbarOverflow">
           <span class="lex-appbar-mandant" id="lexAppbarMandant">Mandant: Standard-Mandant</span>
+          <a href="lohn.html" class="wp-lock-btn" id="wpAppbarLohn" style="text-decoration:none" data-i18n="nav.lohn">Lohn</a>
+          <button type="button" class="wp-lock-btn" id="btnLock" title="Sofort sperren" data-i18n="nav.lock">Sperren</button>
           <a href="admin.html" class="wp-lock-btn" style="text-decoration:none" title="Accounting Admin" data-i18n="nav.admin">Admin</a>
           <span id="hubCompanyBadge" class="wp-lock-btn wp-company-badge" hidden></span>
         </div>
@@ -146,7 +146,7 @@
           </button>
         </nav>
         <div class="sidebar-footer lex-sidebar-footer">
-          <span id="sidebarVersionLabel">v2.31.0</span>
+          <span id="sidebarVersionLabel">v2.31.1</span>
           <span data-i18n="status.localData">Lokale Daten · DSGVO-konform</span>
         </div>
       </aside>
@@ -1735,7 +1735,7 @@
         <span class="lex-status-item lex-status-right">
           <span id="lexStatusDate"></span>
           <span class="lex-status-sep">|</span>
-          <span id="lexStatusVersion">v2.31.0</span>
+          <span id="lexStatusVersion">v2.31.1</span>
         </span>
       </footer>
       </div>
@@ -1771,6 +1771,6 @@
     <script src="workpass-hub.js?v=11"></script>
     <script src="templates.js?v=1" defer></script>
     <script src="signature-engine.js?v=4"></script>
-    <script src="script.js?v=89" defer></script>
+    <script src="script.js?v=90" defer></script>
   </body>
 </html>

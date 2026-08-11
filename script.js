@@ -238,7 +238,7 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2.31.0";
+const APP_VERSION = "2.31.1";
 const APP_VERSION_BUILD = "2026.45";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
@@ -625,6 +625,20 @@ function openAppbarOverflowMenu(anchorBtn) {
     items.push({
       label: mandant.textContent.trim(),
       action: () => document.querySelector('.form-tab[data-tab="company"]')?.click(),
+    });
+  }
+  const lohn = overflow.querySelector('a[href="lohn.html"]') || document.getElementById("wpAppbarLohn");
+  if (lohn && !lohn.hidden) {
+    items.push({
+      label: ribbonBtnLabel(lohn) || hubT("nav.lohn", "Lohn"),
+      action: () => { window.location.href = lohn.href || "lohn.html"; },
+    });
+  }
+  const lockBtn = overflow.querySelector("#btnLock") || document.getElementById("btnLock");
+  if (lockBtn && !lockBtn.hidden) {
+    items.push({
+      label: ribbonBtnLabel(lockBtn) || hubT("nav.lock", "Sperren"),
+      action: () => lockBtn.click(),
     });
   }
   const admin = overflow.querySelector('a[href="admin.html"]');
