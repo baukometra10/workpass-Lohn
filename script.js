@@ -670,18 +670,16 @@ function initAppbarResponsive() {
   const mqTight = window.matchMedia("(max-width: 900px)");
 
   const apply = () => {
-    const compact = mqCompact.matches;
-    const tight = mqTight.matches;
+    const compact = mqCompact.matches || window.innerWidth <= 1280;
+    const tight = mqTight.matches || window.innerWidth <= 900;
     document.body.classList.toggle("hub-appbar-compact", compact);
     document.body.classList.toggle("hub-appbar-tight", tight);
-    moreBtn.hidden = !compact;
+    // Keep Mehr visible via CSS; only set hidden=false when compact
+    if (compact) moreBtn.removeAttribute("hidden");
+    else moreBtn.setAttribute("hidden", "");
     moreBtn.setAttribute("aria-expanded", "false");
     const portal = document.getElementById("lexMenuPortal");
-    if (portal && compact) {
-      /* keep portal usable */
-    } else if (portal && !compact) {
-      /* no-op */
-    }
+    if (portal) portal.hidden = true;
   };
 
   moreBtn.addEventListener("click", (e) => {
@@ -696,6 +694,7 @@ function initAppbarResponsive() {
   });
 
   apply();
+  window.addEventListener("resize", apply);
   if (typeof mqCompact.addEventListener === "function") {
     mqCompact.addEventListener("change", apply);
     mqTight.addEventListener("change", apply);
@@ -703,6 +702,13 @@ function initAppbarResponsive() {
     mqCompact.addListener(apply);
     mqTight.addListener(apply);
   }
+  // Re-apply after auth unlock / hub boot (class timing)
+  window.addEventListener("workpass:locale", apply);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) apply();
+  });
+  setTimeout(apply, 0);
+  setTimeout(apply, 400);
 }
 
 function ribbonBtnLabel(btn) {

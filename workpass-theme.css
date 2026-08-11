@@ -882,26 +882,56 @@ body.workpass-hub .wp-appbar-more {
   display: none;
   align-items: center;
   justify-content: center;
-  min-height: 32px;
-  padding: 6px 12px;
+  min-height: 34px;
+  padding: 7px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(90, 140, 200, 0.35);
-  background: linear-gradient(180deg, #182338 0%, #101a2c 100%);
-  color: #e8eef8;
-  font: 600 0.78rem/1.2 var(--wp-sans, "Barlow", system-ui, sans-serif);
+  border: 1px solid rgba(93, 180, 255, 0.5);
+  background: linear-gradient(180deg, #1f4f86 0%, #143a66 100%);
+  color: #fff !important;
+  font: 600 0.8rem/1.2 var(--wp-sans, "Barlow", system-ui, sans-serif);
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 12px rgba(20, 90, 180, 0.22);
+  z-index: 5;
 }
 body.workpass-hub .wp-appbar-more::after {
   content: "▾";
   margin-inline-start: 4px;
-  opacity: 0.75;
+  opacity: 0.85;
   font-size: 0.7em;
 }
 body.workpass-hub .wp-appbar-more:hover {
-  border-color: rgba(93, 180, 255, 0.55);
-  color: #fff;
+  border-color: rgba(140, 200, 255, 0.75);
+  filter: brightness(1.06);
+  color: #fff !important;
+}
+
+/* CSS fallback: show Mehr even if JS body-class lags */
+@media (max-width: 1280px) {
+  body.workpass-hub .wp-appbar-overflow {
+    display: none !important;
+  }
+  body.workpass-hub .wp-appbar-more {
+    display: inline-flex !important;
+  }
+  body.workpass-hub .wp-appbar-more[hidden] {
+    display: inline-flex !important;
+  }
+}
+
+body.workpass-hub.hub-appbar-compact .wp-appbar-overflow {
+  display: none !important;
+}
+body.workpass-hub.hub-appbar-compact .wp-appbar-more,
+body.workpass-hub.hub-appbar-compact .wp-appbar-more[hidden] {
+  display: inline-flex !important;
+}
+body.workpass-hub.hub-appbar-compact .lex-appbar-brand {
+  max-width: min(220px, 28vw);
+}
+body.workpass-hub.hub-appbar-compact .lex-appbar-titles span {
+  display: none;
 }
 body.workpass-hub .lex-appbar-mandant,
 body.workpass-hub .wp-company-badge {
@@ -920,23 +950,6 @@ body.workpass-hub a.wp-lock-btn {
   line-height: 1.2;
   white-space: nowrap;
   flex-shrink: 0;
-}
-
-/* ≤1280: fold Mandant/Admin/Firma into Mehr */
-body.workpass-hub.hub-appbar-compact .wp-appbar-overflow {
-  display: none !important;
-}
-body.workpass-hub.hub-appbar-compact .wp-appbar-more {
-  display: inline-flex;
-}
-body.workpass-hub.hub-appbar-compact .wp-appbar-more[hidden] {
-  display: none !important;
-}
-body.workpass-hub.hub-appbar-compact .lex-appbar-brand {
-  max-width: min(220px, 28vw);
-}
-body.workpass-hub.hub-appbar-compact .lex-appbar-titles span {
-  display: none;
 }
 
 /* ≤900: icon-only install, hide menubar (File/Edit…), keep Lohn+Lock+Lang+Mehr */
