@@ -36,11 +36,20 @@
       }),
     );
     if (data.user && data.user.companyId) {
-      const prev = JSON.parse(localStorage.getItem("workpass.lohn.apiConfig.v1") || "{}");
-      localStorage.setItem(
-        "workpass.lohn.apiConfig.v1",
-        JSON.stringify({ ...prev, companyId: data.user.companyId }),
-      );
+      try {
+        const prev = JSON.parse(localStorage.getItem("workpass.lohn.apiConfig.v1") || "{}");
+        localStorage.setItem(
+          "workpass.lohn.apiConfig.v1",
+          JSON.stringify({ ...(prev && typeof prev === "object" ? prev : {}), companyId: data.user.companyId }),
+        );
+      } catch {
+        try {
+          localStorage.setItem(
+            "workpass.lohn.apiConfig.v1",
+            JSON.stringify({ companyId: data.user.companyId }),
+          );
+        } catch { /* ignore */ }
+      }
       document.body.classList.add("company-portal");
     }
     const locale = String(data.preferredLocale || data.user?.locale || data.user?.language || "")

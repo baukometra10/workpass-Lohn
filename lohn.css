@@ -1687,12 +1687,24 @@ body.company-portal .lohn-context .ctx-field:first-child {
   display: none !important;
 }
 
+body.company-portal:not(.portal-editing) a[href="#secFirma"],
 body.company-portal:not(.portal-editing) a[href="#secLohnarten"],
 body.company-portal:not(.portal-editing) a[href="#secAuszahlung"],
+body.company-portal:not(.portal-editing) a[href="#secArchiv"],
+body.company-portal:not(.portal-editing) #secFirma,
 body.company-portal:not(.portal-editing) #secLohnarten,
+body.company-portal:not(.portal-editing) #secSteuerSv,
 body.company-portal:not(.portal-editing) #secAuszahlung,
 body.company-portal:not(.portal-editing) #secArchiv,
-body.company-portal:not(.portal-editing) a[href="#secArchiv"] {
+body.company-portal:not(.portal-editing) #secNext {
+  display: none !important;
+}
+
+body.company-portal:not(.portal-editing) .form-jump {
+  display: none !important;
+}
+
+body.company-portal #monthCloseCard #btnMonthReleaseOnly {
   display: none !important;
 }
 

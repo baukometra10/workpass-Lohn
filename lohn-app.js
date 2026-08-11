@@ -545,7 +545,7 @@
             <div class="api-inbox-item">
               <div>
                 <strong>${esc(e.name || e.id)}</strong>
-                <span class="portal-item-meta">Badge ${esc(e.badgeId || e.id)}${e.personnelNumber ? ` · Pers.-Nr. ${esc(e.personnelNumber)}` : ""} · ${esc(e.lastPeriod || "—")} · ${esc(e.lastStatus || "—")}</span>
+                <span class="portal-item-meta">Badge ${esc(e.badgeId || e.id)}${e.personnelNumber ? ` · Pers.-Nr. ${esc(e.personnelNumber)}` : ""} · ${esc(e.lastPeriod || "—")} · ${esc(firmStatusLabel(e.lastStatus))}</span>
                 <span>Netto ${e.net != null ? PayrollCore.formatAmount(e.net) : "—"}</span>
               </div>
               <div class="api-inbox-actions">
@@ -553,7 +553,7 @@
               </div>
             </div>`).join("")
             + (list.length > shown.length ? `<p class="portal-list-more">+ ${list.length - shown.length} weitere – für große Firmen seitenweise</p>` : "")
-          : '<div class="company-empty-inbox"><strong>Noch keine echten Mitarbeiter</strong><p>Die Plattform muss Mitarbeiter (Name + Badge-ID) bzw. den Monats-Lohnbatch senden. Beispieldaten werden nicht angezeigt.</p></div>';
+          : '<div class="company-empty-inbox"><strong>Noch keine Mitarbeiter</strong><p>Tippen Sie auf „Jetzt synchronisieren“. Sobald die Plattform Daten sendet, erscheinen Ihre Mitarbeiter hier.</p></div>';
         empHost.querySelectorAll(".api-open-emp").forEach((btn) => {
           btn.addEventListener("click", () => openApiPayrollJob(btn.dataset.id));
         });
@@ -563,7 +563,7 @@
         monthHost.innerHTML = (month.months || []).map((m) => `
           <button type="button" class="month-chip status-${esc(m.status)}${m.period === period ? " active" : ""}" data-period="${esc(m.period)}">
             <strong>${esc(m.period)}</strong>
-            <span>${esc(m.status)} · ${m.released}/${m.total}</span>
+            <span>${esc(firmStatusLabel(m.status))} · ${m.released}/${m.total}</span>
           </button>`).join("") || "<p class='section-hint'>Keine Monate</p>";
         monthHost.querySelectorAll(".month-chip").forEach((btn) => {
           btn.addEventListener("click", () => {
@@ -582,7 +582,7 @@
             <div class="api-inbox-item">
               <div>
                 <strong>${esc(it.employee?.name || it.employee?.id || "MA")}</strong>
-                <span>${esc(it.period)} · ${esc(it.status)} · Netto ${it.net != null ? PayrollCore.formatAmount(it.net) : "—"}</span>
+                <span>${esc(it.period)} · ${esc(firmStatusLabel(it.status))} · Netto ${it.net != null ? PayrollCore.formatAmount(it.net) : "—"}</span>
               </div>
               <div class="api-inbox-actions">
                 <button type="button" class="api-arch-open" data-id="${esc(it.jobId)}">Öffnen</button>
@@ -672,6 +672,17 @@
       groups.set(key, prev);
     }
     return [...groups.values()].sort((a, b) => String(b.latestAt).localeCompare(String(a.latestAt)));
+  }
+
+  function firmStatusLabel(status) {
+    const s = String(status || "").toLowerCase();
+    if (s === "released") return "Freigegeben";
+    if (s === "calculated" || s === "ready") return "Berechnet";
+    if (s === "empty" || s === "none" || !s) return "Keine Daten";
+    if (s === "waiting" || s === "pending") return "Wartet";
+    if (s === "error" || s === "failed") return "Bitte prüfen";
+    if (s === "draft") return "Entwurf";
+    return status;
   }
 
   function renderAuditOverview({ period, employees = 0, released = 0, openMessages = 0, syncLabel = "—", hasData = false } = {}) {
@@ -1958,13 +1969,15 @@
         banner.hidden = false;
         banner.innerHTML = `
           <div class="company-portal-banner-inner">
-            <div>
-              <span class="eyebrow">Firmen-Portal</span>
-              <strong>${esc(companyPortalId)}</strong>
-              <small>Nur Ihre Firmen-Daten</small>
+            <div class="portal-brand-block">
+              <span class="eyebrow">Verbindung prüfen</span>
+              <strong>Bitte erneut über die Plattform öffnen</strong>
+              <small>Die Sitzung konnte nicht geladen werden. Nutzen Sie den Button „Buchhaltung“ in der Plattform erneut.</small>
             </div>
           </div>`;
       }
+      setStatus("Sitzung unvollständig – bitte über die Plattform erneut öffnen.", false);
+      toast("Bitte erneut über die Plattform öffnen.", "error");
     }
 
     // Drop foreign draft left in this browser from another firm/admin session
