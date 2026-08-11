@@ -70,7 +70,12 @@ import { assertProductionSecurity } from "./security/crypto.mjs";
 import { audit, readAuditTail } from "./security/audit.mjs";
 import { clientIp } from "./security/rate-limit.mjs";
 import { createBackup, listBackups, restoreBackup, startBackupScheduler } from "./backup/backup.mjs";
-import { PLATFORM_DOMAIN, PLATFORM_ORIGINS, platformWebhookUrl } from "./platform-config.mjs";
+import {
+  PLATFORM_DOMAIN,
+  getCorsOrigins,
+  mergeCorsOrigins,
+  platformWebhookUrl,
+} from "./platform-config.mjs";
 import { tryServeStatic } from "./static.mjs";
 import { logDataPaths } from "./paths.mjs";
 import {
@@ -150,7 +155,7 @@ async function handler(req, res) {
       autoPipeline: autoPipelineStatus(),
       platform: {
         domain: PLATFORM_DOMAIN,
-        corsOrigins: PLATFORM_ORIGINS,
+        corsOrigins: getCorsOrigins(),
         webhookUrlConfigured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),
         webhookUrlSuggested: platformWebhookUrl(),
       },
@@ -318,6 +323,18 @@ async function handler(req, res) {
   }
 
   try {
+    // --- Platform CORS allow-list (SUPPIX pushes tenant domains) ---
+    if (req.method === "GET" && path === "/v1/platform/cors-origins") {
+      return reply(200, { ok: true, origins: getCorsOrigins() });
+    }
+    if (req.method === "POST" && path === "/v1/platform/cors-origins") {
+      const body = (await readBodyLimited(req)) || {};
+      const list = Array.isArray(body?.origins) ? body.origins : [];
+      const origins = mergeCorsOrigins(list);
+      audit({ type: "platform.cors", outcome: "ok", ip, path, detail: { added: list.length } });
+      return reply(200, { ok: true, origins });
+    }
+
     // --- Sync admin ---
     if (req.method === "POST" && path === "/v1/admin/sync") {
       const result = await flushSyncOutbox(200);

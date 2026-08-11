@@ -3,6 +3,43 @@
  * 1) Plattform-Konto (E-Mail + Passwort) → Bridge-Session
  * 2) Geräte-PIN (lokal) als zweiter Schutz / Offline-Fallback
  */
+/* SUPPIX SSO hash handoff: #suppix-sso=<urlencoded JSON {token,expiresAt,user,via}> */
+(function consumeSuppixSsoHash() {
+  try {
+    const hash = String(location.hash || "");
+    const m = hash.match(/#suppix-sso=([^&]+)/);
+    if (!m) return;
+    const data = JSON.parse(decodeURIComponent(m[1]));
+    if (!data || !data.token) return;
+    localStorage.setItem(
+      "workpassPlatformSessionV2",
+      JSON.stringify({
+        token: data.token,
+        expiresAt: data.expiresAt,
+        user: data.user || null,
+        via: data.via || "suppix",
+      }),
+    );
+    localStorage.setItem(
+      "workpassLohnSessionV2",
+      JSON.stringify({
+        until: Date.now() + 8 * 60 * 60 * 1000,
+        touchedAt: new Date().toISOString(),
+      }),
+    );
+    if (data.user && data.user.companyId) {
+      const prev = JSON.parse(localStorage.getItem("workpass.lohn.apiConfig.v1") || "{}");
+      localStorage.setItem(
+        "workpass.lohn.apiConfig.v1",
+        JSON.stringify({ ...prev, companyId: data.user.companyId }),
+      );
+    }
+    history.replaceState(null, "", location.pathname + location.search);
+    location.reload();
+  } catch (e) {
+    /* ignore malformed handoff */
+  }
+})();
 (function () {
   const STORE_KEY = "workpassLohnAuthV1";
   const SESSION_KEY = "workpassLohnSessionV2"; // localStorage – login once

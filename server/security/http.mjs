@@ -4,7 +4,7 @@
 import { secureCompare, securityPosture } from "./crypto.mjs";
 import { audit } from "./audit.mjs";
 import { rateLimit, noteAuthFailure, noteAuthSuccess, isAuthLocked, clientIp } from "./rate-limit.mjs";
-import { PLATFORM_ORIGINS, isAllowedOrigin, PLATFORM_DOMAIN } from "../platform-config.mjs";
+import { getCorsOrigins, isAllowedOrigin, PLATFORM_DOMAIN } from "../platform-config.mjs";
 
 const MAX_BODY = Number(process.env.WORKPASS_MAX_BODY_BYTES || 1_500_000); // ~1.5 MB
 
@@ -57,9 +57,10 @@ export function uiSecurityHeaders(extra = {}) {
  */
 export function corsHeaders(req) {
   const origin = req?.headers?.origin || "";
-  let allow = PLATFORM_ORIGINS[0] || `https://${PLATFORM_DOMAIN}`;
+  const origins = getCorsOrigins();
+  let allow = origins[0] || `https://${PLATFORM_DOMAIN}`;
   if (origin && isAllowedOrigin(origin)) allow = origin;
-  else if (PLATFORM_ORIGINS.includes("*")) allow = origin || "*";
+  else if (origins.includes("*")) allow = origin || "*";
 
   return {
     "Access-Control-Allow-Origin": allow,
