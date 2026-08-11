@@ -261,6 +261,11 @@
     return document.getElementById("workpassApp") || document.getElementById("lohnApp");
   }
 
+  function tt(key, fallback) {
+    const v = window.WorkPassI18n?.t?.(key);
+    return (v && v !== key) ? v : (fallback || key);
+  }
+
   function setLoginMode(mode) {
     loginMode = mode;
     const platformBox = document.getElementById("authPlatformFields");
@@ -275,9 +280,9 @@
     const hint = document.getElementById("authHint");
     const btn = document.getElementById("authSubmit");
     if (mode === "platform") {
-      if (title) title.textContent = "WorkPass Konto";
-      if (hint) hint.textContent = authConfig?.hint || "Mit Plattform-Passwort anmelden";
-      if (btn) btn.textContent = "Anmelden";
+      if (title) title.textContent = tt("auth.account", "WorkPass Konto");
+      if (hint) hint.textContent = authConfig?.hint || tt("auth.hint", "Mit Plattform-Passwort anmelden");
+      if (btn) btn.textContent = tt("auth.submit", "Anmelden");
       document.getElementById("authEmail")?.focus();
     } else {
       const store = loadStore();
@@ -292,15 +297,15 @@
     const btn = document.getElementById("authSubmit");
     if (!title) return;
     if (setup) {
-      title.textContent = "Geräte-PIN einrichten";
-      hint.textContent = "Zusätzlicher Schutz auf diesem Rechner (4–8 Ziffern).";
+      title.textContent = tt("auth.setupPin", "Geräte-PIN einrichten");
+      hint.textContent = tt("auth.setupPinHint", "Zusätzlicher Schutz auf diesem Rechner (4–8 Ziffern).");
       if (confirmWrap) confirmWrap.hidden = false;
-      if (btn) btn.textContent = "PIN speichern & öffnen";
+      if (btn) btn.textContent = tt("auth.savePin", "PIN speichern & öffnen");
     } else {
-      title.textContent = "Geräte-PIN";
-      hint.textContent = "Lokaler Schutz · Sitzung sperrt bei Inaktivität";
+      title.textContent = tt("auth.devicePin", "Geräte-PIN");
+      hint.textContent = tt("auth.devicePinHint", "Lokaler Schutz · Sitzung sperrt bei Inaktivität");
       if (confirmWrap) confirmWrap.hidden = true;
-      if (btn) btn.textContent = "Entsperren";
+      if (btn) btn.textContent = tt("auth.unlockPin", "Entsperren");
     }
   }
 
@@ -391,10 +396,10 @@
     const email = String(document.getElementById("authEmail")?.value || "").trim();
     const password = String(document.getElementById("authPassword")?.value || "");
     if (!email || password.length < 4) {
-      if (err) err.textContent = "E-Mail und Passwort/PIN (min. 4 Zeichen) erforderlich.";
+      if (err) err.textContent = tt("auth.needCreds", "E-Mail und Passwort/PIN (min. 4 Zeichen) erforderlich.");
       return false;
     }
-    if (err) err.textContent = "Anmelden…";
+    if (err) err.textContent = tt("auth.signingIn", "Anmelden…");
     try {
       const localeHint = window.WorkPassI18n?.getLocale?.()
         || (navigator.language || "").slice(0, 2)
@@ -459,13 +464,13 @@
     const pin = String(document.getElementById("authPin")?.value || "").trim();
     const conf = String(document.getElementById("authPinConfirm")?.value || "").trim();
     if (!/^\d{4,8}$/.test(pin)) {
-      if (err) err.textContent = "PIN: 4 bis 8 Ziffern erforderlich.";
+      if (err) err.textContent = tt("auth.pinLen", "PIN: 4 bis 8 Ziffern erforderlich.");
       return false;
     }
     const store = loadStore();
     if (!store?.pinHash) {
       if (pin !== conf) {
-        if (err) err.textContent = "PIN-Bestätigung stimmt nicht überein.";
+        if (err) err.textContent = tt("auth.pinMismatch", "PIN-Bestätigung stimmt nicht überein.");
         return false;
       }
       const hashed = await hashPin(pin);
@@ -488,7 +493,7 @@
       if (pinFails >= 5) {
         pinLockedUntil = Date.now() + 2 * 60 * 1000;
         pinFails = 0;
-        if (err) err.textContent = "Zu viele Fehlversuche – 2 Minuten Sperre.";
+        if (err) err.textContent = tt("auth.pinLockout", "Zu viele Fehlversuche – 2 Minuten Sperre.");
       } else if (err) {
         err.textContent = `Falsche PIN. (${pinFails}/5)`;
       }

@@ -278,11 +278,11 @@
     const g = $("kpiGross");
     const n = $("kpiNet");
     if (g) {
-      g.textContent = payroll.gross > 0 ? PayrollCore.formatAmount(payroll.gross) : "Keine Daten";
+      g.textContent = payroll.gross > 0 ? PayrollCore.formatAmount(payroll.gross) : uiT("kpi.noData", "Keine Daten");
       g.classList.toggle("is-empty", !(payroll.gross > 0));
     }
     if (n) {
-      n.textContent = payroll.net > 0 ? PayrollCore.formatAmount(payroll.net) : "Keine Daten";
+      n.textContent = payroll.net > 0 ? PayrollCore.formatAmount(payroll.net) : uiT("kpi.noData", "Keine Daten");
       n.classList.toggle("is-empty", !(payroll.net > 0));
     }
   }
@@ -448,15 +448,15 @@
       if ($("portalKpiMessages")) $("portalKpiMessages").textContent = String((msgs.messages || []).length);
       const pending = Number(sync?.pending?.messages || 0) + Number(sync?.pending?.deliveries || 0);
       const firmFriendlySync = pending
-        ? `${pending} offen`
+        ? `${pending} ${uiT("lohn.openStatus", "offen")}`
         : (Number(emps.count || 0) > 0 || cur.total
-          ? "Verbunden"
-          : "Bereit");
+          ? uiT("lohn.connected", "Verbunden")
+          : uiT("lohn.ready", "Bereit"));
       if ($("portalKpiSync")) $("portalKpiSync").textContent = firmFriendlySync;
       if ($("portalSyncBadge")) {
         $("portalSyncBadge").textContent = pending
-          ? "Offen"
-          : (Number(emps.count || 0) || cur.total ? "Aktiv" : "Bereit");
+          ? uiT("lohn.openStatus", "Offen")
+          : (Number(emps.count || 0) || cur.total ? uiT("lohn.active", "Aktiv") : uiT("lohn.ready", "Bereit"));
         $("portalSyncBadge").classList.remove("is-error");
         $("portalSyncBadge").classList.toggle("is-ok", !pending && Boolean(Number(emps.count || 0) || cur.total));
       }
@@ -549,7 +549,7 @@
                 <span>Netto ${e.net != null ? PayrollCore.formatAmount(e.net) : "—"}</span>
               </div>
               <div class="api-inbox-actions">
-                <button type="button" class="api-open-emp primary" data-id="${esc(e.lastJobId || "")}">Öffnen</button>
+                <button type="button" class="api-open-emp primary" data-id="${esc(e.lastJobId || "")}">${esc(uiT("lohn.open", "Öffnen"))}</button>
               </div>
             </div>`).join("")
             + (list.length > shown.length ? `<p class="portal-list-more">+ ${list.length - shown.length} weitere – für große Firmen seitenweise</p>` : "")
@@ -585,7 +585,7 @@
                 <span>${esc(it.period)} · ${esc(firmStatusLabel(it.status))} · Netto ${it.net != null ? PayrollCore.formatAmount(it.net) : "—"}</span>
               </div>
               <div class="api-inbox-actions">
-                <button type="button" class="api-arch-open" data-id="${esc(it.jobId)}">Öffnen</button>
+                <button type="button" class="api-arch-open" data-id="${esc(it.jobId)}">${esc(uiT("lohn.open", "Öffnen"))}</button>
                 <button type="button" class="api-arch-pdf primary" data-id="${esc(it.jobId)}">PDF</button>
               </div>
             </div>`).join("")
@@ -922,7 +922,7 @@
     const quiet = Boolean(opts.quiet);
     const companyId = companyPortalId || apiConfig().companyId;
     if (!companyId) {
-      if (!quiet) toast("Keine Firma – bitte anmelden.", "error");
+      if (!quiet) toast(uiT("lohn.noCompany", "Keine Firma – bitte anmelden."), "error");
       return;
     }
     const period = currentPayrollPeriod();
@@ -954,8 +954,8 @@
         (a) => !/webhook|WORKPASS_|Endpoint|Pull-URL|batch|Import\/Batch/i.test(String(a))
       );
       if (!quiet) {
-        toast(data.message || "Sync fertig", data.ok ? "ok" : "info");
-        setStatus(data.message || "Sync fertig", Boolean(data.ok || data.waitingForPlatform));
+        toast(data.message || uiT("lohn.syncDone", "Sync fertig"), data.ok ? "ok" : "info");
+        setStatus(data.message || uiT("lohn.syncDone", "Sync fertig"), Boolean(data.ok || data.waitingForPlatform));
       } else {
         setStatus(
           data.waitingForPlatform
@@ -1067,8 +1067,8 @@
       b.disabled = true;
       b.classList.add("is-busy");
       b.setAttribute("aria-busy", "true");
-      if (b.id === "btnMonthClose") b.textContent = "Läuft…";
-      if (b.id === "btnPortalMonthClose") b.textContent = "Läuft…";
+      if (b.id === "btnMonthClose") b.textContent = uiT("lohn.running", "Läuft…");
+      if (b.id === "btnPortalMonthClose") b.textContent = uiT("lohn.running", "Läuft…");
     });
     document.body.classList.add("month-close-running");
 
