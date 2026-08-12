@@ -198,6 +198,7 @@ export async function notifyPlatform(event) {
     occurredAt: new Date().toISOString(),
     source: "workpass-accounting-bridge",
     idempotencyKey,
+    preferInlineReply: true,
     company: company ? { id: company.id || "", name: company.name || "" } : null,
     delivery: event.delivery || null,
     message: event.message || null,

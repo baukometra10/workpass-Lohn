@@ -394,6 +394,14 @@ export async function notifyGapsForPayroll({
         gaps,
         reason: forceNotify ? "manual_request" : "payslip_create",
         allowIncomplete: true,
+        preferInlineReply: true,
+        replyRequired: true,
+        reply: {
+          pushEmployees: "POST /v1/employees/import",
+          pushPayroll: "POST /v1/payroll/batch",
+          orInline: "employees[] / employee / contract in webhook 200 body",
+          accountingBase: process.env.WORKPASS_PUBLIC_URL || "https://workpass-lohn.up.railway.app",
+        },
       },
       idempotencyKey: forceNotify
         ? `emp-req:${companyId}:${employeeId}:${period}:${Date.now()}`

@@ -337,10 +337,14 @@
             <div class="btn-row" style="margin-top:10px">
               <button type="button" class="primary" id="btnAskPlatformData">Vorhandene Daten holen / Lücken melden</button>
             </div>
-            <p class="section-hint">Wir laden zuerst Stammdaten und Vertrag aus der Plattform. Nur was dort wirklich fehlt, wird nachgefragt – nicht jedes Mal neu eingeben.</p>
+            <p class="section-hint" id="missingPlatformHint">Wir laden zuerst Stammdaten und Vertrag aus der Plattform. Nur was dort wirklich fehlt, wird nachgefragt.</p>
           ` : ""}
         `;
         $("btnAskPlatformData")?.addEventListener("click", () => askPlatformForCurrentEmployee(hardErrors || [], soft));
+        if (state.meta?.platformBlockedHint) {
+          const hint = $("missingPlatformHint");
+          if (hint) hint.textContent = state.meta.platformBlockedHint;
+        }
       }
     }
     highlightMissing(hardErrors || [], soft);
@@ -378,7 +382,10 @@
       });
       if (data.job?.jobId) {
         await openApiPayrollJob(data.job.jobId, { skipEnrich: true });
-        toast(data.message || "Daten übernommen.", data.remainingHard?.length ? "info" : "ok");
+        toast(
+          data.message || "Daten übernommen.",
+          data.platformBlocked ? "error" : (data.remainingHard?.length ? "info" : "ok")
+        );
       } else if (data.ingest?.count) {
         const first = data.ingest.results?.[0];
         if (first?.jobId) {
@@ -2329,7 +2336,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.36.0</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.36.1</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))
@@ -2472,11 +2479,21 @@
             body: JSON.stringify({ pull: true, ask: true, forcePull: true }),
           });
           job = enriched.job;
+          if (enriched.job?.state) {
+            enriched.job.state.meta = enriched.job.state.meta || {};
+            if (enriched.platformBlocked && enriched.message) {
+              enriched.job.state.meta.platformBlockedHint = enriched.message;
+            } else {
+              delete enriched.job.state.meta.platformBlockedHint;
+            }
+          }
           if (enriched.filledCount) {
             toast(
               enriched.message || `${enriched.filledCount} Felder ergänzt.`,
               (enriched.remainingHard || []).length ? "info" : "ok"
             );
+          } else if (enriched.platformBlocked) {
+            toast(enriched.message || "Plattform liefert keine Stammdaten.", "error");
           } else if (enriched.askedPlatform && (enriched.remainingHard || []).length) {
             toast(enriched.message || "Noch Lücken – Plattform wurde gefragt.", "info");
           }

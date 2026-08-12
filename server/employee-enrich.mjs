@@ -21,6 +21,12 @@ import {
   assertSameTenant,
 } from "./tenant.mjs";
 
+/** Last enrich attempt – exposed via /health for ops. */
+let lastEnrichStatus = null;
+export function getLastEnrichStatus() {
+  return lastEnrichStatus ? { ...lastEnrichStatus } : null;
+}
+
 function pick(...vals) {
   for (const v of vals) {
     const s = String(v ?? "").trim();
@@ -39,19 +45,27 @@ function fillEmpty(target, key, value) {
   return true;
 }
 
-function companyPatch(companyId) {
+function companyPatch(companyId, jobCompany = null) {
   const company = loadCompany(companyId);
-  if (!company) return { filled: [], patch: {} };
-  const hub = company.meta?.hubProfile && typeof company.meta.hubProfile === "object"
+  const hub = company?.meta?.hubProfile && typeof company.meta.hubProfile === "object"
     ? company.meta.hubProfile
     : {};
+  const jc = jobCompany && typeof jobCompany === "object" ? jobCompany : {};
+  const companyName = pick(company?.name, hub.companyName, jc.name, hub.seller?.split?.("\n")?.[0]);
+  const seller = pick(
+    hub.seller,
+    company?.address,
+    [companyName, pick(company?.street, jc.street), [pick(company?.zip, jc.zip), pick(company?.city, jc.city)].filter(Boolean).join(" ")]
+      .filter(Boolean)
+      .join("\n")
+  );
   const patch = {
-    companyName: pick(company.name, hub.companyName),
-    taxNumber: pick(company.taxNumber, company.steuerNr, hub.taxNumber),
-    vatId: pick(company.vatId, company.ustId, hub.vatId),
-    datevClientNo: pick(company.datevClientNo, hub.datevClientNo),
-    datevConsultantNo: pick(company.datevConsultantNo, hub.datevConsultantNo),
-    seller: pick(hub.seller, company.address),
+    companyName,
+    taxNumber: pick(company?.taxNumber, company?.steuerNr, hub.taxNumber, jc.taxNumber),
+    vatId: pick(company?.vatId, company?.ustId, hub.vatId, jc.vatId),
+    datevClientNo: pick(company?.datevClientNo, hub.datevClientNo),
+    datevConsultantNo: pick(company?.datevConsultantNo, hub.datevConsultantNo),
+    seller,
   };
   return { company, hub, patch, filled: Object.keys(patch).filter((k) => patch[k]) };
 }
@@ -284,6 +298,13 @@ export async function enrichPayrollJob(jobId, options = {}) {
 
   const state = { ...(job.state || {}) };
   state.meta = { ...(state.meta || {}), jobId, enrichedAt: new Date().toISOString() };
+  state.mandantId = state.mandantId || companyId;
+  if (companyId) {
+    state.meta.companyId = companyId;
+    fillEmpty(state, "companyName", job.company?.name);
+    fillEmpty(state, "taxNumber", job.company?.taxNumber);
+    fillEmpty(state, "vatId", job.company?.vatId);
+  }
   const employeeId = normalizeEmployeeId(
     options.employeeId || state.badgeId || state.employeeId || job.employee?.badgeId || job.employee?.id || ""
   );
@@ -304,10 +325,10 @@ export async function enrichPayrollJob(jobId, options = {}) {
   }
 
   // 1) Company Stammdaten (Steuer-Nr., Name, …) after branding pull
-  const fromCompany = companyPatch(companyId);
+  const fromCompany = companyPatch(companyId, job.company);
   filled.push(...applyPatch(state, fromCompany.patch).map((k) => `company.${k}`));
-  if (!String(state.seller || "").trim() && fromCompany.patch.seller) {
-    fillEmpty(state, "seller", fromCompany.patch.seller);
+  if (!String(state.seller || "").trim() && state.companyName) {
+    fillEmpty(state, "seller", state.companyName);
   }
 
   // 2) Local employee registry
@@ -409,7 +430,33 @@ export async function enrichPayrollJob(jobId, options = {}) {
 
   const filledCount = filled.length;
   const stillMissing = [...hard, ...soft];
-  return {
+  const pullDenied = Boolean(
+    (employeePull?.attempts || []).some((a) => a.status === 401 || a.status === 403)
+    || (pull?.attempts || []).some((a) => a.status === 401 || a.status === 403)
+    || /unauthorized|invalid_api_key|401|403/i.test(String(employeePull?.error || pull?.error || ""))
+  );
+  const webhookOkNoData = Boolean(
+    platformAsk?.platformNotify?.ok
+    && stillMissing.length
+    && !extractInlineReply(platformAsk?.platformNotify?.body)?.employees?.length
+  );
+  let message = filledCount && !stillMissing.length
+    ? `Daten von Plattform/Vertrag/Register übernommen (${filledCount} Felder). Abrechnung bereit.`
+    : filledCount
+      ? `Teilweise ergänzt (${filledCount} Felder). Noch offen: ${stillMissing.slice(0, 4).join(" · ")}`
+      : stillMissing.length
+        ? (pull.ok === false && employeePull.ok === false
+          ? `Plattform-GET ohne Treffer – fehlende Felder nachgefragt.`
+          : `Noch fehlend: ${stillMissing.slice(0, 4).join(" · ")}`)
+        : "Stammdaten vollständig.";
+
+  if (stillMissing.length && (pullDenied || webhookOkNoData)) {
+    message = pullDenied
+      ? "Plattform blockiert den Datenabruf (401). Bitte WORKPASS_API_KEY / WORKPASS_PLATFORM_API_KEY freigeben für GET /api/contracts und /api/v1/company – oder Stammdaten per POST /v1/payroll/batch senden."
+      : "Plattform hat die Anfrage bestätigt, sendet aber keine Mitarbeiterdaten. Bitte Vertrag/Stammdaten an die Buchhaltung pushen: POST /v1/employees/import und POST /v1/payroll/batch.";
+  }
+
+  const result = {
     ok: true,
     job: nextJob,
     filled,
@@ -422,14 +469,24 @@ export async function enrichPayrollJob(jobId, options = {}) {
     branding,
     platformAsk,
     askedPlatform: Boolean(platformAsk && (platformAsk.created || platformAsk.notified || platformAsk.ok)),
-    message: filledCount && !stillMissing.length
-      ? `Daten von Plattform/Vertrag/Register übernommen (${filledCount} Felder). Abrechnung bereit.`
-      : filledCount
-        ? `Teilweise ergänzt (${filledCount} Felder). Noch offen: ${stillMissing.slice(0, 4).join(" · ")}`
-        : stillMissing.length
-          ? (pull.ok === false && employeePull.ok === false
-            ? `Plattform-GET ohne Treffer – fehlende Felder nachgefragt.`
-            : `Noch fehlend: ${stillMissing.slice(0, 4).join(" · ")}`)
-          : "Stammdaten vollständig.",
+    platformBlocked: Boolean(pullDenied || webhookOkNoData),
+    platformBlockedReason: pullDenied
+      ? "pull_unauthorized"
+      : (webhookOkNoData ? "webhook_ok_no_payload" : null),
+    message,
   };
+  lastEnrichStatus = {
+    at: new Date().toISOString(),
+    jobId,
+    companyId,
+    employeeId,
+    filledCount,
+    stillMissing,
+    platformBlocked: result.platformBlocked,
+    platformBlockedReason: result.platformBlockedReason,
+    employeePullOk: employeePull?.ok === true,
+    brandingPulled: branding?.pulled === true,
+    message,
+  };
+  return result;
 }
