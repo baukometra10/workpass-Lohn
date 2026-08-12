@@ -985,21 +985,29 @@ textarea { min-height: 58px; resize: vertical; }
     overflow: visible;
     flex: none;
   }
-  /* Abrechnung first on narrow – no empty dark band above the sheet */
+  /* Filled payslip first; empty A4 must NOT create a huge blank band at the top */
   .lohn-preview {
-    order: -1;
+    order: 1;
     height: auto;
     min-height: 0;
-    max-height: min(78vh, 920px);
+    max-height: none;
     padding: 6px 8px 10px;
   }
+  .lohn-preview:has(.preview-stage:not(.is-empty)) {
+    order: -1;
+    max-height: min(78vh, 920px);
+  }
+  .lohn-preview:has(.preview-stage.is-empty) {
+    order: 2;
+    max-height: 42vh;
+  }
   .lohn-form {
-    order: 1;
+    order: 0;
     max-height: none;
     height: auto;
     border-right: none;
     border-bottom: none;
-    border-top: 1px solid var(--border);
+    border-top: none;
     scroll-padding-top: 72px;
   }
   .form-section {
@@ -1320,19 +1328,34 @@ body.company-portal .month-close-actions {
     min-height: 0;
   }
   body.company-portal .lohn-preview {
-    order: -1;
+    order: 1;
     min-height: 0;
+    max-height: none;
+  }
+  body.company-portal .lohn-preview:has(.preview-stage:not(.is-empty)) {
+    order: -1;
     max-height: min(78vh, 920px);
   }
+  body.company-portal .lohn-preview:has(.preview-stage.is-empty) {
+    order: 2;
+    max-height: 36vh;
+  }
   body.company-portal .lohn-form {
-    order: 1;
+    order: 0;
   }
   body.company-portal .company-portal-banner {
-    margin: 6px 10px 0;
+    margin: 4px 8px 0;
   }
   body.company-portal .company-portal-banner-inner {
-    padding: 10px 12px;
-    gap: 10px;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  body.company-portal .lohn-form-sticky .form-jump {
+    display: none;
+  }
+  body.company-portal .lohn-appbar {
+    min-height: 0;
+    padding: 6px 10px;
   }
 }
 
@@ -2292,7 +2315,41 @@ body.company-portal .lohn-preview {
 .portal-command-status[hidden] { display: none !important; }
 .portal-command-status[data-tone="ok"] { border-color: rgba(125, 222, 162, 0.4); }
 .portal-command-status[data-tone="wait"] { border-color: rgba(251, 191, 36, 0.42); }
-.portal-command-status[data-tone="ready"] { border-color: rgba(93, 180, 255, 0.42); }
+.portal-command-status[data-tone="blocked"] {
+  border-color: rgba(248, 113, 113, 0.55);
+  background:
+    radial-gradient(ellipse 60% 80% at 0% 0%, rgba(248, 113, 113, 0.18), transparent 55%),
+    rgba(28, 14, 18, 0.94);
+}
+.portal-platform-alert {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: rgba(60, 18, 24, 0.72);
+  color: #fecaca;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.portal-platform-alert[hidden] { display: none !important; }
+.portal-platform-alert strong {
+  display: block;
+  color: #fff;
+  margin-bottom: 4px;
+  font-size: 0.92rem;
+}
+.portal-version-chip {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #9bb0c9;
+  border: 1px solid rgba(155, 176, 201, 0.28);
+  vertical-align: middle;
+}
 .portal-command-eyebrow {
   display: block;
   font-size: 0.66rem;

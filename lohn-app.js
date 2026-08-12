@@ -453,18 +453,27 @@
       }
       if ($("portalKpiMessages")) $("portalKpiMessages").textContent = String((msgs.messages || []).length);
       const pending = Number(sync?.pending?.messages || 0) + Number(sync?.pending?.deliveries || 0);
-      const firmFriendlySync = pending
-        ? `${pending} ${uiT("lohn.openStatus", "offen")}`
-        : (Number(emps.count || 0) > 0 || cur.total
-          ? uiT("lohn.connected", "Verbunden")
-          : uiT("lohn.ready", "Bereit"));
+      const wh = sync?.webhook?.last || null;
+      const platformBlocked = Boolean(
+        sync?.status === "error"
+        || (wh && wh.ok === false && (Number(wh.status) === 401 || Number(wh.status) === 403 || Number(wh.status) === 404))
+      );
+      const firmFriendlySync = platformBlocked
+        ? uiT("lohn.platformBlockedShort", "Plattform blockiert")
+        : (pending
+          ? `${pending} ${uiT("lohn.openStatus", "offen")}`
+          : (Number(emps.count || 0) > 0 || cur.total
+            ? uiT("lohn.connected", "Verbunden")
+            : uiT("lohn.ready", "Bereit")));
       if ($("portalKpiSync")) $("portalKpiSync").textContent = firmFriendlySync;
       if ($("portalSyncBadge")) {
-        $("portalSyncBadge").textContent = pending
-          ? uiT("lohn.openStatus", "Offen")
-          : (Number(emps.count || 0) || cur.total ? uiT("lohn.active", "Aktiv") : uiT("lohn.ready", "Bereit"));
-        $("portalSyncBadge").classList.remove("is-error");
-        $("portalSyncBadge").classList.toggle("is-ok", !pending && Boolean(Number(emps.count || 0) || cur.total));
+        $("portalSyncBadge").textContent = platformBlocked
+          ? uiT("lohn.check", "Prüfen")
+          : (pending
+            ? uiT("lohn.openStatus", "Offen")
+            : (Number(emps.count || 0) || cur.total ? uiT("lohn.active", "Aktiv") : uiT("lohn.ready", "Bereit")));
+        $("portalSyncBadge").classList.toggle("is-error", platformBlocked);
+        $("portalSyncBadge").classList.toggle("is-ok", !platformBlocked && !pending && Boolean(Number(emps.count || 0) || cur.total));
       }
 
       const empN = Number(emps.count || 0);
@@ -481,7 +490,9 @@
         monthDone: Boolean(cur.total > 0 && relN === cur.total && cur.status === "released")
           || Boolean(auto?.phase === "done"),
         automation: auto,
+        platformBlocked,
       });
+      renderPortalPlatformAlert(platformBlocked, pending, empN);
       applyAutomationProgress(auto, period);
       renderAuditOverview({
         period,
@@ -536,7 +547,12 @@
       }
 
       if ($("portalSyncHint")) {
-        if (auto?.eligible && auto?.phase === "done") {
+        if (platformBlocked) {
+          $("portalSyncHint").textContent = uiT(
+            "portal.syncHintBlocked",
+            "Die Plattform lehnt die Verbindung ab – deshalb fehlen Namen, Logo und Monatsdaten. Bitte Plattform-Admin: Webhook-Schlüssel mit Accounting abstimmen."
+          );
+        } else if (auto?.eligible && auto?.phase === "done") {
           $("portalSyncHint").textContent = uiT(
             "portal.syncHintAutoDone",
             "Monatsautomatik erledigt – Abrechnungen sind an die Plattform gesendet. Sie können jederzeit zur Prüfung einloggen."
@@ -598,7 +614,7 @@
             <div class="api-inbox-item">
               <div>
                 <strong>${esc(title)}</strong>
-                <span class="portal-item-meta">${esc(idLine)}${e.personnelNumber ? ` · ${esc(uiT("lohn.persNr", "Pers.-Nr."))} ${esc(e.personnelNumber)}` : ""} · ${esc(e.lastPeriod || "—")} · ${esc(firmStatusLabel(e.lastStatus))}</span>
+                <span class="portal-item-meta">${esc(idLine)}${e.hasName === false ? ` · ${esc(uiT("lohn.namePending", "Name von Plattform ausstehend"))}` : ""}${e.personnelNumber ? ` · ${esc(uiT("lohn.persNr", "Pers.-Nr."))} ${esc(e.personnelNumber)}` : ""} · ${esc(e.lastPeriod || "—")} · ${esc(firmStatusLabel(e.lastStatus))}</span>
                 <span>${esc(uiT("kpi.netShort", "Netto"))} ${e.net != null ? PayrollCore.formatAmount(e.net) : "—"}</span>
               </div>
               <div class="api-inbox-actions">
@@ -856,6 +872,28 @@
     if (phase === "done") hideMonthProgressSoon(2400);
   }
 
+  function renderPortalPlatformAlert(platformBlocked, pending = 0, employees = 0) {
+    const host = $("portalPlatformAlert");
+    if (!host) return;
+    if (!platformBlocked) {
+      host.hidden = true;
+      host.innerHTML = "";
+      return;
+    }
+    host.hidden = false;
+    host.innerHTML = `
+      <strong>${esc(uiT("portal.blockedTitle", "Plattform-Verbindung blockiert"))}</strong>
+      <span>${esc(uiT(
+        "portal.blockedHint",
+        "Accounting ist bereit (Monatsautomatik an), aber die Plattform lehnt die Verbindung ab. Ohne Antwort kommen keine Mitarbeiternamen, kein Logo und keine Monatsdaten an. Bitte Ihren Plattform-Administrator informieren: Verbindungsschlüssel zwischen Plattform und Accounting abstimmen – oder die Plattform liefert Mitarbeiter/Monat per Import."
+      ))}</span>
+      <span style="display:block;margin-top:6px;opacity:.85">${esc(
+        uiT("portal.blockedMeta", "Offene Anfragen: {n} · Mitarbeiter bisher: {e}")
+          .replace("{n}", String(pending))
+          .replace("{e}", String(employees))
+      )}</span>`;
+  }
+
   function renderPortalCommandStatus({
     period,
     employees = 0,
@@ -865,6 +903,7 @@
     hasData = false,
     monthDone = false,
     automation = null,
+    platformBlocked = false,
   } = {}) {
     const host = $("portalCommandStatus");
     if (!host) return;
@@ -878,7 +917,14 @@
     const autoOn = Boolean(automation?.eligible);
     const autoDone = Boolean(automation?.phase === "done" || monthDone);
     const autoWait = Boolean(automation?.waitingForPlatform || automation?.phase === "waiting");
-    if (autoDone) {
+    if (platformBlocked) {
+      title = uiT("portal.blockedTitle", "Plattform-Verbindung blockiert");
+      hint = uiT(
+        "portal.blockedShort",
+        "Deshalb fehlen Namen, Branding und Abrechnungen – Accounting wartet auf die Plattform."
+      );
+      tone = "blocked";
+    } else if (autoDone) {
       title = uiT("hub.outcome.done", "Alles bereit für diesen Monat");
       hint = uiT("hub.outcome.doneHint", "{released} Abrechnung(en) freigegeben · Monat {period}")
         .replace("{released}", String(automation?.jobs?.released ?? released))
@@ -921,9 +967,11 @@
     if ($("portalCommandTitle")) $("portalCommandTitle").textContent = title;
     if ($("portalCommandHint")) $("portalCommandHint").textContent = hint;
     if ($("portalCommandEyebrow")) {
-      $("portalCommandEyebrow").textContent = autoOn
-        ? uiT("portal.autoEyebrow", "Monatsautomatik")
-        : uiT("portal.statusEyebrow", "Abrechnungsstatus");
+      $("portalCommandEyebrow").textContent = platformBlocked
+        ? uiT("portal.blockedEyebrow", "Verbindung")
+        : (autoOn
+          ? uiT("portal.autoEyebrow", "Monatsautomatik")
+          : uiT("portal.statusEyebrow", "Abrechnungsstatus"));
     }
     host.dataset.tone = tone;
   }
@@ -2277,7 +2325,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)}</strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.34.1</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))
