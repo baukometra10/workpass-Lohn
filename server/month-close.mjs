@@ -161,7 +161,7 @@ export function resolvePlatformPullUrls() {
   return urls;
 }
 
-export async function pullPlatformPayrollBatch({ companyId, period, employeeId } = {}) {
+export async function pullPlatformPayrollBatch({ companyId, period, employeeId, maxAttempts, timeoutMs: timeoutOverride } = {}) {
   const urls = resolvePlatformPullUrls();
   if (!urls.length) {
     return {
@@ -177,7 +177,7 @@ export async function pullPlatformPayrollBatch({ companyId, period, employeeId }
     process.env.WORKPASS_PLATFORM_WEBHOOK_KEY
     || process.env.WORKPASS_API_KEY
     || "";
-  const timeoutMs = Number(process.env.WORKPASS_PLATFORM_PULL_TIMEOUT_MS || 12000);
+  const timeoutMs = Number(timeoutOverride ?? process.env.WORKPASS_PLATFORM_PULL_TIMEOUT_MS ?? 12000);
   const methodPref = String(process.env.WORKPASS_PLATFORM_PAYROLL_PULL_METHOD || "auto")
     .trim()
     .toUpperCase();
@@ -188,8 +188,10 @@ export async function pullPlatformPayrollBatch({ companyId, period, employeeId }
 
   let last = null;
   const attempts = [];
-  for (const url of urls) {
+  const attemptLimit = Number.isFinite(maxAttempts) && maxAttempts > 0 ? maxAttempts : Infinity;
+  outer: for (const url of urls) {
     for (const method of methods) {
+      if (attempts.length >= attemptLimit) break outer;
       const result = await fetchPullOnce({
         url,
         method,
@@ -369,7 +371,11 @@ export async function requestEmployeeDataFromPlatform(options = {}) {
 
   let pull = { skipped: true };
   if (options.pull !== false) {
-    pull = await pullPlatformPayrollBatch({ companyId, period, employeeId });
+    // Manual firm requests: webhook first; cap pull so Railway does not 502 (~60s gateway).
+    const pullOpts = options.forceNotify
+      ? { maxAttempts: 2, timeoutMs: Number(process.env.WORKPASS_PLATFORM_PULL_TIMEOUT_MS || 5000) }
+      : {};
+    pull = await pullPlatformPayrollBatch({ companyId, period, employeeId, ...pullOpts });
   }
 
   let ingest = null;

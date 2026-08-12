@@ -371,7 +371,8 @@
           gaps: hard,
           softGaps: soft,
           jobId: state.meta?.jobId || undefined,
-          pull: true,
+          // Webhook notifies platform; pull would block up to ~2 min and Railway returns 502.
+          pull: false,
           reason: "payslip_create",
         }),
       });
@@ -2080,7 +2081,7 @@
         </div>
         <div class="api-inbox-actions">
           <button type="button" class="api-open" data-id="${esc(j.jobId)}">${esc(uiT("lohn.open", "Öffnen"))}</button>
-          <button type="button" class="api-release primary" data-id="${esc(j.jobId)}" ${j.status === "released" ? "disabled" : ""}>${esc(uiT("lohn.release", "Freigabe"))}</button>
+          <button type="button" class="api-release primary" data-id="${esc(j.jobId)}" ${j.status === "released" || j.status === "error" ? "disabled" : ""} title="${j.status === "error" ? esc(uiT("lohn.releaseBlocked", "Pflichtfelder fehlen – zuerst Daten ergänzen")) : ""}">${esc(j.status === "error" ? uiT("lohn.dataMissing", "Daten fehlen") : uiT("lohn.release", "Freigabe"))}</button>
         </div>
       </div>`;
     }).join("");
@@ -2325,7 +2326,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.34.1</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.34.2</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))
