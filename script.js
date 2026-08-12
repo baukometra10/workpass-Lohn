@@ -238,7 +238,7 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2.31.4";
+const APP_VERSION = "2.32.0";
 const APP_VERSION_BUILD = "2026.45";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
@@ -1581,13 +1581,73 @@ async function refreshMandantAccountingStatus() {
   updateDashboardChecklist();
 }
 
+function hubFirmOutcome({ employees = 0, released = 0, pending = 0, syncLabel = "—", period = "", whStatus = "" } = {}) {
+  if (syncLabel === "Fehler" || whStatus === 401) {
+    return {
+      title: hubT("hub.outcome.platformBlocked", "Plattform antwortet nicht"),
+      hint: hubT("hub.outcome.platformBlockedHint", "Webhook auf der Plattform prüfen – danach Sync erneut starten."),
+      tone: "warn",
+    };
+  }
+  if (Number(employees) === 0 && Number(released) === 0) {
+    return {
+      title: hubT("hub.outcome.needsSync", "Bereit für den ersten Sync"),
+      hint: hubT("hub.outcome.needsSyncHint", "Tippen Sie auf „Jetzt synchronisieren“ – WorkPass holt Ihre Mitarbeiter automatisch."),
+      tone: "ready",
+    };
+  }
+  if (Number(pending) > 0) {
+    return {
+      title: hubT("hub.outcome.waiting", "Wartet auf Plattformdaten"),
+      hint: hubT("hub.outcome.waitingHint", "{n} offene Nachricht(en) · Monat {period} läuft weiter für vollständige Personen.", { n: pending, period }),
+      tone: "wait",
+    };
+  }
+  if (Number(released) > 0 && Number(released) >= Number(employees) && Number(employees) > 0) {
+    return {
+      title: hubT("hub.outcome.done", "Alles bereit für diesen Monat"),
+      hint: hubT("hub.outcome.doneHint", "{released} Abrechnung(en) freigegeben · Monat {period}", { released, period }),
+      tone: "ok",
+    };
+  }
+  return {
+    title: hubT("hub.outcome.active", "Lohnlauf aktiv"),
+    hint: hubT("hub.outcome.activeHint", "{employees} Mitarbeiter · {released} freigegeben · Monat {period}", { employees, released, period }),
+    tone: "ok",
+  };
+}
+
+function renderFirmCockpit({ name, companyId, period, outcome, meta }) {
+  const cockpit = document.getElementById("firmCockpit");
+  if (!cockpit) return;
+  cockpit.hidden = false;
+  cockpit.dataset.tone = outcome?.tone || "ready";
+  hubSetText("firmCockpitName", name || companyId || "—");
+  hubSetText("firmCockpitStatus", outcome?.title || "—");
+  const hintEl = document.getElementById("firmCockpitMeta");
+  if (hintEl) {
+    const parts = [outcome?.hint, meta].filter(Boolean);
+    hintEl.textContent = parts.join(" · ");
+  }
+}
+
 async function updateDashboard() {
   const seq = ++hubDashboardSeq;
   const firm = Boolean(window.WorkPassAuth?.isCompanyPortalUser?.());
   const localGrid = document.getElementById("dashKpiGridLocal");
   const firmGrid = document.getElementById("dashKpiGridFirm");
+  const actionsLocal = document.getElementById("dashActionsLocal");
+  const actionsFirm = document.getElementById("dashActionsFirm");
+  const firmCockpit = document.getElementById("firmCockpit");
+  const onboard = document.getElementById("onboardingBanner");
+  const hubBanner = document.getElementById("dashHubBanner");
   if (localGrid) localGrid.hidden = firm;
   if (firmGrid) firmGrid.hidden = !firm;
+  if (actionsLocal) actionsLocal.hidden = firm;
+  if (actionsFirm) actionsFirm.hidden = !firm;
+  if (firmCockpit) firmCockpit.hidden = !firm;
+  if (onboard) onboard.hidden = firm || onboard.hidden;
+  if (hubBanner) hubBanner.hidden = firm;
   document.body.classList.toggle("company-portal", firm);
 
   const { employeeNames, monthCount, profileName, history } = updateLocalDashboardKpis();
@@ -1597,6 +1657,7 @@ async function updateDashboard() {
 
   const localMeta = document.getElementById("dashLocalMeta");
   if (!firm) {
+    if (firmCockpit) firmCockpit.hidden = true;
     hubSetText("dashWelcomeText", hubT("hub.welcomeLocal", "Mandant „{name}“ · {n} gespeicherte Lohn-Monate", {
       name: profileName,
       n: monthCount,
@@ -1607,21 +1668,13 @@ async function updateDashboard() {
 
   const user = window.WorkPassAuth?.getSessionUser?.();
   const companyId = user?.companyId || hubApiConfig().companyId || "—";
-  hubSetText("dashWelcomeText", hubT("hub.firmLine", "Firma · {id}", { id: companyId }));
+  const companyName = hubServerCompany?.name || hubWorkspace?.name || user?.companyName || companyId;
+  hubSetText("dashWelcomeText", hubT("hub.firmHeadline", "{name} · Lohn & Belege", { name: companyName }));
   if (localMeta) {
-    const ws = hubWorkspace?.accountingEnabled === false
-      ? hubT("hub.accountingOff", "Buchhaltung inaktiv")
-      : hubT("hub.accountingOn", "Buchhaltung aktiv");
-    localMeta.textContent = hubT(
-      "hub.localMeta",
-      "{ws} · Lokal: Mandant „{name}“ · {n} Lohn-Monate · Archiv {a}",
-      {
-        ws,
-        name: profileName,
-        n: monthCount,
-        a: window.WorkPassHub?.readInvoiceArchive?.()?.length || 0,
-      }
-    );
+    localMeta.textContent = hubT("hub.firmMetaQuiet", "Monat {period} · ID {id}", {
+      period: hubCurrentPeriod(),
+      id: companyId,
+    });
   }
 
   const period = hubCurrentPeriod();
@@ -1637,12 +1690,13 @@ async function updateDashboard() {
     if (seq !== hubDashboardSeq) return;
 
     const released = Number(month?.current?.released || 0);
+    const empCount = Number(emps?.count || 0);
     const invoiceCount = Number(invArch?.count)
       || (Array.isArray(inbox?.invoices) ? inbox.invoices.length : 0);
     const msgCount = Number(msgs?.count ?? (msgs?.messages || []).length ?? 0);
     const syncLabel = hubFormatSyncLabel(sync);
 
-    hubSetText("dashKpiFirmEmployees", String(emps?.count || 0));
+    hubSetText("dashKpiFirmEmployees", String(empCount));
     hubSetText("dashKpiFirmReleased", String(released));
     hubSetText("dashKpiFirmInvoices", String(invoiceCount));
     hubSetText("dashKpiFirmMessages", String(msgCount));
@@ -1652,14 +1706,22 @@ async function updateDashboard() {
 
     const pending = Number(sync?.pending?.messages || 0) + Number(sync?.pending?.deliveries || 0);
     const wh = sync?.webhook?.last || {};
-    let statusLine = syncLabel === "OK"
-      ? hubT("hub.syncOkMonth", "Sync OK · Monat {period}", { period })
-      : syncLabel === "Wartet"
-        ? hubT("hub.waitMonth", "Warte auf Plattform · {n} offen · Monat {period}", { n: pending, period })
-        : syncLabel === "Fehler"
-          ? hubT("hub.webhookMonth", "Webhook-Fehler {status} · Monat {period}", { status: wh.status || "", period })
-          : hubT("hub.syncMonth", "Sync {label} · Monat {period}", { label: syncLabel, period });
-    hubSetText("dashWelcomeText", `${hubT("hub.firmLine", "Firma · {id}", { id: companyId })} · ${statusLine}`);
+    const outcome = hubFirmOutcome({
+      employees: empCount,
+      released,
+      pending,
+      syncLabel,
+      period,
+      whStatus: wh.status,
+    });
+    renderFirmCockpit({
+      name: companyName,
+      companyId,
+      period,
+      outcome,
+      meta: hubT("hub.firmMetaQuiet", "Monat {period} · ID {id}", { period, id: companyId }),
+    });
+    hubSetText("dashWelcomeText", `${companyName} · ${outcome.title}`);
     const hint = hubFormatAutoSyncHint(sync);
     if (!document.getElementById("dashSyncStatus")?.textContent || document.getElementById("dashSyncStatus")?.hidden) {
       hubShowSyncStatus(hint.text, { error: hint.error, nextActions: hint.nextActions });
@@ -1677,10 +1739,19 @@ async function updateDashboard() {
     hubSetText("dashKpiFirmInvoices", "—");
     hubSetText("dashKpiFirmMessages", "—");
     hubSetText("dashKpiFirmSync", hubT("hub.offline", "Offline"));
-    hubSetText("dashWelcomeText", hubT("hub.bridgeOffline", "Firma · {id} · Bridge offline ({err})", {
-      id: companyId,
-      err: err?.message || "Login/API",
-    }));
+    const outcome = {
+      title: hubT("hub.outcome.offline", "Verbindung wird geprüft"),
+      hint: hubT("hub.outcome.offlineHint", "Kurz warten oder später erneut öffnen."),
+      tone: "warn",
+    };
+    renderFirmCockpit({
+      name: companyName,
+      companyId,
+      period,
+      outcome,
+      meta: hubT("hub.firmMetaQuiet", "Monat {period} · ID {id}", { period, id: companyId }),
+    });
+    hubSetText("dashWelcomeText", `${companyName} · ${outcome.title}`);
   }
 }
 

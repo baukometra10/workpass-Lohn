@@ -466,13 +466,26 @@
         $("portalSyncBadge").classList.toggle("is-ok", !pending && Boolean(Number(emps.count || 0) || cur.total));
       }
 
+      const empN = Number(emps.count || 0);
+      const relN = Number(cur.released || arch.count || 0);
+      const openN = Number((msgs.messages || []).length);
+      renderPortalCommandStatus({
+        period,
+        employees: empN,
+        released: relN,
+        openMessages: openN,
+        pending,
+        hasData: Boolean(cur.total),
+        monthDone: Boolean(cur.total > 0 && relN === cur.total && cur.status === "released"),
+      });
       renderAuditOverview({
         period,
-        employees: Number(emps.count || 0),
-        released: Number(cur.released || arch.count || 0),
-        openMessages: Number((msgs.messages || []).length),
+        employees: empN,
+        released: relN,
+        openMessages: openN,
         syncLabel: firmFriendlySync,
         hasData: Boolean(cur.total),
+        companyName: $("companyName")?.value?.trim() || companyPortalId,
       });
 
       const totalsCard = $("portalTotalsCard");
@@ -801,7 +814,57 @@
     window.WorkPassI18n?.applyDom?.(document);
   }
 
-  function renderAuditOverview({ period, employees = 0, released = 0, openMessages = 0, syncLabel = "—", hasData = false } = {}) {
+  function renderPortalCommandStatus({
+    period,
+    employees = 0,
+    released = 0,
+    openMessages = 0,
+    pending = 0,
+    hasData = false,
+    monthDone = false,
+  } = {}) {
+    const host = $("portalCommandStatus");
+    if (!host) return;
+    host.hidden = false;
+    let title = uiT("hub.outcome.active", "Lohnlauf aktiv");
+    let hint = uiT("hub.outcome.activeHint", "{employees} Mitarbeiter · {released} freigegeben · Monat {period}")
+      .replace("{employees}", String(employees))
+      .replace("{released}", String(released))
+      .replace("{period}", period || currentPayrollPeriod());
+    let tone = "ok";
+    if (monthDone) {
+      title = uiT("hub.outcome.done", "Alles bereit für diesen Monat");
+      hint = uiT("hub.outcome.doneHint", "{released} Abrechnung(en) freigegeben · Monat {period}")
+        .replace("{released}", String(released))
+        .replace("{period}", period || currentPayrollPeriod());
+      tone = "ok";
+    } else if (!hasData && employees === 0) {
+      title = uiT("hub.outcome.needsSync", "Bereit für den ersten Sync");
+      hint = uiT("hub.outcome.needsSyncHint", "Tippen Sie auf „Jetzt synchronisieren“ – WorkPass holt Ihre Mitarbeiter automatisch.");
+      tone = "ready";
+    } else if (pending > 0 || openMessages > 0) {
+      title = uiT("hub.outcome.waiting", "Wartet auf Plattformdaten");
+      hint = uiT("portal.outcome.gapsHint", "{n} offene Punkte · WorkPass fragt die Plattform gezielt nach.")
+        .replace("{n}", String(Math.max(pending, openMessages)));
+      tone = "wait";
+    }
+    if ($("portalCommandTitle")) $("portalCommandTitle").textContent = title;
+    if ($("portalCommandHint")) $("portalCommandHint").textContent = hint;
+    if ($("portalCommandEyebrow")) {
+      $("portalCommandEyebrow").textContent = uiT("portal.statusEyebrow", "Abrechnungsstatus");
+    }
+    host.dataset.tone = tone;
+  }
+
+  function renderAuditOverview({
+    period,
+    employees = 0,
+    released = 0,
+    openMessages = 0,
+    syncLabel = "—",
+    hasData = false,
+    companyName = "",
+  } = {}) {
     const host = $("auditOverview");
     const grid = $("auditOverviewGrid");
     if (!host || !grid) return;
@@ -811,12 +874,18 @@
     }
     host.hidden = false;
     const dataState = hasData ? uiT("audit.dataYes", "Daten vorhanden") : uiT("audit.dataNo", "Noch keine Monatsdaten");
+    const openLabel = openMessages > 0
+      ? uiT("portal.openPeople", "{n} brauchen Daten").replace("{n}", String(openMessages))
+      : uiT("portal.noOpenShort", "Keine");
+    const firmLabel = companyName && companyName !== companyPortalId
+      ? `${companyName}`
+      : companyPortalId;
     grid.innerHTML = `
-      <div class="audit-chip"><span>${esc(uiT("audit.company", "Firma"))}</span><strong>${esc(companyPortalId)}</strong></div>
+      <div class="audit-chip"><span>${esc(uiT("audit.company", "Firma"))}</span><strong title="${esc(companyPortalId)}">${esc(firmLabel)}</strong></div>
       <div class="audit-chip"><span>${esc(uiT("audit.month", "Monat"))}</span><strong>${esc(period || currentPayrollPeriod())}</strong></div>
       <div class="audit-chip"><span>${esc(uiT("audit.employees", "Mitarbeiter"))}</span><strong>${esc(String(employees))}</strong></div>
       <div class="audit-chip"><span>${esc(uiT("audit.released", "Freigegeben"))}</span><strong>${esc(String(released))}</strong></div>
-      <div class="audit-chip"><span>${esc(uiT("audit.open", "Offene Aufträge"))}</span><strong>${esc(String(openMessages))}</strong></div>
+      <div class="audit-chip"><span>${esc(uiT("audit.open", "Offene Aufträge"))}</span><strong>${esc(openLabel)}</strong></div>
       <div class="audit-chip"><span>${esc(uiT("audit.sync", "Sync"))}</span><strong>${esc(syncLabel)}</strong></div>
       <div class="audit-chip audit-chip-wide"><span>${esc(uiT("audit.data", "Datenlage"))}</span><strong>${esc(dataState)}</strong></div>
       <div class="audit-chip audit-chip-wide"><span>${esc(uiT("audit.mandant", "Mandant"))}</span><strong>${esc(uiT("audit.isolation", "Nur diese Firma sichtbar (Isolation)"))}</strong></div>

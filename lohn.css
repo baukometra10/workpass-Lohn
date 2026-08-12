@@ -2220,4 +2220,71 @@ body.company-portal .lohn-preview {
   overflow: auto;
 }
 
+/* —— Portal command status (firm outcome first) —— */
+.portal-command-status {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 0 14px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(93, 180, 255, 0.32);
+  background:
+    radial-gradient(ellipse 60% 80% at 0% 0%, rgba(59, 158, 255, 0.16), transparent 55%),
+    rgba(12, 22, 38, 0.9);
+}
+.portal-command-status[hidden] { display: none !important; }
+.portal-command-status[data-tone="ok"] { border-color: rgba(125, 222, 162, 0.4); }
+.portal-command-status[data-tone="wait"] { border-color: rgba(251, 191, 36, 0.42); }
+.portal-command-status[data-tone="ready"] { border-color: rgba(93, 180, 255, 0.42); }
+.portal-command-eyebrow {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7ddea2;
+  margin-bottom: 4px;
+}
+.portal-command-status strong {
+  display: block;
+  font-family: var(--display);
+  font-size: 1.12rem;
+  color: #fff;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+.portal-command-status p {
+  margin: 0;
+  color: #9bb0c9;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  max-width: 36rem;
+}
+.portal-command-pulse {
+  width: 10px;
+  height: 10px;
+  margin-top: 8px;
+  border-radius: 50%;
+  background: #5db4ff;
+  box-shadow: 0 0 0 0 rgba(93, 180, 255, 0.45);
+  flex: 0 0 auto;
+  animation: portalPulse 2.2s ease-out infinite;
+}
+.portal-command-status[data-tone="ok"] .portal-command-pulse { background: #7ddea2; }
+.portal-command-status[data-tone="wait"] .portal-command-pulse { background: #fbbf24; }
+@keyframes portalPulse {
+  0% { box-shadow: 0 0 0 0 rgba(93, 180, 255, 0.45); }
+  70% { box-shadow: 0 0 0 12px rgba(93, 180, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(93, 180, 255, 0); }
+}
+.portal-sync-anchor { position: relative; top: -72px; height: 0; width: 0; overflow: hidden; }
+body.company-portal .portal-kpi-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 720px) {
+  body.company-portal .portal-kpi-row { grid-template-columns: 1fr 1fr; }
+}
+
 

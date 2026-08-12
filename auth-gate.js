@@ -65,13 +65,11 @@
     const path = String(location.pathname || "").toLowerCase();
     const isFirm = Boolean(data.user?.companyId && data.user?.role !== "admin");
     history.replaceState(null, "", location.pathname + location.search);
-    // Firms from the platform open the full accounting Hub (not Lohn-only).
+    // Firms land in the Lohn cockpit first — the premium payroll experience.
     if (isFirm) {
-      const isHubEntry = /index\.html$/i.test(path)
-        || path.endsWith("/")
-        || !/\.html$/i.test(path);
-      if (!isHubEntry) {
-        location.replace(`${location.origin}/index.html`);
+      const isLohnEntry = /lohn\.html$/i.test(path);
+      if (!isLohnEntry) {
+        location.replace(`${location.origin}/lohn.html`);
         return;
       }
     }
