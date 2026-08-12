@@ -610,6 +610,25 @@
     ).trim();
     // Internal job key = badge (or id). Never print badge on payslip.
     const employeeId = badgeId;
+    const resolvedEmpName = String(
+      employee.name
+      || employee.employeeName
+      || employee.displayName
+      || employee.fullName
+      || [employee.firstName || employee.givenName || employee.vorname, employee.lastName || employee.familyName || employee.nachname || employee.surname]
+        .filter((p) => String(p || "").trim())
+        .join(" ")
+      || ""
+    ).trim();
+    const resolvedEmpAddress = String(
+      empAddress
+      || employee.address
+      || employee.employeeAddress
+      || [employee.street || employee.strasse, [employee.zip || employee.plz, employee.city || employee.ort].filter(Boolean).join(" ")]
+        .filter((p) => String(p || "").trim())
+        .join("\n")
+      || ""
+    ).trim();
 
     const draft = {
       documentType: "payroll",
@@ -623,8 +642,8 @@
       datevClientNo: String(company.datevClientNo || "").trim(),
       datevConsultantNo: String(company.datevConsultantNo || "").trim(),
       payroll: {
-        employeeName: String(employee.name || employee.employeeName || "").trim(),
-        employeeAddress: empAddress,
+        employeeName: resolvedEmpName,
+        employeeAddress: resolvedEmpAddress,
         employeeId,
         badgeId,
         personnelNumber,

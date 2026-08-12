@@ -8,7 +8,12 @@
  *   WORKPASS_AUTO_PIPELINE_MINUTES=15 (poll / ask interval)
  *   WORKPASS_AUTO_RELEASE=1           (default ON: release on inbound batch)
  */
-import { listCompanies, listPayrollJobs, listInvoiceJobs } from "./db/repository.mjs";
+import { listCompanies, listPayrollJobs, listInvoiceJobs, loadCompany } from "./db/repository.mjs";
+import {
+  requestCompanyBrandingFromPlatform,
+  hubProfileNeedsEnrichment,
+  hydrateCompanyLogoFromUrl,
+} from "./company-branding.mjs";
 import { notifyPlatform, getLastWebhookStatus, probePlatformWebhook } from "./notify.mjs";
 import { listEmployees } from "./employee-registry.mjs";
 import {
@@ -578,6 +583,17 @@ export async function askPlatformAndSyncCompany(options = {}) {
       period,
       askedAt: new Date().toISOString(),
     });
+    // Branding / Mandant profile bootstrap when platform activated accounting
+    try {
+      const firm = loadCompany(companyId);
+      if (firm && hubProfileNeedsEnrichment(firm.meta?.hubProfile)) {
+        await hydrateCompanyLogoFromUrl(companyId);
+        await requestCompanyBrandingFromPlatform(firm, {
+          reason: options.reason || "auto_pipeline",
+          source: "auto-pipeline",
+        });
+      }
+    } catch { /* ignore branding bootstrap */ }
     // Durable inbox entries so platform can POLL even if webhook URL is broken/404
     try {
       const empMsg = await upsertPlatformMessage({
@@ -589,13 +605,14 @@ export async function askPlatformAndSyncCompany(options = {}) {
         dedupeKey: `employees.list.requested::${companyId}::${period}`,
         title: `Mitarbeiterliste anfordern · ${period}`,
         body:
-          `WorkPass Lohn braucht die Mitarbeiterliste für ${period}.\n\n`
+          `WorkPass Lohn braucht die vollständige Mitarbeiterliste für ${period} (nicht nur IDs).\n\n`
           + `Bitte senden: POST ${process.env.WORKPASS_PUBLIC_URL || "https://workpass-lohn.up.railway.app"}/v1/employees/import\n`
-          + `Body: { "companyId": "${companyId}", "employees": [{ "badgeId", "name" }] }`,
+          + `Body: { "companyId": "${companyId}", "employees": [{ "badgeId", "name" | "firstName"+"lastName", "address", "taxClass", "personnelNumber" }] }\n`
+          + `Jeder Datensatz sollte Name + Badge-ID und möglichst alle Stammdaten enthalten.`,
         gaps: [{
           code: "employees_list_requested",
           field: "employees",
-          label: "Mitarbeiterliste fehlt",
+          label: "Mitarbeiterliste mit Namen fehlt",
           severity: "action_needed",
         }],
         source: "auto-pipeline",
@@ -635,7 +652,7 @@ export async function askPlatformAndSyncCompany(options = {}) {
       meta: {
         period,
         reason: options.reason || "auto_pipeline",
-        hint: "Bitte Mitarbeiter (Name + badgeId) per POST /v1/employees/import senden",
+        hint: "Bitte Mitarbeiter mit Namen (nicht nur ID) + badgeId per POST /v1/employees/import senden",
         replyPath: "/v1/employees/import",
       },
       idempotencyKey: `emp-list:${companyId}:${period}:${Math.floor(Date.now() / 600000)}`,

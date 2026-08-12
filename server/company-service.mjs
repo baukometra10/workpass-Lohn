@@ -6,6 +6,10 @@ import crypto from "node:crypto";
 import { saveCompany, loadCompany as repoLoad, listCompanies as repoList, deleteCompany as repoDelete, initDb } from "./db/repository.mjs";
 import { extractCompany, requireCompanyId, normalizeCompanyId } from "./tenant.mjs";
 import { secureCompare } from "./security/crypto.mjs";
+import {
+  extractHubProfileFromPayload,
+  hubProfileNeedsEnrichment,
+} from "./company-branding.mjs";
 
 initDb();
 
@@ -398,16 +402,29 @@ export function activateCompany(rawPayload = {}) {
 
   const prev = repoLoad(check.company.id);
   const created = !prev;
+  const hubFromPlatform = extractHubProfileFromPayload(rawPayload, {
+    ...check.company,
+    ...companyBody,
+  });
 
   const upsert = upsertCompany({
     company: {
       ...companyBody,
       id: check.company.id,
       name: companyBody.name || check.company.name || prev?.name || check.company.id,
+      street: companyBody.street || check.company.street,
+      zip: companyBody.zip || check.company.zip,
+      city: companyBody.city || check.company.city,
+      address: companyBody.address || check.company.address,
+      taxNumber: companyBody.taxNumber || check.company.taxNumber,
+      vatId: companyBody.vatId || check.company.vatId,
+      email: companyBody.email || check.company.email,
+      phone: companyBody.phone || check.company.phone,
       meta: {
         ...(companyBody.meta || {}),
       },
     },
+    hubProfile: hubFromPlatform || undefined,
   });
   if (!upsert.ok) return { ...upsert, workspace: null };
 
@@ -463,6 +480,8 @@ export function activateCompany(rawPayload = {}) {
     created: created || upsert.created,
     company: fresh,
     workspace: companyWorkspaceView(fresh),
+    hubProfileSynced: Boolean(hubFromPlatform) || Boolean(upsert.hubProfileSynced),
+    brandingIncomplete: hubProfileNeedsEnrichment(fresh.meta?.hubProfile),
     login: loginResult?.ok
       ? { email: loginResult.loginEmail, ready: true }
       : {

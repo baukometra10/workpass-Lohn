@@ -9,6 +9,7 @@ import { enqueueDelivery } from "./delivery-queue.mjs";
 import { ensureCompanyFromPayload } from "./company-service.mjs";
 import { notifyGapsForPayroll } from "./platform-messages.mjs";
 import { upsertEmployee } from "./employee-registry.mjs";
+import { normalizeEmployeeRecord } from "./employee-normalize.mjs";
 import {
   normalizeCompanyId,
   normalizeEmployeeId,
@@ -101,6 +102,27 @@ export async function ingestPayroll(payload, options = {}) {
 
   ensureCompanyFromPayload(payload);
 
+  // Enrich employee master data (names from first/last, address, …) before core ingest
+  const rawEmp = payload.employee && typeof payload.employee === "object"
+    ? payload.employee
+    : payload;
+  const normEmp = normalizeEmployeeRecord(rawEmp);
+  if (normEmp.badgeId || normEmp.name) {
+    payload = {
+      ...payload,
+      employee: {
+        ...(typeof payload.employee === "object" ? payload.employee : {}),
+        ...normEmp,
+        id: normEmp.badgeId || payload.employee?.id,
+        badgeId: normEmp.badgeId || payload.employee?.badgeId,
+        name: normEmp.name || payload.employee?.name || "",
+        employeeName: normEmp.name || payload.employee?.employeeName || "",
+        address: normEmp.address || payload.employee?.address || "",
+        personnelNumber: normEmp.personnelNumber || payload.employee?.personnelNumber || "",
+      },
+    };
+  }
+
   const PC = getPayrollCore();
   const ingested = PC.ingestPlatformPayload(payload);
   if (!ingested?.state) {
@@ -126,13 +148,20 @@ export async function ingestPayroll(payload, options = {}) {
     companyId,
     ...(isDemo ? { demo: true, source: "demo-seed" } : {}),
   };
-  if (!isDemo && state.employeeName && (state.badgeId || state.employeeId)) {
+  if (!isDemo && (state.badgeId || state.employeeId)) {
     try {
       upsertEmployee({
         companyId,
         badgeId: state.badgeId || state.employeeId,
-        name: state.employeeName,
+        name: state.employeeName || "",
         personnelNumber: state.personnelNumber || "",
+        address: state.employeeAddress || "",
+        taxId: state.employeeTaxId || "",
+        insuranceNo: state.employeeInsuranceNo || "",
+        birthDate: state.employeeBirthDate || "",
+        entryDate: state.employeeEntryDate || "",
+        taxClass: state.taxClass || "",
+        healthFund: state.healthFund || "",
         source: "payroll-ingest",
       });
     } catch { /* ignore registry errors */ }
@@ -235,11 +264,19 @@ export async function ingestPayrollBatch(batch, options = {}) {
 
   const results = [];
   for (const empPayload of list) {
+    const flat = normalizeEmployeeRecord(empPayload.employee || empPayload);
     const one = {
       kind: "platform.payroll.v1",
       company: empPayload.company || company,
       period: empPayload.period || period,
-      employee: empPayload.employee || empPayload,
+      employee: {
+        ...(empPayload.employee && typeof empPayload.employee === "object" ? empPayload.employee : {}),
+        ...flat,
+        id: flat.badgeId || empPayload.id,
+        badgeId: flat.badgeId,
+        name: flat.name,
+        employeeName: flat.name,
+      },
       attendance: empPayload.attendance,
       wageItems: empPayload.wageItems,
       bank: empPayload.bank,
@@ -248,8 +285,9 @@ export async function ingestPayrollBatch(batch, options = {}) {
     };
     if (!one.employee?.id && empPayload.id) {
       one.employee = {
+        ...one.employee,
         id: empPayload.id,
-        name: empPayload.name,
+        name: flat.name || empPayload.name,
         ...empPayload,
       };
     }

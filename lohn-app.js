@@ -2299,6 +2299,23 @@
       if ((c.street || c.city || c.address) && $("seller") && !$("seller").value.trim()) {
         $("seller").value = c.address || [c.name || companyName, c.street, [c.zip, c.city].filter(Boolean).join(" ")].filter(Boolean).join("\n");
       }
+      const hub = c.hubProfile || c.meta?.hubProfile || me.company?.hubProfile || null;
+      if (hub && typeof hub === "object") {
+        if (hub.seller && $("seller") && !$("seller").value.trim()) $("seller").value = hub.seller;
+        if (hub.datevClientNo && $("datevClientNo") && !$("datevClientNo").value.trim()) {
+          $("datevClientNo").value = hub.datevClientNo;
+        }
+        if (hub.datevConsultantNo && $("datevConsultantNo") && !$("datevConsultantNo").value.trim()) {
+          $("datevConsultantNo").value = hub.datevConsultantNo;
+        }
+        if (hub.note && $("note") && !$("note").value.trim()) $("note").value = hub.note;
+        // Persist platform branding into current payroll state for A4 letterhead area
+        if (hub.seller || c.name) {
+          state.seller = $("seller")?.value || hub.seller || state.seller;
+          state.companyName = companyName || state.companyName;
+          state.meta = { ...(state.meta || {}), hubProfile: hub, companyId: companyPortalId };
+        }
+      }
       if (c.datevClientNo && $("datevClientNo") && !$("datevClientNo").value.trim()) {
         $("datevClientNo").value = c.datevClientNo;
       }

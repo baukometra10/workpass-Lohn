@@ -238,7 +238,7 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2.33.0";
+const APP_VERSION = "2.34.0";
 const APP_VERSION_BUILD = "2026.45";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
@@ -1463,6 +1463,11 @@ function applyHubProfileFromServer(hubProfile, { force = false } = {}) {
   }
   if (hubProfile.logoDataUrl && (force || !activeLogoDataUrl)) {
     activeLogoDataUrl = hubProfile.logoDataUrl;
+    updateDocumentLogos();
+    changed = true;
+  } else if (hubProfile.logoUrl && (force || !activeLogoDataUrl) && /^https?:\/\//i.test(String(hubProfile.logoUrl))) {
+    // Platform sent remote logo URL – use until data-URL hydrate arrives
+    activeLogoDataUrl = String(hubProfile.logoUrl);
     updateDocumentLogos();
     changed = true;
   }

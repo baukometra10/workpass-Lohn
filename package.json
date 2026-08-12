@@ -1,6 +1,6 @@
 {
   "name": "workpass-lohn",
-  "version": "2.33.0",
+  "version": "2.34.0",
   "private": true,
   "description": "WorkPass Steuerprogramm – Buchhaltung + Platform Bridge API",
   "type": "module",
@@ -31,6 +31,7 @@
     "test:incomplete": "node tests/incomplete-pull.mjs",
     "test:auto": "node tests/auto-pipeline.mjs",
     "test:automation": "node tests/automation-monthly.mjs",
+    "test:employee-normalize": "node tests/employee-normalize.mjs",
     "test:auth": "node tests/auth-session.mjs",
     "test:db": "node tests/db-local.mjs",
     "test:security": "node tests/security.mjs",

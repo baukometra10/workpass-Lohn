@@ -10,6 +10,7 @@ import {
 } from "./db/sqlite.mjs";
 import { normalizeCompanyId, normalizeEmployeeId } from "./tenant.mjs";
 import { encryptJson, decryptJson, isEncryptedBlob } from "./security/crypto.mjs";
+import { normalizeEmployeeRecord, resolveEmployeeName } from "./employee-normalize.mjs";
 
 openSqlite();
 
@@ -49,43 +50,77 @@ function rowToEmployee(row) {
 }
 
 export function upsertEmployee(input = {}) {
+  const normalized = normalizeEmployeeRecord(input);
   const companyId = normalizeCompanyId(input.companyId || input.company?.id || "");
-  const badgeId = normalizeEmployeeId(
-    input.badgeId || input.badge || input.id || input.employeeId || ""
-  );
-  const name = String(input.name || input.employeeName || "").trim();
+  const badgeId = normalized.badgeId
+    || normalizeEmployeeId(input.badgeId || input.badge || input.id || input.employeeId || "");
+  const name = normalized.name || resolveEmployeeName(input);
   if (!companyId) return { ok: false, error: "company.id fehlt", employee: null };
   if (!badgeId) return { ok: false, error: "badgeId fehlt", employee: null };
-  if (!name) return { ok: false, error: "name fehlt", employee: null };
 
-  const personnelNumber = String(
+  const personnelNumber = normalized.personnelNumber || String(
     input.personnelNumber || input.persNr || input.personnelNo || ""
   ).trim();
-  const meta = {
-    ...(input.meta || {}),
-    source: input.source || "import",
-  };
-  const ts = now();
+  const prevMeta = {};
   const existing = sqliteGet(
     `SELECT * FROM company_employees WHERE company_id = ? AND badge_id = ?`,
     [companyId, badgeId]
   );
+  if (existing) Object.assign(prevMeta, unpackMeta(existing.meta_json));
+
+  // Keep previous real name if incoming payload has only an ID
+  const resolvedName = name
+    || (prevMeta.needsName ? "" : String(existing?.name || "").trim())
+    || "";
+
+  const meta = {
+    ...prevMeta,
+    ...(input.meta || {}),
+    source: input.source || "import",
+    firstName: normalized.firstName || prevMeta.firstName || "",
+    lastName: normalized.lastName || prevMeta.lastName || "",
+    address: normalized.address || prevMeta.address || "",
+    taxId: normalized.taxId || prevMeta.taxId || "",
+    insuranceNo: normalized.insuranceNo || prevMeta.insuranceNo || "",
+    birthDate: normalized.birthDate || prevMeta.birthDate || "",
+    entryDate: normalized.entryDate || prevMeta.entryDate || "",
+    taxClass: normalized.taxClass || prevMeta.taxClass || "",
+    healthFund: normalized.healthFund || prevMeta.healthFund || "",
+    email: normalized.email || prevMeta.email || "",
+    phone: normalized.phone || prevMeta.phone || "",
+    needsName: !resolvedName,
+  };
+  const ts = now();
 
   if (existing) {
     sqliteExec(
       `UPDATE company_employees SET name = ?, personnel_number = ?, meta_json = ?, updated_at = ?
        WHERE company_id = ? AND badge_id = ?`,
-      [name, personnelNumber, packMeta({ ...unpackMeta(existing.meta_json), ...meta }), ts, companyId, badgeId]
+      [
+        resolvedName || existing.name || "",
+        personnelNumber || existing.personnel_number || "",
+        packMeta(meta),
+        ts,
+        companyId,
+        badgeId,
+      ]
     );
   } else {
     sqliteExec(
       `INSERT INTO company_employees(company_id, badge_id, name, personnel_number, meta_json, created_at, updated_at)
        VALUES(?,?,?,?,?,?,?)`,
-      [companyId, badgeId, name, personnelNumber, packMeta(meta), ts, ts]
+      [companyId, badgeId, resolvedName, personnelNumber, packMeta(meta), ts, ts]
     );
   }
 
-  return { ok: true, created: !existing, employee: getEmployee(companyId, badgeId) };
+  const employee = getEmployee(companyId, badgeId);
+  return {
+    ok: true,
+    created: !existing,
+    needsName: !resolvedName,
+    warning: resolvedName ? null : "name fehlt – Plattform liefert nur ID; Name wird nachgefragt",
+    employee,
+  };
 }
 
 export function importEmployees(companyId, employees = [], opts = {}) {
@@ -94,8 +129,10 @@ export function importEmployees(companyId, employees = [], opts = {}) {
   const list = Array.isArray(employees) ? employees : [];
   const results = [];
   for (const row of list) {
+    const flat = normalizeEmployeeRecord(row);
     const r = upsertEmployee({
       ...row,
+      ...flat,
       companyId: cid,
       company: { id: cid },
       source: opts.source || "platform-import",
@@ -105,7 +142,10 @@ export function importEmployees(companyId, employees = [], opts = {}) {
   return {
     ok: results.every((r) => r.ok),
     count: results.filter((r) => r.ok).length,
+    namedCount: results.filter((r) => r.ok && r.employee?.name).length,
+    needsNameCount: results.filter((r) => r.needsName).length,
     errors: results.filter((r) => !r.ok).map((r) => r.error),
+    warnings: results.map((r) => r.warning).filter(Boolean),
     results,
     employees: results.map((r) => r.employee).filter(Boolean),
   };

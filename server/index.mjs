@@ -19,6 +19,11 @@ import {
 } from "./month-scheduler.mjs";
 import { getCompanyAutomationStatus } from "./automation-status.mjs";
 import {
+  requestCompanyBrandingFromPlatform,
+  hydrateCompanyLogoFromUrl,
+  hubProfileNeedsEnrichment,
+} from "./company-branding.mjs";
+import {
   processInboundPayroll,
   processInboundPayrollBatch,
   processInboundInvoice,
@@ -505,8 +510,30 @@ async function handler(req, res) {
         ip,
         path,
         companyId: result.company?.id,
-        detail: { created: result.created },
+        detail: { created: result.created, hubProfileSynced: result.hubProfileSynced },
       });
+      if (result.ok && result.company?.id) {
+        // Bootstrap Mandant branding asynchronously – login stays for review only
+        const cid = result.company.id;
+        setTimeout(() => {
+          hydrateCompanyLogoFromUrl(cid).catch(() => {});
+          if (result.brandingIncomplete || hubProfileNeedsEnrichment(result.company?.meta?.hubProfile)) {
+            requestCompanyBrandingFromPlatform(result.company, {
+              reason: "activate_bootstrap",
+              source: "company-activate",
+            }).catch(() => {});
+          }
+          askPlatformAndSyncCompany({
+            companyId: cid,
+            companyName: result.company.name,
+            period: currentPeriod(),
+            pull: true,
+            autoRelease: true,
+            forceAsk: true,
+            reason: "activate_bootstrap",
+          }).catch(() => {});
+        }, 50);
+      }
       return reply(result.ok ? 200 : 422, result);
     }
 
