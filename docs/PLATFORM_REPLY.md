@@ -10,7 +10,7 @@ Ohne diesen Schritt bleibt der Monatsabschluss bei „Warte auf Plattform“.
 | `employees.list.requested` | Mitarbeiterliste an Accounting pushen |
 | `payroll.month.requested` | Monats-Lohnbatch an Accounting pushen |
 | `invoices.export.requested` | Offene/exportierte Rechnungen an Accounting pushen |
-| `employee.data.requested` | Fehlende Felder für **eine** Person nachliefern |
+| `employee.data.requested` | Fehlende Felder für **eine** Person nachliefern (nur was nach Pull noch fehlt) |
 | `payslip.released` | Fertige Abrechnung dem Mitarbeiter zeigen |
 | `invoice.released` | Fertige Rechnung in der App zeigen |
 | `platform.ping` | nur `200 OK` zurückgeben (Connectivity) |

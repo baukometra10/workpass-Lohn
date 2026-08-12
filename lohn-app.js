@@ -335,9 +335,9 @@
           <ul>${items.map((i) => `<li class="missing-${i.level}">${esc(i.text)}</li>`).join("")}</ul>
           ${canAsk ? `
             <div class="btn-row" style="margin-top:10px">
-              <button type="button" class="primary" id="btnAskPlatformData">Plattform nach dieser Person fragen</button>
+              <button type="button" class="primary" id="btnAskPlatformData">Vorhandene Daten holen / Lücken melden</button>
             </div>
-            <p class="section-hint">Wir holen vorhandene Daten (auch unvollständig) und melden der Plattform genau die Lücken.</p>
+            <p class="section-hint">Wir laden zuerst Stammdaten und Vertrag aus der Plattform. Nur was dort wirklich fehlt, wird nachgefragt – nicht jedes Mal neu eingeben.</p>
           ` : ""}
         `;
         $("btnAskPlatformData")?.addEventListener("click", () => askPlatformForCurrentEmployee(hardErrors || [], soft));
@@ -358,7 +358,7 @@
       return;
     }
     try {
-      setStatus("Frage Plattform nach Mitarbeiterdaten…", true);
+      setStatus("Hole Stammdaten von Plattform / Register…", true);
       const data = await apiFetch("/v1/payroll/request-data", {
         method: "POST",
         body: JSON.stringify({
@@ -371,15 +371,18 @@
           gaps: hard,
           softGaps: soft,
           jobId: state.meta?.jobId || undefined,
-          // Webhook notifies platform; pull would block up to ~2 min and Railway returns 502.
-          pull: false,
+          pull: true,
+          forcePull: true,
           reason: "payslip_create",
         }),
       });
-      if (data.ingest?.count) {
+      if (data.job?.jobId) {
+        await openApiPayrollJob(data.job.jobId, { skipEnrich: true });
+        toast(data.message || "Daten übernommen.", data.remainingHard?.length ? "info" : "ok");
+      } else if (data.ingest?.count) {
         const first = data.ingest.results?.[0];
         if (first?.jobId) {
-          await openApiPayrollJob(first.jobId);
+          await openApiPayrollJob(first.jobId, { skipEnrich: true });
         }
         toast(data.message || "Daten übernommen (auch unvollständig).", "ok");
       } else {
@@ -2326,7 +2329,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.34.2</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.35.0</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))
@@ -2454,20 +2457,44 @@
     toast(uiT("toast.welcome", "Willkommen · {name}").replace("{name}", companyName || companyPortalId), "ok");
   }
 
-  async function openApiPayrollJob(jobId) {
+  async function openApiPayrollJob(jobId, opts = {}) {
     if (!jobId) {
       toast("Kein Job – noch keine echte Abrechnung für diesen Mitarbeiter.", "info");
       return;
     }
     try {
-      const data = await apiFetch(`/v1/payroll/${encodeURIComponent(jobId)}`);
-      const jobState = data.job?.state;
+      let job = null;
+      if (!opts.skipEnrich) {
+        setStatus("Lade Mitarbeiterdaten (Register + Plattform)…", true);
+        try {
+          const enriched = await apiFetch(`/v1/payroll/${encodeURIComponent(jobId)}/enrich`, {
+            method: "POST",
+            body: JSON.stringify({ pull: true, ask: true, forcePull: true }),
+          });
+          job = enriched.job;
+          if (enriched.filledCount) {
+            toast(
+              enriched.message || `${enriched.filledCount} Felder ergänzt.`,
+              (enriched.remainingHard || []).length ? "info" : "ok"
+            );
+          } else if (enriched.askedPlatform && (enriched.remainingHard || []).length) {
+            toast(enriched.message || "Noch Lücken – Plattform wurde gefragt.", "info");
+          }
+        } catch {
+          /* Fall back to plain job load if enrich fails */
+        }
+      }
+      if (!job) {
+        const data = await apiFetch(`/v1/payroll/${encodeURIComponent(jobId)}`);
+        job = data.job;
+      }
+      const jobState = job?.state;
       if (!jobState) throw new Error("Kein State im Job");
       jobState.meta = jobState.meta || {};
       jobState.meta.source = "api-bridge";
       jobState.meta.jobId = jobId;
       applyIngestResult(
-        { ok: !(data.job?.errors || []).length, errors: data.job?.errors || [], state: jobState },
+        { ok: !(job?.errors || []).length, errors: job?.errors || [], state: jobState },
         `API-Job ${jobId}`,
         "platform"
       );

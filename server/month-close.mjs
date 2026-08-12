@@ -157,6 +157,9 @@ export function resolvePlatformPullUrls() {
     add(`${hostBase}/api/workpass/accounting/payroll/export`);
     add(`${hostBase}/api/workpass/accounting/payroll/pull`);
     add(`${hostBase}/api/workpass/lohn/export`);
+    add(`${hostBase}/api/workpass/employees/export`);
+    add(`${hostBase}/api/workpass/employee/export`);
+    add(`${hostBase}/api/workpass/contracts/export`);
   }
   return urls;
 }

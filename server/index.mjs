@@ -11,6 +11,7 @@ import http from "node:http";
 import { URL } from "node:url";
 import { ACCOUNTING_VERSION, SERVICE_NAME } from "./version.mjs";
 import { ingestPayroll, ingestPayrollBatch, releasePayrollJob } from "./payroll-service.mjs";
+import { enrichPayrollJob } from "./employee-enrich.mjs";
 import { runMonthClose, currentPeriod, requestEmployeeDataFromPlatform, resolvePlatformPullUrls } from "./month-close.mjs";
 import {
   startMonthCloseScheduler,
@@ -787,6 +788,35 @@ async function handler(req, res) {
       const scopeCheck = assertSameTenant(tenantScope, companyId, "Daten-Anfrage");
       if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
       if (!companyId) return reply(422, { ok: false, error: "companyId fehlt" });
+
+      // Prefer enriching an existing job (pull first, ask only leftovers)
+      const jobId = String(body.jobId || "").trim();
+      if (jobId) {
+        const enriched = await enrichPayrollJob(jobId, {
+          tenantScope: tenantScope || companyId,
+          employeeId: body.employeeId || body.badgeId,
+          period: body.period || currentPeriod(),
+          pull: body.pull !== false,
+          ask: true,
+          forceNotify: body.forceNotify === true || body.force === true,
+          forcePull: true,
+        });
+        audit({
+          type: "payroll.request_data",
+          outcome: enriched.ok ? "ok" : "error",
+          ip,
+          path,
+          companyId,
+          detail: {
+            employeeId: body.employeeId || body.badgeId,
+            period: body.period,
+            filledCount: enriched.filledCount,
+            asked: enriched.askedPlatform,
+          },
+        });
+        return reply(enriched.ok ? 200 : 422, enriched);
+      }
+
       const result = await requestEmployeeDataFromPlatform({
         companyId,
         companyName: body.companyName || body.company?.name || "",
@@ -862,6 +892,30 @@ async function handler(req, res) {
       const scopeCheck = assertSameTenant(tenantScope, job.company?.id, "Payslip");
       if (!scopeCheck.ok) return reply( 403, { ok: false, error: scopeCheck.error });
       return reply( 200, { ok: true, payslip: job.payslip, status: job.status });
+    }
+
+    if (req.method === "POST" && path.startsWith("/v1/payroll/") && path.endsWith("/enrich")) {
+      const jobId = decodeURIComponent(path.slice("/v1/payroll/".length, -"/enrich".length));
+      const body = (await readBodyLimited(req)) || {};
+      const result = await enrichPayrollJob(jobId, {
+        tenantScope,
+        pull: body.pull !== false,
+        ask: body.ask !== false,
+        forceNotify: body.forceNotify === true,
+        forcePull: body.forcePull !== false,
+        period: body.period,
+        employeeId: body.employeeId || body.badgeId,
+      });
+      audit({
+        type: "payroll.enrich",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId: result.job?.company?.id,
+        detail: { jobId, filledCount: result.filledCount, asked: result.askedPlatform },
+      });
+      const status = result.ok ? 200 : (String(result.error || "").includes("Tenant-Isolation") ? 403 : 422);
+      return reply(status, result);
     }
 
     if (req.method === "POST" && path.startsWith("/v1/payroll/") && path.endsWith("/release")) {

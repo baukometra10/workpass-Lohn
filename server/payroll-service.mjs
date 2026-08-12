@@ -162,6 +162,10 @@ export async function ingestPayroll(payload, options = {}) {
         entryDate: state.employeeEntryDate || "",
         taxClass: state.taxClass || "",
         healthFund: state.healthFund || "",
+        healthPercent: state.healthPercent || "",
+        bankName: state.bankName || "",
+        bankIban: state.bankIban || "",
+        churchTaxRate: state.churchTaxRate || "",
         source: "payroll-ingest",
       });
     } catch { /* ignore registry errors */ }

@@ -112,6 +112,22 @@ export function normalizeEmployeeRecord(raw = {}) {
     healthPercent: src.healthPercent != null ? String(src.healthPercent) : pickString(src.kkPercent),
     email: pickString(src.email, src.mail),
     phone: pickString(src.phone, src.telefon, src.mobile),
+    bankName: pickString(
+      src.bankName,
+      src.bank?.name,
+      src.bank?.bankName,
+      nested?.bank?.name,
+      emp.bank?.name
+    ),
+    bankIban: pickString(
+      src.bankIban,
+      src.iban,
+      src.bank?.iban,
+      src.bank?.bankIban,
+      nested?.bank?.iban,
+      emp.bank?.iban
+    ),
+    bankBic: pickString(src.bankBic, src.bic, src.bank?.bic, nested?.bank?.bic, emp.bank?.bic),
     incomplete: !name || !badgeId,
     needsName: Boolean(badgeId && !name),
   };
