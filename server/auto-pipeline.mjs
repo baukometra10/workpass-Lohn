@@ -10,9 +10,9 @@
  */
 import { listCompanies, listPayrollJobs, listInvoiceJobs, loadCompany } from "./db/repository.mjs";
 import {
-  requestCompanyBrandingFromPlatform,
   hubProfileNeedsEnrichment,
   hydrateCompanyLogoFromUrl,
+  pullAndSyncCompanyBranding,
 } from "./company-branding.mjs";
 import { notifyPlatform, getLastWebhookStatus, probePlatformWebhook } from "./notify.mjs";
 import { listEmployees } from "./employee-registry.mjs";
@@ -583,15 +583,16 @@ export async function askPlatformAndSyncCompany(options = {}) {
       period,
       askedAt: new Date().toISOString(),
     });
-    // Branding / Mandant profile bootstrap when platform activated accounting
+    // Branding / Mandant: PULL logo+profile automatically (never ask – already on platform)
     try {
       const firm = loadCompany(companyId);
       if (firm && hubProfileNeedsEnrichment(firm.meta?.hubProfile)) {
-        await hydrateCompanyLogoFromUrl(companyId);
-        await requestCompanyBrandingFromPlatform(firm, {
+        await pullAndSyncCompanyBranding(companyId, {
+          ask: false,
           reason: options.reason || "auto_pipeline",
           source: "auto-pipeline",
         });
+        await hydrateCompanyLogoFromUrl(companyId);
       }
     } catch { /* ignore branding bootstrap */ }
     // Durable inbox entries so platform can POLL even if webhook URL is broken/404

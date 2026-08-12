@@ -20,9 +20,8 @@ import {
 } from "./month-scheduler.mjs";
 import { getCompanyAutomationStatus } from "./automation-status.mjs";
 import {
-  requestCompanyBrandingFromPlatform,
   hydrateCompanyLogoFromUrl,
-  hubProfileNeedsEnrichment,
+  pullAndSyncCompanyBranding,
 } from "./company-branding.mjs";
 import {
   processInboundPayroll,
@@ -517,13 +516,13 @@ async function handler(req, res) {
         // Bootstrap Mandant branding asynchronously – login stays for review only
         const cid = result.company.id;
         setTimeout(() => {
+          // Pull branding/logo automatically – do not ask; logos already exist on platform
+          pullAndSyncCompanyBranding(cid, {
+            ask: false,
+            reason: "activate_bootstrap",
+            source: "company-activate",
+          }).catch(() => {});
           hydrateCompanyLogoFromUrl(cid).catch(() => {});
-          if (result.brandingIncomplete || hubProfileNeedsEnrichment(result.company?.meta?.hubProfile)) {
-            requestCompanyBrandingFromPlatform(result.company, {
-              reason: "activate_bootstrap",
-              source: "company-activate",
-            }).catch(() => {});
-          }
           askPlatformAndSyncCompany({
             companyId: cid,
             companyName: result.company.name,
@@ -622,6 +621,36 @@ async function handler(req, res) {
         companyId: id,
       });
       return reply(result.ok ? 200 : 422, result);
+    }
+
+    if (req.method === "POST" && (path === "/v1/company/pull-branding" || path.endsWith("/pull-branding") && path.startsWith("/v1/company/"))) {
+      const body = (await readBodyLimited(req)) || {};
+      const id = normalizeCompanyId(
+        body.companyId || body.company?.id || body.id
+        || (path.endsWith("/pull-branding")
+          ? decodeURIComponent(path.slice("/v1/company/".length, -"/pull-branding".length))
+          : "")
+        || tenantScope
+        || ""
+      );
+      const scopeCheck = assertSameTenant(tenantScope, id, "Branding-Pull");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      if (!id) return reply(422, { ok: false, error: "companyId fehlt" });
+      const result = await pullAndSyncCompanyBranding(id, {
+        ask: false,
+        reason: "manual_pull_branding",
+        source: "api",
+      });
+      await hydrateCompanyLogoFromUrl(id).catch(() => {});
+      audit({
+        type: "company.pull_branding",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId: id,
+        detail: { pulled: result.pulled, hasLogo: result.applied?.hasLogo },
+      });
+      return reply(result.ok || result.pulled ? 200 : 422, result);
     }
 
     if (req.method === "POST" && (path === "/v1/company" || path === "/v1/company/upsert")) {

@@ -152,6 +152,10 @@ export function resolvePlatformPullUrls() {
   };
   add(explicit);
   if (hostBase) {
+    // Prefer real platform APIs (contracts/employees) before legacy workpass export guesses
+    add(`${hostBase}/api/contracts`);
+    add(`${hostBase}/api/employees`);
+    add(`${hostBase}/api/v1/employees`);
     add(`${hostBase}/api/workpass/payroll/export`);
     add(`${hostBase}/api/workpass/payroll/pull`);
     add(`${hostBase}/api/workpass/accounting/payroll/export`);
@@ -234,10 +238,12 @@ async function fetchPullOnce({ url, method, companyId, period, employeeId, key, 
   try {
     const headers = {
       "X-WorkPass-Key": key,
+      "X-Api-Key": key,
       "X-WorkPass-Company-Id": companyId,
       "X-WorkPass-Event": employeeId ? "payroll.employee.pull" : "payroll.month.pull",
       Accept: "application/json",
     };
+    if (key) headers.Authorization = `Bearer ${key}`;
 
     let requestUrl = url;
     const init = { method, headers, signal: ctrl.signal };

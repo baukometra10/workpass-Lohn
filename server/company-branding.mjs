@@ -1,11 +1,12 @@
 /**
  * Build Mandant/hub branding from platform activate payloads,
- * and ask the platform for missing logo / address / bank data.
+ * and PULL logo / address / bank from the platform (ask only as last resort).
  */
 import { notifyPlatform } from "./notify.mjs";
 import { upsertPlatformMessage } from "./platform-messages.mjs";
 import { loadCompany, saveCompany } from "./db/repository.mjs";
 import { normalizeCompanyId } from "./tenant.mjs";
+import { pullCompanyProfile } from "./platform-pull.mjs";
 
 function pickString(...vals) {
   for (const v of vals) {
@@ -101,7 +102,104 @@ export function hubProfileNeedsEnrichment(hubProfile) {
 }
 
 /**
+ * Apply pulled company/branding JSON onto the local company record.
+ */
+export function applyPulledCompanyProfile(companyId, pulled = {}) {
+  const id = normalizeCompanyId(companyId || pulled.company?.id || "");
+  if (!id) return { ok: false, error: "companyId fehlt" };
+  const company = loadCompany(id);
+  if (!company) return { ok: false, error: "Firma nicht gefunden" };
+
+  const incoming = pulled.company && typeof pulled.company === "object" ? pulled.company : {};
+  const hubIncoming = pulled.hubProfile
+    || extractHubProfileFromPayload(pulled.raw || pulled, incoming)
+    || null;
+
+  const nextHub = {
+    ...(company.meta?.hubProfile || {}),
+    ...(hubIncoming || {}),
+  };
+  // Prefer non-empty logo fields
+  if (!nextHub.logoDataUrl && hubIncoming?.logoDataUrl) nextHub.logoDataUrl = hubIncoming.logoDataUrl;
+  if (!nextHub.logoUrl && hubIncoming?.logoUrl) nextHub.logoUrl = hubIncoming.logoUrl;
+
+  company.name = pickString(incoming.name, company.name) || company.name;
+  company.street = pickString(incoming.street, company.street);
+  company.zip = pickString(incoming.zip, company.zip);
+  company.city = pickString(incoming.city, company.city);
+  company.address = pickString(incoming.address, company.address, nextHub.seller);
+  company.taxNumber = pickString(incoming.taxNumber, incoming.steuerNr, company.taxNumber);
+  company.vatId = pickString(incoming.vatId, incoming.ustId, company.vatId);
+  company.email = pickString(incoming.email, company.email);
+  company.phone = pickString(incoming.phone, company.phone);
+  company.meta = {
+    ...(company.meta || {}),
+    hubProfile: Object.keys(nextHub).length ? nextHub : (company.meta?.hubProfile || null),
+    brandingPulledAt: new Date().toISOString(),
+  };
+  company.updatedAt = new Date().toISOString();
+  saveCompany(company);
+  return {
+    ok: true,
+    company,
+    hubProfile: company.meta?.hubProfile || null,
+    hasLogo: Boolean(company.meta?.hubProfile?.logoDataUrl || company.meta?.hubProfile?.logoUrl),
+  };
+}
+
+/**
+ * Pull branding/logo from platform and store it. Does NOT ask by default –
+ * logos already exist on the platform and must be fetched automatically.
+ */
+export async function pullAndSyncCompanyBranding(companyOrId, opts = {}) {
+  const id = normalizeCompanyId(
+    typeof companyOrId === "string" ? companyOrId : (companyOrId?.id || "")
+  );
+  if (!id) return { ok: false, error: "companyId fehlt" };
+
+  const pull = await pullCompanyProfile(id);
+  let applied = null;
+  if (pull.ok) {
+    applied = applyPulledCompanyProfile(id, pull);
+    if (applied.ok) {
+      await hydrateCompanyLogoFromUrl(id).catch(() => {});
+    }
+  }
+
+  const fresh = loadCompany(id);
+  const stillNeeds = hubProfileNeedsEnrichment(fresh?.meta?.hubProfile);
+  // Only ask when explicitly allowed AND pull failed / still incomplete
+  let ask = null;
+  if (stillNeeds && opts.ask === true) {
+    ask = await requestCompanyBrandingFromPlatform(fresh || { id }, {
+      reason: opts.reason || "branding_pull_miss",
+      source: opts.source || "branding-pull",
+      notify: opts.notify !== false,
+    });
+  }
+
+  return {
+    ok: Boolean(applied?.ok || (fresh && !stillNeeds)),
+    pulled: pull.ok,
+    pull,
+    applied,
+    company: fresh,
+    stillNeeds,
+    asked: Boolean(ask),
+    ask,
+    message: applied?.ok
+      ? (applied.hasLogo
+        ? "Branding/Logo von Plattform geholt."
+        : "Firmenprofil geholt – Logo-URL ggf. nachgeladen.")
+      : (stillNeeds
+        ? "Branding noch unvollständig – Plattform-GET ohne Logo/Adresse."
+        : "Branding bereits vorhanden."),
+  };
+}
+
+/**
  * Ask platform for company branding / stammdaten (logo, address, bank).
+ * Prefer pullAndSyncCompanyBranding – ask only as last resort.
  */
 export async function requestCompanyBrandingFromPlatform(company, opts = {}) {
   const id = normalizeCompanyId(company?.id || "");

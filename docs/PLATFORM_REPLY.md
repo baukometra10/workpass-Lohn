@@ -3,6 +3,19 @@
 WorkPass Lohn fragt die Plattform. Die Plattform **muss** Daten zurücksenden.
 Ohne diesen Schritt bleibt der Monatsabschluss bei „Warte auf Plattform“.
 
+## Pull-first (Accounting holt Daten)
+
+WorkPass versucht **zuerst GET** auf der Plattform:
+
+- `GET /api/v1/company?companyId=…` (Branding/Logo)
+- `GET /api/contracts` / `GET /api/contracts/:employeeId` (Vertrag → Stammdaten + Gehalt)
+- `GET /api/employees` / `GET /api/companies/:id/employees`
+
+Auth: `X-Api-Key` / `X-WorkPass-Key` / `Authorization: Bearer` mit `WORKPASS_PLATFORM_API_KEY` oder `WORKPASS_API_KEY`.
+
+Logo/Branding werden **nie** per „Bitte senden“-Webhook angefordert, sondern nur per GET geholt.
+Webhook-Events (`employee.data.requested` …) nur für Felder, die nach dem Pull wirklich fehlen.
+
 ## Was WorkPass sendet (an `WORKPASS_PLATFORM_WEBHOOK_URL`)
 
 | Event | Plattform soll |

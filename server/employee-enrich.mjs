@@ -8,10 +8,13 @@ import { loadCompany } from "./company-service.mjs";
 import { getEmployee, upsertEmployee } from "./employee-registry.mjs";
 import { normalizeEmployeeRecord } from "./employee-normalize.mjs";
 import { notifyGapsForPayroll } from "./platform-messages.mjs";
+import { pullAndSyncCompanyBranding } from "./company-branding.mjs";
 import {
-  pullPlatformPayrollBatch,
-  resolvePlatformPullUrls,
-} from "./month-close.mjs";
+  pullEmployeeBundle,
+  extractInlineReply,
+  pickEmployeeRow,
+} from "./platform-pull.mjs";
+import { pullPlatformPayrollBatch } from "./month-close.mjs";
 import {
   normalizeCompanyId,
   normalizeEmployeeId,
@@ -221,63 +224,55 @@ function rebuildJob(job, state) {
   return next;
 }
 
-/**
- * Pull one employee (master + optional month wages) from platform endpoints.
- */
-export async function pullPlatformEmployeeMaster({ companyId, period, employeeId } = {}) {
-  const eid = normalizeEmployeeId(employeeId);
-  if (!companyId || !eid) {
-    return { ok: false, skipped: true, error: "companyId/employeeId fehlt" };
-  }
+function mergePlatformRowIntoState(state, row, filled, tag = "platform") {
+  if (!row) return;
+  const mapped = employeeFromPlatformRow(row);
+  const patch = { ...mapped };
+  delete patch.wageItems;
+  delete patch.grossSalary;
+  delete patch.workDays;
+  delete patch.workHours;
+  delete patch.companyTaxNumber;
+  delete patch.companyVatId;
+  delete patch.companyName;
+  filled.push(...applyPatch(state, patch).map((k) => `${tag}.${k}`));
 
-  // Prefer payroll employee pull (may include contract + wages)
-  const payrollPull = await pullPlatformPayrollBatch({
-    companyId,
-    period,
-    employeeId: eid,
-    maxAttempts: 4,
-    timeoutMs: Number(process.env.WORKPASS_PLATFORM_PULL_TIMEOUT_MS || 8000),
-  });
-  if (payrollPull.ok && payrollPull.batch?.employees?.length) {
-    const match = payrollPull.batch.employees.find((row) => {
-      const id = normalizeEmployeeId(
-        row?.employee?.badgeId || row?.employee?.id || row?.badgeId || row?.id || ""
-      );
-      return !id || id === eid;
-    }) || payrollPull.batch.employees[0];
-    return {
-      ok: true,
-      source: "payroll-pull",
-      row: match,
-      company: payrollPull.batch.company || null,
-      pull: payrollPull,
-    };
-  }
+  if (mapped.companyTaxNumber) fillEmpty(state, "taxNumber", mapped.companyTaxNumber) && filled.push(`${tag}.taxNumber`);
+  if (mapped.companyVatId) fillEmpty(state, "vatId", mapped.companyVatId) && filled.push(`${tag}.vatId`);
+  if (mapped.companyName) fillEmpty(state, "companyName", mapped.companyName) && filled.push(`${tag}.companyName`);
 
-  // Also try dedicated employee list/export URLs if configured via same host
-  const urls = resolvePlatformPullUrls()
-    .map((u) => u.replace(/\/payroll\/(export|pull).*$/i, "/employees/export"))
-    .filter((u, i, arr) => u && arr.indexOf(u) === i);
-  // If no dedicated URLs differ, skip – payroll pull already covered host candidates
-  if (!urls.length || (payrollPull.attempts || []).length) {
-    return {
-      ok: false,
-      skipped: false,
-      error: payrollPull.error || "Plattform lieferte keine Mitarbeiterdaten",
-      pull: payrollPull,
-    };
+  const hasGross = (Array.isArray(state.wageItems) && state.wageItems.some((w) => Number(w.amount) > 0))
+    || Number(state.grossSalary) > 0;
+  if (!hasGross) {
+    if (Array.isArray(mapped.wageItems) && mapped.wageItems.length) {
+      state.wageItems = mapped.wageItems.map((w) => ({
+        code: String(w.code || w.lohnart || "2000"),
+        label: String(w.label || w.bezeichnung || "Gehalt"),
+        amount: Number(w.amount ?? w.betrag) || 0,
+        taxFlag: String(w.taxFlag || w.st || "L"),
+        svFlag: String(w.svFlag || w.sv || "L"),
+      }));
+      filled.push(`${tag}.wageItems`);
+    } else if (mapped.grossSalary) {
+      fillEmpty(state, "grossSalary", mapped.grossSalary);
+      if (!Array.isArray(state.wageItems) || !state.wageItems.length) {
+        state.wageItems = [{
+          code: "2000",
+          label: "Gehalt",
+          amount: Number(mapped.grossSalary) || 0,
+          taxFlag: "L",
+          svFlag: "L",
+        }];
+      }
+      filled.push(`${tag}.grossSalary`);
+    }
+    if (mapped.workDays != null && mapped.workDays !== "") fillEmpty(state, "workDays", String(mapped.workDays));
+    if (mapped.workHours != null && mapped.workHours !== "") fillEmpty(state, "workHours", String(mapped.workHours));
   }
-
-  return {
-    ok: false,
-    skipped: false,
-    error: payrollPull.error || "Plattform lieferte keine Mitarbeiterdaten",
-    pull: payrollPull,
-  };
 }
 
 /**
- * Enrich job: local company + registry first, then platform pull, then ask only leftovers.
+ * Enrich job: pull company branding + employee/contract from platform, then ask only leftovers.
  */
 export async function enrichPayrollJob(jobId, options = {}) {
   const job = loadPayrollJob(jobId);
@@ -295,76 +290,71 @@ export async function enrichPayrollJob(jobId, options = {}) {
   const period = String(options.period || state.payrollMonth || job.period || "").trim();
   const filled = [];
 
-  // 1) Company Stammdaten (Steuer-Nr., Name, …)
+  // 0) Always try to pull company branding/logo (never ask here)
+  let branding = null;
+  if (options.pullBrand !== false && companyId) {
+    try {
+      branding = await pullAndSyncCompanyBranding(companyId, {
+        ask: false,
+        reason: "payroll_enrich",
+        source: "employee-enrich",
+      });
+      if (branding?.pulled) filled.push("branding.pulled");
+    } catch { /* ignore */ }
+  }
+
+  // 1) Company Stammdaten (Steuer-Nr., Name, …) after branding pull
   const fromCompany = companyPatch(companyId);
   filled.push(...applyPatch(state, fromCompany.patch).map((k) => `company.${k}`));
   if (!String(state.seller || "").trim() && fromCompany.patch.seller) {
     fillEmpty(state, "seller", fromCompany.patch.seller);
   }
 
-  // 2) Local employee registry (already imported contract data)
+  // 2) Local employee registry
   const fromReg = registryPatch(companyId, employeeId);
   filled.push(...applyPatch(state, fromReg.patch).map((k) => `registry.${k}`));
 
-  // 3) Platform pull – only if still missing soft/hard fields or forced
   const PC = getPayrollCore();
   let hard = PC.validate(state);
   let soft = PC.validatePrintHints?.(state) || [];
   let pull = { skipped: true };
-  let platformRow = null;
+  let employeePull = { skipped: true };
 
   const needsPull = options.pull !== false && (hard.length > 0 || soft.length > 0 || options.forcePull);
   if (needsPull && employeeId) {
-    pull = await pullPlatformEmployeeMaster({ companyId, period, employeeId });
-    if (pull.ok && pull.row) {
-      platformRow = pull.row;
-      const mapped = employeeFromPlatformRow(pull.row);
-      const patch = { ...mapped };
-      delete patch.wageItems;
-      delete patch.grossSalary;
-      delete patch.workDays;
-      delete patch.workHours;
-      delete patch.companyTaxNumber;
-      delete patch.companyVatId;
-      delete patch.companyName;
-      filled.push(...applyPatch(state, patch).map((k) => `platform.${k}`));
+    // 3a) Real platform employee + contract GET
+    employeePull = await pullEmployeeBundle({ companyId, period, employeeId });
+    if (employeePull.ok && employeePull.row) {
+      mergePlatformRowIntoState(state, employeePull.row, filled, "contract");
+      persistRegistryFromState(state, companyId, "platform-contract-pull");
+      pull = { ok: true, source: "employee-bundle", url: employeePull.url };
+    }
 
-      if (mapped.companyTaxNumber) fillEmpty(state, "taxNumber", mapped.companyTaxNumber) && filled.push("platform.taxNumber");
-      if (mapped.companyVatId) fillEmpty(state, "vatId", mapped.companyVatId) && filled.push("platform.vatId");
-      if (mapped.companyName) fillEmpty(state, "companyName", mapped.companyName) && filled.push("platform.companyName");
-
-      // Month wages / contract salary only if Brutto still empty
-      const hasGross = (Array.isArray(state.wageItems) && state.wageItems.some((w) => Number(w.amount) > 0))
-        || Number(state.grossSalary) > 0;
-      if (!hasGross) {
-        if (Array.isArray(mapped.wageItems) && mapped.wageItems.length) {
-          state.wageItems = mapped.wageItems.map((w) => ({
-            code: String(w.code || w.lohnart || "2000"),
-            label: String(w.label || w.bezeichnung || "Gehalt"),
-            amount: Number(w.amount ?? w.betrag) || 0,
-            taxFlag: String(w.taxFlag || w.st || "L"),
-            svFlag: String(w.svFlag || w.sv || "L"),
-          }));
-          filled.push("platform.wageItems");
-        } else if (mapped.grossSalary) {
-          fillEmpty(state, "grossSalary", mapped.grossSalary);
-          if (!Array.isArray(state.wageItems) || !state.wageItems.length) {
-            state.wageItems = [{
-              code: "2000",
-              label: "Gehalt",
-              amount: Number(mapped.grossSalary) || 0,
-              taxFlag: "L",
-              svFlag: "L",
-            }];
-          }
-          filled.push("platform.grossSalary");
+    // 3b) Payroll month/employee export as secondary source
+    hard = PC.validate(state);
+    soft = PC.validatePrintHints?.(state) || [];
+    if (hard.length || soft.length || options.forcePull) {
+      const payrollPull = await pullPlatformPayrollBatch({
+        companyId,
+        period,
+        employeeId,
+        maxAttempts: 4,
+        timeoutMs: Number(process.env.WORKPASS_PLATFORM_PULL_TIMEOUT_MS || 8000),
+      });
+      if (payrollPull.ok && payrollPull.batch?.employees?.length) {
+        const match = pickEmployeeRow(payrollPull.batch.employees, employeeId)
+          || payrollPull.batch.employees[0];
+        mergePlatformRowIntoState(state, match, filled, "payroll");
+        if (payrollPull.batch.company) {
+          fillEmpty(state, "companyName", payrollPull.batch.company.name);
+          fillEmpty(state, "taxNumber", payrollPull.batch.company.taxNumber);
+          fillEmpty(state, "vatId", payrollPull.batch.company.vatId);
         }
-        if (mapped.workDays != null && mapped.workDays !== "") fillEmpty(state, "workDays", String(mapped.workDays));
-        if (mapped.workHours != null && mapped.workHours !== "") fillEmpty(state, "workHours", String(mapped.workHours));
+        persistRegistryFromState(state, companyId, "platform-payroll-pull");
+        pull = { ok: true, source: "payroll-pull", ...payrollPull };
+      } else if (!pull.ok) {
+        pull = payrollPull;
       }
-
-      // Keep registry warm for next opens
-      persistRegistryFromState(state, companyId, "platform-pull");
     }
   }
 
@@ -373,7 +363,7 @@ export async function enrichPayrollJob(jobId, options = {}) {
   const nextJob = rebuildJob(job, state);
   persistRegistryFromState(state, companyId, "enrich");
 
-  // 4) Ask platform only for remaining gaps (not for data we already have)
+  // 4) Ask platform only for remaining employee gaps (never for branding/logo)
   let platformAsk = null;
   const shouldAsk = options.ask !== false && (hard.length > 0 || soft.length > 0);
   if (shouldAsk) {
@@ -387,6 +377,31 @@ export async function enrichPayrollJob(jobId, options = {}) {
         forceNotify: options.forceNotify === true,
         requestEvent: true,
       });
+      // If webhook body already contains the employee, merge immediately
+      const inline = extractInlineReply(platformAsk?.platformNotify?.body);
+      if (inline?.employees?.length) {
+        const match = pickEmployeeRow(inline.employees, employeeId) || inline.employees[0];
+        mergePlatformRowIntoState(state, match, filled, "webhook-inline");
+        persistRegistryFromState(state, companyId, "webhook-inline");
+        const rebuilt = rebuildJob(nextJob, state);
+        hard = rebuilt.errors || [];
+        soft = rebuilt.printHints || [];
+        return {
+          ok: true,
+          job: rebuilt,
+          filled,
+          filledCount: filled.length,
+          remainingHard: hard,
+          remainingSoft: soft,
+          stillMissing: [...hard, ...soft],
+          pull,
+          employeePull,
+          branding,
+          platformAsk,
+          askedPlatform: true,
+          message: `Daten aus Plattform-Antwort übernommen (${filled.length} Felder).`,
+        };
+      }
     } catch (e) {
       platformAsk = { ok: false, error: e.message };
     }
@@ -403,15 +418,17 @@ export async function enrichPayrollJob(jobId, options = {}) {
     remainingSoft: soft,
     stillMissing,
     pull,
+    employeePull,
+    branding,
     platformAsk,
     askedPlatform: Boolean(platformAsk && (platformAsk.created || platformAsk.notified || platformAsk.ok)),
     message: filledCount && !stillMissing.length
-      ? `Daten von Plattform/Register übernommen (${filledCount} Felder). Abrechnung bereit.`
+      ? `Daten von Plattform/Vertrag/Register übernommen (${filledCount} Felder). Abrechnung bereit.`
       : filledCount
         ? `Teilweise ergänzt (${filledCount} Felder). Noch offen: ${stillMissing.slice(0, 4).join(" · ")}`
         : stillMissing.length
-          ? (pull.ok === false
-            ? `Lokal nichts Neues – Plattform nach fehlenden Daten gefragt.`
+          ? (pull.ok === false && employeePull.ok === false
+            ? `Plattform-GET ohne Treffer – fehlende Felder nachgefragt.`
             : `Noch fehlend: ${stillMissing.slice(0, 4).join(" · ")}`)
           : "Stammdaten vollständig.",
   };
