@@ -22,6 +22,8 @@ import { ingestInvoice, ingestInvoiceBatch, releaseInvoiceJob } from "./invoice-
 import { upsertPlatformMessage, ackOpenRequests } from "./platform-messages.mjs";
 import { isDemoPayrollJob } from "./demo-detect.mjs";
 import { normalizeCompanyId } from "./tenant.mjs";
+import { listAutomationCompanies } from "./automation-eligibility.mjs";
+import { recordCompanyAutomation } from "./automation-status.mjs";
 
 let timer = null;
 let lastTickAt = null;
@@ -518,6 +520,18 @@ export async function askPlatformAndSyncCompany(options = {}) {
         forceAsk: options.forceAsk,
         reason: options.reason || "auto_pipeline",
       });
+    const message = `Monat ${period} ist fertig: ${progress.released} Abrechnung(en) freigegeben`
+      + (invoices?.pendingReleased
+        ? ` · ${invoices.pendingReleased} Rechnung(en) nachfreigegeben`
+        : " – Lohn-Anfrage übersprungen, Rechnungen weiter synchronisiert")
+      + ".";
+    recordCompanyAutomation(companyId, period, {
+      phase: "done",
+      source: options.reason?.startsWith("portal") ? "manual" : "auto_pipeline",
+      ok: true,
+      waitingForPlatform: false,
+      message,
+    });
     return {
       ok: true,
       skipped: true,
@@ -531,11 +545,7 @@ export async function askPlatformAndSyncCompany(options = {}) {
       webhook: getLastWebhookStatus(),
       webhookOk: getLastWebhookStatus()?.ok === true,
       webhookBroken: false,
-      message: `Monat ${period} ist fertig: ${progress.released} Abrechnung(en) freigegeben`
-        + (invoices?.pendingReleased
-          ? ` · ${invoices.pendingReleased} Rechnung(en) nachfreigegeben`
-          : " – Lohn-Anfrage übersprungen, Rechnungen weiter synchronisiert")
-        + ".",
+      message,
       nextActions: [],
     };
   }
@@ -720,6 +730,18 @@ export async function askPlatformAndSyncCompany(options = {}) {
     });
   }
 
+  recordCompanyAutomation(companyId, period, {
+    phase: after.complete
+      ? "done"
+      : (close?.waitingForPlatform || !after.hasWork ? "waiting" : (after.released < after.jobs ? "release" : "calc")),
+    source: options.reason?.startsWith("portal") ? "manual" : "auto_pipeline",
+    ok: Boolean(after.complete || close?.ok),
+    waitingForPlatform: Boolean(close?.waitingForPlatform) && !after.hasWork,
+    message: after.complete
+      ? `Fertig: ${after.released} Abrechnung(en) für ${period} an die Plattform gesendet.`
+      : (close?.message || null),
+  });
+
   const invoices = options.skipInvoices
     ? null
     : await askPlatformForInvoices({
@@ -797,11 +819,15 @@ export async function runAutoPipelineOnce(opts = {}) {
     return { ok: false, skipped: true, reason: "WORKPASS_AUTO_PIPELINE=0" };
   }
   const period = opts.period || currentPeriod();
-  const companies = (opts.companies || listCompanies())
-    .filter((c) => c.meta?.accountingEnabled !== false);
+  const companies = listAutomationCompanies(opts.companies || listCompanies());
   const results = [];
   for (const c of companies) {
     try {
+      recordCompanyAutomation(c.id, period, {
+        phase: "ask",
+        source: "auto_pipeline",
+        message: `Automatik fragt Plattform für ${period}…`,
+      });
       const r = await askPlatformAndSyncCompany({
         companyId: c.id,
         companyName: c.name,

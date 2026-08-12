@@ -12,7 +12,12 @@ import { URL } from "node:url";
 import { ACCOUNTING_VERSION, SERVICE_NAME } from "./version.mjs";
 import { ingestPayroll, ingestPayrollBatch, releasePayrollJob } from "./payroll-service.mjs";
 import { runMonthClose, currentPeriod, requestEmployeeDataFromPlatform, resolvePlatformPullUrls } from "./month-close.mjs";
-import { startMonthCloseScheduler, runAutoMonthCloseOnce, autoMonthCloseConfig } from "./month-scheduler.mjs";
+import {
+  startMonthCloseScheduler,
+  runAutoMonthCloseOnce,
+  autoMonthCloseStatus,
+} from "./month-scheduler.mjs";
+import { getCompanyAutomationStatus } from "./automation-status.mjs";
 import {
   processInboundPayroll,
   processInboundPayrollBatch,
@@ -151,7 +156,7 @@ async function handler(req, res) {
       version: ACCOUNTING_VERSION,
       multiTenant: true,
       monthCloseScheduler: monthCloseSched,
-      autoMonthClose: autoMonthCloseConfig(),
+      autoMonthClose: autoMonthCloseStatus(),
       autoPipeline: autoPipelineStatus(),
       platform: {
         domain: PLATFORM_DOMAIN,
@@ -429,7 +434,7 @@ async function handler(req, res) {
           ...syncHealth(),
         },
         monthCloseScheduler: monthCloseSched,
-        autoMonthClose: autoMonthCloseConfig(),
+        autoMonthClose: autoMonthCloseStatus(),
         companies: {
           count: companies.length,
           active: companies.filter((c) => c.meta?.accountingEnabled).length,
@@ -1001,6 +1006,21 @@ async function handler(req, res) {
       return reply(200, result);
     }
 
+    if (req.method === "GET" && (path === "/v1/portal/automation-status" || path === "/v1/automation/status")) {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const period = url.searchParams.get("period") || currentPeriod();
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Automation");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const result = getCompanyAutomationStatus(companyId, period);
+      if (!result.ok) return reply(422, result);
+      return reply(200, {
+        ...result,
+        kind: "portal.automation.status.v1",
+        monthClose: autoMonthCloseStatus(),
+        autoPipeline: autoPipelineStatus(),
+      });
+    }
+
     if (req.method === "GET" && path === "/v1/portal/archive") {
       const companyId = tenantScope || url.searchParams.get("companyId") || "";
       const period = url.searchParams.get("period") || undefined;
@@ -1145,16 +1165,21 @@ async function handler(req, res) {
           ? `Automatik an · letzter Erfolg ${auto.lastSuccessAt}`
           : "Automatik an");
       }
+      const automation = companyId
+        ? getCompanyAutomationStatus(companyId, url.searchParams.get("period") || currentPeriod())
+        : null;
       return reply(200, {
         ok: true,
         kind: "platform.accounting.sync.v1",
-        schemaVersion: 3,
+        schemaVersion: 4,
         companyId: companyId || null,
         accountingVersion: ACCOUNTING_VERSION,
         status,
         message,
         nextActions,
         autoPipeline: auto,
+        autoMonthClose: autoMonthCloseStatus(),
+        automation,
         webhook: {
           configured: webhookConfigured,
           keyConfigured: webhookKeyConfigured(),

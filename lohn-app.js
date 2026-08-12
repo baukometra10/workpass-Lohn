@@ -425,12 +425,13 @@
       : currentPayrollPeriod();
     if ($("payrollMonth")) $("payrollMonth").value = period;
     try {
-      const [emps, month, arch, msgs, sync] = await Promise.all([
+      const [emps, month, arch, msgs, sync, automation] = await Promise.all([
         apiFetch(`/v1/portal/employees?period=${encodeURIComponent(period)}`),
         apiFetch(`/v1/portal/month?period=${encodeURIComponent(period)}&months=6`),
         apiFetch(`/v1/portal/archive?period=${encodeURIComponent(period)}`),
         apiFetch("/v1/messages?status=open").catch(() => ({ messages: [] })),
-        apiFetch("/v1/platform/status").catch(() => null),
+        apiFetch(`/v1/platform/status?period=${encodeURIComponent(period)}`).catch(() => null),
+        apiFetch(`/v1/portal/automation-status?period=${encodeURIComponent(period)}`).catch(() => null),
       ]);
 
       const cur = month.current || {};
@@ -469,6 +470,7 @@
       const empN = Number(emps.count || 0);
       const relN = Number(cur.released || arch.count || 0);
       const openN = Number((msgs.messages || []).length);
+      const auto = automation?.ok ? automation : (sync?.automation?.ok ? sync.automation : null);
       renderPortalCommandStatus({
         period,
         employees: empN,
@@ -476,8 +478,11 @@
         openMessages: openN,
         pending,
         hasData: Boolean(cur.total),
-        monthDone: Boolean(cur.total > 0 && relN === cur.total && cur.status === "released"),
+        monthDone: Boolean(cur.total > 0 && relN === cur.total && cur.status === "released")
+          || Boolean(auto?.phase === "done"),
+        automation: auto,
       });
+      applyAutomationProgress(auto, period);
       renderAuditOverview({
         period,
         employees: empN,
@@ -531,7 +536,22 @@
       }
 
       if ($("portalSyncHint")) {
-        if (Number(emps.count || 0) === 0 && !cur.total) {
+        if (auto?.eligible && auto?.phase === "done") {
+          $("portalSyncHint").textContent = uiT(
+            "portal.syncHintAutoDone",
+            "Monatsautomatik erledigt – Abrechnungen sind an die Plattform gesendet. Sie können jederzeit zur Prüfung einloggen."
+          );
+        } else if (auto?.eligible && (auto?.phase === "waiting" || pending)) {
+          $("portalSyncHint").textContent = uiT(
+            "portal.syncHintAutoWait",
+            "Monatsautomatik aktiv – WorkPass wartet auf Plattformdaten und berechnet danach alle Abrechnungen."
+          );
+        } else if (auto?.eligible) {
+          $("portalSyncHint").textContent = uiT(
+            "portal.syncHintAutoOn",
+            "Monatsautomatik aktiv – jeden Monat holt WorkPass Daten, berechnet alle Abrechnungen und sendet sie an die Plattform. Login bleibt zur Prüfung möglich."
+          );
+        } else if (Number(emps.count || 0) === 0 && !cur.total) {
           $("portalSyncHint").textContent = uiT(
             "portal.syncHintEmpty",
             "Noch keine Mitarbeiterdaten – tippen Sie auf „Jetzt synchronisieren“. WorkPass fragt die Plattform und berechnet automatisch."
@@ -814,6 +834,28 @@
     window.WorkPassI18n?.applyDom?.(document);
   }
 
+  function applyAutomationProgress(auto, period) {
+    if (!auto?.eligible || !auto.phase) return;
+    const host = $("monthCloseProgress");
+    if (!host) return;
+    if (document.body.classList.contains("month-close-running")) return;
+    const phase = String(auto.phase);
+    if (phase === "idle" || phase === "off") {
+      if (host.dataset.keep !== "1") host.hidden = true;
+      return;
+    }
+    const stepId = phase === "done" ? "done"
+      : (phase === "release" ? "release"
+        : (phase === "calc" ? "calc" : "pull"));
+    host.dataset.keep = phase === "done" ? "0" : "1";
+    renderMonthProgress(stepId, {
+      percent: Number(auto.percent) || 0,
+      title: auto.message || uiT("portal.autoRunning", "Monatsautomatik läuft · {period}").replace("{period}", period || ""),
+      states: auto.steps || undefined,
+    });
+    if (phase === "done") hideMonthProgressSoon(2400);
+  }
+
   function renderPortalCommandStatus({
     period,
     employees = 0,
@@ -822,6 +864,7 @@
     pending = 0,
     hasData = false,
     monthDone = false,
+    automation = null,
   } = {}) {
     const host = $("portalCommandStatus");
     if (!host) return;
@@ -832,12 +875,39 @@
       .replace("{released}", String(released))
       .replace("{period}", period || currentPayrollPeriod());
     let tone = "ok";
-    if (monthDone) {
+    const autoOn = Boolean(automation?.eligible);
+    const autoDone = Boolean(automation?.phase === "done" || monthDone);
+    const autoWait = Boolean(automation?.waitingForPlatform || automation?.phase === "waiting");
+    if (autoDone) {
       title = uiT("hub.outcome.done", "Alles bereit für diesen Monat");
       hint = uiT("hub.outcome.doneHint", "{released} Abrechnung(en) freigegeben · Monat {period}")
-        .replace("{released}", String(released))
+        .replace("{released}", String(automation?.jobs?.released ?? released))
         .replace("{period}", period || currentPayrollPeriod());
       tone = "ok";
+    } else if (autoOn && (autoWait || pending > 0 || openMessages > 0)) {
+      title = uiT("portal.autoWaiting", "Monatsautomatik wartet auf die Plattform");
+      hint = uiT(
+        "portal.autoWaitingHint",
+        "WorkPass fragt nach, berechnet alle Abrechnungen und sendet sie automatisch. Login bleibt zur Prüfung möglich."
+      );
+      tone = "wait";
+    } else if (autoOn && hasData) {
+      title = uiT("portal.autoActive", "Monatsautomatik arbeitet");
+      hint = uiT(
+        "portal.autoActiveHint",
+        "{released}/{total} freigegeben · Monat {period} · wird automatisch an die Plattform gesendet"
+      )
+        .replace("{released}", String(automation?.jobs?.released ?? released))
+        .replace("{total}", String(automation?.jobs?.jobs || employees || "—"))
+        .replace("{period}", period || currentPayrollPeriod());
+      tone = "ok";
+    } else if (autoOn && !hasData && employees === 0) {
+      title = uiT("portal.autoReady", "Monatsautomatik bereit");
+      hint = uiT(
+        "portal.autoReadyHint",
+        "Sobald die Plattform Daten liefert, berechnet WorkPass den ganzen Monat und sendet die Abrechnungen automatisch."
+      );
+      tone = "ready";
     } else if (!hasData && employees === 0) {
       title = uiT("hub.outcome.needsSync", "Bereit für den ersten Sync");
       hint = uiT("hub.outcome.needsSyncHint", "Tippen Sie auf „Jetzt synchronisieren“ – WorkPass holt Ihre Mitarbeiter automatisch.");
@@ -851,7 +921,9 @@
     if ($("portalCommandTitle")) $("portalCommandTitle").textContent = title;
     if ($("portalCommandHint")) $("portalCommandHint").textContent = hint;
     if ($("portalCommandEyebrow")) {
-      $("portalCommandEyebrow").textContent = uiT("portal.statusEyebrow", "Abrechnungsstatus");
+      $("portalCommandEyebrow").textContent = autoOn
+        ? uiT("portal.autoEyebrow", "Monatsautomatik")
+        : uiT("portal.statusEyebrow", "Abrechnungsstatus");
     }
     host.dataset.tone = tone;
   }
@@ -1100,11 +1172,36 @@
     }
     const period = currentPayrollPeriod();
     const btn = $("btnAutoSyncNow");
-    if (btn && !quiet) {
-      btn.disabled = true;
-      btn.classList.add("is-busy");
-      btn.setAttribute("aria-busy", "true");
-      btn.textContent = "Synchronisiert…";
+    const btnTop = $("btnPortalSyncTop");
+    const busyButtons = [btn, btnTop].filter(Boolean);
+    if (!quiet) {
+      busyButtons.forEach((b) => {
+        b.disabled = true;
+        b.classList.add("is-busy");
+        b.setAttribute("aria-busy", "true");
+      });
+      if (btn) btn.textContent = uiT("lohn.syncing", "Synchronisiert…");
+      if (btnTop) btnTop.textContent = uiT("lohn.syncing", "Synchronisiert…");
+    }
+    const progressHost = $("monthCloseProgress");
+    if (progressHost) progressHost.dataset.keep = "1";
+    let stepTimer = null;
+    let stepIdx = 0;
+    if (!quiet) {
+      renderMonthProgress("pull", {
+        percent: 20,
+        title: uiT("portal.syncProgress", "Sync · Monat {period}").replace("{period}", period),
+        states: { pull: "active", calc: "todo", release: "todo", done: "todo" },
+      });
+      stepTimer = setInterval(() => {
+        if (stepIdx < 2) {
+          stepIdx += 1;
+          renderMonthProgress(MONTH_STEPS[stepIdx].id, {
+            percent: 30 + stepIdx * 20,
+            title: uiT("portal.syncProgress", "Sync · Monat {period}").replace("{period}", period),
+          });
+        }
+      }, 700);
     }
     try {
       if (!quiet) setStatus("Automatik: frage Plattform nach Mitarbeitern und Abrechnungen…", true);
@@ -1119,6 +1216,21 @@
           reason: quiet ? "portal_boot_sync" : "portal_manual_sync",
         }),
       });
+      if (stepTimer) clearInterval(stepTimer);
+      const jobs = data.jobs || data.close?.jobs || {};
+      const done = Boolean(data.ok && !data.waitingForPlatform && (jobs.released > 0 || data.skipped));
+      if (!quiet || data.waitingForPlatform || done) {
+        renderMonthProgress(done ? "done" : (data.waitingForPlatform ? "pull" : "release"), {
+          percent: done ? 100 : (data.waitingForPlatform ? 40 : 75),
+          title: data.message || uiT("portal.syncProgress", "Sync · Monat {period}").replace("{period}", period),
+          states: {
+            pull: data.waitingForPlatform ? "active" : "done",
+            calc: done || jobs.total > 0 ? "done" : (data.waitingForPlatform ? "skip" : "active"),
+            release: done ? "done" : (data.waitingForPlatform ? "skip" : "active"),
+            done: done ? "done" : "todo",
+          },
+        });
+      }
       renderMonthCloseStatus(data.close || data);
       await loadPortalDashboard(true);
       await loadApiInbox(true);
@@ -1140,19 +1252,27 @@
       renderPortalNextActions(firmActions.length
         ? firmActions
         : (data.waitingForPlatform ? [
-          "Mitarbeiter in der Plattform freigeben / senden",
-          "Danach erscheint die Abrechnung hier automatisch",
+          uiT("portal.nextReleaseEmployees", "In der Plattform Mitarbeiter freigeben"),
+          uiT("portal.nextAutoContinue", "Danach läuft die Monatsautomatik weiter"),
         ] : []));
+      if (progressHost) progressHost.dataset.keep = done ? "0" : "1";
+      if (done) hideMonthProgressSoon(1800);
       if (data.waitingForPlatform) startMonthWaitRetry(period);
     } catch (e) {
+      if (stepTimer) clearInterval(stepTimer);
       if (!quiet) toast(String(e.message || e), "error");
       else setStatus("Sync später erneut – Übersicht ist geladen.", false);
     } finally {
-      if (btn && !quiet) {
-        btn.disabled = false;
-        btn.classList.remove("is-busy");
-        btn.removeAttribute("aria-busy");
-        btn.textContent = window.WorkPassI18n?.t?.("sync.now") || "Jetzt synchronisieren";
+      if (stepTimer) clearInterval(stepTimer);
+      if (!quiet) {
+        busyButtons.forEach((b) => {
+          b.disabled = false;
+          b.classList.remove("is-busy");
+          b.removeAttribute("aria-busy");
+        });
+        const syncLabel = window.WorkPassI18n?.t?.("sync.now") || "Jetzt synchronisieren";
+        if (btn) btn.textContent = syncLabel;
+        if (btnTop) btnTop.textContent = syncLabel;
       }
     }
   }
