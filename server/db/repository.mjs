@@ -434,4 +434,41 @@ export function ackDeliveryRow(deliveryId, meta = {}) {
   return { ok: true, delivery };
 }
 
+/** Record webhook push result without acking (so platform can still poll pending). */
+export function markDeliveryWebhookRow(deliveryId, meta = {}) {
+  initDb();
+  const existing = sqliteGet(`SELECT payload_json FROM deliveries WHERE delivery_id = ?`, [deliveryId]);
+  if (!existing) return { ok: false, error: "Delivery nicht gefunden" };
+  const delivery = unpackPayload(existing.payload_json);
+  if (delivery.queueStatus === "delivered") {
+    return { ok: true, delivery, alreadyDelivered: true };
+  }
+  const pushCount = Number(delivery.webhookPushCount || 0) + 1;
+  delivery.webhookPushCount = pushCount;
+  delivery.webhookLastAt = meta.at || now();
+  delivery.webhookLastStatus = meta.status ?? null;
+  delivery.webhookLastError = meta.error || null;
+  delivery.webhookAccepted = Boolean(meta.accepted);
+  delivery.webhookReached = Boolean(meta.reached);
+  delivery.webhookIdempotencyKey = meta.idempotencyKey || delivery.webhookIdempotencyKey || deliveryId;
+  if (meta.reached) {
+    delivery.webhookPushedAt = delivery.webhookPushedAt || delivery.webhookLastAt;
+  }
+  // Keep queue_status pending so GET /v1/delivery/pending still works until ack
+  sqliteExec(
+    `UPDATE deliveries SET payload_json = ?, sync_version = sync_version + 1 WHERE delivery_id = ?`,
+    [packPayload(delivery), deliveryId]
+  );
+  enqueueSync("delivery", deliveryId, delivery);
+  scheduleSyncFlush();
+  return { ok: true, delivery };
+}
+
+export function getDeliveryRow(deliveryId) {
+  initDb();
+  const existing = sqliteGet(`SELECT payload_json FROM deliveries WHERE delivery_id = ?`, [deliveryId]);
+  if (!existing) return null;
+  return unpackPayload(existing.payload_json);
+}
+
 export { syncHealth, flushSyncOutbox };

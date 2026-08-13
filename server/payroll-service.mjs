@@ -5,7 +5,7 @@
 import { getPayrollCore } from "./engine.mjs";
 import { loadPayrollJob, savePayrollJob, listPayrollJobs } from "./store.mjs";
 import { buildEmployeeDelivery, notifyPlatform } from "./notify.mjs";
-import { enqueueDelivery, ackDelivery } from "./delivery-queue.mjs";
+import { enqueueDelivery, ackDelivery, markDeliveryWebhook, getDelivery } from "./delivery-queue.mjs";
 import { ensureCompanyFromPayload } from "./company-service.mjs";
 import { notifyGapsForPayroll } from "./platform-messages.mjs";
 import { upsertEmployee } from "./employee-registry.mjs";
@@ -365,6 +365,23 @@ export async function releasePayrollJob(jobId, options = {}) {
   }
 
   const alreadyReleased = job.status === "released";
+  if (alreadyReleased && !options.forceRedeliver) {
+    const existing = getDelivery(`pay:${job.jobId}`);
+    return {
+      ok: true,
+      job,
+      payslip: job.payslip,
+      delivery: existing || null,
+      platformNotify: null,
+      alreadyReleased: true,
+      skippedNotify: true,
+      deliveredViaWebhook: Boolean(existing?.webhookAccepted || existing?.queueStatus === "delivered"),
+      webhookReached: Boolean(existing?.webhookReached || existing?.webhookPushedAt),
+      pendingPull: !(existing?.webhookAccepted || existing?.queueStatus === "delivered"),
+      message: "Bereits freigegeben – kein erneuter Webhook (einmalige Zustellung).",
+    };
+  }
+
   if (!alreadyReleased || options.forceRedeliver) {
     job.status = "released";
     job.releasedAt = job.releasedAt || new Date().toISOString();
@@ -380,21 +397,68 @@ export async function releasePayrollJob(jobId, options = {}) {
   if (!delivery) {
     return { ok: false, error: "Delivery konnte nicht gebaut werden", job };
   }
-  // Reset to pending so replay / platform pull see a fresh package
+
+  // Preserve prior push markers unless force redeliver
+  const prev = getDelivery(delivery.deliveryId);
+  if (options.forceRedeliver) {
+    delivery.webhookPushedAt = null;
+    delivery.webhookReached = false;
+    delivery.webhookAccepted = false;
+    delivery.webhookPushCount = 0;
+  } else if (prev?.webhookPushedAt) {
+    delivery.webhookPushedAt = prev.webhookPushedAt;
+    delivery.webhookReached = prev.webhookReached;
+    delivery.webhookPushCount = prev.webhookPushCount;
+    delivery.webhookAccepted = prev.webhookAccepted;
+  }
+
   delivery.queueStatus = "pending";
-  delivery.enqueuedAt = new Date().toISOString();
+  delivery.enqueuedAt = delivery.enqueuedAt || prev?.enqueuedAt || new Date().toISOString();
   enqueueDelivery(delivery);
+
+  // Already pushed successfully once → do not POST webhook again
+  if (delivery.webhookPushedAt && !options.forceRedeliver) {
+    return {
+      ok: true,
+      job,
+      payslip: job.payslip,
+      delivery,
+      platformNotify: null,
+      alreadyReleased: true,
+      skippedNotify: true,
+      deliveredViaWebhook: Boolean(delivery.webhookAccepted),
+      webhookReached: true,
+      pendingPull: !delivery.webhookAccepted,
+      message: "Bereits an Plattform gesendet – warte auf Bestätigung / Pull (kein erneuter Webhook).",
+    };
+  }
+
   const platformNotify = await notifyPlatform({
     event: "payslip.released",
     delivery,
     company: job.company,
+    idempotencyKey: delivery.deliveryId,
     meta: {
       reason: options.reason || (alreadyReleased ? "redeliver" : "release"),
       forceRedeliver: Boolean(options.forceRedeliver),
     },
   });
 
-  if (platformNotify?.ok && platformNotify.mode === "webhook" && platformNotify.accepted === true) {
+  const webhookReached = Boolean(platformNotify?.ok && platformNotify.mode === "webhook");
+  const deliveredConfirmed = Boolean(webhookReached && platformNotify.accepted === true);
+
+  try {
+    markDeliveryWebhook(delivery.deliveryId, {
+      at: new Date().toISOString(),
+      status: platformNotify?.status ?? null,
+      error: platformNotify?.ok ? null : (platformNotify?.error || null),
+      accepted: deliveredConfirmed,
+      reached: webhookReached,
+      idempotencyKey: platformNotify?.idempotencyKey || delivery.deliveryId,
+    });
+  } catch { /* ignore */ }
+
+  if (deliveredConfirmed) {
     try {
       ackDelivery(delivery.deliveryId, {
         via: "webhook-accepted",
@@ -405,16 +469,11 @@ export async function releasePayrollJob(jobId, options = {}) {
     } catch { /* keep pending for pull */ }
   }
 
-  const deliveredConfirmed = Boolean(
-    platformNotify?.ok && platformNotify.mode === "webhook" && platformNotify.accepted === true
-  );
-  const webhookReached = Boolean(platformNotify?.ok && platformNotify.mode === "webhook");
-
   return {
     ok: true,
     job,
     payslip: job.payslip,
-    delivery,
+    delivery: getDelivery(delivery.deliveryId) || delivery,
     platformNotify,
     alreadyReleased,
     deliveredViaWebhook: deliveredConfirmed,
@@ -423,57 +482,69 @@ export async function releasePayrollJob(jobId, options = {}) {
     message: deliveredConfirmed
       ? "Freigegeben und von der Plattform bestätigt (accepted)."
       : (webhookReached
-        ? "Freigegeben und Webhook erreicht – Plattform hat noch nicht bestätigt. Lieferung bleibt abrufbar unter /v1/delivery/pending."
+        ? "Freigegeben und einmal an Webhook gesendet – kein Auto-Resend. Plattform bestätigt oder pollt /v1/delivery/pending."
         : (platformNotify?.ok
           ? "Freigegeben. Kein Webhook – Plattform muss /v1/delivery/pending pollen."
-          : `Freigegeben, aber Webhook fehlgeschlagen (${platformNotify?.status || platformNotify?.error || "Fehler"}). Automatischer Retry aktiv · pending pull.`)),
+          : `Freigegeben, aber Webhook fehlgeschlagen (${platformNotify?.status || platformNotify?.error || "Fehler"}). Begrenzter Retry mit Backoff.`)),
   };
 }
 
-/** Re-push all released payslips for a company/period to the platform. */
+/** Re-push released payslips only if not yet webhook-pushed (unless force). */
 export async function deliverReleasedPayslips(options = {}) {
   const companyId = normalizeCompanyId(options.companyId || options.tenantScope || "");
   const period = String(options.period || "").trim();
   if (!companyId) return { ok: false, error: "companyId fehlt", results: [] };
   const jobs = listPayrollJobs({ companyId, period: period || undefined })
     .filter((j) => j && j.status === "released" && !j.demo);
+  const force = Boolean(options.force);
   const results = [];
   let delivered = 0;
-  let failed = 0;
+  let skipped = 0;
   for (const job of jobs) {
     try {
+      const existing = getDelivery(`pay:${job.jobId}`);
+      const alreadyPushed = Boolean(existing?.webhookPushedAt || existing?.webhookReached);
+      if (alreadyPushed && !force) {
+        skipped += 1;
+        results.push({
+          jobId: job.jobId,
+          ok: true,
+          skippedNotify: true,
+          deliveredViaWebhook: Boolean(existing?.webhookAccepted),
+          pendingPull: !existing?.webhookAccepted,
+        });
+        continue;
+      }
       const r = await releasePayrollJob(job.jobId, {
         tenantScope: companyId,
-        forceRedeliver: true,
+        forceRedeliver: force || !alreadyPushed,
         reason: options.reason || "deliver_period",
       });
       if (r.ok && r.deliveredViaWebhook) delivered += 1;
-      else if (!r.ok) failed += 1;
       results.push({
         jobId: job.jobId,
         ok: Boolean(r.ok),
         deliveredViaWebhook: Boolean(r.deliveredViaWebhook),
+        skippedNotify: Boolean(r.skippedNotify),
         error: r.error || null,
-        notifyMode: r.platformNotify?.mode || null,
       });
     } catch (e) {
-      failed += 1;
       results.push({ jobId: job.jobId, ok: false, error: e.message || String(e) });
     }
   }
   return {
-    ok: failed === 0,
+    ok: results.every((r) => r.ok !== false),
     companyId,
     period: period || null,
     count: jobs.length,
     delivered,
-    failed,
+    skipped,
     results,
     message: delivered
       ? `${delivered}/${jobs.length} Abrechnung(en) an die Plattform geliefert.`
-      : (jobs.length
-        ? "Freigegebene Abrechnungen in Warteschlange – Webhook prüfen oder Plattform pollt /v1/delivery/pending."
-        : "Keine freigegebenen Abrechnungen in diesem Monat."),
+      : (skipped
+        ? `${skipped} bereits einmal gesendet – kein erneuter Webhook.`
+        : "Freigegebene Abrechnungen in Warteschlange – Plattform pollt /v1/delivery/pending."),
   };
 }
 

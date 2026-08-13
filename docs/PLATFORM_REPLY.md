@@ -14,6 +14,15 @@ Ohne diesen Schritt öffnet der alte `#suppix-sso=`-Hash die UI weiter (Kompatib
 
 → 302 auf `lohn.html#suppix-sso=…` mit gültiger Session.
 
+## Payslip-Zustellung: einmal senden (kein Spam)
+
+Ab **v2.46.0** sendet Accounting jedes `payslip.released` **höchstens einmal** per Webhook:
+
+- Erfolgreicher HTTP 2xx → kein Auto-Resend (auch ohne `accepted:true`)
+- Offene Lieferungen bleiben in `GET /v1/delivery/pending` bis Ack
+- Scheduler retry nur bei hartem Fehler (Backoff, max. 3 Versuche)
+- Idempotency-Key = stabile `deliveryId` (nicht Timestamp)
+
 
 
 ## Pull-first (Accounting holt Daten)
