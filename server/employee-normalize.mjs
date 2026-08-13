@@ -79,6 +79,27 @@ export function normalizeEmployeeRecord(raw = {}) {
     Object.assign(src, nested);
   }
 
+  const social = (src.socialInsurance && typeof src.socialInsurance === "object" ? src.socialInsurance : null)
+    || (src.sv && typeof src.sv === "object" ? src.sv : null)
+    || (src.sozialversicherung && typeof src.sozialversicherung === "object" ? src.sozialversicherung : null)
+    || {};
+  const health = (src.healthInsurance && typeof src.healthInsurance === "object" ? src.healthInsurance : null)
+    || (src.krankenversicherung && typeof src.krankenversicherung === "object" ? src.krankenversicherung : null)
+    || (src.kk && typeof src.kk === "object" ? src.kk : null)
+    || {};
+  const bank = (src.bank && typeof src.bank === "object" ? src.bank : null)
+    || (src.payment && typeof src.payment === "object" ? src.payment : null)
+    || (src.bankAccount && typeof src.bankAccount === "object" ? src.bankAccount : null)
+    || (src.konto && typeof src.konto === "object" ? src.konto : null)
+    || (nested?.bank && typeof nested.bank === "object" ? nested.bank : null)
+    || (emp.bank && typeof emp.bank === "object" ? emp.bank : null)
+    || {};
+  const payroll = (src.payroll && typeof src.payroll === "object" ? src.payroll : null)
+    || (src.compensation && typeof src.compensation === "object" ? src.compensation : null)
+    || (src.salary && typeof src.salary === "object" ? src.salary : null)
+    || (src.gehalt && typeof src.gehalt === "object" ? src.gehalt : null)
+    || {};
+
   const badgeId = normalizeEmployeeId(
     src.badgeId || src.badge || src.id || src.employeeId || src.mitarbeiterId || ""
   );
@@ -102,32 +123,68 @@ export function normalizeEmployeeRecord(raw = {}) {
     lastName,
     personnelNumber,
     address,
-    taxId: pickString(src.taxId, src.steuerId, src.taxID),
-    insuranceNo: pickString(src.insuranceNo, src.svNr, src.socialSecurityNo),
-    birthDate: pickString(src.birthDate, src.birth, src.geburtsdatum),
-    entryDate: pickString(src.entryDate, src.entry, src.eintritt),
-    taxClass: pickString(src.taxClass, src.stkl),
-    churchTaxRate: pickString(src.churchTaxRate, src.kist),
-    healthFund: pickString(src.healthFund, src.kk, src.krankenkasse),
-    healthPercent: src.healthPercent != null ? String(src.healthPercent) : pickString(src.kkPercent),
+    taxId: pickString(src.taxId, src.steuerId, src.taxID, src.steueridentifikationsnummer),
+    insuranceNo: pickString(
+      src.insuranceNo,
+      src.svNr,
+      src.svNumber,
+      src.socialSecurityNo,
+      src.socialSecurityNumber,
+      src.sozialversicherungsnummer,
+      social.number,
+      social.nr,
+      social.svNr,
+      social.insuranceNo
+    ),
+    birthDate: pickString(src.birthDate, src.birth, src.geburtsdatum, src.dateOfBirth),
+    entryDate: pickString(src.entryDate, src.entry, src.eintritt, src.startDate, src.hiredAt),
+    taxClass: pickString(src.taxClass, src.stkl, src.steuerklasse),
+    churchTaxRate: pickString(src.churchTaxRate, src.kist, src.kirchensteuer),
+    healthFund: pickString(
+      src.healthFund,
+      src.kk,
+      src.krankenkasse,
+      src.healthInsuranceName,
+      health.name,
+      health.fund,
+      health.krankenkasse,
+      health.label
+    ),
+    healthPercent: src.healthPercent != null
+      ? String(src.healthPercent)
+      : pickString(src.kkPercent, health.percent, health.beitragssatz),
     email: pickString(src.email, src.mail),
     phone: pickString(src.phone, src.telefon, src.mobile),
     bankName: pickString(
       src.bankName,
-      src.bank?.name,
-      src.bank?.bankName,
-      nested?.bank?.name,
-      emp.bank?.name
+      bank.name,
+      bank.bankName,
+      bank.bank,
+      bank.institut
     ),
     bankIban: pickString(
       src.bankIban,
       src.iban,
-      src.bank?.iban,
-      src.bank?.bankIban,
-      nested?.bank?.iban,
-      emp.bank?.iban
+      bank.iban,
+      bank.bankIban,
+      bank.IBAN,
+      bank.accountIban
     ),
-    bankBic: pickString(src.bankBic, src.bic, src.bank?.bic, nested?.bank?.bic, emp.bank?.bic),
+    bankBic: pickString(src.bankBic, src.bic, bank.bic, bank.BIC, bank.swift),
+    grossSalary: pickString(
+      src.grossSalary,
+      src.gross,
+      src.brutto,
+      src.monthlySalary,
+      src.baseSalary,
+      src.gehalt,
+      src.lohn,
+      payroll.amount,
+      payroll.brutto,
+      payroll.gross,
+      payroll.monthly,
+      payroll.base
+    ),
     incomplete: !name || !badgeId,
     needsName: Boolean(badgeId && !name),
   };

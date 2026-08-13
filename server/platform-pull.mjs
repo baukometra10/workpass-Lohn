@@ -222,25 +222,54 @@ export function collectEmployeesFromPayload(data) {
 
 function flattenContract(contract = {}) {
   const emp = contract.employee && typeof contract.employee === "object" ? contract.employee : {};
-  const bank = contract.bank || emp.bank || contract.payment || {};
-  const salary = contract.salary || contract.gehalt || contract.compensation || {};
+  const bank = contract.bank || emp.bank || contract.payment || contract.bankAccount || contract.konto || {};
+  const salary = contract.salary || contract.gehalt || contract.compensation || contract.payroll || {};
+  const social = contract.socialInsurance || contract.sv || emp.socialInsurance || {};
+  const health = contract.healthInsurance || contract.krankenversicherung || emp.healthInsurance || {};
   const amount = Number(
-    salary.amount ?? salary.brutto ?? salary.gross ?? contract.brutto ?? contract.grossSalary ?? 0
+    salary.amount
+    ?? salary.brutto
+    ?? salary.gross
+    ?? salary.monthly
+    ?? salary.base
+    ?? contract.brutto
+    ?? contract.grossSalary
+    ?? contract.monthlySalary
+    ?? contract.baseSalary
+    ?? contract.gehalt
+    ?? 0
   ) || 0;
-  return {
+  const merged = {
     ...emp,
     ...contract,
-    badgeId: pick(emp.badgeId, emp.id, contract.badgeId, contract.employeeId, contract.id),
+    badgeId: pick(emp.badgeId, emp.id, contract.badgeId, contract.employeeId, contract.workerId, contract.id),
     name: pick(emp.name, resolveName(emp), resolveName(contract)),
     firstName: pick(emp.firstName, emp.vorname, contract.firstName, contract.vorname),
     lastName: pick(emp.lastName, emp.nachname, contract.lastName, contract.nachname),
-    taxClass: pick(emp.taxClass, contract.taxClass, contract.stkl),
-    healthFund: pick(emp.healthFund, contract.healthFund, contract.krankenkasse, contract.kk),
-    insuranceNo: pick(emp.insuranceNo, contract.insuranceNo, contract.svNr, contract.socialSecurityNo),
+    taxClass: pick(emp.taxClass, contract.taxClass, contract.stkl, contract.steuerklasse),
+    healthFund: pick(
+      emp.healthFund,
+      contract.healthFund,
+      contract.krankenkasse,
+      contract.kk,
+      health.name,
+      health.fund,
+      health.krankenkasse
+    ),
+    insuranceNo: pick(
+      emp.insuranceNo,
+      contract.insuranceNo,
+      contract.svNr,
+      contract.socialSecurityNo,
+      contract.socialSecurityNumber,
+      social.number,
+      social.nr,
+      social.svNr
+    ),
     birthDate: pick(emp.birthDate, contract.birthDate, contract.geburtsdatum),
     entryDate: pick(emp.entryDate, contract.entryDate, contract.startDate, contract.eintritt),
-    bankName: pick(bank.name, bank.bankName, contract.bankName),
-    bankIban: pick(bank.iban, bank.bankIban, contract.iban, contract.bankIban),
+    bankName: pick(bank.name, bank.bankName, bank.bank, bank.institut, contract.bankName),
+    bankIban: pick(bank.iban, bank.bankIban, bank.IBAN, contract.iban, contract.bankIban),
     bank: bank,
     grossSalary: amount || undefined,
     wageItems: amount
@@ -248,6 +277,7 @@ function flattenContract(contract = {}) {
       : (Array.isArray(contract.wageItems) ? contract.wageItems : undefined),
     source: "contract",
   };
+  return merged;
 }
 
 function resolveName(obj = {}) {
@@ -259,16 +289,51 @@ function resolveName(obj = {}) {
   );
 }
 
-/** Prefer one employee matching badge/id from a list. */
+/** Score how useful a pulled row is (prefer full contracts over id-only stubs). */
+export function employeeRowRichness(row) {
+  if (!row || typeof row !== "object") return 0;
+  const n = normalizeEmployeeRecord(row);
+  let score = 0;
+  if (n.name) score += 2;
+  if (n.insuranceNo) score += 3;
+  if (n.healthFund) score += 3;
+  if (n.bankIban || n.bankName) score += 3;
+  if (n.taxClass) score += 1;
+  if (n.grossSalary || (Array.isArray(row.wageItems) && row.wageItems.length)) score += 4;
+  if (n.address) score += 1;
+  if (row.source === "contract" || row.salary || row.gehalt || row.contract) score += 2;
+  return score;
+}
+
+/** Prefer one employee matching badge/id; among matches, richest wins. */
 export function pickEmployeeRow(rows, employeeId) {
   const eid = normalizeEmployeeId(employeeId);
   if (!rows?.length) return null;
-  if (!eid) return rows[0];
-  return rows.find((row) => {
+  const scored = rows.map((row) => {
     const n = normalizeEmployeeRecord(row);
     const id = normalizeEmployeeId(n.badgeId || row.badgeId || row.id || row.employeeId || "");
-    return id && id === eid;
-  }) || rows[0];
+    const idMatch = !eid || (id && id === eid);
+    return { row, idMatch, richness: employeeRowRichness(row) };
+  });
+  const matches = scored.filter((s) => s.idMatch);
+  const pool = matches.length ? matches : scored;
+  pool.sort((a, b) => b.richness - a.richness);
+  return pool[0]?.row || rows[0];
+}
+
+/** Snapshot of which master fields a row actually carries (no secret values). */
+export function employeeRowFieldFlags(row) {
+  const n = normalizeEmployeeRecord(row || {});
+  return {
+    name: Boolean(n.name),
+    insuranceNo: Boolean(n.insuranceNo),
+    healthFund: Boolean(n.healthFund),
+    bankName: Boolean(n.bankName),
+    bankIban: Boolean(n.bankIban),
+    taxClass: Boolean(n.taxClass),
+    grossSalary: Boolean(n.grossSalary || (Array.isArray(row?.wageItems) && row.wageItems.some((w) => Number(w?.amount) > 0))),
+    richness: employeeRowRichness(row),
+  };
 }
 
 /**
@@ -349,7 +414,12 @@ export async function pullEmployeeBundle({ companyId, employeeId, period } = {})
 
   const attempts = [];
   const collected = [];
+  let bestUrl = null;
+  let bestKeySource = null;
+  let bestRaw = null;
 
+  // Collect from ALL reachable endpoints, then pick the richest matching row.
+  // Returning on first thin list item was causing empty Stammdaten merges.
   for (const path of candidates) {
     const result = await platformGetJson(path, {
       query: {
@@ -367,19 +437,9 @@ export async function pullEmployeeBundle({ companyId, employeeId, period } = {})
     const rows = collectEmployeesFromPayload(result.data);
     if (rows.length) {
       collected.push(...rows);
-      const match = pickEmployeeRow(rows, eid);
-      if (match) {
-        return {
-          ok: true,
-          employee: normalizeEmployeeRecord(match),
-          row: match,
-          rows,
-          raw: result.data,
-          url: result.url,
-          keySource: result.keySource,
-          attempts,
-        };
-      }
+      bestUrl = result.url;
+      bestKeySource = result.keySource;
+      bestRaw = result.data;
     }
   }
 
@@ -390,13 +450,21 @@ export async function pullEmployeeBundle({ companyId, employeeId, period } = {})
       employee: normalizeEmployeeRecord(match),
       row: match,
       rows: collected,
+      fieldFlags: employeeRowFieldFlags(match),
+      raw: bestRaw,
+      url: bestUrl,
+      keySource: bestKeySource,
       attempts,
     };
   }
 
+  const authOnly = attempts.length > 0 && attempts.every((a) => a.status === 401 || a.status === 403);
   return {
     ok: false,
-    error: "Mitarbeiter/Vertrag nicht per GET gefunden",
+    error: authOnly
+      ? "unauthorized"
+      : "Mitarbeiter/Vertrag nicht per GET gefunden",
+    authDenied: authOnly,
     attempts,
   };
 }

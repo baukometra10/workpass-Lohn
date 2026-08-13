@@ -52,5 +52,36 @@ const inline = extractInlineReply({
 assert(inline?.hubProfile?.logoUrl?.includes("logo.png"), "logo from inline");
 assert(inline?.employees?.length === 1, "employees inline");
 
+console.log("\n=== nested social/health/bank ===");
+const nested = collectEmployeesFromPayload({
+  contract: {
+    employeeId: "BP-X",
+    employee: { firstName: "Nora", lastName: "Klein" },
+    socialInsurance: { number: "12121212A123" },
+    healthInsurance: { name: "AOK Plus" },
+    bankAccount: { name: "Commerzbank", iban: "DE44500105175407324931" },
+    compensation: { monthly: 4100 },
+  },
+});
+assert(nested[0].insuranceNo?.includes("12121212"), "SV nested");
+assert(nested[0].healthFund === "AOK Plus", "KK nested");
+assert(nested[0].bankIban?.startsWith("DE44"), "IBAN nested");
+assert(Number(nested[0].wageItems?.[0]?.amount) === 4100, "monthly salary");
+
+console.log("\n=== richness prefers full contract ===");
+const rich = pickEmployeeRow([
+  { badgeId: "BP-X", name: "Nora Klein" },
+  {
+    badgeId: "BP-X",
+    name: "Nora Klein",
+    insuranceNo: "12121212A123",
+    healthFund: "AOK",
+    bankIban: "DE44",
+    wageItems: [{ amount: 4100 }],
+    source: "contract",
+  },
+], "BP-X");
+assert(rich.insuranceNo === "12121212A123", "picked rich row");
+
 console.log(`\n${failed ? "FAILED" : "OK"} · passed=${passed} failed=${failed}`);
 process.exit(failed ? 1 : 0);
