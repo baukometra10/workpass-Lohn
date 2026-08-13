@@ -2881,7 +2881,6 @@
           }),
         });
         delivered = Number(ship?.delivered || 0);
-        const pendingPull = Number(ship?.replay?.remaining ?? ship?.results?.filter?.((r) => r.pendingPull)?.length || 0);
         const whFail = Number(ship?.failed || ship?.replay?.failed || 0);
         if (delivered > 0) {
           toast(
