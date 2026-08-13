@@ -476,6 +476,8 @@
       ? periodInput.value
       : currentPayrollPeriod();
     if ($("payrollMonth")) $("payrollMonth").value = period;
+    if ($("portalPeriod") && !$("portalPeriod").value) $("portalPeriod").value = period;
+    syncLocalizedMonthLabels();
     try {
       const [emps, month, arch, msgs, sync, automation, branding, completeness] = await Promise.all([
         apiFetch(`/v1/portal/employees?period=${encodeURIComponent(period)}`),
@@ -567,7 +569,10 @@
       const totalsCard = $("portalTotalsCard");
       if (totalsCard) {
         totalsCard.hidden = false;
-        if ($("portalTotalsPeriod")) $("portalTotalsPeriod").textContent = period;
+        if ($("portalTotalsPeriod")) {
+          $("portalTotalsPeriod").textContent =
+            window.WorkPassI18n?.formatMonthYear?.(period) || period;
+        }
         if ($("portalTotalsHint")) {
           $("portalTotalsHint").textContent = cur.total
             ? uiT("portal.totalsHintCount", "{count} Abrechnung(en) · {status}")
@@ -725,6 +730,7 @@
           btn.addEventListener("click", () => {
             if ($("payrollMonth")) $("payrollMonth").value = btn.dataset.period;
             if ($("portalPeriod")) $("portalPeriod").value = btn.dataset.period;
+            syncLocalizedMonthLabels();
             loadPortalDashboard(true);
             loadApiInbox(true);
           });
@@ -1547,6 +1553,7 @@
         });
       }
       renderMonthCloseStatus(data.close || data);
+      await releasePendingCalculatedJobs(period);
       await loadPortalDashboard(true);
       await loadApiInbox(true);
       await loadPlatformMessages(true);
@@ -2593,11 +2600,11 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.41.0</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.42.0</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))
-                .replace("{period}", currentPayrollPeriod()))}</small>
+                .replace("{period}", (window.WorkPassI18n?.formatMonthYear?.(currentPayrollPeriod()) || currentPayrollPeriod())))}</small>
             </div>
             <div class="month-close-actions portal-primary-actions">
               <button type="button" class="primary glossy portal-cta-sync" id="btnPortalSyncTop">${esc(t("sync.now", "Jetzt synchronisieren"))}</button>
@@ -2773,6 +2780,9 @@
         "platform"
       );
       setModePill("API-Job", "Vom Bridge-Server geöffnet – prüfen & freigeben");
+      if (companyPortalId && job?.status === "calculated" && !(job?.errors || []).length) {
+        await releaseApiPayrollJob(jobId, { silent: true });
+      }
     } catch (e) {
       const msg = String(e.message || e);
       if (/not_found|nicht gefunden|demo_job/i.test(msg)) {
@@ -2783,17 +2793,53 @@
     }
   }
 
-  async function releaseApiPayrollJob(jobId) {
-    if (!jobId) return;
-    const go = window.confirm("Freigabe an die Plattform?\nDie Plattform stellt dem Mitarbeiter die Abrechnung zu.");
-    if (!go) return;
+  async function releaseApiPayrollJob(jobId, opts = {}) {
+    if (!jobId) return null;
+    const silent = Boolean(opts.silent) || Boolean(companyPortalId);
+    if (!silent) {
+      const go = window.confirm("Freigabe an die Plattform?\nDie Plattform stellt dem Mitarbeiter die Abrechnung zu.");
+      if (!go) return null;
+    }
     try {
       const data = await apiFetch(`/v1/payroll/${encodeURIComponent(jobId)}/release`, { method: "POST", body: "{}" });
       if (!data.ok) throw new Error(data.error || "Freigabe fehlgeschlagen");
-      setStatus(`Freigegeben → Plattform/Mitarbeiter-App · ${jobId}`, true);
-      await loadApiInbox();
+      if (!silent) setStatus(`Freigegeben → Plattform/Mitarbeiter-App · ${jobId}`, true);
+      else setStatus(uiT("portal.autoReleased", "Abrechnung sofort an die Plattform gesendet."), true);
+      await loadApiInbox(true).catch(() => {});
+      return data;
     } catch (e) {
-      window.alert(`Freigabe fehlgeschlagen:\n${e.message}`);
+      if (!silent) window.alert(`Freigabe fehlgeschlagen:\n${e.message}`);
+      else toast(e.message || uiT("toast.error", "Bitte ergänzen"), "error");
+      return null;
+    }
+  }
+
+  /** Firm portal: push every calculated payslip to the platform immediately. */
+  async function releasePendingCalculatedJobs(period) {
+    if (!companyPortalId) return { released: 0 };
+    const p = period || currentPayrollPeriod();
+    try {
+      const data = await apiFetch("/v1/payroll/month-close", {
+        method: "POST",
+        body: JSON.stringify({
+          companyId: companyPortalId,
+          period: p,
+          pull: false,
+          autoRelease: true,
+          notify: true,
+        }),
+      });
+      const n = Array.isArray(data?.newlyReleased) ? data.newlyReleased.length : Number(data?.released || 0);
+      if (n > 0) {
+        toast(
+          uiT("portal.autoReleasedN", "{n} Abrechnung(en) an die Plattform gesendet.")
+            .replace("{n}", String(n)),
+          "ok"
+        );
+      }
+      return { released: n || 0, data };
+    } catch (e) {
+      return { released: 0, error: e.message };
     }
   }
 
@@ -3233,15 +3279,32 @@
       if ($("portalPeriod")?.value && $("payrollMonth")) {
         $("payrollMonth").value = $("portalPeriod").value;
       }
+      syncLocalizedMonthLabels();
       loadPortalDashboard();
       loadApiInbox(true);
       loadPlatformMessages(true);
+    });
+    $("payrollMonth")?.addEventListener("change", () => {
+      if ($("portalPeriod") && $("payrollMonth").value) {
+        $("portalPeriod").value = $("payrollMonth").value;
+      }
+      // keep labels in sync without rebuilding options mid-interaction
+      const bannerMonth = document.querySelector("#companyPortalBanner .portal-brand-block small");
+      const fmt = window.WorkPassI18n?.formatMonthYear;
+      const period = currentPayrollPeriod();
+      if (bannerMonth) {
+        bannerMonth.textContent = uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
+          .replace("{base}", uiT("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
+          .replace("{monthLabel}", uiT("lohn.month", "Monat"))
+          .replace("{period}", (fmt ? fmt(period) : period));
+      }
     });
     $("portalPeriod")?.addEventListener("change", () => {
       if ($("payrollMonth") && $("portalPeriod").value) {
         $("payrollMonth").value = $("portalPeriod").value;
       }
     });
+    // remove obsolete input listeners for native month overlay
     $("btnPreviewEmpfang")?.addEventListener("click", () => {
       setRecvMode("file");
       $("secEmpfang")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -3401,6 +3464,38 @@
     }
   }
 
+  function syncLocalizedMonthLabels() {
+    const fmt = window.WorkPassI18n?.formatMonthYear;
+    const build = window.WorkPassI18n?.buildMonthOptions;
+    const fillSelect = (sel) => {
+      if (!sel) return;
+      const current = String(sel.value || "").trim()
+        || String(sel.dataset.period || "").trim()
+        || currentPayrollPeriod();
+      const opts = build ? build(current) : [];
+      if (!opts.length) return;
+      const seen = new Set(opts.map((o) => o.value));
+      if (current && !seen.has(current)) {
+        opts.unshift({ value: current, label: fmt ? fmt(current) : current });
+      }
+      const html = opts.map((o) =>
+        `<option value="${esc(o.value)}"${o.value === current ? " selected" : ""}>${esc(o.label)}</option>`
+      ).join("");
+      sel.innerHTML = html;
+      if (current) sel.value = current;
+    };
+    fillSelect($("payrollMonth"));
+    fillSelect($("portalPeriod"));
+    const bannerMonth = document.querySelector("#companyPortalBanner .portal-brand-block small");
+    if (bannerMonth && !bannerMonth.closest(".company-portal-banner")?.hidden) {
+      const period = currentPayrollPeriod();
+      bannerMonth.textContent = uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
+        .replace("{base}", uiT("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
+        .replace("{monthLabel}", uiT("lohn.month", "Monat"))
+        .replace("{period}", (fmt ? fmt(period) : period));
+    }
+  }
+
   function bootI18n() {
     document.body.classList.add("lohn-desktop");
     if (!window.WorkPassI18n) return;
@@ -3410,9 +3505,11 @@
     window.WorkPassI18n.mountSelect(host, "wpLangSelectLohn");
     window.WorkPassI18n.applyDom(document);
     applyPortalUiCopy();
+    syncLocalizedMonthLabels();
     window.addEventListener("workpass:locale", () => {
       applyPortalUiCopy();
       window.WorkPassI18n?.applyDom?.(document);
+      syncLocalizedMonthLabels();
       if (companyPortalId) {
         loadPortalDashboard(true).catch(() => {});
       }

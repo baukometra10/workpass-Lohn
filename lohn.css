@@ -183,11 +183,17 @@ body.company-portal .wp-install-btn:not([hidden]) .i18n-text {
 /* Appbar grid: keep brand + actions readable; never hide shell */
 @media (max-width: 1400px) {
   .lohn-appbar {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(140px, 170px) minmax(0, 1fr);
     gap: 8px;
+    align-items: center;
   }
   .lohn-brand-text span {
     display: none;
+  }
+  body.company-portal .lohn-appbar {
+    grid-template-columns: auto minmax(140px, 168px) minmax(0, 1fr);
+    padding: 8px 12px;
+    min-height: 0;
   }
 }
 @media (max-width: 900px) {
@@ -209,6 +215,18 @@ body.company-portal .wp-install-btn:not([hidden]) .i18n-text {
     gap: 6px;
   }
   .lohn-context .ctx-field span { display: none; }
+  body.company-portal .lohn-appbar {
+    grid-template-columns: auto 1fr auto;
+    gap: 6px;
+  }
+  body.company-portal .lohn-brand { grid-column: 1; }
+  body.company-portal .lohn-context {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+  body.company-portal .lohn-actions {
+    grid-column: 3;
+  }
   .lohn-actions-compact .btn {
     min-height: 34px;
     padding: 6px 10px;
@@ -272,17 +290,106 @@ body.company-portal .wp-install-btn:not([hidden]) .i18n-text {
 
 .lohn-context { display: flex; gap: 8px; align-items: end; }
 .ctx-field { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; margin: 0; }
-.ctx-field.ctx-month { flex: 0 0 128px; }
+.ctx-field.ctx-month { flex: 0 0 148px; }
 .ctx-field span {
   font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.08em;
   color: var(--muted); font-weight: 600;
 }
 .ctx-field select,
-.ctx-field input {
+.ctx-field input,
+.month-picker {
   width: 100%; padding: 8px 9px;
   border: 1px solid var(--border); border-radius: 10px;
   background: #0a101c; color: #fff; font: inherit; font-size: 0.82rem;
   color-scheme: dark;
+}
+  /* Month select: localized Gregorian month names (not native type=month). */
+.month-select,
+.ctx-field select.month-select {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 9px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #0a101c;
+  color: #fff;
+  font: inherit;
+  font-size: 0.82rem;
+  color-scheme: dark;
+}
+body.theme-light .month-select,
+body.theme-light .ctx-field select.month-select {
+  background: #fff;
+  color: #111827;
+  border-color: rgba(15, 23, 42, 0.16);
+  color-scheme: light;
+}
+body.company-portal .month-select {
+  min-height: 34px;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+}
+.month-picker {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+  min-height: 38px;
+  box-sizing: border-box;
+}
+.month-picker-label {
+  position: absolute;
+  inset: 0 28px 0 0;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  pointer-events: none;
+  z-index: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font: 600 0.82rem/1.2 var(--sans);
+  color: #fff;
+}
+.month-picker input[type="month"] {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 38px;
+  padding: 8px 9px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  font: inherit;
+  font-size: 0.82rem;
+  box-sizing: border-box;
+  color-scheme: dark;
+}
+.month-picker input[type="month"]::-webkit-calendar-picker-indicator {
+  opacity: 0.9;
+  cursor: pointer;
+  filter: invert(0.9);
+}
+body.is-rtl .month-picker-label {
+  inset: 0 0 0 28px;
+  justify-content: flex-end;
+}
+body.theme-light .month-picker {
+  background: #fff;
+  color: #111827;
+  border-color: rgba(15, 23, 42, 0.16);
+}
+body.theme-light .month-picker-label {
+  color: #111827;
+}
+body.theme-light .month-picker input[type="month"] {
+  color: transparent;
+  color-scheme: light;
+}
+body.theme-light .month-picker input[type="month"]::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: 0.75;
 }
 /* Native <option> lists must stay high-contrast (Windows often paints dark bg). */
 .ctx-field select option,
@@ -985,7 +1092,7 @@ textarea { min-height: 58px; resize: vertical; }
     overflow: visible;
     flex: none;
   }
-  /* Filled payslip first; empty A4 must NOT create a huge blank band at the top */
+  /* Keep form/controls first – A4 preview below (no huge blank band on top) */
   .lohn-preview {
     order: 1;
     height: auto;
@@ -994,12 +1101,12 @@ textarea { min-height: 58px; resize: vertical; }
     padding: 6px 8px 10px;
   }
   .lohn-preview:has(.preview-stage:not(.is-empty)) {
-    order: -1;
-    max-height: min(78vh, 920px);
+    order: 1;
+    max-height: min(58vh, 720px);
   }
   .lohn-preview:has(.preview-stage.is-empty) {
     order: 2;
-    max-height: 42vh;
+    max-height: 28vh;
   }
   .lohn-form {
     order: 0;
@@ -1331,11 +1438,11 @@ body.company-portal .lohn-layout {
   grid-template-columns: minmax(460px, 1.2fr) minmax(0, 1fr);
 }
 body.company-portal .lohn-form {
-  padding: 0 18px 28px;
-  gap: 12px;
+  padding: 4px 16px 28px;
+  gap: 10px;
 }
 body.company-portal .lohn-form-sticky {
-  padding-bottom: 10px;
+  padding-bottom: 4px;
 }
 body.company-portal .missing-panel {
   display: none !important;
@@ -1397,12 +1504,12 @@ body.company-portal .month-close-actions {
     max-height: none;
   }
   body.company-portal .lohn-preview:has(.preview-stage:not(.is-empty)) {
-    order: -1;
-    max-height: min(78vh, 920px);
+    order: 1;
+    max-height: min(52vh, 640px);
   }
   body.company-portal .lohn-preview:has(.preview-stage.is-empty) {
     order: 2;
-    max-height: 36vh;
+    max-height: 22vh;
   }
   body.company-portal .lohn-form {
     order: 0;
@@ -1449,13 +1556,13 @@ body.company-portal .lohn-layout {
   }
 }
 body.company-portal .lohn-form {
-  padding: 0 20px 36px;
-  gap: 14px;
+  padding: 4px 16px 28px;
+  gap: 10px;
   background:
     linear-gradient(180deg, rgba(11, 18, 32, 0.92), rgba(10, 16, 28, 0.88));
 }
 body.company-portal .lohn-form-sticky {
-  padding: 10px 0 8px;
+  padding: 4px 0 4px;
 }
 body.company-portal .lohn-status {
   border-radius: 12px;
@@ -1900,17 +2007,17 @@ body.company-portal .form-jump a.is-active {
   border-color: rgba(93, 180, 255, 0.45);
 }
 body.company-portal .lohn-form {
-  scroll-padding-top: 72px;
+  scroll-padding-top: 56px;
 }
 body.company-portal .lohn-form-sticky {
-  padding: 8px 0 6px;
+  padding: 4px 0 4px;
 }
 body.company-portal .form-section {
-  scroll-margin-top: 72px;
-  padding-top: 12px;
+  scroll-margin-top: 56px;
+  padding-top: 10px;
 }
 body.company-portal .company-portal-banner {
-  margin-top: 8px;
+  margin-top: 4px;
 }
 body.company-portal .wp-install-btn {
   white-space: nowrap;
@@ -2083,6 +2190,50 @@ body.company-portal #btnFocusEmployee,
 body.company-portal #secCheck,
 body.company-portal .lohn-context .ctx-field:first-child {
   display: none !important;
+}
+body.company-portal .lohn-appbar {
+  grid-template-columns: auto minmax(148px, 180px) minmax(0, 1fr);
+  gap: 8px;
+  padding: 6px 12px;
+  min-height: 0;
+  align-items: end;
+}
+body.company-portal .lohn-brand {
+  gap: 2px;
+}
+body.company-portal .lohn-brand-text span {
+  display: none;
+}
+body.company-portal .lohn-brand-text strong {
+  font-size: 0.98rem;
+  line-height: 1.1;
+}
+body.company-portal .mode-pill {
+  margin-top: 0;
+  padding: 2px 8px;
+  font-size: 0.55rem;
+}
+body.company-portal .lohn-context {
+  align-items: end;
+  min-width: 0;
+}
+body.company-portal .ctx-field {
+  gap: 2px;
+}
+body.company-portal .ctx-field span {
+  font-size: 0.55rem;
+  letter-spacing: 0.06em;
+}
+body.company-portal .month-picker,
+body.company-portal .month-picker input[type="month"] {
+  min-height: 34px;
+  height: 34px;
+}
+body.company-portal .company-portal-banner {
+  margin: 4px 10px 0;
+}
+body.company-portal .company-portal-banner-inner {
+  padding: 8px 12px;
 }
 
 /* Firm portal: keep full Lohn section navigation (Empfang / Firma / Lohnarten / Auszahlung / Archiv) */

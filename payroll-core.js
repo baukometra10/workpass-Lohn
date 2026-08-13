@@ -242,8 +242,7 @@
 
   function buildHintsText(state) {
     const lines = [];
-    const hours = num(state.workHours);
-    const days = num(state.workDays);
+    const { hours, days } = resolveAttendance(state);
     if (days > 0) lines.push(`Arbeitstage: ${Math.round(days)}`);
     if (hours > 0) lines.push(`Stunden: ${formatNumber(hours)}`);
     if (String(state.taxClass || "").trim()) lines.push(`StKl ${taxClassToDisplay(state.taxClass)}`);
@@ -253,6 +252,64 @@
     const note = String(state.note || "").trim();
     if (note) lines.push(note);
     return lines.join("\n");
+  }
+
+  /** Recover hours/days; heal legacy typo where hours were stored in workDays. */
+  function resolveAttendance(state) {
+    let hours = num(state.workHours);
+    let days = num(state.workDays);
+    if (hours <= 0 && days > 0 && (!Number.isInteger(days) || days > 31)) {
+      hours = days;
+      days = 0;
+    }
+    if (hours <= 0) {
+      for (const w of state.wageItems || []) {
+        const q = num(w.quantity ?? w.hours ?? w.anzahl ?? w.stunden);
+        if (q > 1 || (q > 0 && num(w.factor ?? w.rate) > 0)) {
+          hours = q;
+          break;
+        }
+      }
+    }
+    if (days <= 0 && hours > 0 && Number.isInteger(hours) && hours <= 31) {
+      // keep days empty – integer hours alone is not days
+    }
+    return { hours, days };
+  }
+
+  function formatKkPercent(state) {
+    if (num(state.healthPercent) > 0) return formatNumber(num(state.healthPercent));
+    const add = num(state.healthAdditionalPercent)
+      || (window.LEGAL_CONFIG?.socialSecurity?.healthAdditionalAvg)
+      || 2.9;
+    const baseEmp = (window.LEGAL_CONFIG?.socialSecurity?.health?.employee) || 7.3;
+    // Show employee KV share (half of 14.6 + half Zusatz) when KK known or SV applies
+    if (String(state.healthFund || "").trim() || num(state.grossSalary) > 0 || (state.wageItems || []).length) {
+      return formatNumber(baseEmp + add / 2);
+    }
+    return "";
+  }
+
+  function resolvePgrs(state) {
+    const explicit = String(state.personengruppe || state.pgrs || "").trim();
+    if (explicit) return explicit;
+    const et = String(state.employmentType || "").toLowerCase();
+    if (et === "minijob" || et === "geringfuegig" || et === "geringfügig") return "109";
+    if (et === "midijob") return "101";
+    // Regular SV-pflichtig – DATEV default
+    if (String(state.employeeName || state.employeeId || "").trim()) return "101";
+    return "";
+  }
+
+  function resolveBgrs(state) {
+    const explicit = String(state.beitragsgruppe || state.bgrs || "").trim();
+    if (explicit) return explicit;
+    const et = String(state.employmentType || "").toLowerCase();
+    if (et === "minijob" || et === "geringfuegig" || et === "geringfügig") return "6500";
+    if (String(state.healthFund || "").trim() || num(state.grossSalary) > 0 || (state.wageItems || []).length) {
+      return "1111"; // KV+RV+AV+PV voll
+    }
+    return "";
   }
 
   function buildSheetData(state, payroll, options) {
@@ -321,29 +378,38 @@
       birth: formatDateShortDatev(state.employeeBirthDate),
       stkl: (state.employeeName || empId) ? taxClassToDisplay(state.taxClass) : "",
       konf: (() => {
-        const c = String(state.churchConfession || "").trim().toLowerCase();
-        if (c === "rk" || c === "römisch-katholisch" || c === "katholisch") return "rk";
-        if (c === "ev" || c === "evangelisch") return "ev";
+        const c = String(state.churchConfession || state.konfession || state.religion || "").trim().toLowerCase();
+        if (c === "rk" || c === "römisch-katholisch" || c === "roemisch-katholisch" || c === "katholisch" || c === "rc") return "rk";
+        if (c === "ev" || c === "evangelisch" || c === "protestant") return "ev";
         if (num(state.churchTaxRate) > 0) return c || "ev";
         return "";
       })(),
-      stTg: num(state.workDays) > 0 ? String(state.workDays) : "",
+      stTg: (() => {
+        const { days } = resolveAttendance(state);
+        return days > 0 ? String(days) : "";
+      })(),
       svNr: String(state.employeeInsuranceNo || ""),
       kkName: String(state.healthFund || ""),
-      kkPct: useRef ? DATEV_REFERENCE_DISPLAY.kkPctDisplay : (num(state.healthPercent) > 0
-        ? formatNumber(num(state.healthPercent))
-        : (num(state.healthAdditionalPercent) > 0 ? formatNumber(14.6 / 2 + num(state.healthAdditionalPercent) / 2) : "")),
-      pgrs: ref ? ref.pgrs : (String(state.departmentNo || "").trim() || ""),
-      bgrs: ref ? ref.bgrs : "",
-      svTg: num(state.workDays) > 0 ? String(state.workDays) : "",
+      kkPct: useRef ? DATEV_REFERENCE_DISPLAY.kkPctDisplay : formatKkPercent(state),
+      pgrs: ref ? ref.pgrs : resolvePgrs(state),
+      bgrs: ref ? ref.bgrs : resolveBgrs(state),
+      svTg: (() => {
+        const { days } = resolveAttendance(state);
+        return days > 0 ? String(days) : "";
+      })(),
       vacPrev: "",
       vacEnt: "",
-      workDays: num(state.workDays) > 0 ? String(Math.round(num(state.workDays))) : "",
-      workHours: num(state.workHours) > 0
-        ? (Number.isInteger(num(state.workHours))
-          ? String(num(state.workHours))
-          : num(state.workHours).toLocaleString("de-DE", { maximumFractionDigits: 2 }))
-        : "",
+      workDays: (() => {
+        const { days } = resolveAttendance(state);
+        return days > 0 ? String(Math.round(days)) : "";
+      })(),
+      workHours: (() => {
+        const { hours } = resolveAttendance(state);
+        if (hours <= 0) return "";
+        return Number.isInteger(hours)
+          ? String(hours)
+          : hours.toLocaleString("de-DE", { maximumFractionDigits: 2 });
+      })(),
       sender: formatEmployerSenderLine(resolveEmployerSeller(state)),
       empMeta: (() => {
         if (!printPersNr) return "";
@@ -436,6 +502,8 @@
       factorValue: "1",
       netDeductions: "",
       departmentNo: "",
+      personengruppe: "",
+      beitragsgruppe: "",
       workDays: "",
       workHours: "",
       grossSalary: "",
@@ -683,8 +751,12 @@
         payrollMonth: String(period).trim(),
         taxClass: String(employee.taxClass || employee.stkl || "I").trim(),
         churchTaxRate: String(employee.churchTaxRate ?? employee.kist ?? "0"),
+        churchConfession: String(employee.churchConfession || employee.konfession || employee.religion || employee.konf || "").trim(),
         healthFund: String(employee.healthFund || employee.kk || "").trim(),
-        healthPercent: employee.healthPercent != null ? String(employee.healthPercent) : "",
+        healthPercent: employee.healthPercent != null ? String(employee.healthPercent) : (employee.kkPercent != null ? String(employee.kkPercent) : ""),
+        healthAdditionalPercent: employee.healthAdditionalPercent != null ? String(employee.healthAdditionalPercent) : "",
+        personengruppe: String(employee.personengruppe || employee.pgrs || "").trim(),
+        beitragsgruppe: String(employee.beitragsgruppe || employee.bgrs || "").trim(),
         workDays: attendance.days != null ? String(attendance.days) : (employee.workDays != null ? String(employee.workDays) : ""),
         workHours: attendance.hours != null ? String(attendance.hours) : (employee.workHours != null ? String(employee.workHours) : ""),
         bankName: String(bank.name || bank.bankName || "").trim(),
@@ -766,7 +838,9 @@
       netDeductions: p.netDeductions ?? raw.netDeductions ?? d.netDeductions,
       departmentNo: p.departmentNo ?? raw.departmentNo ?? d.departmentNo,
       workDays: p.workDays ?? raw.workDays ?? d.workDays,
-      workDays: p.workHours ?? raw.workHours ?? d.workHours,
+      workHours: p.workHours ?? raw.workHours ?? d.workHours,
+      personengruppe: p.personengruppe ?? raw.personengruppe ?? p.pgrs ?? raw.pgrs ?? d.personengruppe,
+      beitragsgruppe: p.beitragsgruppe ?? raw.beitragsgruppe ?? p.bgrs ?? raw.bgrs ?? d.beitragsgruppe,
       grossSalary: p.grossSalary ?? raw.grossSalary ?? d.grossSalary,
       hourlyRate: p.hourlyRate ?? raw.hourlyRate ?? d.hourlyRate,
       bankName: p.bankName ?? raw.bankName ?? d.bankName,
@@ -783,6 +857,13 @@
     if (!d.mandantId && d.meta?.companyId) d.mandantId = d.meta.companyId;
     if (d.hourlyRate && !d.meta) d.meta = {};
     if (d.hourlyRate && !d.meta.hourlyRate) d.meta.hourlyRate = Number(d.hourlyRate) || d.hourlyRate;
+    // Heal legacy typo: hours were stored under workDays
+    const h = Number(d.workHours) || 0;
+    const days = Number(d.workDays) || 0;
+    if (h <= 0 && days > 0 && (!Number.isInteger(days) || days > 31)) {
+      d.workHours = String(days);
+      d.workDays = "";
+    }
     return d;
   }
 

@@ -18,6 +18,47 @@
     pl: "Polski",
   };
 
+  /** Gregorian (solar) month names for UI chrome – payslip print stays German elsewhere. */
+  const MONTH_NAMES = {
+    de: ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
+    en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    tr: ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"],
+    ar: ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"],
+    fr: ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"],
+    es: ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"],
+    it: ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"],
+    pl: ["styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec", "sierpień", "wrzesień", "październik", "listopad", "grudzień"],
+  };
+
+  function formatMonthYear(ym, locale) {
+    const raw = String(ym || "").trim();
+    if (!/^\d{4}-\d{2}$/.test(raw)) return raw;
+    const [ys, ms] = raw.split("-");
+    const monthIdx = Number(ms) - 1;
+    const loc = normalize(locale || current) || "de";
+    const names = MONTH_NAMES[loc] || MONTH_NAMES.de;
+    const name = names[monthIdx] || ms;
+    return `${name} ${ys}`;
+  }
+
+  /** Build YYYY-MM options around a center period (localized labels). */
+  function buildMonthOptions(centerYm, spanBefore = 18, spanAfter = 6) {
+    const center = /^\d{4}-\d{2}$/.test(String(centerYm || ""))
+      ? String(centerYm)
+      : (() => {
+          const n = new Date();
+          return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
+        })();
+    const [cy, cm] = center.split("-").map(Number);
+    const out = [];
+    for (let i = -spanBefore; i <= spanAfter; i++) {
+      const d = new Date(cy, cm - 1 + i, 1);
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      out.push({ value: ym, label: formatMonthYear(ym) });
+    }
+    return out;
+  }
+
   const dict = {
     de: {
       "auth.product": "WorkPass Steuerprogramm",
@@ -875,6 +916,7 @@
   window.WorkPassI18n = {
     SUPPORTED,
     LABELS,
+    MONTH_NAMES,
     t,
     init,
     setLocale,
@@ -885,5 +927,7 @@
     syncFromSession,
     normalize,
     detectBrowserLocale,
+    formatMonthYear,
+    buildMonthOptions,
   };
 })();
