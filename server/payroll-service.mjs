@@ -143,6 +143,12 @@ export async function ingestPayroll(payload, options = {}) {
     || /demo-batch|ohne echte plattform/i.test(String(payload?.note || ""))
   );
   state.mandantId = companyId;
+  if (!String(state.companyName || "").trim() && companyCheck.company?.name) {
+    state.companyName = companyCheck.company.name;
+  }
+  if (!String(state.seller || "").trim() && String(state.companyName || "").trim()) {
+    state.seller = state.companyName;
+  }
   state.meta = {
     ...(state.meta || {}),
     companyId,

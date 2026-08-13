@@ -249,9 +249,9 @@ function rebuildJob(job, state) {
     },
     company: {
       id: normalizeCompanyId(state.mandantId || job.company?.id || ""),
-      name: String(state.companyName || ""),
-      taxNumber: String(state.taxNumber || ""),
-      vatId: String(state.vatId || ""),
+      name: String(state.companyName || job.company?.name || ""),
+      taxNumber: String(state.taxNumber || job.company?.taxNumber || ""),
+      vatId: String(state.vatId || job.company?.vatId || ""),
     },
     period: String(state.payrollMonth || job.period || ""),
     status,
@@ -380,6 +380,9 @@ export async function enrichPayrollJob(jobId, options = {}) {
     fillEmpty(state, "companyName", job.company?.name);
     fillEmpty(state, "taxNumber", job.company?.taxNumber);
     fillEmpty(state, "vatId", job.company?.vatId);
+    if (!String(state.seller || "").trim() && String(state.companyName || job.company?.name || "").trim()) {
+      fillEmpty(state, "seller", state.companyName || job.company?.name);
+    }
   }
   const employeeId = normalizeEmployeeId(
     options.employeeId || state.badgeId || state.employeeId || job.employee?.badgeId || job.employee?.id || ""

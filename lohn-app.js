@@ -477,7 +477,7 @@
       : currentPayrollPeriod();
     if ($("payrollMonth")) $("payrollMonth").value = period;
     try {
-      const [emps, month, arch, msgs, sync, automation, branding] = await Promise.all([
+      const [emps, month, arch, msgs, sync, automation, branding, completeness] = await Promise.all([
         apiFetch(`/v1/portal/employees?period=${encodeURIComponent(period)}`),
         apiFetch(`/v1/portal/month?period=${encodeURIComponent(period)}&months=6`),
         apiFetch(`/v1/portal/archive?period=${encodeURIComponent(period)}`),
@@ -485,6 +485,7 @@
         apiFetch(`/v1/platform/status?period=${encodeURIComponent(period)}`).catch(() => null),
         apiFetch(`/v1/portal/automation-status?period=${encodeURIComponent(period)}`).catch(() => null),
         apiFetch("/v1/portal/branding").catch(() => null),
+        apiFetch(`/v1/portal/completeness?period=${encodeURIComponent(period)}`).catch(() => null),
       ]);
 
       const cur = month.current || {};
@@ -530,6 +531,7 @@
       }
 
       renderPortalReadiness(cur, emps);
+      renderPortalCompleteness(completeness);
       renderPortalBranding(branding);
       renderPortalDiagnosis(emps, cur);
       renderPortalHoursWait(cur, period);
@@ -954,6 +956,39 @@
       states: auto.steps || undefined,
     });
     if (phase === "done") hideMonthProgressSoon(2400);
+  }
+
+  function renderPortalCompleteness(data) {
+    const card = $("portalCompletenessCard");
+    const grid = $("portalCompletenessGrid");
+    if (!card || !grid) return;
+    if (!data?.ok) {
+      card.hidden = true;
+      return;
+    }
+    const t = data.totals || {};
+    card.hidden = false;
+    const cells = [
+      { label: uiT("portal.checkComplete", "Vollständig"), value: t.complete || 0, cls: "ok" },
+      { label: uiT("sync.waitingHoursShort", "warten auf Stunden"), value: t.waitingHours || 0, cls: t.waitingHours ? "warn" : "mute" },
+      { label: uiT("sync.chipSv", "SV"), value: t.missingSv || 0, cls: t.missingSv ? "warn" : "mute" },
+      { label: uiT("sync.chipKk", "KK"), value: t.missingKk || 0, cls: t.missingKk ? "warn" : "mute" },
+      { label: uiT("portal.checkLogo", "Logo"), value: data.branding?.hasLogo ? "✓" : "—", cls: data.branding?.hasLogo ? "ok" : "warn" },
+      { label: uiT("audit.released", "Freigegeben"), value: t.released || 0, cls: t.released ? "ok" : "mute" },
+    ];
+    grid.innerHTML = cells.map((c) => `
+      <div class="portal-ready-kpi is-${c.cls}">
+        <span>${esc(c.label)}</span>
+        <strong>${esc(String(c.value))}</strong>
+      </div>`).join("");
+    const badge = $("portalCompletenessBadge");
+    if (badge) {
+      badge.textContent = data.readyForMonthClose
+        ? uiT("portal.checkReady", "Monatsbereit")
+        : uiT("portal.checkOpen", "Noch Lücken");
+      badge.classList.toggle("is-ok", Boolean(data.readyForMonthClose));
+      badge.classList.toggle("is-error", !data.readyForMonthClose);
+    }
   }
 
   function renderPortalReadiness(cur = {}, emps = {}) {
@@ -2558,7 +2593,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.40.0</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.41.0</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))
@@ -2920,9 +2955,35 @@
       a.download = data.filename || `WorkPass_DATEV_${period}.csv`;
       a.click();
       URL.revokeObjectURL(a.href);
-      toast(uiT("portal.monthDatevOk", "DATEV-Monat exportiert ({n} Zeilen).").replace("{n}", String(data.lineCount)), "ok");
+      const warnN = (data.warnings || []).length;
+      toast(
+        uiT("portal.monthDatevOk", "DATEV-Monat exportiert ({n} Zeilen).").replace("{n}", String(data.lineCount))
+          + (warnN ? ` · ${warnN} ${uiT("portal.exportWarnings", "Hinweise")}` : ""),
+        warnN ? "info" : "ok"
+      );
     } catch (e) {
       toast(`${uiT("portal.monthDatevFail", "DATEV-Export fehlgeschlagen")}: ${e.message || e}`, "error");
+    }
+  }
+
+  async function exportMonthLodas() {
+    const period = currentPayrollPeriod();
+    try {
+      const data = await apiFetch(`/v1/portal/lodas-export?period=${encodeURIComponent(period)}`);
+      if (!data?.ok || !data.content) throw new Error(data?.error || "Kein Export");
+      if (!data.count) {
+        toast(uiT("portal.monthLodasEmpty", "Keine freigegebenen Abrechnungen für LODAS in diesem Monat."), "info");
+        return;
+      }
+      const blob = new Blob([data.content], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = data.filename || `WorkPass_LODAS_${period}.txt`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast(uiT("portal.monthLodasOk", "LODAS-Paket exportiert ({n} MA).").replace("{n}", String(data.count)), "ok");
+    } catch (e) {
+      toast(`${uiT("portal.monthLodasFail", "LODAS-Export fehlgeschlagen")}: ${e.message || e}`, "error");
     }
   }
 
@@ -3192,6 +3253,7 @@
     $("btnExportJson").addEventListener("click", exportJson);
     $("btnExportCsv")?.addEventListener("click", exportCsv);
     $("btnMonthDatevExport")?.addEventListener("click", exportMonthDatevCsv);
+    $("btnMonthLodasExport")?.addEventListener("click", exportMonthLodas);
     $("btnArchiveBatchPdf")?.addEventListener("click", exportArchiveBatchPdf);
     $("btnPullBranding")?.addEventListener("click", pullBrandingNow);
     $("btnChangePin")?.addEventListener("click", changePin);

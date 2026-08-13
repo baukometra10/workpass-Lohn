@@ -519,12 +519,25 @@ export async function runMonthClose(options = {}) {
   }
 
   const after = realPeriodJobs(companyId, period);
+  const syncStats = after.reduce((acc, j) => {
+    const hours = Number(j.state?.workHours) || 0;
+    const rate = Number(j.state?.meta?.hourlyRate || j.state?.hourlyRate) || 0;
+    const hasGross = (Array.isArray(j.state?.wageItems) && j.state.wageItems.some((w) => Number(w.amount) > 0))
+      || Number(j.state?.grossSalary) > 0
+      || (hours > 0 && rate > 0);
+    if (rate > 0 && hours <= 0 && !hasGross) acc.waitingHours += 1;
+    if (!String(j.state?.employeeInsuranceNo || "").trim()) acc.missingSv += 1;
+    if (!String(j.state?.healthFund || "").trim()) acc.missingKk += 1;
+    if (j.status === "released" || (j.status === "calculated" && !(j.errors || []).length && hasGross)) acc.ready += 1;
+    return acc;
+  }, { waitingHours: 0, missingSv: 0, missingKk: 0, ready: 0 });
   const hasWork = after.length > 0 || Boolean(batchIngest?.count);
   const softGapJobs = after.filter((j) => (j.printHints || []).length > 0).length;
   const partial = Boolean(
     (batchIngest && batchIngest.count > 0 && !batchIngest.ok)
     || after.some((j) => j.status === "error")
     || softGapJobs > 0
+    || syncStats.waitingHours > 0
     || (batchIngest?.results || []).some((r) => (r.printHints || []).length > 0)
   );
   const missingOnPlatform = !pull.skipped && !pull.ok && isMissingPlatformData(pull);
@@ -533,12 +546,19 @@ export async function runMonthClose(options = {}) {
   const ok = hasWork && releaseErrors.length === 0 && (!batchIngest || batchIngest.count > 0);
   const pullHint = humanizePullError(pull, period);
 
+  const gapSuffix = [
+    syncStats.waitingHours ? `${syncStats.waitingHours} warten auf Stunden` : "",
+    syncStats.missingSv ? `${syncStats.missingSv} ohne SV` : "",
+    syncStats.missingKk ? `${syncStats.missingKk} ohne KK` : "",
+  ].filter(Boolean).join(", ");
+
   const result = {
     ok,
     partial,
     waitingForPlatform,
     missingOnPlatform,
     incompleteAccepted: Boolean(pull.incomplete || partial),
+    syncStats,
     error: ok
       ? undefined
       : (!hasWork
@@ -563,6 +583,10 @@ export async function runMonthClose(options = {}) {
       calculated: after.filter((j) => j.status === "calculated").length,
       released: after.filter((j) => j.status === "released").length,
       error: after.filter((j) => j.status === "error").length,
+      ready: syncStats.ready,
+      waitingHours: syncStats.waitingHours,
+      missingSv: syncStats.missingSv,
+      missingKk: syncStats.missingKk,
     },
     newlyReleased: released,
     releaseErrors,
@@ -578,18 +602,22 @@ export async function runMonthClose(options = {}) {
         ? `Noch keine Monatsdaten für ${period}. Die Plattform wurde aufgefordert zu senden – bitte „Erneut versuchen“ oder in der Plattform den Monat an die Buchhaltung pushen.`
         : pullHint)
       : partial
-        ? `Teilweise übernommen (${period}): ${released.length} freigegeben, ${after.filter((j) => j.status === "error").length} mit Lücken – Plattform nach fehlenden Daten gefragt.`
+        ? `Teilweise übernommen (${period}): ${released.length} freigegeben${gapSuffix ? ` · ${gapSuffix}` : ""} – fertige Personen laufen weiter, Lücken werden nachgefragt.`
         : autoRelease
           ? `Monatsabschluss ${period}: ${released.length} Abrechnung(en) an Plattform/Mitarbeiter gesendet.`
           : `Monatsabschluss ${period}: ${calculated.length} Abrechnung(en) berechnet (noch nicht freigegeben).`,
-    canRetry: Boolean(waitingForPlatform || !ok),
+    canRetry: Boolean(waitingForPlatform || !ok || syncStats.waitingHours > 0),
     nextActions: waitingForPlatform
       ? [
           "Erneut versuchen (Pull)",
-          "In der Plattform Monat freigeben / an Buchhaltung senden (POST /v1/payroll/batch)",
-          "Railway: WORKPASS_PLATFORM_PAYROLL_PULL_URL oder WORKPASS_PLATFORM_BASE_URL prüfen",
+          "In der Plattform Monat freigeben / an Buchhaltung senden",
         ]
-      : [],
+      : (syncStats.waitingHours
+        ? [
+            "Plattform: Monatsstunden (attendance.hours) senden",
+            "Danach erneut synchronisieren",
+          ]
+        : []),
   };
 
   const company = { id: companyId, name: options.company?.name || "" };

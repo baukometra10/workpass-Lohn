@@ -83,6 +83,11 @@ Brutto = `attendance.hours × hourlyRate`. Ohne Monatsstunden bleibt die Person 
 
 **Personal-Nr.:** optional. Fehlt `personnelNumber`, vergibt Accounting je Firma eine stabile Nummer (`1001`, `1002`, …) und druckt sie auf dem Blatt. Badge-IDs (`BP-…`) erscheinen nie auf dem Gehaltszettel. Wenn die Plattform später eine eigene Personal-Nr. sendet, hat diese Vorrang.
 
+**Exports (Firma):**  
+- `GET /v1/portal/month-export?period=YYYY-MM` → DATEV-CSV (Stunden, SV, KK, Mandant/Berater)  
+- `GET /v1/portal/lodas-export?period=YYYY-MM` → LODAS-Paket (INI + Bewegungen + Stamm)  
+- `GET /v1/portal/completeness?period=YYYY-MM` → Checkliste Logo/Firma/Stunden/SV/KK/Netto
+
 WorkPass berechnet automatisch: **Brutto = hours × hourlyRate**, dann Steuern/SV, Freigabe → `payslip.released`.
 
 Oder klassisch mit fertigem Brutto:

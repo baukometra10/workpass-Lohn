@@ -8,6 +8,7 @@ import { currentPeriod } from "./month-close.mjs";
 import { isDemoPayrollJob } from "./demo-detect.mjs";
 import { listEmployees as listRegisteredEmployees } from "./employee-registry.mjs";
 import { hubProfileNeedsEnrichment } from "./company-branding.mjs";
+import { buildMonthDatevPackage, buildMonthLodasPackage } from "./datev-lodas-export.mjs";
 
 function periodsAround(center, count = 6) {
   const [y0, m0] = String(center).split("-").map(Number);
@@ -46,7 +47,7 @@ function bestEmployeeName(job, fallbackId) {
   return "";
 }
 
-function employeeSyncReadiness(job) {
+export function employeeSyncReadiness(job) {
   const state = job?.state || {};
   const hard = Array.isArray(job?.errors) ? job.errors : [];
   const soft = Array.isArray(job?.printHints) ? job.printHints : [];
@@ -325,62 +326,68 @@ export function brandingHealth(companyId) {
  * DATEV-style month CSV for all released (or calculated) payslips.
  */
 export function buildMonthDatevExport(companyId, opts = {}) {
+  return buildMonthDatevPackage(companyId, opts);
+}
+
+export { buildMonthLodasPackage };
+
+/**
+ * Combined firm readiness checklist for a payroll period.
+ */
+export function monthCompleteness(companyId, opts = {}) {
   const cid = normalizeCompanyId(companyId);
   if (!cid) return { ok: false, error: "companyId fehlt" };
   const period = String(opts.period || currentPeriod()).trim();
-  if (!/^\d{4}-\d{2}$/.test(period)) return { ok: false, error: "period ungültig" };
-  const includeCalculated = opts.includeCalculated === true;
-  const jobs = realJobs(listPayrollJobs({ companyId: cid, period }), opts.includeDemo)
-    .filter((j) => j.status === "released" || (includeCalculated && j.status === "calculated"))
-    .sort((a, b) => String(a.employee?.name || "").localeCompare(String(b.employee?.name || ""), "de"));
-  const company = loadCompany(cid);
-  const companyName = String(company?.name || jobs[0]?.company?.name || cid).replace(/\s+/g, "_").slice(0, 40);
-  const header = "Personalnummer;Lohnart;Betrag;Abrechnungsmonat;Mitarbeitername;Firma;Status;Netto;Brutto";
-  const lines = [header];
-  for (const j of jobs) {
+  const jobs = realJobs(listPayrollJobs({ companyId: cid, period }), opts.includeDemo);
+  const brand = brandingHealth(cid);
+  const employees = jobs.map((j) => {
+    const sync = employeeSyncReadiness(j);
     const state = j.state || {};
-    const pers = String(state.personnelNumber || state.employeeId || j.employee?.id || "").trim() || "00000";
-    const name = String(state.employeeName || j.employee?.name || "").trim();
-    const wages = Array.isArray(state.wageItems) ? state.wageItems : [];
-    const gross = Number(j.payslip?.totals?.gross || state.grossSalary || 0);
-    const net = Number(j.payslip?.totals?.net || 0);
-    const wageRows = wages.filter((w) => Number(w.amount) > 0);
-    if (wageRows.length) {
-      wageRows.forEach((w) => {
-        lines.push([
-          pers,
-          String(w.code || "2000"),
-          String(Number(w.amount).toFixed(2)).replace(".", ","),
-          period,
-          name,
-          companyName,
-          j.status,
-          String(net.toFixed(2)).replace(".", ","),
-          String(gross.toFixed(2)).replace(".", ","),
-        ].join(";"));
-      });
-    } else if (gross > 0) {
-      lines.push([
-        pers,
-        "2000",
-        String(gross.toFixed(2)).replace(".", ","),
-        period,
-        name,
-        companyName,
-        j.status,
-        String(net.toFixed(2)).replace(".", ","),
-        String(gross.toFixed(2)).replace(".", ","),
-      ].join(";"));
-    }
-  }
+    const checklist = {
+      company: Boolean(String(state.companyName || j.company?.name || "").trim()),
+      seller: Boolean(String(state.seller || state.companyName || j.company?.name || "").trim()),
+      logo: Boolean(brand.hasLogo || state.logoDataUrl || state.logoUrl),
+      personnelNumber: Boolean(String(state.personnelNumber || "").trim()),
+      hours: Boolean(Number(state.workHours) > 0 || sync.hasGross),
+      hourlyRate: sync.hasHourlyRate,
+      gross: sync.hasGross,
+      net: Number(j.payslip?.totals?.net || j.payroll?.net || 0) > 0,
+      sv: sync.hasSv,
+      kk: sync.hasKk,
+      bank: sync.hasBank,
+    };
+    const missing = Object.entries(checklist).filter(([, ok]) => !ok).map(([k]) => k);
+    return {
+      jobId: j.jobId,
+      employeeId: j.employee?.id || state.employeeId,
+      name: j.employee?.name || state.employeeName,
+      status: j.status,
+      sync,
+      checklist,
+      missing,
+      complete: missing.length === 0 && (j.status === "released" || j.status === "calculated"),
+    };
+  });
+  const complete = employees.filter((e) => e.complete).length;
+  const waitingHours = employees.filter((e) => e.sync.waitingHours).length;
+  const missingSv = employees.filter((e) => !e.checklist.sv).length;
+  const missingKk = employees.filter((e) => !e.checklist.kk).length;
   return {
     ok: true,
+    kind: "portal.completeness.v1",
     companyId: cid,
     period,
-    count: jobs.length,
-    filename: `WorkPass_DATEV_${period}_${companyName}.csv`,
-    content: `\ufeff${lines.join("\r\n")}`,
-    lineCount: lines.length - 1,
+    branding: brand,
+    totals: {
+      employees: employees.length,
+      complete,
+      waitingHours,
+      missingSv,
+      missingKk,
+      released: jobs.filter((j) => j.status === "released").length,
+    },
+    employees,
+    readyForMonthClose: employees.length > 0 && waitingHours === 0 && missingSv === 0 && missingKk === 0,
   };
 }
 

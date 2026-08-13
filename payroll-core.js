@@ -344,7 +344,7 @@
           ? String(num(state.workHours))
           : num(state.workHours).toLocaleString("de-DE", { maximumFractionDigits: 2 }))
         : "",
-      sender: formatEmployerSenderLine(state.seller),
+      sender: formatEmployerSenderLine(resolveEmployerSeller(state)),
       empMeta: (() => {
         if (!printPersNr) return "";
         const abt = String(state.departmentNo || "").trim();
@@ -459,9 +459,25 @@
   }
 
   function companyDisplayName(state) {
-    if (state?.companyName) return String(state.companyName).trim();
-    const first = String(state?.seller || "").trim().split(/\r?\n/).filter(Boolean)[0];
-    return first || "Ohne Firma";
+    const direct = String(state?.companyName || "").trim();
+    if (direct && !/^ohne firma$/i.test(direct)) return direct;
+    const fromSeller = String(state?.seller || "").trim().split(/\r?\n/).filter(Boolean)[0];
+    if (fromSeller && !/^ohne firma$/i.test(fromSeller)) return fromSeller;
+    const fromMeta = String(
+      state?.meta?.companyName
+      || state?.company?.name
+      || state?.meta?.hubProfile?.companyName
+      || ""
+    ).trim();
+    if (fromMeta) return fromMeta;
+    return "Ohne Firma";
+  }
+
+  function resolveEmployerSeller(state) {
+    const seller = String(state?.seller || "").trim();
+    if (seller && !/^ohne firma$/i.test(seller.split(/\r?\n/)[0] || "")) return seller;
+    const name = companyDisplayName(state);
+    return name && name !== "Ohne Firma" ? name : "";
   }
 
   function archiveKey(state) {
@@ -761,6 +777,9 @@
       meta: { ...(d.meta || {}), ...(raw.meta || {}) },
     });
     if (!d.companyName) d.companyName = companyDisplayName(d);
+    if (!String(d.seller || "").trim() && d.companyName && d.companyName !== "Ohne Firma") {
+      d.seller = d.companyName;
+    }
     if (!d.mandantId && d.meta?.companyId) d.mandantId = d.meta.companyId;
     if (d.hourlyRate && !d.meta) d.meta = {};
     if (d.hourlyRate && !d.meta.hourlyRate) d.meta.hourlyRate = Number(d.hourlyRate) || d.hourlyRate;
@@ -879,6 +898,7 @@
     ingestPlatformPayload,
     isPlatformPayload,
     companyDisplayName,
+    resolveEmployerSeller,
     archiveKey,
     listArchiveEntries,
     loadArchiveEntry,

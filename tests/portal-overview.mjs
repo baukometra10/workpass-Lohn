@@ -77,6 +77,15 @@ const datev = buildMonthDatevExport(id, { period });
 assert(datev.ok && datev.lineCount >= 1, "datev month lines");
 assert(/WorkPass_DATEV_/.test(datev.filename || ""), "datev filename");
 
+const { buildMonthLodasPackage } = await import("../server/datev-lodas-export.mjs");
+const lodas = buildMonthLodasPackage(id, { period });
+assert(lodas.ok && lodas.count >= 1, "lodas package");
+assert((lodas.files || []).length >= 3, "lodas files");
+
+const { monthCompleteness } = await import("../server/portal-service.mjs");
+const comp = monthCompleteness(id, { period });
+assert(comp.ok && comp.totals.employees >= 1, "completeness");
+
 deleteCompany({ id });
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);

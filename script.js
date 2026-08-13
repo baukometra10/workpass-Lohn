@@ -238,7 +238,7 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2.40.0";
+const APP_VERSION = "2.41.0";
 const APP_VERSION_BUILD = "2026.45";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
@@ -2329,7 +2329,7 @@ function buildDatevSheetData(payroll) {
     workHours: formatNumber(Number(workHoursInput.value) || 0),
     sender: formatEmployerDatevLine(sellerInput.value.trim()),
     empMeta: empId !== "-"
-      ? `*Pers.-Nr. ${empId}* · *Abt.-Nr. ${empId.replace(/\D/g, "").slice(0, 5) || "20000"}*`
+      ? `*Pers.-Nr. ${empId}*`
       : "",
     empName: formatEmployeeSalutation(employeeNameInput.value.trim() || ""),
     empAddr: getEmployeeAddressText() || "",
@@ -4973,7 +4973,7 @@ function updatePayrollPreview() {
   const employeeAddress = getEmployeeAddressText();
   if (empMeta) {
     empMeta.textContent = isDatevLayout && employeeId !== "-"
-      ? `*Pers.-Nr. ${employeeId}* · *Abt.-Nr. ${employeeId.replace(/\D/g, "").slice(0, 5) || "20000"}*`
+      ? `*Pers.-Nr. ${employeeId}*`
       : (employeeId !== "-" ? `P.-Nr.: ${employeeId}` : "");
   }
   if (empName) empName.textContent = formatEmployeeSalutation(employeeName);

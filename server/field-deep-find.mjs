@@ -82,6 +82,6 @@ export const KEY_RE = {
   insuranceNo: /sv_?nr|svnr|svnumber|insurance_?no|insurance_?number|social_?security|sozialversicher|versicherungsnummer|rv_?nr|kv_?nr/i,
   healthFund: /krankenkasse|health_?fund|health_?insurance|kk_?name|krankenversicherung|gesetzliche_?kv|^kk$/i,
   hourlyRate: /stundenlohn|hourly_?rate|hour_?rate|rate_?per_?hour|lohn_?pro_?stunde|wage_?rate|hourwage/i,
-  monthHours: /^(hours|stunden|worked_?hours|total_?hours|attendance_?hours|month_?hours|stundenzahl)$/i,
-  workDays: /^(days|arbeitstage|work_?days|attendance_?days)$/i,
+  monthHours: /hours|stunden|worked_?hours|total_?hours|attendance_?hours|month_?hours|stundenzahl|ist_?stunden|soll_?stunden|gearbeitsstunden|arbeitsstunden/i,
+  workDays: /days|arbeitstage|work_?days|attendance_?days|arbeitstagezahl|anwesenheitstage/i,
 };
