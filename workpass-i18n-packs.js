@@ -592,4 +592,12 @@ window.WorkPassI18nExtraPacks = [
   ["lohn.platformBlockedShort",{"de":"Plattform blockiert","en":"Platform blocked","tr":"Platform engelli","ar":"المنصة محظورة","fr":"Plateforme bloquée","es":"Plataforma bloqueada","it":"Piattaforma bloccata","pl":"Platforma zablokowana"}],
   ["lohn.check",{"de":"Prüfen","en":"Check","tr":"Kontrol","ar":"تحقق","fr":"Vérifier","es":"Revisar","it":"Verifica","pl":"Sprawdź"}],
   ["lohn.namePending",{"de":"Name von Plattform ausstehend","en":"Name pending from platform","tr":"İsim platformdan bekleniyor","ar":"الاسم بانتظار المنصة","fr":"Nom en attente plateforme","es":"Nombre pendiente de plataforma","it":"Nome in attesa dalla piattaforma","pl":"Imię oczekuje na platformę"}],
+  ["sync.chipReady",{"de":"Bereit","en":"Ready","tr":"Hazır","ar":"جاهز","fr":"Prêt","es":"Listo","it":"Pronto","pl":"Gotowe"}],
+  ["sync.chipHours",{"de":"Stunden","en":"Hours","tr":"Saat","ar":"ساعات","fr":"Heures","es":"Horas","it":"Ore","pl":"Godziny"}],
+  ["sync.chipSv",{"de":"SV","en":"SV","tr":"SV","ar":"SV","fr":"SV","es":"SV","it":"SV","pl":"SV"}],
+  ["sync.chipKk",{"de":"KK","en":"KK","tr":"KK","ar":"KK","fr":"KK","es":"KK","it":"KK","pl":"KK"}],
+  ["sync.chipWait",{"de":"Wartet","en":"Waiting","tr":"Bekliyor","ar":"بانتظار","fr":"En attente","es":"En espera","it":"In attesa","pl":"Czeka"}],
+  ["sync.waitingHoursShort",{"de":"warten auf Stunden","en":"waiting for hours","tr":"saat bekleniyor","ar":"بانتظار الساعات","fr":"attendent les heures","es":"esperan horas","it":"attendono ore","pl":"czekają na godziny"}],
+  ["sync.readyShort",{"de":"bereit","en":"ready","tr":"hazır","ar":"جاهز","fr":"prêts","es":"listos","it":"pronti","pl":"gotowe"}],
+  ["portal.hoursWaitingHint",{"de":"Stundenlohn ist da – die Plattform muss noch die Monatsstunden senden. Brutto = Stunden × Stundenlohn.","en":"Hourly rate is set – the platform still needs to send monthly hours. Gross = hours × rate.","tr":"Saat ücreti var – platform aylık saatleri göndermeli. Brüt = saat × ücret.","ar":"أجر الساعة موجود – يجب أن ترسل المنصة ساعات الشهر. الإجمالي = ساعات × الأجر.","fr":"Le taux horaire est là – la plateforme doit encore envoyer les heures du mois. Brut = heures × taux.","es":"La tarifa horaria está – la plataforma aún debe enviar las horas del mes. Bruto = horas × tarifa.","it":"La tariffa oraria c’è – la piattaforma deve ancora inviare le ore del mese. Lordo = ore × tariffa.","pl":"Stawka godzinowa jest – platforma musi jeszcze wysłać godziny miesiąca. Brutto = godziny × stawka."}],
 ];

@@ -68,6 +68,8 @@ function companyPatch(companyId, jobCompany = null) {
     datevClientNo: pick(company?.datevClientNo, hub.datevClientNo),
     datevConsultantNo: pick(company?.datevConsultantNo, hub.datevConsultantNo),
     seller,
+    logoDataUrl: pick(hub.logoDataUrl),
+    logoUrl: pick(hub.logoUrl),
   };
   return { company, hub, patch, filled: Object.keys(patch).filter((k) => patch[k]) };
 }
@@ -457,7 +459,6 @@ export async function enrichPayrollJob(jobId, options = {}) {
         });
         applied.forEach((k) => filled.push(`attendance.${k}`));
       } else if (rate > 0 && !Number(state.workHours)) {
-        // Keep rate; hours still missing → ask below
         applyHoursTimesRate(state, { hourlyRate: rate });
       }
     } else if (rate > 0 && Number(state.workHours) > 0 && !hasGross) {
@@ -471,8 +472,8 @@ export async function enrichPayrollJob(jobId, options = {}) {
 
   hard = PC.validate(state);
   soft = PC.validatePrintHints?.(state) || [];
-  const rateNow = Number(state.meta?.hourlyRate || state.hourlyRate) || 0;
-  const hoursNow = Number(state.workHours) || 0;
+  let rateNow = Number(state.meta?.hourlyRate || state.hourlyRate) || 0;
+  let hoursNow = Number(state.workHours) || 0;
   if (rateNow > 0 && hoursNow <= 0) {
     hard = [...hard, "Monatsstunden fehlen (Plattform: gearbeitete Stunden für diesen Monat)"];
   }
@@ -526,6 +527,31 @@ export async function enrichPayrollJob(jobId, options = {}) {
           message: `Daten aus Plattform-Antwort übernommen (${filled.length} Felder).`,
         };
       }
+
+      // Short retry: platform may push hours asynchronously after webhook 200
+      if (rateNow > 0 && hoursNow <= 0 && options.pullHours !== false) {
+        await new Promise((r) => setTimeout(r, Number(process.env.WORKPASS_HOURS_RETRY_MS || 1800)));
+        const retry = await pullMonthAttendance({ companyId, period, employeeId });
+        if (retry.ok && retry.hours > 0) {
+          attendancePull = retry;
+          applyHoursTimesRate(state, {
+            hours: retry.hours,
+            days: retry.days,
+            hourlyRate: rateNow,
+          }).forEach((k) => filled.push(`attendance-retry.${k}`));
+          hoursNow = Number(state.workHours) || 0;
+          hard = PC.validate(state);
+          soft = PC.validatePrintHints?.(state) || [];
+          if (rateNow > 0 && hoursNow <= 0) {
+            hard = [...hard, "Monatsstunden fehlen (Plattform: gearbeitete Stunden für diesen Monat)"];
+          } else {
+            hard = hard.filter((h) => !/Monatsstunden fehlen/i.test(String(h)));
+          }
+          const rebuilt = rebuildJob(job, state);
+          persistRegistryFromState(state, companyId, "attendance-retry");
+          Object.assign(nextJob, rebuilt);
+        }
+      }
     } catch (e) {
       platformAsk = { ok: false, error: e.message };
     }
@@ -570,13 +596,13 @@ export async function enrichPayrollJob(jobId, options = {}) {
         : "Stammdaten vollständig.";
 
   if (stillMissing.length && pullDenied) {
-    message = "Plattform blockiert den Datenabruf (401). Bitte WORKPASS_API_KEY / WORKPASS_PLATFORM_API_KEY freigeben für GET /api/contracts – oder Stammdaten per POST /v1/payroll/batch senden.";
+    message = "Die Plattform lehnt den Datenabruf ab. Bitte den Plattform-Administrator: Verbindungsschlüssel freigeben – oder Mitarbeiterdaten per Import senden.";
   } else if (missingHours) {
-    message = "Stundenlohn aus Vertrag vorhanden – bitte Monatsstunden der Plattform senden (attendance.hours) per POST /v1/payroll/batch. Brutto = Stunden × Stundenlohn.";
+    message = "Stundenlohn ist da – es fehlen noch die Monatsstunden von der Plattform. Brutto = Stunden × Stundenlohn.";
   } else if (stillMissing.length && missingMaster) {
-    message = "Vertrag geladen, aber SV-Nummer / Krankenkasse fehlen im Payload. Bitte diese Felder im Vertrag an die Buchhaltung mitsenden.";
+    message = "Vertrag geladen, aber SV-Nummer oder Krankenkasse fehlen noch. Die Plattform muss diese Felder mitsenden.";
   } else if (stillMissing.length && webhookOkNoData && !employeePullOk) {
-    message = "Plattform hat die Anfrage bestätigt, sendet aber keine Mitarbeiterdaten. Bitte POST /v1/employees/import und POST /v1/payroll/batch ausführen.";
+    message = "Die Plattform hat bestätigt, liefert aber noch keine Mitarbeiterdaten. Bitte Import der Mitarbeiter und Monatsdaten anstoßen.";
   }
 
   const result = {

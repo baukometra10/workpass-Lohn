@@ -614,6 +614,21 @@
       if (empHost) {
         const list = emps.employees || [];
         const shown = list.slice(0, 50);
+        const syncChip = (e) => {
+          const s = e.sync || {};
+          const chips = [];
+          if (s.ready) chips.push({ cls: "ok", label: uiT("sync.chipReady", "Bereit") });
+          else {
+            if (s.waitingHours || (s.hasHourlyRate && !s.hasHours && !s.hasGross)) {
+              chips.push({ cls: "warn", label: uiT("sync.chipHours", "Stunden") });
+            }
+            if (!s.hasSv) chips.push({ cls: "warn", label: uiT("sync.chipSv", "SV") });
+            if (!s.hasKk) chips.push({ cls: "warn", label: uiT("sync.chipKk", "KK") });
+            if (!chips.length && s.hasGross) chips.push({ cls: "ok", label: uiT("sync.chipReady", "Bereit") });
+            if (!chips.length) chips.push({ cls: "mute", label: uiT("sync.chipWait", "Wartet") });
+          }
+          return `<span class="portal-sync-chips">${chips.map((c) => `<span class="portal-sync-chip is-${c.cls}">${esc(c.label)}</span>`).join("")}</span>`;
+        };
         empHost.innerHTML = list.length
           ? `<p class="portal-list-meta">${esc(uiT("portal.empMeta", "{count} Mitarbeiter · Anzeige {shown} (Mandantentrennung)")
               .replace("{count}", String(list.length))
@@ -621,11 +636,15 @@
             + shown.map((e) => {
               const title = employeeTitle(e);
               const idLine = employeeIdLine(e);
+              const hoursLine = e.workHours != null || e.hourlyRate != null
+                ? ` · ${e.workHours != null ? `${e.workHours} h` : "— h"}${e.hourlyRate != null ? ` × ${e.hourlyRate} €` : ""}`
+                : "";
               return `
             <div class="api-inbox-item">
               <div>
                 <strong>${esc(title)}</strong>
-                <span class="portal-item-meta">${esc(idLine)}${e.hasName === false ? ` · ${esc(uiT("lohn.namePending", "Name von Plattform ausstehend"))}` : ""}${e.personnelNumber ? ` · ${esc(uiT("lohn.persNr", "Pers.-Nr."))} ${esc(e.personnelNumber)}` : ""} · ${esc(e.lastPeriod || "—")} · ${esc(firmStatusLabel(e.lastStatus))}</span>
+                <span class="portal-item-meta">${esc(idLine)}${e.hasName === false ? ` · ${esc(uiT("lohn.namePending", "Name von Plattform ausstehend"))}` : ""}${e.personnelNumber ? ` · ${esc(uiT("lohn.persNr", "Pers.-Nr."))} ${esc(e.personnelNumber)}` : ""} · ${esc(e.lastPeriod || "—")} · ${esc(firmStatusLabel(e.lastStatus))}${esc(hoursLine)}</span>
+                ${syncChip(e)}
                 <span>${esc(uiT("kpi.netShort", "Netto"))} ${e.net != null ? PayrollCore.formatAmount(e.net) : "—"}</span>
               </div>
               <div class="api-inbox-actions">
@@ -641,11 +660,18 @@
       }
       const monthHost = $("portalMonthOverview");
       if (monthHost) {
-        monthHost.innerHTML = (month.months || []).map((m) => `
+        monthHost.innerHTML = (month.months || []).map((m) => {
+          const readyN = Number(m.ready || 0);
+          const waitH = Number(m.waitingHours || 0);
+          const extra = waitH
+            ? ` · ${waitH} ${uiT("sync.waitingHoursShort", "warten auf Stunden")}`
+            : (readyN ? ` · ${readyN} ${uiT("sync.readyShort", "bereit")}` : "");
+          return `
           <button type="button" class="month-chip status-${esc(m.status)}${m.period === period ? " active" : ""}" data-period="${esc(m.period)}">
             <strong>${esc(m.period)}</strong>
-            <span>${esc(firmStatusLabel(m.status))} · ${m.released}/${m.total}</span>
-          </button>`).join("") || `<p class='section-hint'>${esc(uiT("portal.noMonths", "Keine Monate"))}</p>`;
+            <span>${esc(firmStatusLabel(m.status))} · ${m.released}/${m.total}${esc(extra)}</span>
+          </button>`;
+        }).join("") || `<p class='section-hint'>${esc(uiT("portal.noMonths", "Keine Monate"))}</p>`;
         monthHost.querySelectorAll(".month-chip").forEach((btn) => {
           btn.addEventListener("click", () => {
             if ($("payrollMonth")) $("payrollMonth").value = btn.dataset.period;
@@ -2336,7 +2362,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.37.0</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.38.0</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))

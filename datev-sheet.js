@@ -54,8 +54,15 @@
       margin: 0; padding: 0 0 0.85mm;
       border-bottom: 1.3pt solid #1d4ed8;
     }
-    .ds-brand { font-size: 8.5pt; font-weight: 700; letter-spacing: 0.03em; color: #1e3a5f; }
+    .ds-brand { font-size: 8.5pt; font-weight: 700; letter-spacing: 0.03em; color: #1e3a5f; display: flex; align-items: center; gap: 2mm; }
     .ds-brand span { font-weight: 500; font-size: 6.3pt; color: #5a6a75; margin-left: 2mm; }
+    .ds-brand-logo {
+      max-height: 7.5mm; max-width: 28mm; width: auto; height: auto;
+      object-fit: contain; display: block;
+    }
+    .ds-brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+    .ds-brand-company { font-size: 7.2pt; font-weight: 700; color: #0f172a; }
+    .ds-brand-product { font-size: 5.6pt; font-weight: 500; color: #5a6a75; }
     .ds-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 5mm; margin: 0; }
     .ds-title { font-size: 9.5pt; font-weight: 700; letter-spacing: -0.01em; color: #0f172a; }
     .ds-title-sub { font-size: 7.2pt; margin-top: 0.35mm; min-height: 2.1mm; color: #334155; }
@@ -254,11 +261,22 @@
     const footerNote = filled
       ? (data.footerNote || data.hints || "")
       : "";
+    const logoSrc = String(data.logoDataUrl || data.logoUrl || "").trim();
+    const brandCompany = String(data.companyName || "").trim();
+    const brandLeft = logoSrc || brandCompany
+      ? `<div class="ds-brand">
+            ${logoSrc ? `<img class="ds-brand-logo" src="${esc(logoSrc)}" alt="" />` : ""}
+            <div class="ds-brand-text">
+              ${brandCompany ? `<span class="ds-brand-company">${esc(brandCompany)}</span>` : ""}
+              <span class="ds-brand-product">WorkPass Lohn</span>
+            </div>
+          </div>`
+      : `<div class="ds-brand">WorkPass Lohn<span>Suppix AI</span></div>`;
     return `
       <div class="datev-sheet-a4${filled ? "" : " is-empty"}" id="datevSheetA4" data-filled="${filled ? "1" : "0"}">
         <div class="ds-zone ds-zone-head">
           <div class="ds-brandbar">
-            <div class="ds-brand">WorkPass Lohn<span>Suppix AI</span></div>
+            ${brandLeft}
             <div class="ds-mark">Entgeltabrechnung</div>
           </div>
           <div class="ds-head">

@@ -127,6 +127,7 @@ export function normalizeEmployeeRecord(raw = {}) {
     taxId: pickString(src.taxId, src.steuerId, src.taxID, src.steueridentifikationsnummer),
     insuranceNo: pickString(
       src.insuranceNo,
+      src.insuranceNumber,
       src.svNr,
       src.svNumber,
       src.sv_nummer,
@@ -139,6 +140,7 @@ export function normalizeEmployeeRecord(raw = {}) {
       social.nr,
       social.svNr,
       social.insuranceNo,
+      social.insuranceNumber,
       social.versicherungsnummer,
       deepFindByKey(src, KEY_RE.insuranceNo)
     ),

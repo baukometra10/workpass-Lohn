@@ -45,6 +45,36 @@ function bestEmployeeName(job, fallbackId) {
   return "";
 }
 
+function employeeSyncReadiness(job) {
+  const state = job?.state || {};
+  const hard = Array.isArray(job?.errors) ? job.errors : [];
+  const soft = Array.isArray(job?.printHints) ? job.printHints : [];
+  const hours = Number(state.workHours) || 0;
+  const rate = Number(state.meta?.hourlyRate || state.hourlyRate) || 0;
+  const hasGross = (Array.isArray(state.wageItems) && state.wageItems.some((w) => Number(w.amount) > 0))
+    || Number(state.grossSalary) > 0
+    || (hours > 0 && rate > 0);
+  const hasSv = Boolean(String(state.employeeInsuranceNo || "").trim());
+  const hasKk = Boolean(String(state.healthFund || "").trim());
+  const hasBank = Boolean(String(state.bankIban || state.bankName || "").trim());
+  const ready = job?.status === "released"
+    || (job?.status === "calculated" && hard.length === 0 && hasGross);
+  const waitingHours = rate > 0 && hours <= 0 && !hasGross;
+  return {
+    hasHours: hours > 0,
+    hasHourlyRate: rate > 0,
+    hasGross,
+    hasSv,
+    hasKk,
+    hasBank,
+    ready,
+    waitingHours,
+    hardCount: hard.length,
+    softCount: soft.length,
+    status: job?.status || "empty",
+  };
+}
+
 export function listCompanyEmployees(companyId, opts = {}) {
   const cid = normalizeCompanyId(companyId);
   if (!cid) return { ok: false, error: "companyId fehlt", employees: [] };
@@ -56,6 +86,7 @@ export function listCompanyEmployees(companyId, opts = {}) {
     if (!eid) continue;
     const prev = byEmp.get(eid);
     const name = bestEmployeeName(j, eid);
+    const sync = employeeSyncReadiness(j);
     const entry = {
       id: eid,
       badgeId: j.state?.badgeId || j.employee?.badgeId || eid,
@@ -67,6 +98,9 @@ export function listCompanyEmployees(companyId, opts = {}) {
       lastJobId: j.jobId,
       net: j.payslip?.totals?.net ?? j.payroll?.net ?? null,
       gross: j.payslip?.totals?.gross ?? j.payroll?.gross ?? null,
+      workHours: Number(j.state?.workHours) || null,
+      hourlyRate: Number(j.state?.meta?.hourlyRate || j.state?.hourlyRate) || null,
+      sync,
       updatedAt: j.updatedAt || j.releasedAt || "",
       jobCount: (prev?.jobCount || 0) + 1,
       source: "platform",
@@ -103,6 +137,21 @@ export function listCompanyEmployees(companyId, opts = {}) {
           lastJobId: "",
           net: null,
           gross: null,
+          workHours: null,
+          hourlyRate: null,
+          sync: {
+            hasHours: false,
+            hasHourlyRate: false,
+            hasGross: false,
+            hasSv: Boolean(reg.meta?.insuranceNo),
+            hasKk: Boolean(reg.meta?.healthFund),
+            hasBank: Boolean(reg.meta?.bankIban || reg.meta?.bankName),
+            ready: false,
+            waitingHours: false,
+            hardCount: 0,
+            softCount: 0,
+            status: "empty",
+          },
           updatedAt: reg.updatedAt || "",
           jobCount: 0,
           source: "registry",
@@ -151,6 +200,14 @@ export function monthOverview(companyId, opts = {}) {
     else if (jobs.length && released === jobs.length) status = "released";
     else if (calculated || released) status = "partial";
     else if (jobs.length) status = "calculated";
+    const syncStats = jobs.reduce((acc, j) => {
+      const s = employeeSyncReadiness(j);
+      if (s.ready) acc.ready += 1;
+      if (s.waitingHours) acc.waitingHours += 1;
+      if (!s.hasSv) acc.missingSv += 1;
+      if (!s.hasKk) acc.missingKk += 1;
+      return acc;
+    }, { ready: 0, waitingHours: 0, missingSv: 0, missingKk: 0 });
     return {
       period,
       status,
@@ -162,6 +219,7 @@ export function monthOverview(companyId, opts = {}) {
       netSum,
       taxSum,
       svAnSum,
+      ...syncStats,
       employees: jobs.map((j) => ({
         id: j.employee?.id,
         name: j.employee?.name,
@@ -169,6 +227,7 @@ export function monthOverview(companyId, opts = {}) {
         jobId: j.jobId,
         net: j.payslip?.totals?.net ?? null,
         gross: j.payslip?.totals?.gross ?? null,
+        sync: employeeSyncReadiness(j),
       })),
     };
   });

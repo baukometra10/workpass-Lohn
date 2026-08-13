@@ -396,6 +396,9 @@
       footerNote: hasSheetContent
         ? (String(state.note || "").trim() || buildHintsText(state) || "Keine weiteren Bemerkungen")
         : "",
+      logoDataUrl: String(state.logoDataUrl || "").trim(),
+      logoUrl: String(state.logoUrl || "").trim(),
+      companyName: companyDisplayName(state),
     };
   }
 
@@ -437,6 +440,9 @@
       mandantId: "",
       companyName: "",
       taxNumber: "",
+      logoDataUrl: "",
+      logoUrl: "",
+      hourlyRate: "",
       vatId: "",
       datevClientNo: "",
       datevConsultantNo: "",
@@ -641,6 +647,8 @@
       vatId: String(company.vatId || company.ustId || "").trim(),
       datevClientNo: String(company.datevClientNo || "").trim(),
       datevConsultantNo: String(company.datevConsultantNo || "").trim(),
+      logoDataUrl: String(company.logoDataUrl || company.hubProfile?.logoDataUrl || data.logoDataUrl || "").trim(),
+      logoUrl: String(company.logoUrl || company.hubProfile?.logoUrl || data.logoUrl || "").trim(),
       payroll: {
         employeeName: resolvedEmpName,
         employeeAddress: resolvedEmpAddress,
@@ -649,7 +657,7 @@
         personnelNumber,
         hideBadgeOnPayslip: true,
         employeeTaxId: String(employee.taxId || employee.steuerId || "").trim(),
-        employeeInsuranceNo: String(employee.insuranceNo || employee.svNr || "").trim(),
+        employeeInsuranceNo: String(employee.insuranceNo || employee.insuranceNumber || employee.svNr || "").trim(),
         employeeBirthDate: String(employee.birthDate || employee.birth || "").trim(),
         employeeEntryDate: String(employee.entryDate || employee.entry || "").trim(),
         payrollMonth: String(period).trim(),
@@ -663,6 +671,7 @@
         bankIban: String(bank.iban || bank.bankIban || "").trim(),
         wageItems,
         grossSalary: String(wageItems.reduce((s, w) => s + num(w.amount), 0) || num(data.gross || data.grossSalary) || ""),
+        hourlyRate: employee.hourlyRate != null ? String(employee.hourlyRate) : (employee.stundenlohn != null ? String(employee.stundenlohn) : ""),
       },
       meta: {
         source: "platform",
@@ -737,15 +746,20 @@
       netDeductions: p.netDeductions ?? raw.netDeductions ?? d.netDeductions,
       departmentNo: p.departmentNo ?? raw.departmentNo ?? d.departmentNo,
       workDays: p.workDays ?? raw.workDays ?? d.workDays,
-      workHours: p.workHours ?? raw.workHours ?? d.workHours,
+      workDays: p.workHours ?? raw.workHours ?? d.workHours,
       grossSalary: p.grossSalary ?? raw.grossSalary ?? d.grossSalary,
+      hourlyRate: p.hourlyRate ?? raw.hourlyRate ?? d.hourlyRate,
       bankName: p.bankName ?? raw.bankName ?? d.bankName,
       bankIban: p.bankIban ?? raw.bankIban ?? d.bankIban,
+      logoDataUrl: raw.logoDataUrl ?? p.logoDataUrl ?? d.logoDataUrl,
+      logoUrl: raw.logoUrl ?? p.logoUrl ?? d.logoUrl,
       wageItems: Array.isArray(p.wageItems) ? p.wageItems : (Array.isArray(raw.wageItems) ? raw.wageItems : d.wageItems),
       meta: { ...(d.meta || {}), ...(raw.meta || {}) },
     });
     if (!d.companyName) d.companyName = companyDisplayName(d);
     if (!d.mandantId && d.meta?.companyId) d.mandantId = d.meta.companyId;
+    if (d.hourlyRate && !d.meta) d.meta = {};
+    if (d.hourlyRate && !d.meta.hourlyRate) d.meta.hourlyRate = Number(d.hourlyRate) || d.hourlyRate;
     return d;
   }
 

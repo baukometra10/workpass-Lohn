@@ -78,6 +78,9 @@ Header: `X-WorkPass-Key: <gleicher WORKPASS_API_KEY>`
 }
 ```
 
+Alias akzeptiert: `insuranceNumber` (= SV-Nummer), `krankenkasse` / `healthInsurance.provider` (= KK), `stundenlohn` (= Stundenlohn).  
+Brutto = `attendance.hours × hourlyRate`. Ohne Monatsstunden bleibt die Person im Portal mit Chip „Stunden“.
+
 WorkPass berechnet automatisch: **Brutto = hours × hourlyRate**, dann Steuern/SV, Freigabe → `payslip.released`.
 
 Oder klassisch mit fertigem Brutto:

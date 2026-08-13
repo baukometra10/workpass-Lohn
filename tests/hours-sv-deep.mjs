@@ -46,5 +46,27 @@ assert(rows[0].insuranceNo?.includes("11111111"), "contract SV");
 assert(rows[0].healthFund === "TK", "contract KK provider");
 assert(Number(rows[0].hourlyRate) === 20, "contract hourly");
 
+console.log("\n=== insuranceNumber alias ===");
+const alias = normalizeEmployeeRecord({
+  id: "BP-2",
+  insuranceNumber: "22110839A001",
+  healthFund: "DAK",
+  hourlyRate: 13,
+});
+assert(alias.insuranceNo === "22110839A001", "insuranceNumber → insuranceNo");
+assert(alias.healthFund === "DAK", "KK alias");
+assert(Number(alias.hourlyRate) === 13, "rate alias");
+
+const flatIns = collectEmployeesFromPayload({
+  contract: {
+    employeeId: "BP-3",
+    firstName: "Sara",
+    lastName: "Demo",
+    insuranceNumber: "33001122B333",
+    stundenlohn: 13,
+  },
+});
+assert(String(flatIns[0].insuranceNo || "").includes("33001122"), "flatten insuranceNumber");
+
 console.log(`\n${failed ? "FAILED" : "OK"} · passed=${passed} failed=${failed}`);
 process.exit(failed ? 1 : 0);

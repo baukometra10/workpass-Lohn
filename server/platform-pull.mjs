@@ -273,7 +273,9 @@ function flattenContract(contract = {}) {
     ),
     insuranceNo: pick(
       emp.insuranceNo,
+      emp.insuranceNumber,
       contract.insuranceNo,
+      contract.insuranceNumber,
       contract.svNr,
       contract.svNummer,
       contract.socialSecurityNo,
@@ -282,6 +284,7 @@ function flattenContract(contract = {}) {
       social.number,
       social.nr,
       social.svNr,
+      social.insuranceNumber,
       social.versicherungsnummer,
       deepFindByKey(contract, KEY_RE.insuranceNo)
     ),
