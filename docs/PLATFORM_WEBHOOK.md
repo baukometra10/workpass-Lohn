@@ -89,6 +89,9 @@ Sync overview for the platform: `GET {ACCOUNTING}/v1/platform/status`
 { "ok": true, "accepted": true, "deliveryId": "pay:…", "employeeAppStatus": "queued" }
 ```
 
+**Wichtig:** Nur mit `accepted: true` (oder `ok: true`) gilt die Lieferung als von der Plattform bestätigt.  
+Reines HTTP 200 ohne diesen Body lässt die Abrechnung in `/v1/delivery/pending` – sonst zeigt Accounting „gesendet“, die Mitarbeiter-App bleibt leer.
+
 Non-2xx → accounting retries (default 3×). Items stay in `/v1/delivery/pending` for pull.
 
 ---

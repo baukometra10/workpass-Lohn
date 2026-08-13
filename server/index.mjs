@@ -1329,14 +1329,23 @@ async function handler(req, res) {
         }
       } else if (last.waitingForPlatform || pendingCount > 0) {
         status = "waiting";
-        message = message || (pendingCount > 0
-          ? `Warte auf Plattform · ${pendingCount} offen`
-          : "Warte auf Plattform-Antwort");
+        const delN = pendingDeliveries.length;
+        message = message || (delN > 0
+          ? `${delN} Abrechnung(en) warten auf Plattform (Webhook ohne Bestätigung oder Pull von /v1/delivery/pending)`
+          : (pendingCount > 0
+            ? `Warte auf Plattform · ${pendingCount} offen`
+            : "Warte auf Plattform-Antwort"));
         if (!nextActions.length) {
-          nextActions = [
-            "Plattform soll Import/Batch senden (Mitarbeiter, Monat, Rechnungen)",
-            "In Lohn-Portal: Empfang → API-Bridge → Jetzt synchronisieren",
-          ];
+          nextActions = delN > 0
+            ? [
+              "Plattform muss Event payslip.released speichern und dem Mitarbeiter anzeigen",
+              "Antwort JSON: { ok:true, accepted:true }",
+              "Oder pollen: GET /v1/delivery/pending und danach POST /v1/delivery/:id/ack",
+            ]
+            : [
+              "Plattform soll Import/Batch senden (Mitarbeiter, Monat, Rechnungen)",
+              "In Lohn-Portal: Empfang → API-Bridge → Jetzt synchronisieren",
+            ];
         }
       } else if (auto.enabled === false) {
         status = "manual";

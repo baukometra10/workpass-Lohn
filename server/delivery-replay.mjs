@@ -38,16 +38,25 @@ export async function replayPendingDeliveries(options = {}) {
         idempotencyKey: `${delivery.deliveryId}:replay:${Date.now()}`,
         meta: { reason: options.reason || "delivery_replay" },
       });
-      if (notify.ok && notify.mode === "webhook") {
+      if (notify.ok && notify.mode === "webhook" && notify.accepted === true) {
         ackDelivery(delivery.deliveryId, {
-          via: "webhook-replay",
+          via: "webhook-replay-accepted",
           at: new Date().toISOString(),
           status: notify.status,
         });
         pushed += 1;
-        results.push({ deliveryId: delivery.deliveryId, ok: true, mode: "webhook" });
+        results.push({ deliveryId: delivery.deliveryId, ok: true, mode: "webhook", accepted: true });
+      } else if (notify.ok && notify.mode === "webhook") {
+        // Reached platform transport, but no accepted flag – keep pending for pull/ack
+        results.push({
+          deliveryId: delivery.deliveryId,
+          ok: true,
+          mode: "webhook",
+          accepted: false,
+          pendingPull: true,
+          hint: notify.hint || null,
+        });
       } else if (notify.ok && notify.mode === "local-log-only") {
-        // No webhook URL – keep pending for platform pull of /v1/delivery/pending
         results.push({ deliveryId: delivery.deliveryId, ok: true, mode: "local-log-only", pendingPull: true });
       } else {
         failed += 1;
@@ -55,6 +64,7 @@ export async function replayPendingDeliveries(options = {}) {
           deliveryId: delivery.deliveryId,
           ok: false,
           error: notify.error || "webhook failed",
+          status: notify.status || null,
           hint: notify.hint || null,
         });
       }

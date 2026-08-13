@@ -511,6 +511,7 @@
       }
       if ($("portalKpiMessages")) $("portalKpiMessages").textContent = String((msgs.messages || []).length);
       const pending = Number(sync?.pending?.messages || 0) + Number(sync?.pending?.deliveries || 0);
+      const pendingDeliveries = Number(sync?.pending?.deliveries || 0);
       const wh = sync?.webhook?.last || null;
       const platformBlocked = Boolean(
         sync?.status === "error"
@@ -556,7 +557,7 @@
         automation: auto,
         platformBlocked,
       });
-      renderPortalPlatformAlert(platformBlocked, pending, empN);
+      renderPortalPlatformAlert(platformBlocked, pending, empN, pendingDeliveries);
       applyAutomationProgress(auto, period);
       renderAuditOverview({
         period,
@@ -1175,26 +1176,35 @@
     void period;
   }
 
-  function renderPortalPlatformAlert(platformBlocked, pending = 0, employees = 0) {
+  function renderPortalPlatformAlert(platformBlocked, pending = 0, employees = 0, pendingDeliveries = 0) {
     const host = $("portalPlatformAlert");
     if (!host) return;
-    if (!platformBlocked) {
+    if (!platformBlocked && !(pendingDeliveries > 0)) {
       host.hidden = true;
       host.innerHTML = "";
       return;
     }
     host.hidden = false;
+    if (platformBlocked) {
+      host.innerHTML = `
+        <strong>${esc(uiT("portal.blockedTitle", "Plattform-Verbindung blockiert"))}</strong>
+        <span>${esc(uiT(
+          "portal.blockedHint",
+          "Accounting ist bereit (Monatsautomatik an), aber die Plattform lehnt die Verbindung ab. Ohne Antwort kommen keine Mitarbeiternamen, kein Logo und keine Monatsdaten an. Bitte Ihren Plattform-Administrator informieren: Verbindungsschlüssel zwischen Plattform und Accounting abstimmen – oder die Plattform liefert Mitarbeiter/Monat per Import."
+        ))}</span>
+        <span style="display:block;margin-top:6px;opacity:.85">${esc(
+          uiT("portal.blockedMeta", "Offene Anfragen: {n} · Mitarbeiter bisher: {e}")
+            .replace("{n}", String(pending))
+            .replace("{e}", String(employees))
+        )}</span>`;
+      return;
+    }
     host.innerHTML = `
-      <strong>${esc(uiT("portal.blockedTitle", "Plattform-Verbindung blockiert"))}</strong>
+      <strong>${esc(uiT("portal.deliveryPendingTitle", "Abrechnungen warten auf die Plattform"))}</strong>
       <span>${esc(uiT(
-        "portal.blockedHint",
-        "Accounting ist bereit (Monatsautomatik an), aber die Plattform lehnt die Verbindung ab. Ohne Antwort kommen keine Mitarbeiternamen, kein Logo und keine Monatsdaten an. Bitte Ihren Plattform-Administrator informieren: Verbindungsschlüssel zwischen Plattform und Accounting abstimmen – oder die Plattform liefert Mitarbeiter/Monat per Import."
-      ))}</span>
-      <span style="display:block;margin-top:6px;opacity:.85">${esc(
-        uiT("portal.blockedMeta", "Offene Anfragen: {n} · Mitarbeiter bisher: {e}")
-          .replace("{n}", String(pending))
-          .replace("{e}", String(employees))
-      )}</span>`;
+        "portal.deliveryPendingHint",
+        "{n} fertige Abrechnung(en) liegen bereit. Die Plattform muss Event payslip.released speichern (Antwort: accepted:true) oder GET /v1/delivery/pending pollen – sonst erscheint nichts in der Mitarbeiter-App."
+      ).replace("{n}", String(pendingDeliveries)))}</span>`;
   }
 
   function renderPortalCommandStatus({
@@ -2630,7 +2640,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.44.0</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.44.1</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))
@@ -2870,24 +2880,28 @@
             reason: "portal_after_create",
           }),
         });
-        delivered = Number(ship?.delivered || ship?.replay?.pushed || 0);
+        delivered = Number(ship?.delivered || 0);
+        const pendingPull = Number(ship?.replay?.remaining ?? ship?.results?.filter?.((r) => r.pendingPull)?.length || 0);
+        const whFail = Number(ship?.failed || ship?.replay?.failed || 0);
         if (delivered > 0) {
           toast(
-            uiT("portal.deliveredN", "{n} Abrechnung(en) an die Plattform geliefert.")
+            uiT("portal.deliveredN", "{n} Abrechnung(en) von der Plattform bestätigt.")
               .replace("{n}", String(delivered)),
             "ok"
           );
-        } else if (n > 0) {
-          toast(
-            uiT("portal.autoReleasedN", "{n} Abrechnung(en) freigegeben – Lieferung an Plattform läuft.")
-              .replace("{n}", String(n)),
-            ship?.ok === false ? "error" : "ok"
-          );
-        } else if (ship?.failed > 0 || ship?.replay?.failed > 0) {
+        } else if (whFail > 0) {
           toast(
             ship?.message
-              || uiT("portal.deliverFailed", "Lieferung an Plattform fehlgeschlagen – Sync erneut versuchen."),
+              || uiT("portal.deliverFailed", "Webhook zur Plattform fehlgeschlagen (Key/URL). Abrechnungen liegen unter /v1/delivery/pending."),
             "error"
+          );
+        } else if (n > 0 || (ship?.count || 0) > 0) {
+          toast(
+            uiT(
+              "portal.deliverPendingPull",
+              "Freigegeben und an Webhook gesendet – Plattform hat noch nicht bestätigt. Bitte Plattform: Event payslip.released speichern + pending pollen."
+            ),
+            "info"
           );
         }
       } catch (e) {

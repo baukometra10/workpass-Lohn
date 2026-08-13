@@ -208,10 +208,10 @@ export async function releaseInvoiceJob(id, options = {}) {
   const delivery = buildEmployeeDelivery("invoice", job);
   enqueueDelivery(delivery);
   const platformNotify = await notifyPlatform({ event: "invoice.released", delivery });
-  if (platformNotify?.ok && platformNotify.mode === "webhook") {
+  if (platformNotify?.ok && platformNotify.mode === "webhook" && platformNotify.accepted === true) {
     try {
       const { ackDelivery } = await import("./delivery-queue.mjs");
-      ackDelivery(delivery.deliveryId, { via: "webhook-push", at: new Date().toISOString() });
+      ackDelivery(delivery.deliveryId, { via: "webhook-accepted", at: new Date().toISOString() });
     } catch { /* keep pending */ }
   }
 
@@ -220,8 +220,9 @@ export async function releaseInvoiceJob(id, options = {}) {
     job,
     delivery,
     platformNotify,
-    message: platformNotify?.ok && platformNotify.mode === "webhook"
-      ? "Freigegeben und an die Plattform geliefert."
-      : "Freigegeben. Plattform stellt die Rechnung zu.",
+    deliveredViaWebhook: Boolean(platformNotify?.ok && platformNotify.accepted === true),
+    message: platformNotify?.ok && platformNotify.accepted === true
+      ? "Freigegeben und von der Plattform bestätigt."
+      : "Freigegeben. Plattform muss speichern und /v1/delivery/.../ack senden (oder pending pollen).",
   };
 }

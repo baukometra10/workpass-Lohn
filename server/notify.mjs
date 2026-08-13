@@ -263,6 +263,12 @@ export async function notifyPlatform(event) {
         keySource,
       });
       if (res.ok) {
+        const accepted = Boolean(
+          body
+          && typeof body === "object"
+          && (body.accepted === true || body.ok === true || body.received === true || body.queued === true)
+        );
+        // Bare 2xx without acceptance flag: transport OK, but platform may not have stored the payslip.
         lastWebhookStatus = {
           ok: true,
           at: new Date().toISOString(),
@@ -270,8 +276,11 @@ export async function notifyPlatform(event) {
           status: res.status,
           error: null,
           mode: "webhook",
-          hint: null,
+          hint: accepted
+            ? null
+            : "Webhook HTTP 2xx ohne accepted/ok – Plattform speichert ggf. noch nicht. Lieferung bleibt in /v1/delivery/pending.",
           keySource,
+          accepted,
         };
         return {
           ok: true,
@@ -279,6 +288,7 @@ export async function notifyPlatform(event) {
           status: res.status,
           attempt,
           body,
+          accepted,
           delivery: event.delivery || null,
           idempotencyKey,
         };

@@ -28,9 +28,10 @@ Webhook-Events (`employee.data.requested` …) nur für Felder, die nach dem Pul
 | `invoice.released` | Fertige Rechnung in der App zeigen |
 | `platform.ping` | nur `200 OK` zurückgeben (Connectivity) |
 
-**Aktueller Live-Stand:**  
-`https://suppix-ai-workpass.com/api/workpass/webhooks/accounting` antwortet mit **HTTP 404**.  
-Solange das so ist, kommen Anfragen und fertige Abrechnungen nicht an.
+**Aktueller Live-Stand (Probe):**  
+`POST https://suppix-ai-workpass.com/api/workpass/webhooks/accounting` antwortet mit **HTTP 401** ohne gültigen Key (Endpoint ist live).  
+Mit korrektem `WORKPASS_PLATFORM_WEBHOOK_KEY` muss die Plattform **2xx** und idealerweise `{ "ok": true, "accepted": true }` zurückgeben **und** `payslip.released` / `delivery` speichern.  
+Sonst zeigt Accounting „freigegeben“, aber in der Mitarbeiter-App erscheint nichts. Fallback: `GET /v1/delivery/pending`.
 
 ## Was die Plattform zurücksenden muss
 

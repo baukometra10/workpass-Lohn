@@ -394,15 +394,21 @@ export async function releasePayrollJob(jobId, options = {}) {
     },
   });
 
-  if (platformNotify?.ok && platformNotify.mode === "webhook") {
+  if (platformNotify?.ok && platformNotify.mode === "webhook" && platformNotify.accepted === true) {
     try {
       ackDelivery(delivery.deliveryId, {
-        via: "webhook-push",
+        via: "webhook-accepted",
         at: new Date().toISOString(),
         status: platformNotify.status,
+        body: platformNotify.body || null,
       });
     } catch { /* keep pending for pull */ }
   }
+
+  const deliveredConfirmed = Boolean(
+    platformNotify?.ok && platformNotify.mode === "webhook" && platformNotify.accepted === true
+  );
+  const webhookReached = Boolean(platformNotify?.ok && platformNotify.mode === "webhook");
 
   return {
     ok: true,
@@ -411,12 +417,16 @@ export async function releasePayrollJob(jobId, options = {}) {
     delivery,
     platformNotify,
     alreadyReleased,
-    deliveredViaWebhook: Boolean(platformNotify?.ok && platformNotify.mode === "webhook"),
-    message: platformNotify?.ok && platformNotify.mode === "webhook"
-      ? "Freigegeben und an die Plattform geliefert."
-      : (platformNotify?.ok
-        ? "Freigegeben. Kein Webhook – Plattform holt über /v1/delivery/pending."
-        : "Freigegeben und in Lieferwarteschlange – Webhook fehlgeschlagen, erneuter Versuch läuft automatisch."),
+    deliveredViaWebhook: deliveredConfirmed,
+    webhookReached,
+    pendingPull: !deliveredConfirmed,
+    message: deliveredConfirmed
+      ? "Freigegeben und von der Plattform bestätigt (accepted)."
+      : (webhookReached
+        ? "Freigegeben und Webhook erreicht – Plattform hat noch nicht bestätigt. Lieferung bleibt abrufbar unter /v1/delivery/pending."
+        : (platformNotify?.ok
+          ? "Freigegeben. Kein Webhook – Plattform muss /v1/delivery/pending pollen."
+          : `Freigegeben, aber Webhook fehlgeschlagen (${platformNotify?.status || platformNotify?.error || "Fehler"}). Automatischer Retry aktiv · pending pull.`)),
   };
 }
 
