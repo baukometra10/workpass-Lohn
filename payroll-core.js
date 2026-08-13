@@ -345,9 +345,13 @@
           : num(state.workHours).toLocaleString("de-DE", { maximumFractionDigits: 2 }))
         : "",
       sender: formatEmployerSenderLine(state.seller),
-      empMeta: printPersNr
-        ? `*Pers.-Nr. ${printPersNr}*  *Abt.-Nr. ${String(state.departmentNo || printPersNr.replace(/\D/g, "").slice(0, 5) || "20000")}*`
-        : "",
+      empMeta: (() => {
+        if (!printPersNr) return "";
+        const abt = String(state.departmentNo || "").trim();
+        return abt
+          ? `*Pers.-Nr. ${printPersNr}*  *Abt.-Nr. ${abt}*`
+          : `*Pers.-Nr. ${printPersNr}*`;
+      })(),
       empName: formatEmployeeSalutation(state.employeeName),
       empAddr: String(state.employeeAddress || "").trim(),
       entry: formatDateShortDatev(state.employeeEntryDate),
