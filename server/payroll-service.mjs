@@ -3,9 +3,9 @@
  * Isolation key: company.id (never company name alone)
  */
 import { getPayrollCore } from "./engine.mjs";
-import { loadPayrollJob, savePayrollJob } from "./store.mjs";
+import { loadPayrollJob, savePayrollJob, listPayrollJobs } from "./store.mjs";
 import { buildEmployeeDelivery, notifyPlatform } from "./notify.mjs";
-import { enqueueDelivery } from "./delivery-queue.mjs";
+import { enqueueDelivery, ackDelivery } from "./delivery-queue.mjs";
 import { ensureCompanyFromPayload } from "./company-service.mjs";
 import { notifyGapsForPayroll } from "./platform-messages.mjs";
 import { upsertEmployee } from "./employee-registry.mjs";
@@ -197,14 +197,15 @@ export async function ingestPayroll(payload, options = {}) {
 
   const now = new Date().toISOString();
   const prev = loadPayrollJob(id);
+  // Never mark released here – delivery must go through releasePayrollJob (enqueue + webhook).
   const job = {
     jobId: id,
     kind: "platform.payroll.job.v1",
     demo: isDemo,
-    status: status === "error" ? "error" : (options.autoRelease && !hard.length ? "released" : "calculated"),
+    status,
     createdAt: prev?.createdAt || now,
     updatedAt: now,
-    releasedAt: options.autoRelease && !hard.length ? now : (prev?.releasedAt || null),
+    releasedAt: prev?.releasedAt || null,
     company: {
       id: companyId,
       name: payslip.company.name,
@@ -220,14 +221,10 @@ export async function ingestPayroll(payload, options = {}) {
     inbound: payload,
     state,
     payroll: payslip.totals,
-    payslip: { ...payslip, status: options.autoRelease && !hard.length ? "released" : payslip.status },
+    payslip: { ...payslip, status },
     errors: hard,
     printHints: soft,
   };
-
-  if (job.status === "released") {
-    job.payslip.status = "released";
-  }
 
   savePayrollJob(job);
 
@@ -246,13 +243,27 @@ export async function ingestPayroll(payload, options = {}) {
     }
   }
 
+  let release = null;
+  if (options.autoRelease && hard.length === 0) {
+    try {
+      release = await releasePayrollJob(id, {
+        tenantScope: options.tenantScope || companyId,
+      });
+    } catch (e) {
+      release = { ok: false, error: e.message || String(e) };
+    }
+  }
+
   return {
     ok: hard.length === 0,
     errors: hard,
     printHints: soft,
-    job,
-    payslip: job.payslip,
+    job: release?.job || job,
+    payslip: release?.payslip || job.payslip,
     platformMessages,
+    released: Boolean(release?.ok),
+    delivery: release?.delivery || null,
+    platformNotify: release?.platformNotify || null,
   };
 }
 
@@ -352,18 +363,46 @@ export async function releasePayrollJob(jobId, options = {}) {
   if (errors.length) {
     return { ok: false, error: errors.join(" · "), job };
   }
-  job.status = "released";
-  job.releasedAt = new Date().toISOString();
-  job.updatedAt = job.releasedAt;
-  if (job.payslip) {
-    job.payslip.status = "released";
-    job.payslip.releasedAt = job.releasedAt;
+
+  const alreadyReleased = job.status === "released";
+  if (!alreadyReleased || options.forceRedeliver) {
+    job.status = "released";
+    job.releasedAt = job.releasedAt || new Date().toISOString();
+    job.updatedAt = new Date().toISOString();
+    if (job.payslip) {
+      job.payslip.status = "released";
+      job.payslip.releasedAt = job.releasedAt;
+    }
+    savePayrollJob(job);
   }
-  savePayrollJob(job);
 
   const delivery = buildEmployeeDelivery("payroll", job);
+  if (!delivery) {
+    return { ok: false, error: "Delivery konnte nicht gebaut werden", job };
+  }
+  // Reset to pending so replay / platform pull see a fresh package
+  delivery.queueStatus = "pending";
+  delivery.enqueuedAt = new Date().toISOString();
   enqueueDelivery(delivery);
-  const platformNotify = await notifyPlatform({ event: "payslip.released", delivery });
+  const platformNotify = await notifyPlatform({
+    event: "payslip.released",
+    delivery,
+    company: job.company,
+    meta: {
+      reason: options.reason || (alreadyReleased ? "redeliver" : "release"),
+      forceRedeliver: Boolean(options.forceRedeliver),
+    },
+  });
+
+  if (platformNotify?.ok && platformNotify.mode === "webhook") {
+    try {
+      ackDelivery(delivery.deliveryId, {
+        via: "webhook-push",
+        at: new Date().toISOString(),
+        status: platformNotify.status,
+      });
+    } catch { /* keep pending for pull */ }
+  }
 
   return {
     ok: true,
@@ -371,7 +410,60 @@ export async function releasePayrollJob(jobId, options = {}) {
     payslip: job.payslip,
     delivery,
     platformNotify,
-    message: "Freigegeben. Plattform stellt dem Mitarbeiter die Abrechnung zu.",
+    alreadyReleased,
+    deliveredViaWebhook: Boolean(platformNotify?.ok && platformNotify.mode === "webhook"),
+    message: platformNotify?.ok && platformNotify.mode === "webhook"
+      ? "Freigegeben und an die Plattform geliefert."
+      : (platformNotify?.ok
+        ? "Freigegeben. Kein Webhook – Plattform holt über /v1/delivery/pending."
+        : "Freigegeben und in Lieferwarteschlange – Webhook fehlgeschlagen, erneuter Versuch läuft automatisch."),
+  };
+}
+
+/** Re-push all released payslips for a company/period to the platform. */
+export async function deliverReleasedPayslips(options = {}) {
+  const companyId = normalizeCompanyId(options.companyId || options.tenantScope || "");
+  const period = String(options.period || "").trim();
+  if (!companyId) return { ok: false, error: "companyId fehlt", results: [] };
+  const jobs = listPayrollJobs({ companyId, period: period || undefined })
+    .filter((j) => j && j.status === "released" && !j.demo);
+  const results = [];
+  let delivered = 0;
+  let failed = 0;
+  for (const job of jobs) {
+    try {
+      const r = await releasePayrollJob(job.jobId, {
+        tenantScope: companyId,
+        forceRedeliver: true,
+        reason: options.reason || "deliver_period",
+      });
+      if (r.ok && r.deliveredViaWebhook) delivered += 1;
+      else if (!r.ok) failed += 1;
+      results.push({
+        jobId: job.jobId,
+        ok: Boolean(r.ok),
+        deliveredViaWebhook: Boolean(r.deliveredViaWebhook),
+        error: r.error || null,
+        notifyMode: r.platformNotify?.mode || null,
+      });
+    } catch (e) {
+      failed += 1;
+      results.push({ jobId: job.jobId, ok: false, error: e.message || String(e) });
+    }
+  }
+  return {
+    ok: failed === 0,
+    companyId,
+    period: period || null,
+    count: jobs.length,
+    delivered,
+    failed,
+    results,
+    message: delivered
+      ? `${delivered}/${jobs.length} Abrechnung(en) an die Plattform geliefert.`
+      : (jobs.length
+        ? "Freigegebene Abrechnungen in Warteschlange – Webhook prüfen oder Plattform pollt /v1/delivery/pending."
+        : "Keine freigegebenen Abrechnungen in diesem Monat."),
   };
 }
 

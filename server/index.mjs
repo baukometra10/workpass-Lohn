@@ -10,7 +10,7 @@
 import http from "node:http";
 import { URL } from "node:url";
 import { ACCOUNTING_VERSION, SERVICE_NAME } from "./version.mjs";
-import { ingestPayroll, ingestPayrollBatch, releasePayrollJob } from "./payroll-service.mjs";
+import { ingestPayroll, ingestPayrollBatch, releasePayrollJob, deliverReleasedPayslips } from "./payroll-service.mjs";
 import { enrichPayrollJob, getLastEnrichStatus } from "./employee-enrich.mjs";
 import { runMonthClose, currentPeriod, requestEmployeeDataFromPlatform, resolvePlatformPullUrls } from "./month-close.mjs";
 import {
@@ -34,6 +34,7 @@ import {
   autoPipelineStatus,
   autoPipelineConfig,
 } from "./auto-pipeline.mjs";
+import { startDeliveryReplayScheduler, replayPendingDeliveries } from "./delivery-replay.mjs";
 import { listCompanyEmployees, monthOverview, listReleasedArchive, listInvoiceArchive, brandingHealth, buildMonthDatevExport, buildMonthLodasPackage, monthCompleteness } from "./portal-service.mjs";
 import { buildDemoPayrollBatch } from "./demo-payroll.mjs";
 import { purgeDemoPayroll } from "./demo-purge.mjs";
@@ -118,6 +119,7 @@ try {
 const backupSched = startBackupScheduler();
 const monthCloseSched = startMonthCloseScheduler();
 const autoPipeSched = startAutoPipelineScheduler();
+const deliveryReplaySched = startDeliveryReplayScheduler();
 
 function sendJson(res, status, body, req) {
   const json = JSON.stringify(body, null, 2);
@@ -948,6 +950,33 @@ async function handler(req, res) {
       return reply(status, result);
     }
 
+    if (req.method === "POST" && path === "/v1/payroll/deliver-period") {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = tenantScope || body.companyId || "";
+      const result = await deliverReleasedPayslips({
+        companyId,
+        period: body.period || currentPeriod(),
+        reason: body.reason || "api_deliver_period",
+      });
+      // Also drain any leftover pending queue via webhook replay
+      let replay = null;
+      try {
+        replay = await replayPendingDeliveries({
+          companyId,
+          reason: "after_deliver_period",
+        });
+      } catch { /* ignore */ }
+      audit({
+        type: "payroll.deliver_period",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { delivered: result.delivered, count: result.count },
+      });
+      return reply(200, { ...result, replay });
+    }
+
     if (req.method === "POST" && path.startsWith("/v1/payroll/") && path.endsWith("/release")) {
       const jobId = decodeURIComponent(path.slice("/v1/payroll/".length, -"/release".length));
       const result = await releasePayrollJob(jobId, { tenantScope });
@@ -1466,6 +1495,25 @@ async function handler(req, res) {
     }
 
     // --- Delivery ---
+    if (req.method === "POST" && path === "/v1/delivery/replay") {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = tenantScope || body.companyId || undefined;
+      const result = await replayPendingDeliveries({
+        companyId,
+        limit: body.limit,
+        reason: body.reason || "api_replay",
+      });
+      audit({
+        type: "delivery.replay",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { pushed: result.pushed, failed: result.failed },
+      });
+      return reply(200, result);
+    }
+
     if (req.method === "GET" && path === "/v1/delivery/pending") {
       const companyId = tenantScope || url.searchParams.get("companyId") || undefined;
       const pending = listPendingDeliveries({ companyId });
@@ -1572,6 +1620,8 @@ server.listen(PORT, HOST, () => {
   else console.log("Backup scheduler: off – set WORKPASS_BACKUP_INTERVAL_HOURS=24");
   if (autoPipeSched.ok) console.log(`[auto-pipeline] every ${autoPipeSched.intervalMinutes} min · asks platform for employees + payroll + invoices`);
   else console.log("[auto-pipeline] off – WORKPASS_AUTO_PIPELINE=0");
+  if (deliveryReplaySched.ok) console.log(`[delivery-replay] every ${deliveryReplaySched.intervalMinutes} min`);
+  else console.log("[delivery-replay] off");
   if (monthCloseSched.ok) console.log("[month-close] end-of-month scheduler on");
   console.log("Auth: X-WorkPass-Key (timing-safe) · Tenant: X-WorkPass-Company-Id");
 });

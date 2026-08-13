@@ -2630,7 +2630,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.43.0</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.44.0</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))
@@ -2844,9 +2844,9 @@
     }
   }
 
-  /** Firm portal: push every calculated payslip to the platform immediately. */
+  /** Firm portal: release calculated jobs AND deliver documents to the platform. */
   async function releasePendingCalculatedJobs(period) {
-    if (!companyPortalId) return { released: 0 };
+    if (!companyPortalId) return { released: 0, delivered: 0 };
     const p = period || currentPayrollPeriod();
     try {
       const data = await apiFetch("/v1/payroll/month-close", {
@@ -2860,16 +2860,48 @@
         }),
       });
       const n = Array.isArray(data?.newlyReleased) ? data.newlyReleased.length : Number(data?.released || 0);
-      if (n > 0) {
-        toast(
-          uiT("portal.autoReleasedN", "{n} Abrechnung(en) an die Plattform gesendet.")
-            .replace("{n}", String(n)),
-          "ok"
-        );
+      let delivered = 0;
+      try {
+        const ship = await apiFetch("/v1/payroll/deliver-period", {
+          method: "POST",
+          body: JSON.stringify({
+            companyId: companyPortalId,
+            period: p,
+            reason: "portal_after_create",
+          }),
+        });
+        delivered = Number(ship?.delivered || ship?.replay?.pushed || 0);
+        if (delivered > 0) {
+          toast(
+            uiT("portal.deliveredN", "{n} Abrechnung(en) an die Plattform geliefert.")
+              .replace("{n}", String(delivered)),
+            "ok"
+          );
+        } else if (n > 0) {
+          toast(
+            uiT("portal.autoReleasedN", "{n} Abrechnung(en) freigegeben – Lieferung an Plattform läuft.")
+              .replace("{n}", String(n)),
+            ship?.ok === false ? "error" : "ok"
+          );
+        } else if (ship?.failed > 0 || ship?.replay?.failed > 0) {
+          toast(
+            ship?.message
+              || uiT("portal.deliverFailed", "Lieferung an Plattform fehlgeschlagen – Sync erneut versuchen."),
+            "error"
+          );
+        }
+      } catch (e) {
+        if (n > 0) {
+          toast(
+            uiT("portal.autoReleasedN", "{n} Abrechnung(en) an die Plattform gesendet.")
+              .replace("{n}", String(n)),
+            "ok"
+          );
+        }
       }
-      return { released: n || 0, data };
+      return { released: n || 0, delivered, data };
     } catch (e) {
-      return { released: 0, error: e.message };
+      return { released: 0, delivered: 0, error: e.message };
     }
   }
 

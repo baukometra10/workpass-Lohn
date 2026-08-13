@@ -208,12 +208,20 @@ export async function releaseInvoiceJob(id, options = {}) {
   const delivery = buildEmployeeDelivery("invoice", job);
   enqueueDelivery(delivery);
   const platformNotify = await notifyPlatform({ event: "invoice.released", delivery });
+  if (platformNotify?.ok && platformNotify.mode === "webhook") {
+    try {
+      const { ackDelivery } = await import("./delivery-queue.mjs");
+      ackDelivery(delivery.deliveryId, { via: "webhook-push", at: new Date().toISOString() });
+    } catch { /* keep pending */ }
+  }
 
   return {
     ok: true,
     job,
     delivery,
     platformNotify,
-    message: "Freigegeben. Plattform stellt die Rechnung zu.",
+    message: platformNotify?.ok && platformNotify.mode === "webhook"
+      ? "Freigegeben und an die Plattform geliefert."
+      : "Freigegeben. Plattform stellt die Rechnung zu.",
   };
 }
