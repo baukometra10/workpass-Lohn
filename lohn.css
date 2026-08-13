@@ -1085,25 +1085,81 @@ textarea.field-invalid {
 }
 
 .missing-panel {
-  margin: 10px 0 12px;
-  padding: 12px 14px;
+  margin: 4px 0 8px;
+  padding: 0;
   border-radius: var(--radius-sm);
   background: rgba(248, 113, 113, 0.08);
   border: 1px solid rgba(248, 113, 113, 0.35);
   color: var(--text);
+  flex: 0 0 auto;
+  overflow: hidden;
 }
 .missing-panel .missing-head {
   font-weight: 650;
-  margin-bottom: 6px;
+  margin: 0;
   font-family: var(--display);
+  font-size: 0.88rem;
 }
 .missing-panel ul {
   margin: 0;
   padding-left: 1.1rem;
+  max-height: min(28vh, 220px);
+  overflow: auto;
 }
-.missing-panel li { margin: 3px 0; font-size: 0.92rem; }
+.missing-panel li { margin: 3px 0; font-size: 0.86rem; }
 .missing-panel .missing-hard { color: #fca5a5; }
 .missing-panel .missing-soft { color: #fcd34d; }
+.missing-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.missing-toggle-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.missing-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(248, 113, 113, 0.55);
+  border: 1px solid rgba(252, 165, 165, 0.45);
+}
+.missing-toggle-hint {
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  color: #fca5a5;
+  opacity: 0.9;
+}
+.missing-body {
+  padding: 0 12px 12px;
+  border-top: 1px solid rgba(248, 113, 113, 0.22);
+}
+.missing-body[hidden] { display: none !important; }
+.missing-actions { margin-top: 10px; }
+.missing-panel.is-compact {
+  background: rgba(248, 113, 113, 0.1);
+}
+.missing-panel.is-open .missing-toggle {
+  border-bottom: 0;
+}
 
 .wage-presets {
   display: flex;
@@ -1272,14 +1328,14 @@ body.company-portal #apiCompanyId { display: none !important; }
 
 /* Wider company portal – less cramped left rail */
 body.company-portal .lohn-layout {
-  grid-template-columns: minmax(420px, 1.15fr) minmax(0, 1fr);
+  grid-template-columns: minmax(460px, 1.2fr) minmax(0, 1fr);
 }
 body.company-portal .lohn-form {
   padding: 0 18px 28px;
   gap: 12px;
 }
 body.company-portal .lohn-form-sticky {
-  padding-bottom: 14px;
+  padding-bottom: 10px;
 }
 body.company-portal .missing-panel {
   display: none !important;
@@ -1289,7 +1345,15 @@ body.company-portal.portal-editing .missing-panel {
 }
 body.company-portal #apiInboxList,
 body.company-portal .api-inbox-list {
-  max-height: min(62vh, 640px);
+  max-height: none;
+}
+body.company-portal #portalEmployeeList,
+body.company-portal #portalArchiveList,
+body.company-portal #portalDiagList,
+body.company-portal #platformCommsList,
+body.company-portal #platformSeenList {
+  max-height: min(48vh, 520px);
+  overflow: auto;
 }
 body.company-portal #secEmpfang {
   border-color: rgba(125, 222, 162, 0.28);
@@ -2494,4 +2558,101 @@ body.company-portal .portal-kpi-row {
   body.company-portal .portal-kpi-row { grid-template-columns: 1fr 1fr; }
 }
 
-
+/* —— Roomier responsive shell (whole accounting UI) —— */
+.lohn-form-sticky {
+  flex-shrink: 0;
+}
+.lohn-layout {
+  grid-template-columns: minmax(360px, 400px) minmax(0, 1fr);
+}
+@media (min-width: 1280px) {
+  .lohn-layout {
+    grid-template-columns: minmax(400px, 0.95fr) minmax(0, 1.15fr);
+  }
+  body.company-portal .lohn-layout {
+    grid-template-columns: minmax(520px, 1.15fr) minmax(480px, 1fr);
+  }
+}
+@media (min-width: 1600px) {
+  body.company-portal .lohn-layout {
+    grid-template-columns: minmax(560px, 1.1fr) minmax(560px, 1fr);
+  }
+  body.company-portal .lohn-form {
+    padding: 0 22px 36px;
+  }
+}
+@media (max-width: 1200px) and (min-width: 981px) {
+  .lohn-layout {
+    grid-template-columns: minmax(340px, 0.92fr) minmax(0, 1.08fr);
+  }
+  body.company-portal .lohn-layout {
+    grid-template-columns: minmax(400px, 1fr) minmax(0, 1fr);
+  }
+  .form-jump {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 3px;
+  }
+  .form-jump a {
+    font-size: 0.58rem;
+    padding: 6px 2px;
+  }
+}
+@media (max-height: 820px) {
+  .lohn-appbar {
+    padding: 6px 12px;
+    min-height: 0;
+  }
+  .lohn-form-sticky {
+    padding: 6px 0 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+  }
+  .lohn-form-summary {
+    gap: 6px;
+  }
+  .kpi-strip .kpi {
+    padding: 8px 10px;
+  }
+  .form-section {
+    padding: 10px 10px 12px;
+  }
+  .missing-panel ul {
+    max-height: min(22vh, 160px);
+  }
+  body.company-portal .company-portal-banner {
+    margin-top: 4px;
+  }
+  body.company-portal .portal-command-status {
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+}
+@media (max-height: 680px) and (min-width: 981px) {
+  /* Keep both panes usable on short laptop screens */
+  body.lohn-desktop #lohnApp.lohn-shell {
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+  body.company-portal .lohn-preview {
+    min-height: 0;
+  }
+  body.company-portal .portal-dash-grid {
+    grid-template-columns: 1fr;
+  }
+}
+body.theme-light .missing-toggle-hint {
+  color: #b91c1c;
+}
+body.theme-light .missing-count {
+  background: rgba(220, 38, 38, 0.85);
+}
+body.is-rtl .missing-toggle {
+  text-align: right;
+  flex-direction: row-reverse;
+}
+body.is-rtl .missing-toggle-main {
+  flex-direction: row-reverse;
+}
+body.is-rtl .missing-panel ul {
+  padding-left: 0;
+  padding-right: 1.1rem;
+}

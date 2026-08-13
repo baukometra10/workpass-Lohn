@@ -327,19 +327,60 @@
       if (!items.length) {
         panel.hidden = true;
         panel.innerHTML = "";
+        panel.classList.remove("is-open", "is-compact");
       } else {
         panel.hidden = false;
         const canAsk = Boolean(companyPortalId || apiConfig().companyId);
+        const title = hardErrors?.length
+          ? uiT("missing.hardTitle", "Pflichtfelder fehlen")
+          : uiT("missing.softTitle", "Empfohlene Angaben");
+        let open = false;
+        try {
+          open = sessionStorage.getItem("wpMissingOpen") === "1";
+        } catch { /* ignore */ }
+        // First appearance with hard errors: start compact so the workspace stays readable
+        panel.classList.toggle("is-open", open);
+        panel.classList.toggle("is-compact", !open);
         panel.innerHTML = `
-          <div class="missing-head">${hardErrors?.length ? "Pflichtfelder fehlen" : "Empfohlene Angaben"}</div>
-          <ul>${items.map((i) => `<li class="missing-${i.level}">${esc(i.text)}</li>`).join("")}</ul>
-          ${canAsk ? `
-            <div class="btn-row" style="margin-top:10px">
-              <button type="button" class="primary" id="btnAskPlatformData">Vorhandene Daten holen / Lücken melden</button>
-            </div>
-            <p class="section-hint" id="missingPlatformHint">Wir laden zuerst Stammdaten und Vertrag aus der Plattform. Nur was dort wirklich fehlt, wird nachgefragt.</p>
-          ` : ""}
+          <button type="button" class="missing-toggle" id="btnMissingToggle" aria-expanded="${open ? "true" : "false"}">
+            <span class="missing-toggle-main">
+              <span class="missing-head">${esc(title)}</span>
+              <span class="missing-count">${items.length}</span>
+            </span>
+            <span class="missing-toggle-hint">${esc(open
+              ? uiT("missing.collapse", "Zuklappen")
+              : uiT("missing.expand", "Details anzeigen"))}</span>
+          </button>
+          <div class="missing-body" ${open ? "" : "hidden"}>
+            <ul>${items.map((i) => `<li class="missing-${i.level}">${esc(i.text)}</li>`).join("")}</ul>
+            ${canAsk ? `
+              <div class="btn-row missing-actions">
+                <button type="button" class="primary" id="btnAskPlatformData">${esc(uiT("missing.askPlatform", "Vorhandene Daten holen / Lücken melden"))}</button>
+              </div>
+              <p class="section-hint" id="missingPlatformHint">${esc(uiT("missing.askHint", "Wir laden zuerst Stammdaten und Vertrag aus der Plattform. Nur was dort wirklich fehlt, wird nachgefragt."))}</p>
+            ` : ""}
+          </div>
         `;
+        $("btnMissingToggle")?.addEventListener("click", () => {
+          const next = !panel.classList.contains("is-open");
+          panel.classList.toggle("is-open", next);
+          panel.classList.toggle("is-compact", !next);
+          const body = panel.querySelector(".missing-body");
+          if (body) body.hidden = !next;
+          const btn = $("btnMissingToggle");
+          if (btn) {
+            btn.setAttribute("aria-expanded", next ? "true" : "false");
+            const hint = btn.querySelector(".missing-toggle-hint");
+            if (hint) {
+              hint.textContent = next
+                ? uiT("missing.collapse", "Zuklappen")
+                : uiT("missing.expand", "Details anzeigen");
+            }
+          }
+          try {
+            sessionStorage.setItem("wpMissingOpen", next ? "1" : "0");
+          } catch { /* ignore */ }
+        });
         $("btnAskPlatformData")?.addEventListener("click", () => askPlatformForCurrentEmployee(hardErrors || [], soft));
         if (state.meta?.platformBlockedHint) {
           const hint = $("missingPlatformHint");
@@ -2517,7 +2558,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.39.2</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.40.0</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))

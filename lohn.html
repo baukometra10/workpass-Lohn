@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=26" />
-    <link rel="stylesheet" href="lohn.css?v=72" />
+    <link rel="stylesheet" href="lohn.css?v=73" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0b1220" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -136,7 +136,6 @@
           <div class="lohn-form-sticky">
             <div id="statusBar" class="lohn-status warn" data-i18n="status.ready">Bereit – manuell, Datei oder Inbox.</div>
             <div id="printHints" class="print-hints" hidden></div>
-            <div id="missingPanel" class="missing-panel" hidden></div>
             <nav class="form-jump" aria-label="Abschnitte">
               <a href="#secEmpfang" data-i18n="jump.empfang">Empfang</a>
               <a href="#secFirma" data-i18n="jump.firma">Firma</a>
@@ -145,6 +144,7 @@
               <a href="#secArchiv" data-i18n="jump.archiv">Archiv</a>
             </nav>
           </div>
+          <div id="missingPanel" class="missing-panel" hidden></div>
           <div class="lohn-form-summary" id="lohnFormSummary">
             <div id="auditOverview" class="audit-overview" hidden role="region" aria-label="Prüfübersicht">
               <div class="audit-overview-head">
@@ -684,6 +684,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="workpass-pwa.js?v=4"></script>
-    <script src="lohn-app.js?v=80"></script>
+    <script src="lohn-app.js?v=82"></script>
   </body>
 </html>
