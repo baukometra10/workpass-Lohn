@@ -1,7 +1,13 @@
-# Platform: auf WorkPass-Anfragen antworten
+## One-click Buchhaltung (Firmen-Portal)
 
-WorkPass Lohn fragt die Plattform. Die Plattform **muss** Daten zurücksenden.
-Ohne diesen Schritt bleibt der Monatsabschluss bei „Warte auf Plattform“.
+Die Plattform öffnet WorkPass Lohn **nicht** mit einem selbst erzeugten Token.
+
+1. `POST /v1/auth/platform-handoff` mit `X-WorkPass-Key` und `{ "companyId": "cmp-…" }`
+2. Antwort enthält `openUrl` (inkl. `#suppix-sso=…` mit von Accounting signierter Session)
+3. Button „Buchhaltung“ → `window.open(openUrl)` oder Redirect
+
+Ohne diesen Schritt bleibt die Anmeldeseite stehen (ungültige Hash-Tokens werden abgelehnt).
+
 
 ## Pull-first (Accounting holt Daten)
 

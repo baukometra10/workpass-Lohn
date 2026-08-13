@@ -76,8 +76,9 @@ import {
   authorizeRequest,
   readBodyLimited,
   publicSecurityInfo,
+  getApiKey,
 } from "./security/http.mjs";
-import { assertProductionSecurity } from "./security/crypto.mjs";
+import { assertProductionSecurity, secureCompare } from "./security/crypto.mjs";
 import { audit, readAuditTail } from "./security/audit.mjs";
 import { clientIp } from "./security/rate-limit.mjs";
 import { createBackup, listBackups, restoreBackup, startBackupScheduler } from "./backup/backup.mjs";
@@ -94,6 +95,7 @@ import {
   loginWithPassword,
   sessionFromRequest,
   unlockAuthRateLimits,
+  createPlatformHandoff,
 } from "./auth-session.mjs";
 import { clearRateLimitState } from "./security/rate-limit.mjs";
 
@@ -281,6 +283,40 @@ async function handler(req, res) {
       }
     }
     return reply(200, out);
+  }
+
+  // Platform one-click → accounting: mint HMAC session + #suppix-sso= URL
+  if (req.method === "POST" && path === "/v1/auth/platform-handoff") {
+    const providedApi = String(req.headers["x-workpass-key"] || "");
+    const apiOk = providedApi && secureCompare(providedApi, getApiKey());
+    const { key: whKey } = resolveWebhookKey();
+    const authHdr = String(req.headers.authorization || "");
+    const bearer = authHdr.toLowerCase().startsWith("bearer ") ? authHdr.slice(7).trim() : "";
+    const providedWh = String(req.headers["x-workpass-webhook-key"] || bearer || "");
+    const whOk = Boolean(whKey && providedWh && secureCompare(providedWh, whKey));
+    if (!apiOk && !whOk) {
+      const auth = authorizeRequest(req);
+      if (auth.retryAfterMs) res.setHeader("Retry-After", String(Math.ceil(auth.retryAfterMs / 1000)));
+      return reply(auth.status || 401, {
+        ok: false,
+        error: auth.error || "Unauthorized – X-WorkPass-Key oder Webhook-Key erforderlich",
+      });
+    }
+    const body = (await readBodyLimited(req)) || {};
+    const fwdHost = String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim();
+    const fwdProto = String(req.headers["x-forwarded-proto"] || "https").split(",")[0].trim();
+    const publicBase = String(process.env.WORKPASS_PUBLIC_BASE_URL || "").trim()
+      || (fwdHost ? `${fwdProto}://${fwdHost}` : "");
+    const result = createPlatformHandoff(body, { publicBase });
+    audit({
+      type: "auth.platform-handoff",
+      outcome: result.ok ? "ok" : "deny",
+      ip,
+      path,
+      companyId: body.companyId || body.company?.id || null,
+      detail: { status: result.status, via: apiOk ? "api-key" : "webhook-key" },
+    });
+    return reply(result.status || (result.ok ? 200 : 400), result);
   }
 
   if (path !== "/health") {

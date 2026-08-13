@@ -77,6 +77,17 @@ export class WorkPassAccountingClient {
     return this.request("POST", "/v1/company/login-sync", payload);
   }
 
+  /**
+   * One-click firm entry: returns openUrl with accounting-signed #suppix-sso= session.
+   * Platform must open openUrl (do not mint tokens locally).
+   */
+  platformHandoff(payload) {
+    return this.request("POST", "/v1/auth/platform-handoff", {
+      kind: "platform.auth.handoff.v1",
+      ...payload,
+    });
+  }
+
   /** Soft-disable accounting link (data retained). */
   deactivateCompany(companyIdOrPayload) {
     const body = typeof companyIdOrPayload === "string"

@@ -154,8 +154,41 @@ X-WorkPass-Key: …
 |----------|-----|
 | `GET /v1/auth/config` | أوضاع الدخول المتاحة (عام) |
 | `POST /v1/auth/login` | `{ email, password }` → Session |
+| `POST /v1/auth/platform-handoff` | **زر واحد من المنصة** → `openUrl` بجلسة موقعة من المحاسبة |
 | `GET /v1/auth/me` | المستخدم الحالي (`X-WorkPass-Session`) |
 | `GET /v1/admin/overview` | لوحة أدمن المحاسبة |
+
+#### دخول بزر واحد (Buchhaltung من المنصة)
+
+المنصة **لا تصنع** توكن HMAC بنفسها. تستدعي المحاسبة ثم تفتح `openUrl`:
+
+```http
+POST https://workpass-lohn.up.railway.app/v1/auth/platform-handoff
+X-WorkPass-Key: <WORKPASS_API_KEY>
+Content-Type: application/json
+
+{
+  "companyId": "cmp-cd3c66a0b71a",
+  "preferredLocale": "ar",
+  "user": { "email": "luf@firma.de", "name": "Lufthansa" }
+}
+```
+
+الجواب:
+
+```json
+{
+  "ok": true,
+  "openUrl": "https://workpass-lohn.up.railway.app/lohn.html#suppix-sso=…",
+  "session": "…",
+  "expiresAt": "…",
+  "user": { "role": "accountant", "companyId": "cmp-…" }
+}
+```
+
+زر المنصة يفتح `openUrl` (نافذة أو redirect). SDK: `client.platformHandoff({ companyId })`.
+
+**مهم:** `WORKPASS_SESSION_SECRET` يبقى على المحاسبة فقط — لا تشاركه مع المنصة.
 
 **المفضّل:** `WORKPASS_PLATFORM_AUTH_URL` على المنصة يتحقق من نفس كلمة سر WorkPass.  
 **احتياط حتى تجهز المنصة:** `WORKPASS_ADMIN_EMAIL` + `WORKPASS_ADMIN_PASSWORD` على Railway.

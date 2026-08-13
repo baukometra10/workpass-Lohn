@@ -6,7 +6,14 @@ import crypto from "node:crypto";
 import { secureCompare } from "./security/crypto.mjs";
 import { rateLimit, noteAuthFailure, noteAuthSuccess, clientIp, clearRateLimitState } from "./security/rate-limit.mjs";
 import { audit } from "./security/audit.mjs";
-import { verifyCompanyLogin, companyLoginDomain } from "./company-service.mjs";
+import {
+  verifyCompanyLogin,
+  companyLoginDomain,
+  loadCompany,
+  activateCompany,
+  defaultCompanyLoginEmail,
+} from "./company-service.mjs";
+import { normalizeCompanyId } from "./tenant.mjs";
 
 const SESSION_TTL_MS = Number(process.env.WORKPASS_SESSION_TTL_MS || 8 * 60 * 60 * 1000); // 8h
 const ADMIN_PASSWORD_MIN = 8;
@@ -405,4 +412,130 @@ export function requireAdminSession(req) {
     return { ok: false, status: 403, error: "Nur Accounting-Admin" };
   }
   return { ok: true, user: s.user };
+}
+
+/**
+ * Platform one-click entry: mint an accounting-signed session + SSO open URL.
+ * Platform must NOT forge HMAC tokens itself — call this with X-WorkPass-Key.
+ *
+ * @param {object} body
+ * @param {{ publicBase?: string }} [opts]
+ */
+export function createPlatformHandoff(body = {}, opts = {}) {
+  const companyId = normalizeCompanyId(
+    body.companyId
+    || body.company?.id
+    || body.user?.companyId
+    || body.tenantId
+  );
+  if (!companyId) {
+    return { ok: false, status: 422, error: "companyId fehlt" };
+  }
+
+  let company = loadCompany(companyId);
+  if (!company && body.autoProvision !== false) {
+    const name = String(body.company?.name || body.companyName || body.name || companyId).trim() || companyId;
+    const provisioned = activateCompany({
+      kind: "platform.company.activate.v1",
+      event: "company.accounting.handoff",
+      company: {
+        id: companyId,
+        name,
+        ...(body.company && typeof body.company === "object" ? body.company : {}),
+      },
+      login: body.login && typeof body.login === "object" ? body.login : undefined,
+      connection: {
+        accountingEnabled: true,
+        activatedBy: "platform-handoff",
+      },
+    });
+    if (!provisioned.ok) {
+      return {
+        ok: false,
+        status: 422,
+        error: provisioned.errors?.join?.(" · ")
+          || provisioned.error
+          || "Firma konnte nicht angelegt werden",
+      };
+    }
+    company = provisioned.company;
+  }
+  if (!company) {
+    return {
+      ok: false,
+      status: 404,
+      error: "Firma nicht in WorkPass Lohn – zuerst POST /v1/company/login-sync oder activate",
+    };
+  }
+  if (company.meta?.accountingEnabled === false) {
+    return { ok: false, status: 403, error: "Firma ist in WorkPass Lohn deaktiviert" };
+  }
+
+  const locale = String(
+    body.preferredLocale
+    || body.locale
+    || body.language
+    || body.user?.locale
+    || body.user?.language
+    || company.meta?.locale
+    || company.meta?.language
+    || ""
+  )
+    .trim()
+    .toLowerCase()
+    .slice(0, 2);
+
+  const email = String(
+    body.email
+    || body.login?.email
+    || body.user?.email
+    || company.meta?.auth?.email
+    || company.email
+    || defaultCompanyLoginEmail(company.id)
+  )
+    .trim()
+    .toLowerCase();
+
+  const name = String(
+    body.user?.name
+    || body.name
+    || company.name
+    || email
+    || company.id
+  ).trim();
+
+  const session = createSession({
+    id: body.user?.id || body.userId || `platform:${company.id}:${email || company.id}`,
+    email: email || defaultCompanyLoginEmail(company.id),
+    name,
+    // Firm one-click always lands as accountant (tenant-locked). Never elevates to admin.
+    role: "accountant",
+    companyId: company.id,
+    locale,
+  });
+
+  const ssoPayload = {
+    token: session.token,
+    expiresAt: session.expiresAt,
+    user: session.user,
+    via: "platform-handoff",
+    preferredLocale: locale || session.user.locale || "",
+  };
+  const hash = encodeURIComponent(JSON.stringify(ssoPayload));
+  const base = String(opts.publicBase || process.env.WORKPASS_PUBLIC_BASE_URL || "")
+    .trim()
+    .replace(/\/+$/, "")
+    || "https://workpass-lohn.up.railway.app";
+
+  return {
+    ok: true,
+    status: 200,
+    session: session.token,
+    expiresAt: session.expiresAt,
+    user: session.user,
+    companyId: company.id,
+    openPath: `/lohn.html#suppix-sso=${hash}`,
+    openUrl: `${base}/lohn.html#suppix-sso=${hash}`,
+    preferredLocale: locale || null,
+  };
 }

@@ -10,12 +10,18 @@
     const m = hash.match(/#suppix-sso=([^&]+)/);
     if (!m) return;
     const data = JSON.parse(decodeURIComponent(m[1]));
-    if (!data || !data.token) return;
-    const expMs = data.expiresAt ? Date.parse(data.expiresAt) : NaN;
-    if (Number.isFinite(expMs) && expMs < Date.now() - 30_000) {
+    if (!data || !data.token) {
+      try { sessionStorage.setItem("workpassSsoError", "invalid"); } catch { /* ignore */ }
       history.replaceState(null, "", location.pathname + location.search);
       return;
     }
+    const expMs = data.expiresAt ? Date.parse(data.expiresAt) : NaN;
+    if (Number.isFinite(expMs) && expMs < Date.now() - 30_000) {
+      try { sessionStorage.setItem("workpassSsoError", "expired"); } catch { /* ignore */ }
+      history.replaceState(null, "", location.pathname + location.search);
+      return;
+    }
+    try { sessionStorage.removeItem("workpassSsoError"); } catch { /* ignore */ }
     localStorage.setItem(
       "workpassPlatformSessionV2",
       JSON.stringify({
@@ -75,7 +81,7 @@
     }
     location.reload();
   } catch (e) {
-    /* ignore malformed handoff */
+    try { sessionStorage.setItem("workpassSsoError", "invalid"); } catch { /* ignore */ }
   }
 })();
 (function () {
@@ -562,6 +568,75 @@
     return Boolean(u?.companyId && u.role !== "admin");
   }
 
+  async function verifyPlatformSessionOrClear() {
+    const plat = loadPlatformSession();
+    if (!plat?.token) return { ok: true, skipped: true };
+    try {
+      const res = await fetch(`${apiOrigin()}/v1/auth/me`, {
+        headers: {
+          "X-WorkPass-Session": plat.token,
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok || !data.user) {
+        clearPlatformSession();
+        clearSession();
+        return {
+          ok: false,
+          error: tt(
+            "auth.ssoInvalid",
+            "Anmeldung von der Plattform ungültig – bitte erneut über die Plattform öffnen oder mit Firmen-Login anmelden."
+          ),
+        };
+      }
+      savePlatformSession({
+        token: plat.token,
+        expiresAt: plat.expiresAt || data.expiresAt || null,
+        user: data.user,
+        via: plat.via || "suppix",
+      });
+      document.body.classList.toggle(
+        "company-portal",
+        Boolean(data.user?.companyId && data.user?.role !== "admin")
+      );
+      try {
+        if (data.user?.companyId) {
+          const prev = JSON.parse(localStorage.getItem("workpass.lohn.apiConfig.v1") || "{}");
+          localStorage.setItem(
+            "workpass.lohn.apiConfig.v1",
+            JSON.stringify({ ...(prev && typeof prev === "object" ? prev : {}), companyId: data.user.companyId }),
+          );
+        }
+      } catch { /* ignore */ }
+      return { ok: true, user: data.user };
+    } catch (e) {
+      return {
+        ok: false,
+        error: tt("auth.bridgeOffline", "Bridge nicht erreichbar – bitte Verbindung prüfen und erneut öffnen."),
+      };
+    }
+  }
+
+  function takeSsoErrorMessage() {
+    let code = "";
+    try {
+      code = sessionStorage.getItem("workpassSsoError") || "";
+      sessionStorage.removeItem("workpassSsoError");
+    } catch { /* ignore */ }
+    if (code === "expired") {
+      return tt("auth.ssoExpired", "Der Plattform-Link ist abgelaufen – bitte erneut über die Plattform öffnen.");
+    }
+    if (code === "invalid") {
+      return tt(
+        "auth.ssoInvalid",
+        "Anmeldung von der Plattform ungültig – bitte erneut über die Plattform öffnen oder mit Firmen-Login anmelden."
+      );
+    }
+    return "";
+  }
+
   async function init(options) {
     onUnlockCb = options?.onUnlock || null;
     bindActivity();
@@ -579,6 +654,12 @@
 
     // One unlock is enough across Hub / Lohn / Admin (localStorage)
     if (isUnlocked()) {
+      const verified = await verifyPlatformSessionOrClear();
+      if (!verified.ok) {
+        showGate(verified.error || takeSsoErrorMessage());
+        window.WorkPassI18n?.applyDom?.(document.getElementById("authGate") || document);
+        return false;
+      }
       hideGate();
       touchSession();
       document.body.classList.toggle("company-portal", isCompanyPortalUser());
@@ -586,7 +667,7 @@
       onUnlockCb?.();
       return true;
     }
-    showGate("");
+    showGate(takeSsoErrorMessage());
     window.WorkPassI18n?.applyDom?.(document.getElementById("authGate") || document);
     return false;
   }

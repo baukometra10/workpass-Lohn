@@ -64,5 +64,28 @@ console.log("\n=== createSession helper ===");
 const s = createSession({ email: "a@b.c", name: "A", role: "accountant" });
 assert(s.user.role === "accountant", "accountant role");
 
+console.log("\n=== platform handoff ===");
+const { createPlatformHandoff } = await import("../server/auth-session.mjs");
+const { activateCompany, deleteCompany } = await import("../server/company-service.mjs");
+const handoffId = "cmp-handoff-test-001";
+activateCompany({
+  kind: "platform.company.activate.v1",
+  company: { id: handoffId, name: "Handoff Test GmbH" },
+  login: { email: `${handoffId}@firma.de`, password: "4821" },
+});
+const handoff = createPlatformHandoff({
+  companyId: handoffId,
+  preferredLocale: "ar",
+  user: { email: `${handoffId}@firma.de`, name: "Handoff User" },
+}, { publicBase: "https://workpass-lohn.up.railway.app" });
+assert(handoff.ok && handoff.openUrl, "handoff returns openUrl");
+assert(String(handoff.openUrl).includes("#suppix-sso="), "openUrl has SSO hash");
+assert(handoff.user?.companyId === handoffId, "tenant locked");
+assert(handoff.user?.role === "accountant", "firm handoff is accountant");
+const handoffVerify = verifySessionToken(handoff.session);
+assert(handoffVerify.ok, "handoff session verifies with accounting secret");
+assert(!createPlatformHandoff({}).ok, "handoff rejects missing companyId");
+deleteCompany({ company: { id: handoffId }, event: "company.deleted" });
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);
