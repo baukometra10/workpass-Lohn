@@ -493,6 +493,8 @@
       const cur = month.current || {};
       const kpiRow = $("portalKpiRow");
       if (kpiRow) kpiRow.hidden = false;
+      const kpiNote = $("portalKpiSumNote");
+      if (kpiNote) kpiNote.hidden = false;
       if ($("portalKpiEmployees")) $("portalKpiEmployees").textContent = String(emps.count || 0);
       if ($("portalKpiReleased")) $("portalKpiReleased").textContent = String(cur.released || arch.count || 0);
       if ($("portalKpiGross")) {
@@ -575,7 +577,10 @@
         }
         if ($("portalTotalsHint")) {
           $("portalTotalsHint").textContent = cur.total
-            ? uiT("portal.totalsHintCount", "{count} Abrechnung(en) · {status}")
+            ? uiT(
+              "portal.totalsHintCount",
+              "{count} Einzelabrechnung(en) · Summe Brutto/Netto · {status}"
+            )
               .replace("{count}", String(cur.total))
               .replace("{status}", cur.status === "released"
                 ? uiT("audit.released", "freigegeben")
@@ -583,12 +588,37 @@
             : uiT("portal.totalsHintEmpty", "Noch keine Abrechnungen in diesem Monat – Sync holt Daten von der Plattform.");
         }
         if ($("portalTotalsGrid")) {
+          const empRows = (cur.employees || [])
+            .filter((e) => e && (e.name || e.id))
+            .map((e) => {
+              const title = (() => {
+                const n = String(e.name || "").trim();
+                const id = String(e.id || "").trim();
+                if (n && !looksLikeIdOnly(n, id)) return n;
+                return id ? `${uiT("lohn.id", "ID")}: ${id}` : uiT("lohn.nameMissing", "Name fehlt");
+              })();
+              const g = e.gross != null ? PayrollCore.formatAmount(e.gross) : "—";
+              const n = e.net != null ? PayrollCore.formatAmount(e.net) : "—";
+              const st = firmStatusLabel(e.status || "");
+              return `<button type="button" class="portal-emp-total" data-id="${esc(e.jobId || "")}">
+                <span class="portal-emp-total-name">${esc(title)}</span>
+                <span class="portal-emp-total-meta">${esc(st)}</span>
+                <strong class="portal-emp-total-money">${esc(g)} → ${esc(n)}</strong>
+              </button>`;
+            })
+            .join("");
           $("portalTotalsGrid").innerHTML = `
-            <div class="kpi"><span>${esc(uiT("kpi.gross", "Brutto"))}</span><strong>${esc(PayrollCore.formatAmount(cur.grossSum || 0))}</strong></div>
-            <div class="kpi"><span>${esc(uiT("kpi.netShort", "Netto"))}</span><strong>${esc(PayrollCore.formatAmount(cur.netSum || 0))}</strong></div>
+            <div class="kpi"><span>${esc(uiT("kpi.grossSum", "Brutto Summe"))}</span><strong>${esc(PayrollCore.formatAmount(cur.grossSum || 0))}</strong></div>
+            <div class="kpi"><span>${esc(uiT("kpi.netSum", "Netto Summe"))}</span><strong>${esc(PayrollCore.formatAmount(cur.netSum || 0))}</strong></div>
             <div class="kpi"><span>${esc(uiT("kpi.lohnsteuer", "Lohnsteuer"))}</span><strong>${esc(PayrollCore.formatAmount(cur.taxSum || 0))}</strong></div>
             <div class="kpi"><span>${esc(uiT("kpi.svAn", "SV AN"))}</span><strong>${esc(PayrollCore.formatAmount(cur.svAnSum || 0))}</strong></div>
+            ${empRows ? `<div class="portal-emp-totals">${empRows}</div>` : ""}
           `;
+          $("portalTotalsGrid").querySelectorAll(".portal-emp-total[data-id]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              if (btn.dataset.id) openApiPayrollJob(btn.dataset.id);
+            });
+          });
         }
       }
 
@@ -2600,7 +2630,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.42.0</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.43.0</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))

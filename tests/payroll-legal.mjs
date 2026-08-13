@@ -90,10 +90,11 @@ check("Minijob 500 €: nur RV-AN (oder 0 bei Befreiung), keine individuelle LSt
   assert(exempt.pension === 0, "RV-Befreiung");
 });
 
-check("Auto-Erkennung nach SV-Brutto", () => {
-  assert(PC.calculate({ ...base, grossSalary: 400 }).employmentType === "mini");
-  assert(PC.calculate({ ...base, grossSalary: 1200 }).employmentType === "midi");
-  assert(PC.calculate({ ...base, grossSalary: 3000 }).employmentType === "regular");
+check("Auto: nie Minijob aus Brutto; Midi nur im Übergangsbereich", () => {
+  assert(PC.calculate({ ...base, grossSalary: 400, employmentType: "auto" }).employmentType === "regular");
+  assert(PC.calculate({ ...base, grossSalary: 1200, employmentType: "auto" }).employmentType === "midi");
+  assert(PC.calculate({ ...base, grossSalary: 3000, employmentType: "auto" }).employmentType === "regular");
+  assert(PC.calculate({ ...base, grossSalary: 400 }).employmentType === "regular");
 });
 
 check("Arbeitgeber-Umlagen U1/U2/Inso im AG-Anteil", () => {

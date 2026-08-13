@@ -62,14 +62,17 @@
     return Math.min(Number(gross) || 0, ceiling);
   }
 
-  /** employmentType: auto | regular | mini | midi */
+  /** employmentType: auto | regular | mini | midi
+   *  auto = never infer Minijob from one month's gross (contract status).
+   *  Uses Midijob only in Übergangsbereich; otherwise full SV.
+   */
   function resolveEmploymentType(gross, options = {}) {
     const forced = String(options.employmentType || "auto").toLowerCase();
     if (forced === "regular" || forced === "mini" || forced === "midi") return forced;
     const ae = Number(gross) || 0;
     if (ae <= 0) return "regular";
-    if (ae <= SV_2026.minijob.ceiling) return "mini";
-    if (ae <= SV_2026.midijob.upper) return "midi";
+    // Minijob is a Beschäftigungsart – never auto from low monthly hours/gross
+    if (ae > SV_2026.minijob.ceiling && ae <= SV_2026.midijob.upper) return "midi";
     return "regular";
   }
 

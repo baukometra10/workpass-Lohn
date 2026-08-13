@@ -846,6 +846,57 @@ textarea { min-height: 58px; resize: vertical; }
 }
 .portal-totals-grid .kpi span { display: block; color: var(--muted); font-size: 0.78rem; }
 .portal-totals-grid .kpi strong { font-size: 1.05rem; }
+.portal-kpi-sum-note {
+  margin: -4px 0 14px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #9bb0c9;
+}
+.portal-emp-totals {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+.portal-emp-total {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  text-align: start;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(90, 140, 200, 0.22);
+  background: rgba(8, 16, 28, 0.55);
+  color: #e8eef8;
+  cursor: pointer;
+  font: inherit;
+}
+.portal-emp-total:hover {
+  border-color: rgba(93, 180, 255, 0.45);
+  background: rgba(59, 158, 255, 0.1);
+}
+.portal-emp-total-name {
+  font-weight: 600;
+  font-size: 0.86rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.portal-emp-total-meta {
+  font-size: 0.72rem;
+  color: #9bb0c9;
+}
+.portal-emp-total-money {
+  justify-self: end;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.84rem;
+  color: #93c5fd;
+}
+body.is-rtl .portal-emp-total { text-align: right; }
+body.is-rtl .portal-emp-total-money { justify-self: start; }
 @media (max-width: 1100px) {
   .portal-kpi-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

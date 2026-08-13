@@ -46,8 +46,26 @@
     return formatAmount(value);
   }
 
+  /** Always show amount on a filled payslip (incl. 0,00) so SV/tax lines are never “missing”. */
+  function formatDeductionLine(value, filled) {
+    if (!filled) return "";
+    return formatAmount(value == null ? 0 : value);
+  }
+
   function formatAmount(value) {
     return formatNumber(value);
+  }
+
+  function normalizeEmploymentType(raw) {
+    const v = String(raw || "regular").trim().toLowerCase();
+    if (v === "mini" || v === "minijob" || v === "geringfuegig" || v === "geringfügig" || v === "450" || v === "520" || v === "603") {
+      return "mini";
+    }
+    if (v === "midi" || v === "midijob" || v === "uebergang" || v === "übergang" || v === "gleitzone") {
+      return "midi";
+    }
+    if (v === "auto") return "auto";
+    return "regular";
   }
 
   function parseIsoDateParts(value) {
@@ -158,7 +176,7 @@
       healthPercent: num(state.healthPercent),
       carePercent: num(state.carePercent),
       unemploymentPercent: num(state.unemploymentPercent),
-      employmentType: state.employmentType || "auto",
+      employmentType: state.employmentType || "regular",
       minijobRvExempt: Boolean(state.minijobRvExempt),
       minijobTaxable: Boolean(state.minijobTaxable),
     };
@@ -240,8 +258,16 @@
     return lines.length > 1 && last !== first ? `${first} · ${last}` : first;
   }
 
-  function buildHintsText(state) {
+  function buildHintsText(state, payroll) {
     const lines = [];
+    const et = String(payroll?.employmentType || state.employmentType || "regular").toLowerCase();
+    if (et === "mini") {
+      lines.push("Minijob: AN zahlt nur RV 3,6 % (sofern nicht befreit); KV/AV/PV-AN = 0,00");
+    } else if (et === "midi") {
+      lines.push("Midijob / Übergangsbereich: reduzierte SV-Bemessung");
+    } else {
+      lines.push("SV-pflichtig: KV, RV, AV, PV (Arbeitnehmeranteile)");
+    }
     const { hours, days } = resolveAttendance(state);
     if (days > 0) lines.push(`Arbeitstage: ${Math.round(days)}`);
     if (hours > 0) lines.push(`Stunden: ${formatNumber(hours)}`);
@@ -290,24 +316,23 @@
     return "";
   }
 
-  function resolvePgrs(state) {
+  function resolvePgrs(state, payroll) {
     const explicit = String(state.personengruppe || state.pgrs || "").trim();
     if (explicit) return explicit;
-    const et = String(state.employmentType || "").toLowerCase();
-    if (et === "minijob" || et === "geringfuegig" || et === "geringfügig") return "109";
-    if (et === "midijob") return "101";
-    // Regular SV-pflichtig – DATEV default
+    const et = String(payroll?.employmentType || state.employmentType || "regular").toLowerCase();
+    if (et === "mini" || et === "minijob" || et === "geringfuegig" || et === "geringfügig") return "109";
+    if (et === "midi" || et === "midijob") return "101";
     if (String(state.employeeName || state.employeeId || "").trim()) return "101";
     return "";
   }
 
-  function resolveBgrs(state) {
+  function resolveBgrs(state, payroll) {
     const explicit = String(state.beitragsgruppe || state.bgrs || "").trim();
     if (explicit) return explicit;
-    const et = String(state.employmentType || "").toLowerCase();
-    if (et === "minijob" || et === "geringfuegig" || et === "geringfügig") return "6500";
+    const et = String(payroll?.employmentType || state.employmentType || "regular").toLowerCase();
+    if (et === "mini" || et === "minijob" || et === "geringfuegig" || et === "geringfügig") return "6500";
     if (String(state.healthFund || "").trim() || num(state.grossSalary) > 0 || (state.wageItems || []).length) {
-      return "1111"; // KV+RV+AV+PV voll
+      return "1111";
     }
     return "";
   }
@@ -391,8 +416,8 @@
       svNr: String(state.employeeInsuranceNo || ""),
       kkName: String(state.healthFund || ""),
       kkPct: useRef ? DATEV_REFERENCE_DISPLAY.kkPctDisplay : formatKkPercent(state),
-      pgrs: ref ? ref.pgrs : resolvePgrs(state),
-      bgrs: ref ? ref.bgrs : resolveBgrs(state),
+      pgrs: ref ? ref.pgrs : resolvePgrs(state, payroll),
+      bgrs: ref ? ref.bgrs : resolveBgrs(state, payroll),
       svTg: (() => {
         const { days } = resolveAttendance(state);
         return days > 0 ? String(days) : "";
@@ -422,35 +447,35 @@
       empAddr: String(state.employeeAddress || "").trim(),
       entry: formatDateShortDatev(state.employeeEntryDate),
       taxIdMid: ref ? ref.taxIdMid : String(state.employeeTaxId || "").trim(),
-      hints: buildHintsText(state),
+      hints: buildHintsText(state, payroll),
       wageRows,
       grossTotal: formatAmountOrEmpty(gross),
-      taxTotal: formatAmountOrEmpty(ref ? taxTotal : payroll.payrollTax + payroll.churchTax + payroll.solidarity),
-      svTotal: formatAmountOrEmpty(ref ? DATEV_REFERENCE_DISPLAY.svTotal : svTotal),
+      taxTotal: formatDeductionLine(ref ? taxTotal : payroll.payrollTax + payroll.churchTax + payroll.solidarity, hasSheetContent),
+      svTotal: formatDeductionLine(ref ? DATEV_REFERENCE_DISPLAY.svTotal : svTotal, hasSheetContent),
       netAbzug: formatAmountOrEmpty(payroll.netDeductions),
       netVerdienst: formatAmountOrEmpty(net),
       netTotal: formatAmountOrEmpty(net),
       payout: formatAmountOrEmpty(net),
-      calcMethod: payroll.legalRatesApplied ? "BMF PAP 2026" : "",
+      calcMethod: payroll.legalRatesApplied ? "BMF PAP 2026" : (payroll.method || ""),
       stBrutto: formatAmountOrEmpty(pick("taxGross", payroll.taxGross || payroll.gross)),
-      lst: formatAmountOrEmpty(pick("payrollTax", payroll.payrollTax)),
-      kist: formatAmountOrEmpty(pick("churchTax", payroll.churchTax)),
+      lst: formatDeductionLine(pick("payrollTax", payroll.payrollTax), hasSheetContent),
+      kist: formatDeductionLine(pick("churchTax", payroll.churchTax), hasSheetContent),
       kvB: formatAmountOrEmpty(pick("svGross", payroll.svGross || payroll.gross)),
       rvB: formatAmountOrEmpty(pick("svGross", payroll.svGross || payroll.gross)),
-      kvBeitrag: formatAmountOrEmpty(pick("health", payroll.health)),
-      rvBeitrag: formatAmountOrEmpty(pick("pension", payroll.pension)),
-      avBeitrag: formatAmountOrEmpty(pick("unemployment", payroll.unemployment)),
-      pvBeitrag: formatAmountOrEmpty(pick("care", payroll.care)),
+      kvBeitrag: formatDeductionLine(pick("health", payroll.health), hasSheetContent),
+      rvBeitrag: formatDeductionLine(pick("pension", payroll.pension), hasSheetContent),
+      avBeitrag: formatDeductionLine(pick("unemployment", payroll.unemployment), hasSheetContent),
+      pvBeitrag: formatDeductionLine(pick("care", payroll.care), hasSheetContent),
       vbGross: formatAmountOrEmpty(gross),
       vbTaxGross: formatAmountOrEmpty(pick("taxGross", payroll.taxGross || payroll.gross)),
-      vbLst: formatAmountOrEmpty(pick("payrollTax", payroll.payrollTax)),
-      vbKist: formatAmountOrEmpty(pick("churchTax", payroll.churchTax)),
-      vbSoli: formatAmountOrEmpty(pick("solidarity", payroll.solidarity)),
+      vbLst: formatDeductionLine(pick("payrollTax", payroll.payrollTax), hasSheetContent),
+      vbKist: formatDeductionLine(pick("churchTax", payroll.churchTax), hasSheetContent),
+      vbSoli: formatDeductionLine(pick("solidarity", payroll.solidarity), hasSheetContent),
       vbSvGross: formatAmountOrEmpty(pick("svGross", payroll.svGross || payroll.gross)),
-      vbKv: formatAmountOrEmpty(pick("health", payroll.health)),
-      vbRv: formatAmountOrEmpty(pick("pension", payroll.pension)),
-      vbAv: formatAmountOrEmpty(pick("unemployment", payroll.unemployment)),
-      vbPv: formatAmountOrEmpty(pick("care", payroll.care)),
+      vbKv: formatDeductionLine(pick("health", payroll.health), hasSheetContent),
+      vbRv: formatDeductionLine(pick("pension", payroll.pension), hasSheetContent),
+      vbAv: formatDeductionLine(pick("unemployment", payroll.unemployment), hasSheetContent),
+      vbPv: formatDeductionLine(pick("care", payroll.care), hasSheetContent),
       bank: String(state.bankName || "").trim(),
       konto: ref?.bankIbanDisplay
         ? `Konto ${ref.bankIbanDisplay}`
@@ -492,6 +517,9 @@
       taxClass: "I",
       churchTaxRate: "0",
       churchConfession: "",
+      employmentType: "regular",
+      minijobRvExempt: false,
+      minijobTaxable: false,
       healthFund: "",
       healthPercent: "",
       healthAdditionalPercent: "",
@@ -752,6 +780,11 @@
         taxClass: String(employee.taxClass || employee.stkl || "I").trim(),
         churchTaxRate: String(employee.churchTaxRate ?? employee.kist ?? "0"),
         churchConfession: String(employee.churchConfession || employee.konfession || employee.religion || employee.konf || "").trim(),
+        employmentType: normalizeEmploymentType(
+          employee.employmentType || employee.beschaeftigung || employee.jobType || data.employmentType || "regular"
+        ),
+        minijobRvExempt: Boolean(employee.minijobRvExempt || employee.rvExempt),
+        minijobTaxable: Boolean(employee.minijobTaxable),
         healthFund: String(employee.healthFund || employee.kk || "").trim(),
         healthPercent: employee.healthPercent != null ? String(employee.healthPercent) : (employee.kkPercent != null ? String(employee.kkPercent) : ""),
         healthAdditionalPercent: employee.healthAdditionalPercent != null ? String(employee.healthAdditionalPercent) : "",
@@ -827,6 +860,11 @@
       taxClass: p.taxClass ?? raw.taxClass ?? d.taxClass,
       churchTaxRate: p.churchTaxRate ?? raw.churchTaxRate ?? d.churchTaxRate,
       churchConfession: p.churchConfession ?? raw.churchConfession ?? d.churchConfession,
+      employmentType: normalizeEmploymentType(
+        p.employmentType ?? raw.employmentType ?? d.employmentType ?? "regular"
+      ),
+      minijobRvExempt: Boolean(p.minijobRvExempt ?? raw.minijobRvExempt ?? d.minijobRvExempt),
+      minijobTaxable: Boolean(p.minijobTaxable ?? raw.minijobTaxable ?? d.minijobTaxable),
       healthFund: p.healthFund ?? raw.healthFund ?? d.healthFund,
       healthPercent: p.healthPercent ?? raw.healthPercent ?? d.healthPercent,
       healthAdditionalPercent: p.healthAdditionalPercent ?? raw.healthAdditionalPercent ?? d.healthAdditionalPercent,
