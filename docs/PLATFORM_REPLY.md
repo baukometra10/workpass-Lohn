@@ -54,6 +54,34 @@ Header: `X-WorkPass-Key: <gleicher WORKPASS_API_KEY>`
 
 `POST /v1/payroll/batch`
 
+**Stundenlohn-Modell (empfohlen):** Vertrag liefert `hourlyRate` / `stundenlohn`, Plattform liefert Monatsstunden:
+
+```json
+{
+  "kind": "platform.payroll.batch.v1",
+  "period": "2026-07",
+  "company": { "id": "IHRE-FIRMA-ID", "name": "Firma GmbH", "taxNumber": "…" },
+  "employees": [
+    {
+      "employee": {
+        "badgeId": "BP-FA-Z2CIE",
+        "name": "Feras Almohammad",
+        "taxClass": "I",
+        "healthFund": "TK",
+        "insuranceNo": "12050855X123",
+        "hourlyRate": 18.50,
+        "bank": { "name": "Sparkasse", "iban": "DE89…" }
+      },
+      "attendance": { "days": 20, "hours": 160 }
+    }
+  ]
+}
+```
+
+WorkPass berechnet automatisch: **Brutto = hours × hourlyRate**, dann Steuern/SV, Freigabe → `payslip.released`.
+
+Oder klassisch mit fertigem Brutto:
+
 ```json
 {
   "kind": "platform.payroll.batch.v1",
@@ -67,7 +95,8 @@ Header: `X-WorkPass-Key: <gleicher WORKPASS_API_KEY>`
         "name": "Schmidt Laura",
         "taxClass": "I",
         "healthFund": "TK",
-        "healthPercent": "14.6"
+        "healthPercent": "14.6",
+        "insuranceNo": "…"
       },
       "attendance": { "days": 20, "hours": 160 },
       "wageItems": [

@@ -16,6 +16,7 @@
 import { PLATFORM_DOMAIN } from "./platform-config.mjs";
 import { normalizeCompanyId, normalizeEmployeeId } from "./tenant.mjs";
 import { normalizeEmployeeRecord } from "./employee-normalize.mjs";
+import { deepFindByKey, deepFindNumberByKey, collectKeyPaths, KEY_RE } from "./field-deep-find.mjs";
 
 function pick(...vals) {
   for (const v of vals) {
@@ -224,7 +225,7 @@ function flattenContract(contract = {}) {
   const emp = contract.employee && typeof contract.employee === "object" ? contract.employee : {};
   const bank = contract.bank || emp.bank || contract.payment || contract.bankAccount || contract.konto || {};
   const salary = contract.salary || contract.gehalt || contract.compensation || contract.payroll || {};
-  const social = contract.socialInsurance || contract.sv || emp.socialInsurance || {};
+  const social = contract.socialInsurance || contract.sv || emp.socialInsurance || contract.insurance || {};
   const health = contract.healthInsurance || contract.krankenversicherung || emp.healthInsurance || {};
   const amount = Number(
     salary.amount
@@ -239,6 +240,17 @@ function flattenContract(contract = {}) {
     ?? contract.gehalt
     ?? 0
   ) || 0;
+  const hourlyRate = Number(
+    salary.hourlyRate
+    ?? salary.stundenlohn
+    ?? salary.hourRate
+    ?? contract.hourlyRate
+    ?? contract.stundenlohn
+    ?? emp.hourlyRate
+    ?? emp.stundenlohn
+    ?? deepFindNumberByKey(contract, KEY_RE.hourlyRate)
+    ?? 0
+  ) || 0;
   const merged = {
     ...emp,
     ...contract,
@@ -251,26 +263,35 @@ function flattenContract(contract = {}) {
       emp.healthFund,
       contract.healthFund,
       contract.krankenkasse,
+      contract.krankenkassenName,
       contract.kk,
       health.name,
       health.fund,
-      health.krankenkasse
+      health.krankenkasse,
+      health.provider,
+      deepFindByKey(contract, KEY_RE.healthFund)
     ),
     insuranceNo: pick(
       emp.insuranceNo,
       contract.insuranceNo,
       contract.svNr,
+      contract.svNummer,
       contract.socialSecurityNo,
       contract.socialSecurityNumber,
+      contract.versicherungsnummer,
       social.number,
       social.nr,
-      social.svNr
+      social.svNr,
+      social.versicherungsnummer,
+      deepFindByKey(contract, KEY_RE.insuranceNo)
     ),
     birthDate: pick(emp.birthDate, contract.birthDate, contract.geburtsdatum),
     entryDate: pick(emp.entryDate, contract.entryDate, contract.startDate, contract.eintritt),
     bankName: pick(bank.name, bank.bankName, bank.bank, bank.institut, contract.bankName),
     bankIban: pick(bank.iban, bank.bankIban, bank.IBAN, contract.iban, contract.bankIban),
     bank: bank,
+    hourlyRate: hourlyRate || undefined,
+    stundenlohn: hourlyRate || undefined,
     grossSalary: amount || undefined,
     wageItems: amount
       ? [{ code: "2000", label: pick(salary.label, "Gehalt laut Vertrag"), amount, taxFlag: "L", svFlag: "L" }]
@@ -324,6 +345,7 @@ export function pickEmployeeRow(rows, employeeId) {
 /** Snapshot of which master fields a row actually carries (no secret values). */
 export function employeeRowFieldFlags(row) {
   const n = normalizeEmployeeRecord(row || {});
+  const hourly = Number(n.hourlyRate || row?.hourlyRate || row?.stundenlohn) || 0;
   return {
     name: Boolean(n.name),
     insuranceNo: Boolean(n.insuranceNo),
@@ -331,8 +353,10 @@ export function employeeRowFieldFlags(row) {
     bankName: Boolean(n.bankName),
     bankIban: Boolean(n.bankIban),
     taxClass: Boolean(n.taxClass),
+    hourlyRate: hourly > 0,
     grossSalary: Boolean(n.grossSalary || (Array.isArray(row?.wageItems) && row.wageItems.some((w) => Number(w?.amount) > 0))),
     richness: employeeRowRichness(row),
+    keyPaths: collectKeyPaths(row).slice(0, 40),
   };
 }
 
@@ -467,6 +491,96 @@ export async function pullEmployeeBundle({ companyId, employeeId, period } = {})
     authDenied: authOnly,
     attempts,
   };
+}
+
+/**
+ * Pull worked hours for one employee in a payroll period.
+ */
+export async function pullMonthAttendance({ companyId, employeeId, period } = {}) {
+  const cid = normalizeCompanyId(companyId);
+  const eid = normalizeEmployeeId(employeeId);
+  const per = String(period || "").trim();
+  if (!cid || !eid || !per) {
+    return { ok: false, skipped: true, error: "companyId/employeeId/period fehlt" };
+  }
+
+  const candidates = [
+    `/api/companies/${encodeURIComponent(cid)}/employees/${encodeURIComponent(eid)}/hours`,
+    `/api/companies/${encodeURIComponent(cid)}/employees/${encodeURIComponent(eid)}/attendance`,
+    `/api/employees/${encodeURIComponent(eid)}/hours`,
+    `/api/employees/${encodeURIComponent(eid)}/attendance`,
+    "/api/attendance",
+    "/api/timesheets",
+    "/api/hours",
+    "/api/v1/attendance",
+    "/api/v1/hours",
+    "/api/v1/timesheets",
+    "/api/workpass/payroll/export",
+  ];
+
+  const attempts = [];
+  for (const path of candidates) {
+    const result = await platformGetJson(path, {
+      query: {
+        companyId: cid,
+        employeeId: eid,
+        badgeId: eid,
+        id: eid,
+        period: per,
+        month: per,
+        allowIncomplete: "1",
+      },
+      maxAttempts: 3,
+    });
+    attempts.push(...(result.attempts || [{ path, error: result.error }]));
+    if (!result.ok) continue;
+    const data = result.data || {};
+    const attendance = data.attendance || data.timesheet || data.hours || data.data?.attendance || {};
+    const hours = Number(
+      attendance.hours
+      ?? attendance.stunden
+      ?? data.hours
+      ?? data.stunden
+      ?? data.workedHours
+      ?? data.totalHours
+      ?? deepFindNumberByKey(data, KEY_RE.monthHours)
+      ?? 0
+    ) || 0;
+    const days = Number(
+      attendance.days
+      ?? attendance.arbeitstage
+      ?? data.days
+      ?? data.workDays
+      ?? deepFindNumberByKey(data, KEY_RE.workDays)
+      ?? 0
+    ) || 0;
+
+    // Also accept payroll batch shape with this employee
+    const rows = collectEmployeesFromPayload(data);
+    const match = pickEmployeeRow(rows, eid);
+    const fromRowHours = Number(
+      match?.attendance?.hours
+      ?? match?.workHours
+      ?? match?.hours
+      ?? match?.stunden
+      ?? 0
+    ) || 0;
+    const fromRowDays = Number(match?.attendance?.days ?? match?.workDays ?? match?.days ?? 0) || 0;
+    const h = hours || fromRowHours;
+    const d = days || fromRowDays;
+    if (h > 0 || d > 0) {
+      return {
+        ok: true,
+        hours: h,
+        days: d,
+        url: result.url,
+        keySource: result.keySource,
+        attempts,
+      };
+    }
+  }
+
+  return { ok: false, error: "Keine Monatsstunden von der Plattform", attempts };
 }
 
 /**

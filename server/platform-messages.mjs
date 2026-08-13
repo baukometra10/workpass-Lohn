@@ -399,8 +399,11 @@ export async function notifyGapsForPayroll({
         reply: {
           pushEmployees: "POST /v1/employees/import",
           pushPayroll: "POST /v1/payroll/batch",
-          orInline: "employees[] / employee / contract in webhook 200 body",
+          includeAttendance: "attendance: { hours, days }",
+          includeContract: "hourlyRate/stundenlohn, insuranceNo/svNr, healthFund/krankenkasse",
+          orInline: "employees[] / employee / contract / attendance in webhook 200 body",
           accountingBase: process.env.WORKPASS_PUBLIC_URL || "https://workpass-lohn.up.railway.app",
+          formula: "Brutto = attendance.hours × contract.hourlyRate (Stundenlohn)",
         },
       },
       idempotencyKey: forceNotify

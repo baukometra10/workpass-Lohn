@@ -11,6 +11,7 @@ import { notifyGapsForPayroll } from "./platform-messages.mjs";
 import { pullAndSyncCompanyBranding } from "./company-branding.mjs";
 import {
   pullEmployeeBundle,
+  pullMonthAttendance,
   extractInlineReply,
   pickEmployeeRow,
   employeeRowFieldFlags,
@@ -124,14 +125,15 @@ function employeeFromPlatformRow(row = {}) {
     churchTaxRate: norm.churchTaxRate,
     bankName: pick(norm.bankName, bank.name, bank.bankName, row.bankName),
     bankIban: pick(norm.bankIban, bank.iban, bank.bankIban, row.bankIban, row.iban),
+    hourlyRate: pick(norm.hourlyRate, row.hourlyRate, row.stundenlohn),
     wageItems: wages.length
       ? wages
       : (grossFromNorm > 0
         ? [{ code: "2000", label: "Gehalt", amount: grossFromNorm, taxFlag: "L", svFlag: "L" }]
         : []),
     grossSalary: pick(norm.grossSalary, row.gross, row.grossSalary, row.contractSalary, row.gehalt),
-    workDays: row.attendance?.days ?? row.workDays,
-    workHours: row.attendance?.hours ?? row.workHours,
+    workDays: row.attendance?.days ?? row.workDays ?? row.days,
+    workHours: row.attendance?.hours ?? row.workHours ?? row.hours ?? row.stunden,
     companyTaxNumber: pick(row.company?.taxNumber, row.taxNumber),
     companyVatId: pick(row.company?.vatId, row.vatId),
     companyName: pick(row.company?.name, row.companyName),
@@ -145,6 +147,44 @@ function applyBankFallback(state) {
     return true;
   }
   return false;
+}
+
+/**
+ * Brutto = Monatsstunden × Stundenlohn (from contract + platform attendance).
+ */
+function applyHoursTimesRate(state, { hours, days, hourlyRate } = {}) {
+  const rate = Number(hourlyRate || state.meta?.hourlyRate || state.hourlyRate) || 0;
+  const h = Number(hours ?? state.workHours) || 0;
+  const d = Number(days ?? state.workDays) || 0;
+  const changed = [];
+  if (rate > 0) {
+    state.meta = { ...(state.meta || {}), hourlyRate: rate };
+    state.hourlyRate = String(rate);
+  }
+  if (h > 0) {
+    state.workHours = String(h);
+    changed.push("hours");
+  }
+  if (d > 0) {
+    state.workDays = String(d);
+    changed.push("days");
+  }
+  if (rate > 0 && h > 0) {
+    const amount = Math.round(rate * h * 100) / 100;
+    state.wageItems = [{
+      code: "1000",
+      label: "Stundenlohn",
+      amount,
+      quantity: h,
+      factor: rate,
+      hours: h,
+      taxFlag: "L",
+      svFlag: "L",
+    }];
+    state.grossSalary = String(amount);
+    changed.push("grossFromHours");
+  }
+  return changed;
 }
 
 function persistRegistryFromState(state, companyId, source = "enrich") {
@@ -297,6 +337,14 @@ function mergePlatformRowIntoState(state, row, filled, tag = "platform") {
     }
     if (mapped.workDays != null && mapped.workDays !== "") fillEmpty(state, "workDays", String(mapped.workDays));
     if (mapped.workHours != null && mapped.workHours !== "") fillEmpty(state, "workHours", String(mapped.workHours));
+    if (mapped.hourlyRate) {
+      const rate = Number(mapped.hourlyRate) || 0;
+      if (rate > 0) {
+        state.meta = { ...(state.meta || {}), hourlyRate: rate };
+        if (!String(state.hourlyRate || "").trim()) state.hourlyRate = String(rate);
+        filled.push(`${tag}.hourlyRate`);
+      }
+    }
   }
 }
 
@@ -355,6 +403,7 @@ export async function enrichPayrollJob(jobId, options = {}) {
   let soft = PC.validatePrintHints?.(state) || [];
   let pull = { skipped: true };
   let employeePull = { skipped: true };
+  let attendancePull = { skipped: true };
 
   const needsPull = options.pull !== false && (hard.length > 0 || soft.length > 0 || options.forcePull);
   if (needsPull && employeeId) {
@@ -393,10 +442,41 @@ export async function enrichPayrollJob(jobId, options = {}) {
         pull = payrollPull;
       }
     }
+
+    // 3c) Monatsstunden von der Plattform × Stundenlohn aus Vertrag → Brutto
+    const rate = Number(state.meta?.hourlyRate || state.hourlyRate) || 0;
+    const hasGross = (Array.isArray(state.wageItems) && state.wageItems.some((w) => Number(w.amount) > 0))
+      || Number(state.grossSalary) > 0;
+    if (options.pullHours !== false && (rate > 0 || !hasGross || !Number(state.workHours))) {
+      attendancePull = await pullMonthAttendance({ companyId, period, employeeId });
+      if (attendancePull.ok) {
+        const applied = applyHoursTimesRate(state, {
+          hours: attendancePull.hours,
+          days: attendancePull.days,
+          hourlyRate: rate || state.meta?.hourlyRate,
+        });
+        applied.forEach((k) => filled.push(`attendance.${k}`));
+      } else if (rate > 0 && !Number(state.workHours)) {
+        // Keep rate; hours still missing → ask below
+        applyHoursTimesRate(state, { hourlyRate: rate });
+      }
+    } else if (rate > 0 && Number(state.workHours) > 0 && !hasGross) {
+      applyHoursTimesRate(state, {
+        hours: Number(state.workHours),
+        days: Number(state.workDays) || undefined,
+        hourlyRate: rate,
+      }).forEach((k) => filled.push(`hoursRate.${k}`));
+    }
   }
 
   hard = PC.validate(state);
   soft = PC.validatePrintHints?.(state) || [];
+  const rateNow = Number(state.meta?.hourlyRate || state.hourlyRate) || 0;
+  const hoursNow = Number(state.workHours) || 0;
+  if (rateNow > 0 && hoursNow <= 0) {
+    hard = [...hard, "Monatsstunden fehlen (Plattform: gearbeitete Stunden für diesen Monat)"];
+  }
+
   const nextJob = rebuildJob(job, state);
   persistRegistryFromState(state, companyId, "enrich");
 
@@ -419,6 +499,12 @@ export async function enrichPayrollJob(jobId, options = {}) {
       if (inline?.employees?.length) {
         const match = pickEmployeeRow(inline.employees, employeeId) || inline.employees[0];
         mergePlatformRowIntoState(state, match, filled, "webhook-inline");
+        const inlineHours = Number(match?.attendance?.hours ?? match?.workHours ?? match?.hours) || 0;
+        const inlineRate = Number(state.meta?.hourlyRate || match?.hourlyRate || match?.stundenlohn) || 0;
+        if (inlineRate && inlineHours) {
+          applyHoursTimesRate(state, { hours: inlineHours, hourlyRate: inlineRate })
+            .forEach((k) => filled.push(`webhook-inline.${k}`));
+        }
         persistRegistryFromState(state, companyId, "webhook-inline");
         const rebuilt = rebuildJob(nextJob, state);
         hard = rebuilt.errors || [];
@@ -433,6 +519,7 @@ export async function enrichPayrollJob(jobId, options = {}) {
           stillMissing: [...hard, ...soft],
           pull,
           employeePull,
+          attendancePull,
           branding,
           platformAsk,
           askedPlatform: true,
@@ -448,8 +535,6 @@ export async function enrichPayrollJob(jobId, options = {}) {
   const stillMissing = [...hard, ...soft];
   const employeePullOk = employeePull?.ok === true;
   const payrollPullOk = pull?.ok === true;
-  // Only treat as auth-block when the employee pull itself failed due to 401/403
-  // (do NOT flag just because some alternate URL attempts returned 401).
   const pullDenied = Boolean(
     !employeePullOk
     && (employeePull?.authDenied
@@ -467,12 +552,12 @@ export async function enrichPayrollJob(jobId, options = {}) {
   const pulledFlags = employeePullOk
     ? (employeePull.fieldFlags || employeeRowFieldFlags(employeePull.row))
     : null;
-  const incompletePull = Boolean(
-    employeePullOk
-    && stillMissing.length
+  const missingMaster = Boolean(
+    stillMissing.some((s) => /SV-Nummer|Krankenkasse|Bank|IBAN/i.test(String(s)))
     && pulledFlags
-    && (!pulledFlags.insuranceNo || !pulledFlags.healthFund || !pulledFlags.bankIban || !pulledFlags.grossSalary)
+    && (!pulledFlags.insuranceNo || !pulledFlags.healthFund)
   );
+  const missingHours = Boolean(rateNow > 0 && hoursNow <= 0);
 
   let message = filledCount && !stillMissing.length
     ? `Daten von Plattform/Vertrag/Register übernommen (${filledCount} Felder). Abrechnung bereit.`
@@ -486,8 +571,10 @@ export async function enrichPayrollJob(jobId, options = {}) {
 
   if (stillMissing.length && pullDenied) {
     message = "Plattform blockiert den Datenabruf (401). Bitte WORKPASS_API_KEY / WORKPASS_PLATFORM_API_KEY freigeben für GET /api/contracts – oder Stammdaten per POST /v1/payroll/batch senden.";
-  } else if (stillMissing.length && incompletePull) {
-    message = "Plattform antwortet, aber Vertrag/Mitarbeiter ohne Brutto/SV/KK/Bank. Bitte vollständige Stammdaten + Monat per POST /v1/payroll/batch an die Buchhaltung senden.";
+  } else if (missingHours) {
+    message = "Stundenlohn aus Vertrag vorhanden – bitte Monatsstunden der Plattform senden (attendance.hours) per POST /v1/payroll/batch. Brutto = Stunden × Stundenlohn.";
+  } else if (stillMissing.length && missingMaster) {
+    message = "Vertrag geladen, aber SV-Nummer / Krankenkasse fehlen im Payload. Bitte diese Felder im Vertrag an die Buchhaltung mitsenden.";
   } else if (stillMissing.length && webhookOkNoData && !employeePullOk) {
     message = "Plattform hat die Anfrage bestätigt, sendet aber keine Mitarbeiterdaten. Bitte POST /v1/employees/import und POST /v1/payroll/batch ausführen.";
   }
@@ -514,15 +601,20 @@ export async function enrichPayrollJob(jobId, options = {}) {
         error: employeePull?.error || null,
         authDenied: Boolean(employeePull?.authDenied),
       },
+    attendancePull: attendancePull?.ok
+      ? { ok: true, hours: attendancePull.hours, days: attendancePull.days, url: attendancePull.url }
+      : { ok: false, error: attendancePull?.error || null, skipped: Boolean(attendancePull?.skipped) },
     branding,
     platformAsk,
     askedPlatform: Boolean(platformAsk && (platformAsk.created || platformAsk.notified || platformAsk.ok)),
-    platformBlocked: Boolean(pullDenied || (webhookOkNoData && !employeePullOk) || incompletePull),
+    platformBlocked: Boolean(pullDenied || (webhookOkNoData && !employeePullOk) || missingMaster || missingHours),
     platformBlockedReason: pullDenied
       ? "pull_unauthorized"
-      : (incompletePull
-        ? "pull_incomplete_payload"
-        : (webhookOkNoData && !employeePullOk ? "webhook_ok_no_payload" : null)),
+      : (missingHours
+        ? "month_hours_missing"
+        : (missingMaster
+          ? "pull_incomplete_payload"
+          : (webhookOkNoData && !employeePullOk ? "webhook_ok_no_payload" : null))),
     message,
   };
   lastEnrichStatus = {
@@ -536,6 +628,9 @@ export async function enrichPayrollJob(jobId, options = {}) {
     platformBlockedReason: result.platformBlockedReason,
     employeePullOk,
     payrollPullOk,
+    attendanceOk: attendancePull?.ok === true,
+    attendanceHours: attendancePull?.hours || null,
+    hourlyRate: rateNow || null,
     brandingPulled: branding?.pulled === true,
     fieldFlags: pulledFlags,
     pullUrl: employeePull?.url || null,

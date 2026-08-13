@@ -4,6 +4,7 @@
  */
 
 import { normalizeEmployeeId } from "./tenant.mjs";
+import { deepFindByKey, deepFindNumberByKey, KEY_RE } from "./field-deep-find.mjs";
 
 function pickString(...vals) {
   for (const v of vals) {
@@ -128,13 +129,18 @@ export function normalizeEmployeeRecord(raw = {}) {
       src.insuranceNo,
       src.svNr,
       src.svNumber,
+      src.sv_nummer,
+      src.svNummer,
       src.socialSecurityNo,
       src.socialSecurityNumber,
       src.sozialversicherungsnummer,
+      src.versicherungsnummer,
       social.number,
       social.nr,
       social.svNr,
-      social.insuranceNo
+      social.insuranceNo,
+      social.versicherungsnummer,
+      deepFindByKey(src, KEY_RE.insuranceNo)
     ),
     birthDate: pickString(src.birthDate, src.birth, src.geburtsdatum, src.dateOfBirth),
     entryDate: pickString(src.entryDate, src.entry, src.eintritt, src.startDate, src.hiredAt),
@@ -144,11 +150,15 @@ export function normalizeEmployeeRecord(raw = {}) {
       src.healthFund,
       src.kk,
       src.krankenkasse,
+      src.krankenkassenName,
       src.healthInsuranceName,
+      src.healthInsuranceProvider,
       health.name,
       health.fund,
       health.krankenkasse,
-      health.label
+      health.label,
+      health.provider,
+      deepFindByKey(src, KEY_RE.healthFund)
     ),
     healthPercent: src.healthPercent != null
       ? String(src.healthPercent)
@@ -171,6 +181,19 @@ export function normalizeEmployeeRecord(raw = {}) {
       bank.accountIban
     ),
     bankBic: pickString(src.bankBic, src.bic, bank.bic, bank.BIC, bank.swift),
+    hourlyRate: (() => {
+      const n = Number(
+        src.hourlyRate
+        ?? src.stundenlohn
+        ?? src.hourRate
+        ?? src.wageRate
+        ?? payroll.hourlyRate
+        ?? payroll.stundenlohn
+        ?? deepFindNumberByKey(src, KEY_RE.hourlyRate)
+        ?? 0
+      );
+      return n > 0 ? String(n) : "";
+    })(),
     grossSalary: pickString(
       src.grossSalary,
       src.gross,
