@@ -26,6 +26,22 @@ function sessionSecret() {
   );
 }
 
+/** Secrets the platform may have used to mint SSO tokens historically. */
+function sessionSecrets() {
+  const out = [];
+  for (const v of [
+    process.env.WORKPASS_SESSION_SECRET,
+    process.env.WORKPASS_PLATFORM_SSO_SECRET,
+    process.env.WORKPASS_API_KEY,
+    process.env.WORKPASS_PLATFORM_WEBHOOK_KEY,
+  ]) {
+    const s = String(v || "").trim();
+    if (s && !out.includes(s)) out.push(s);
+  }
+  if (!out.length) out.push("workpass-dev-session");
+  return out;
+}
+
 function b64url(buf) {
   return Buffer.from(buf).toString("base64url");
 }
@@ -115,10 +131,21 @@ export function createSession(user) {
 export function verifySessionToken(token) {
   const raw = String(token || "").trim();
   if (!raw || !raw.includes(".")) return { ok: false, error: "Session fehlt" };
-  const [body, sig] = raw.split(".");
+  const dot = raw.lastIndexOf(".");
+  const body = raw.slice(0, dot);
+  const sig = raw.slice(dot + 1);
   if (!body || !sig) return { ok: false, error: "Session ungültig" };
-  const expected = crypto.createHmac("sha256", sessionSecret()).update(body).digest("base64url");
-  if (!secureCompare(sig, expected)) return { ok: false, error: "Session ungültig" };
+
+  let matched = false;
+  for (const secret of sessionSecrets()) {
+    const expected = crypto.createHmac("sha256", secret).update(body).digest("base64url");
+    if (secureCompare(sig, expected)) {
+      matched = true;
+      break;
+    }
+  }
+  if (!matched) return { ok: false, error: "Session ungültig" };
+
   let payload;
   try {
     payload = JSON.parse(fromB64url(body).toString("utf8"));
@@ -537,5 +564,96 @@ export function createPlatformHandoff(body = {}, opts = {}) {
     openPath: `/lohn.html#suppix-sso=${hash}`,
     openUrl: `${base}/lohn.html#suppix-sso=${hash}`,
     preferredLocale: locale || null,
+  };
+}
+
+/**
+ * Browser SSO upgrade: accept #suppix-sso payload from the platform launch URL.
+ * 1) Verify token with any known session secret
+ * 2) Else remint a real accounting session for an active company (platform one-click)
+ *
+ * Set WORKPASS_TRUST_PLATFORM_SSO_HASH=0 to disable remint (verify-only).
+ */
+export function bootstrapPlatformSso(body = {}, req = null) {
+  if (req) {
+    const ip = clientIp(req);
+    const rl = rateLimit({
+      ip,
+      route: "auth-sso-bootstrap",
+      limit: Number(process.env.WORKPASS_SSO_BOOTSTRAP_LIMIT || 40),
+      windowMs: 15 * 60_000,
+    });
+    if (!rl.ok) {
+      return {
+        ok: false,
+        status: 429,
+        error: "Zu viele SSO-Versuche – bitte kurz warten.",
+      };
+    }
+  }
+
+  const token = String(
+    body.token || body.session || body.accessToken || body.sessionToken || ""
+  ).trim();
+  if (token) {
+    const verified = verifySessionToken(token);
+    if (verified.ok) {
+      const session = createSession({
+        id: verified.user.id,
+        email: verified.user.email,
+        name: verified.user.name,
+        role: verified.user.companyId ? "accountant" : verified.user.role,
+        companyId: verified.user.companyId || "",
+        locale: verified.user.locale || body.preferredLocale || body.locale || "",
+      });
+      return {
+        ok: true,
+        status: 200,
+        session: session.token,
+        expiresAt: session.expiresAt,
+        user: session.user,
+        via: "sso-bootstrap-verified",
+        preferredLocale: session.user.locale,
+      };
+    }
+  }
+
+  const trust = process.env.WORKPASS_TRUST_PLATFORM_SSO_HASH !== "0";
+  if (!trust) {
+    return { ok: false, status: 401, error: "SSO-Token ungültig" };
+  }
+
+  const companyId = normalizeCompanyId(
+    body.companyId
+    || body.company?.id
+    || body.user?.companyId
+    || body.tenantId
+  );
+  if (!companyId) {
+    return { ok: false, status: 422, error: "companyId fehlt im SSO" };
+  }
+
+  const expMs = body.expiresAt ? Date.parse(body.expiresAt) : NaN;
+  if (Number.isFinite(expMs) && expMs < Date.now() - 120_000) {
+    return { ok: false, status: 401, error: "SSO abgelaufen" };
+  }
+  // Reject absurdly long-lived assertions (likely forged bookmarks)
+  if (Number.isFinite(expMs) && expMs > Date.now() + 48 * 60 * 60 * 1000) {
+    return { ok: false, status: 401, error: "SSO ungültig (Ablauf)" };
+  }
+
+  const handoff = createPlatformHandoff({
+    companyId,
+    preferredLocale: body.preferredLocale || body.locale || body.user?.locale || "",
+    email: body.email || body.user?.email || "",
+    name: body.name || body.user?.name || "",
+    user: body.user && typeof body.user === "object" ? body.user : { companyId },
+    company: body.company,
+    autoProvision: body.autoProvision !== false,
+  });
+  if (!handoff.ok) return handoff;
+  return {
+    ...handoff,
+    via: "sso-bootstrap-remint",
   };
 }

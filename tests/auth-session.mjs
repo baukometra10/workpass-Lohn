@@ -2,6 +2,7 @@
  * Session / platform login tests
  * Run: node tests/auth-session.mjs
  */
+import crypto from "node:crypto";
 process.env.WORKPASS_ADMIN_EMAIL = "admin@example.test";
 process.env.WORKPASS_ADMIN_PASSWORD = "super-secret-admin-pass";
 process.env.WORKPASS_SESSION_SECRET = "test-session-secret-32chars-min";
@@ -86,6 +87,50 @@ const handoffVerify = verifySessionToken(handoff.session);
 assert(handoffVerify.ok, "handoff session verifies with accounting secret");
 assert(!createPlatformHandoff({}).ok, "handoff rejects missing companyId");
 deleteCompany({ company: { id: handoffId }, event: "company.deleted" });
+
+console.log("\n=== SSO bootstrap remint ===");
+const { bootstrapPlatformSso } = await import("../server/auth-session.mjs");
+const bootId = "cmp-sso-boot-001";
+activateCompany({
+  kind: "platform.company.activate.v1",
+  company: { id: bootId, name: "SSO Boot GmbH" },
+  login: { email: `${bootId}@firma.de`, password: "4821" },
+});
+const boot = bootstrapPlatformSso({
+  companyId: bootId,
+  token: "not-a-valid-hmac-token",
+  expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+  user: { companyId: bootId, email: `${bootId}@firma.de`, name: "Boot" },
+  via: "platform-launch",
+}, { headers: {}, socket: { remoteAddress: "127.0.0.1" } });
+assert(boot.ok && boot.session, "bootstrap remints for active company");
+assert(verifySessionToken(boot.session).ok, "reminted session verifies");
+
+console.log("\n=== Multi-secret session verify ===");
+function mintWith(secret, user) {
+  const now = Date.now();
+  const payload = {
+    sub: user.id || user.email,
+    email: user.email,
+    name: user.name,
+    role: "accountant",
+    companyId: user.companyId,
+    locale: "",
+    iat: now,
+    exp: now + 3600000,
+  };
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const sig = crypto.createHmac("sha256", secret).update(body).digest("base64url");
+  return `${body}.${sig}`;
+}
+const altTok = mintWith(process.env.WORKPASS_API_KEY, {
+  id: "u1",
+  email: "a@b.c",
+  name: "A",
+  companyId: bootId,
+});
+assert(verifySessionToken(altTok).ok, "token signed with API_KEY still verifies");
+deleteCompany({ company: { id: bootId }, event: "company.deleted" });
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);

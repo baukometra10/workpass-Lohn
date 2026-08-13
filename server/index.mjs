@@ -96,6 +96,7 @@ import {
   sessionFromRequest,
   unlockAuthRateLimits,
   createPlatformHandoff,
+  bootstrapPlatformSso,
 } from "./auth-session.mjs";
 import { clearRateLimitState } from "./security/rate-limit.mjs";
 
@@ -315,6 +316,21 @@ async function handler(req, res) {
       path,
       companyId: body.companyId || body.company?.id || null,
       detail: { status: result.status, via: apiOk ? "api-key" : "webhook-key" },
+    });
+    return reply(result.status || (result.ok ? 200 : 400), result);
+  }
+
+  // Browser upgrades platform #suppix-sso= into a real accounting session (no API key).
+  if (req.method === "POST" && path === "/v1/auth/sso-bootstrap") {
+    const body = (await readBodyLimited(req)) || {};
+    const result = bootstrapPlatformSso(body, req);
+    audit({
+      type: "auth.sso-bootstrap",
+      outcome: result.ok ? "ok" : "deny",
+      ip,
+      path,
+      companyId: body.companyId || body.user?.companyId || result.companyId || null,
+      detail: { status: result.status, via: result.via || null },
     });
     return reply(result.status || (result.ok ? 200 : 400), result);
   }

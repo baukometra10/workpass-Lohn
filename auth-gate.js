@@ -5,30 +5,65 @@
  */
 /* SUPPIX SSO hash handoff: #suppix-sso=<urlencoded JSON {token,expiresAt,user,via}> */
 (function consumeSuppixSsoHash() {
+  function parseSsoPayload(raw) {
+    const attempts = [raw];
+    try { attempts.push(decodeURIComponent(raw)); } catch { /* ignore */ }
+    try { attempts.push(decodeURIComponent(decodeURIComponent(raw))); } catch { /* ignore */ }
+    for (const a of attempts) {
+      try {
+        const data = JSON.parse(a);
+        if (data && typeof data === "object") return data;
+      } catch { /* try next */ }
+    }
+    return null;
+  }
+
   try {
     const hash = String(location.hash || "");
-    const m = hash.match(/#suppix-sso=([^&]+)/);
+    const search = String(location.search || "");
+    const m = hash.match(/#suppix-sso=([^&]+)/)
+      || search.match(/[?&]suppix-sso=([^&]+)/)
+      || search.match(/[?&]sso=([^&]+)/);
     if (!m) return;
-    const data = JSON.parse(decodeURIComponent(m[1]));
-    if (!data || !data.token) {
+    const data = parseSsoPayload(m[1]);
+    if (!data) {
       try { sessionStorage.setItem("workpassSsoError", "invalid"); } catch { /* ignore */ }
-      history.replaceState(null, "", location.pathname + location.search);
+      history.replaceState(null, "", location.pathname);
+      return;
+    }
+    const token = String(
+      data.token || data.session || data.accessToken || data.sessionToken || ""
+    ).trim();
+    const companyId = String(
+      data.user?.companyId || data.companyId || data.company?.id || ""
+    ).trim();
+    const user = data.user && typeof data.user === "object"
+      ? { ...data.user, companyId: data.user.companyId || companyId || undefined }
+      : (companyId ? { companyId, role: "accountant" } : null);
+    if (!token && !companyId) {
+      try { sessionStorage.setItem("workpassSsoError", "invalid"); } catch { /* ignore */ }
+      history.replaceState(null, "", location.pathname);
       return;
     }
     const expMs = data.expiresAt ? Date.parse(data.expiresAt) : NaN;
     if (Number.isFinite(expMs) && expMs < Date.now() - 30_000) {
       try { sessionStorage.setItem("workpassSsoError", "expired"); } catch { /* ignore */ }
-      history.replaceState(null, "", location.pathname + location.search);
+      history.replaceState(null, "", location.pathname);
       return;
     }
-    try { sessionStorage.removeItem("workpassSsoError"); } catch { /* ignore */ }
+    try {
+      sessionStorage.removeItem("workpassSsoError");
+      sessionStorage.setItem("workpassSsoPending", "1");
+    } catch { /* ignore */ }
     localStorage.setItem(
       "workpassPlatformSessionV2",
       JSON.stringify({
-        token: data.token,
-        expiresAt: data.expiresAt,
-        user: data.user || null,
+        token: token || `pending:${companyId}`,
+        expiresAt: data.expiresAt || null,
+        user,
         via: data.via || "suppix",
+        preferredLocale: data.preferredLocale || data.locale || user?.locale || "",
+        rawCompanyId: companyId || null,
       }),
     );
     const ttlMs = Number.isFinite(expMs)
@@ -41,24 +76,24 @@
         touchedAt: new Date().toISOString(),
       }),
     );
-    if (data.user && data.user.companyId) {
+    if (companyId) {
       try {
         const prev = JSON.parse(localStorage.getItem("workpass.lohn.apiConfig.v1") || "{}");
         localStorage.setItem(
           "workpass.lohn.apiConfig.v1",
-          JSON.stringify({ ...(prev && typeof prev === "object" ? prev : {}), companyId: data.user.companyId }),
+          JSON.stringify({ ...(prev && typeof prev === "object" ? prev : {}), companyId }),
         );
       } catch {
         try {
           localStorage.setItem(
             "workpass.lohn.apiConfig.v1",
-            JSON.stringify({ companyId: data.user.companyId }),
+            JSON.stringify({ companyId }),
           );
         } catch { /* ignore */ }
       }
       document.body.classList.add("company-portal");
     }
-    const locale = String(data.preferredLocale || data.user?.locale || data.user?.language || "")
+    const locale = String(data.preferredLocale || data.locale || user?.locale || user?.language || "")
       .trim()
       .toLowerCase()
       .slice(0, 2);
@@ -69,9 +104,8 @@
       } catch { /* ignore */ }
     }
     const path = String(location.pathname || "").toLowerCase();
-    const isFirm = Boolean(data.user?.companyId && data.user?.role !== "admin");
-    history.replaceState(null, "", location.pathname + location.search);
-    // Firms land in the Lohn cockpit first — the premium payroll experience.
+    const isFirm = Boolean(companyId && user?.role !== "admin");
+    history.replaceState(null, "", location.pathname);
     if (isFirm) {
       const isLohnEntry = /lohn\.html$/i.test(path);
       if (!isLohnEntry) {
@@ -575,52 +609,91 @@
   async function verifyPlatformSessionOrClear() {
     const plat = loadPlatformSession();
     if (!plat?.token) return { ok: true, skipped: true };
-    const via = String(plat.via || "").toLowerCase();
-    // Legacy one-click from platform (#suppix-sso) must unlock like before v2.45.0.
-    // Only hard-fail forged tokens from password-login / platform-handoff paths.
-    const legacySso = !via
-      || via === "suppix"
-      || via === "platform"
-      || via === "platform-sso"
-      || via === "sso";
-    try {
-      const res = await fetch(`${apiOrigin()}/v1/auth/me`, {
-        headers: {
-          "X-WorkPass-Session": plat.token,
-          Accept: "application/json",
-        },
-        cache: "no-store",
+    const companyId = String(
+      plat.user?.companyId || plat.rawCompanyId || ""
+    ).trim();
+    let pendingSso = false;
+    try { pendingSso = sessionStorage.getItem("workpassSsoPending") === "1"; } catch { /* ignore */ }
+
+    async function applySession(token, expiresAt, user, via) {
+      savePlatformSession({
+        token,
+        expiresAt: expiresAt || null,
+        user: user || plat.user || null,
+        via: via || plat.via || "suppix",
       });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.ok && data.user) {
-        savePlatformSession({
-          token: plat.token,
-          expiresAt: plat.expiresAt || data.expiresAt || null,
-          user: data.user,
-          via: plat.via || "suppix",
+      document.body.classList.toggle(
+        "company-portal",
+        Boolean(user?.companyId && user?.role !== "admin")
+      );
+      try {
+        if (user?.companyId) {
+          const prev = JSON.parse(localStorage.getItem("workpass.lohn.apiConfig.v1") || "{}");
+          localStorage.setItem(
+            "workpass.lohn.apiConfig.v1",
+            JSON.stringify({ ...(prev && typeof prev === "object" ? prev : {}), companyId: user.companyId }),
+          );
+        }
+      } catch { /* ignore */ }
+      try { sessionStorage.removeItem("workpassSsoPending"); } catch { /* ignore */ }
+      return { ok: true, user };
+    }
+
+    async function tryBootstrap() {
+      try {
+        const res = await fetch(`${apiOrigin()}/v1/auth/sso-bootstrap`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({
+            token: String(plat.token || "").startsWith("pending:") ? "" : plat.token,
+            expiresAt: plat.expiresAt,
+            user: plat.user,
+            via: plat.via,
+            companyId,
+            preferredLocale: plat.preferredLocale || plat.user?.locale || "",
+          }),
+          cache: "no-store",
         });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.ok && data.session) {
+          return applySession(data.session, data.expiresAt, data.user, data.via || "sso-bootstrap");
+        }
+        return { ok: false, error: data.error || "" };
+      } catch {
+        return { ok: false, error: "bootstrap-offline" };
+      }
+    }
+
+    try {
+      const looksPending = String(plat.token || "").startsWith("pending:");
+      if (!looksPending) {
+        const res = await fetch(`${apiOrigin()}/v1/auth/me`, {
+          headers: {
+            "X-WorkPass-Session": plat.token,
+            Accept: "application/json",
+          },
+          cache: "no-store",
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.ok && data.user) {
+          return applySession(plat.token, plat.expiresAt || data.expiresAt, data.user, plat.via);
+        }
+      }
+
+      // Platform launch URL often sends a non-accounting token → upgrade to real session.
+      const boot = await tryBootstrap();
+      if (boot.ok) return boot;
+
+      // Last resort: keep firm portal unlocked (pre-v2.45 behavior) when company is known.
+      if (companyId || pendingSso || sessionActive()) {
         document.body.classList.toggle(
           "company-portal",
-          Boolean(data.user?.companyId && data.user?.role !== "admin")
+          Boolean(companyId && plat.user?.role !== "admin")
         );
-        try {
-          if (data.user?.companyId) {
-            const prev = JSON.parse(localStorage.getItem("workpass.lohn.apiConfig.v1") || "{}");
-            localStorage.setItem(
-              "workpass.lohn.apiConfig.v1",
-              JSON.stringify({ ...(prev && typeof prev === "object" ? prev : {}), companyId: data.user.companyId }),
-            );
-          }
-        } catch { /* ignore */ }
-        return { ok: true, user: data.user };
+        try { sessionStorage.removeItem("workpassSsoPending"); } catch { /* ignore */ }
+        return { ok: true, legacy: true, user: plat.user || (companyId ? { companyId, role: "accountant" } : null) };
       }
-      if (legacySso && (plat.user?.companyId || sessionActive())) {
-        document.body.classList.toggle(
-          "company-portal",
-          Boolean(plat.user?.companyId && plat.user?.role !== "admin")
-        );
-        return { ok: true, legacy: true, user: plat.user || null };
-      }
+
       clearPlatformSession();
       clearSession();
       return {
@@ -631,8 +704,7 @@
         ),
       };
     } catch (e) {
-      // Bridge briefly unreachable: keep existing unlock (pre-v2.45.0 behavior).
-      if (sessionActive() || (legacySso && plat.user?.companyId)) {
+      if (sessionActive() || companyId || pendingSso) {
         return { ok: true, offline: true, user: plat.user || null };
       }
       return {
