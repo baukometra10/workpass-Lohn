@@ -319,6 +319,56 @@ async function handler(req, res) {
     return reply(result.status || (result.ok ? 200 : 400), result);
   }
 
+  // Browser-friendly one-click: GET → 302 to lohn.html#suppix-sso= (server-minted session)
+  // Platform backend should redirect the user here (do not put the key in a public bookmark).
+  if (req.method === "GET" && path === "/v1/auth/platform-open") {
+    const q = url.searchParams;
+    const providedApi = String(q.get("key") || req.headers["x-workpass-key"] || "");
+    const apiOk = providedApi && secureCompare(providedApi, getApiKey());
+    const { key: whKey } = resolveWebhookKey();
+    const authHdr = String(req.headers.authorization || "");
+    const bearer = authHdr.toLowerCase().startsWith("bearer ") ? authHdr.slice(7).trim() : "";
+    const providedWh = String(req.headers["x-workpass-webhook-key"] || bearer || q.get("webhookKey") || "");
+    const whOk = Boolean(whKey && providedWh && secureCompare(providedWh, whKey));
+    if (!apiOk && !whOk) {
+      return reply(401, {
+        ok: false,
+        error: "Unauthorized – key query/header erforderlich für platform-open",
+      });
+    }
+    const fwdHost = String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim();
+    const fwdProto = String(req.headers["x-forwarded-proto"] || "https").split(",")[0].trim();
+    const publicBase = String(process.env.WORKPASS_PUBLIC_BASE_URL || "").trim()
+      || (fwdHost ? `${fwdProto}://${fwdHost}` : "");
+    const result = createPlatformHandoff({
+      companyId: q.get("companyId") || q.get("company") || "",
+      preferredLocale: q.get("locale") || q.get("lang") || q.get("preferredLocale") || "",
+      email: q.get("email") || "",
+      name: q.get("name") || "",
+      user: {
+        id: q.get("userId") || "",
+        email: q.get("email") || "",
+        name: q.get("name") || "",
+      },
+    }, { publicBase });
+    audit({
+      type: "auth.platform-open",
+      outcome: result.ok ? "ok" : "deny",
+      ip,
+      path,
+      companyId: q.get("companyId") || null,
+      detail: { status: result.status },
+    });
+    if (!result.ok) return reply(result.status || 400, result);
+    res.writeHead(302, {
+      Location: result.openUrl,
+      "Cache-Control": "no-store",
+      ...securityHeaders(),
+    });
+    res.end();
+    return;
+  }
+
   if (path !== "/health") {
     const sess = sessionFromRequest(req);
     const sessionPathsOk =

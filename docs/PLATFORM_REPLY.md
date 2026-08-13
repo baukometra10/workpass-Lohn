@@ -6,7 +6,14 @@ Die Plattform öffnet WorkPass Lohn **nicht** mit einem selbst erzeugten Token.
 2. Antwort enthält `openUrl` (inkl. `#suppix-sso=…` mit von Accounting signierter Session)
 3. Button „Buchhaltung“ → `window.open(openUrl)` oder Redirect
 
-Ohne diesen Schritt bleibt die Anmeldeseite stehen (ungültige Hash-Tokens werden abgelehnt).
+Ohne diesen Schritt öffnet der alte `#suppix-sso=`-Hash die UI weiter (Kompatibilität), APIs brauchen aber eine echte Accounting-Session.
+
+**Einfacher Redirect (GET):** Plattform-Backend leitet den User um auf:
+
+`GET https://workpass-lohn.up.railway.app/v1/auth/platform-open?companyId=cmp-…&key=<WORKPASS_API_KEY>&locale=ar`
+
+→ 302 auf `lohn.html#suppix-sso=…` mit gültiger Session.
+
 
 
 ## Pull-first (Accounting holt Daten)

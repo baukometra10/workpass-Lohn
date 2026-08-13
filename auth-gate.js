@@ -212,8 +212,12 @@
 
   function platformSessionActive() {
     const s = loadPlatformSession();
-    if (!s?.token || !s?.expiresAt) return false;
-    return Date.now() < Date.parse(s.expiresAt);
+    if (!s?.token) return false;
+    if (s.expiresAt) {
+      const exp = Date.parse(s.expiresAt);
+      if (Number.isFinite(exp) && Date.now() >= exp) return false;
+    }
+    return true;
   }
 
   /** One successful login (Konto oder PIN) keeps the app open. */
@@ -571,6 +575,14 @@
   async function verifyPlatformSessionOrClear() {
     const plat = loadPlatformSession();
     if (!plat?.token) return { ok: true, skipped: true };
+    const via = String(plat.via || "").toLowerCase();
+    // Legacy one-click from platform (#suppix-sso) must unlock like before v2.45.0.
+    // Only hard-fail forged tokens from password-login / platform-handoff paths.
+    const legacySso = !via
+      || via === "suppix"
+      || via === "platform"
+      || via === "platform-sso"
+      || via === "sso";
     try {
       const res = await fetch(`${apiOrigin()}/v1/auth/me`, {
         headers: {
@@ -580,38 +592,49 @@
         cache: "no-store",
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok || !data.user) {
-        clearPlatformSession();
-        clearSession();
-        return {
-          ok: false,
-          error: tt(
-            "auth.ssoInvalid",
-            "Anmeldung von der Plattform ungültig – bitte erneut über die Plattform öffnen oder mit Firmen-Login anmelden."
-          ),
-        };
+      if (res.ok && data.ok && data.user) {
+        savePlatformSession({
+          token: plat.token,
+          expiresAt: plat.expiresAt || data.expiresAt || null,
+          user: data.user,
+          via: plat.via || "suppix",
+        });
+        document.body.classList.toggle(
+          "company-portal",
+          Boolean(data.user?.companyId && data.user?.role !== "admin")
+        );
+        try {
+          if (data.user?.companyId) {
+            const prev = JSON.parse(localStorage.getItem("workpass.lohn.apiConfig.v1") || "{}");
+            localStorage.setItem(
+              "workpass.lohn.apiConfig.v1",
+              JSON.stringify({ ...(prev && typeof prev === "object" ? prev : {}), companyId: data.user.companyId }),
+            );
+          }
+        } catch { /* ignore */ }
+        return { ok: true, user: data.user };
       }
-      savePlatformSession({
-        token: plat.token,
-        expiresAt: plat.expiresAt || data.expiresAt || null,
-        user: data.user,
-        via: plat.via || "suppix",
-      });
-      document.body.classList.toggle(
-        "company-portal",
-        Boolean(data.user?.companyId && data.user?.role !== "admin")
-      );
-      try {
-        if (data.user?.companyId) {
-          const prev = JSON.parse(localStorage.getItem("workpass.lohn.apiConfig.v1") || "{}");
-          localStorage.setItem(
-            "workpass.lohn.apiConfig.v1",
-            JSON.stringify({ ...(prev && typeof prev === "object" ? prev : {}), companyId: data.user.companyId }),
-          );
-        }
-      } catch { /* ignore */ }
-      return { ok: true, user: data.user };
+      if (legacySso && (plat.user?.companyId || sessionActive())) {
+        document.body.classList.toggle(
+          "company-portal",
+          Boolean(plat.user?.companyId && plat.user?.role !== "admin")
+        );
+        return { ok: true, legacy: true, user: plat.user || null };
+      }
+      clearPlatformSession();
+      clearSession();
+      return {
+        ok: false,
+        error: tt(
+          "auth.ssoInvalid",
+          "Anmeldung von der Plattform ungültig – bitte erneut über die Plattform öffnen oder mit Firmen-Login anmelden."
+        ),
+      };
     } catch (e) {
+      // Bridge briefly unreachable: keep existing unlock (pre-v2.45.0 behavior).
+      if (sessionActive() || (legacySso && plat.user?.companyId)) {
+        return { ok: true, offline: true, user: plat.user || null };
+      }
       return {
         ok: false,
         error: tt("auth.bridgeOffline", "Bridge nicht erreichbar – bitte Verbindung prüfen und erneut öffnen."),
