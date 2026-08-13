@@ -46,7 +46,72 @@ function rowToEmployee(row) {
     // Alias for UI: never print badge as Pers.-Nr. on slips
     id: row.badge_id,
     displayPersNr: row.personnel_number || "",
+    personnelNumberAuto: Boolean(meta.personnelNumberAuto),
   };
+}
+
+/**
+ * Next stable Personal-Nr. for a company (1001, 1002, …).
+ * Only looks at numeric personnel numbers already stored for this Mandant.
+ */
+export function nextPersonnelNumber(companyId) {
+  const cid = normalizeCompanyId(companyId);
+  if (!cid) return "1001";
+  const rows = sqliteAll(
+    `SELECT personnel_number FROM company_employees WHERE company_id = ?`,
+    [cid]
+  );
+  let max = 1000;
+  for (const row of rows) {
+    const raw = String(row.personnel_number || "").trim();
+    if (!/^\d{1,8}$/.test(raw)) continue;
+    const n = Number(raw);
+    if (Number.isFinite(n) && n > max) max = n;
+  }
+  return String(max + 1);
+}
+
+/**
+ * Ensure this employee has a Personal-Nr. for the payslip.
+ * Platform value wins; otherwise keep existing; otherwise allocate 1001+.
+ */
+export function ensurePersonnelNumber(companyId, badgeId, preferred = "") {
+  const cid = normalizeCompanyId(companyId);
+  const bid = normalizeEmployeeId(badgeId);
+  if (!cid || !bid) return { ok: false, personnelNumber: "", created: false };
+  const want = String(preferred || "").trim();
+  const existing = getEmployee(cid, bid);
+  if (want) {
+    if (existing?.personnelNumber !== want) {
+      upsertEmployee({
+        companyId: cid,
+        badgeId: bid,
+        name: existing?.name || "",
+        personnelNumber: want,
+        meta: { ...(existing?.meta || {}), personnelNumberAuto: false },
+        source: "platform-personnel",
+      });
+    }
+    return { ok: true, personnelNumber: want, created: false, auto: false };
+  }
+  if (existing?.personnelNumber) {
+    return {
+      ok: true,
+      personnelNumber: existing.personnelNumber,
+      created: false,
+      auto: Boolean(existing.personnelNumberAuto),
+    };
+  }
+  const allocated = nextPersonnelNumber(cid);
+  upsertEmployee({
+    companyId: cid,
+    badgeId: bid,
+    name: existing?.name || "",
+    personnelNumber: allocated,
+    meta: { ...(existing?.meta || {}), personnelNumberAuto: true },
+    source: "auto-personnel",
+  });
+  return { ok: true, personnelNumber: allocated, created: true, auto: true };
 }
 
 export function upsertEmployee(input = {}) {
@@ -58,7 +123,7 @@ export function upsertEmployee(input = {}) {
   if (!companyId) return { ok: false, error: "company.id fehlt", employee: null };
   if (!badgeId) return { ok: false, error: "badgeId fehlt", employee: null };
 
-  const personnelNumber = normalized.personnelNumber || String(
+  const incomingPers = normalized.personnelNumber || String(
     input.personnelNumber || input.persNr || input.personnelNo || ""
   ).trim();
   const prevMeta = {};
@@ -72,6 +137,22 @@ export function upsertEmployee(input = {}) {
   const resolvedName = name
     || (prevMeta.needsName ? "" : String(existing?.name || "").trim())
     || "";
+
+  let personnelNumber = incomingPers || String(existing?.personnel_number || "").trim();
+  let personnelNumberAuto = Boolean(prevMeta.personnelNumberAuto);
+  if (incomingPers) {
+    if (input.meta && Object.prototype.hasOwnProperty.call(input.meta, "personnelNumberAuto")) {
+      personnelNumberAuto = Boolean(input.meta.personnelNumberAuto);
+    } else if (input.source === "auto-personnel") {
+      personnelNumberAuto = true;
+    } else {
+      // Explicit platform / firm number replaces auto flag
+      personnelNumberAuto = false;
+    }
+  } else if (!personnelNumber) {
+    personnelNumber = nextPersonnelNumber(companyId);
+    personnelNumberAuto = true;
+  }
 
   const meta = {
     ...prevMeta,
@@ -94,6 +175,7 @@ export function upsertEmployee(input = {}) {
     email: normalized.email || prevMeta.email || "",
     phone: normalized.phone || prevMeta.phone || "",
     needsName: !resolvedName,
+    personnelNumberAuto,
   };
   const ts = now();
 
@@ -123,6 +205,7 @@ export function upsertEmployee(input = {}) {
     ok: true,
     created: !existing,
     needsName: !resolvedName,
+    personnelNumberAuto,
     warning: resolvedName ? null : "name fehlt – Plattform liefert nur ID; Name wird nachgefragt",
     employee,
   };

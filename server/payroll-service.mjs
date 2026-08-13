@@ -150,7 +150,7 @@ export async function ingestPayroll(payload, options = {}) {
   };
   if (!isDemo && (state.badgeId || state.employeeId)) {
     try {
-      upsertEmployee({
+      const reg = upsertEmployee({
         companyId,
         badgeId: state.badgeId || state.employeeId,
         name: state.employeeName || "",
@@ -168,6 +168,13 @@ export async function ingestPayroll(payload, options = {}) {
         churchTaxRate: state.churchTaxRate || "",
         source: "payroll-ingest",
       });
+      if (!String(state.personnelNumber || "").trim() && reg.employee?.personnelNumber) {
+        state.personnelNumber = reg.employee.personnelNumber;
+        state.meta = {
+          ...(state.meta || {}),
+          personnelNumberAuto: reg.personnelNumberAuto === true,
+        };
+      }
     } catch { /* ignore registry errors */ }
   }
 

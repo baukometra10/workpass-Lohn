@@ -5,7 +5,7 @@
 import { getPayrollCore } from "./engine.mjs";
 import { loadPayrollJob, savePayrollJob } from "./store.mjs";
 import { loadCompany } from "./company-service.mjs";
-import { getEmployee, upsertEmployee } from "./employee-registry.mjs";
+import { getEmployee, upsertEmployee, ensurePersonnelNumber } from "./employee-registry.mjs";
 import { normalizeEmployeeRecord } from "./employee-normalize.mjs";
 import { notifyGapsForPayroll } from "./platform-messages.mjs";
 import { pullAndSyncCompanyBranding } from "./company-branding.mjs";
@@ -75,12 +75,13 @@ function companyPatch(companyId, jobCompany = null) {
 }
 
 function registryPatch(companyId, employeeId) {
+  const ensured = ensurePersonnelNumber(companyId, employeeId);
   const emp = getEmployee(companyId, employeeId);
   if (!emp) return { filled: [], patch: {} };
   const meta = emp.meta || {};
   const patch = {
     employeeName: pick(emp.name, meta.name),
-    personnelNumber: pick(emp.personnelNumber, meta.personnelNumber),
+    personnelNumber: pick(emp.personnelNumber, meta.personnelNumber, ensured.personnelNumber),
     employeeAddress: pick(meta.address, emp.address),
     employeeTaxId: pick(meta.taxId),
     employeeInsuranceNo: pick(meta.insuranceNo, meta.svNr),
@@ -93,7 +94,7 @@ function registryPatch(companyId, employeeId) {
     bankIban: pick(meta.bankIban, meta.iban, meta.bank?.iban),
     churchTaxRate: pick(meta.churchTaxRate),
   };
-  return { employee: emp, patch, filled: Object.keys(patch).filter((k) => patch[k]) };
+  return { employee: emp, patch, filled: Object.keys(patch).filter((k) => patch[k]), ensured };
 }
 
 function applyPatch(state, patch) {
@@ -193,7 +194,7 @@ function persistRegistryFromState(state, companyId, source = "enrich") {
   const badgeId = normalizeEmployeeId(state.badgeId || state.employeeId || "");
   if (!companyId || !badgeId) return;
   try {
-    upsertEmployee({
+    const reg = upsertEmployee({
       companyId,
       badgeId,
       name: state.employeeName || "",
@@ -210,7 +211,17 @@ function persistRegistryFromState(state, companyId, source = "enrich") {
       bankIban: state.bankIban || "",
       churchTaxRate: state.churchTaxRate || "",
       source,
+      meta: state.meta?.personnelNumberAuto != null
+        ? { personnelNumberAuto: Boolean(state.meta.personnelNumberAuto) }
+        : undefined,
     });
+    if (!String(state.personnelNumber || "").trim() && reg.employee?.personnelNumber) {
+      state.personnelNumber = reg.employee.personnelNumber;
+      state.meta = {
+        ...(state.meta || {}),
+        personnelNumberAuto: reg.personnelNumberAuto === true,
+      };
+    }
   } catch { /* ignore */ }
 }
 
@@ -396,9 +407,18 @@ export async function enrichPayrollJob(jobId, options = {}) {
     fillEmpty(state, "seller", state.companyName);
   }
 
-  // 2) Local employee registry
+  // 2) Local employee registry (+ auto Personal-Nr. 1001+ if missing)
   const fromReg = registryPatch(companyId, employeeId);
   filled.push(...applyPatch(state, fromReg.patch).map((k) => `registry.${k}`));
+  if (employeeId && companyId && !String(state.personnelNumber || "").trim()) {
+    const ens = ensurePersonnelNumber(companyId, employeeId);
+    if (ens.personnelNumber && fillEmpty(state, "personnelNumber", ens.personnelNumber)) {
+      filled.push("registry.personnelNumberAuto");
+      state.meta = { ...(state.meta || {}), personnelNumberAuto: ens.auto === true };
+    }
+  } else if (fromReg.ensured?.auto && state.personnelNumber) {
+    state.meta = { ...(state.meta || {}), personnelNumberAuto: true };
+  }
 
   const PC = getPayrollCore();
   let hard = PC.validate(state);

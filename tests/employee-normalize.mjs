@@ -48,6 +48,28 @@ const up = upsertEmployee({
 });
 assert(up.ok && up.employee?.name === "Ben Update", "name filled later");
 
+console.log("\n=== auto Personal-Nr. ===");
+const { nextPersonnelNumber, ensurePersonnelNumber, getEmployee } = await import("../server/employee-registry.mjs");
+const pid = `pn${Date.now().toString(36)}`;
+activateCompany({
+  company: { id: pid, name: "PersNr GmbH", taxNumber: "99/888/77777" },
+  login: { password: "4821" },
+  connection: { accountingEnabled: true },
+});
+assert(nextPersonnelNumber(pid) === "1001", "next starts at 1001");
+const a1 = upsertEmployee({ companyId: pid, badgeId: "B-AUTO-1", name: "Auto Eins" });
+assert(a1.ok && a1.employee?.personnelNumber === "1001", `auto 1001 got ${a1.employee?.personnelNumber}`);
+assert(a1.personnelNumberAuto === true, "flag auto");
+const a2 = upsertEmployee({ companyId: pid, badgeId: "B-AUTO-2", name: "Auto Zwei" });
+assert(a2.employee?.personnelNumber === "1002", `auto 1002 got ${a2.employee?.personnelNumber}`);
+const kept = upsertEmployee({ companyId: pid, badgeId: "B-AUTO-1", name: "Auto Eins" });
+assert(kept.employee?.personnelNumber === "1001", "stable on re-upsert");
+const plat = ensurePersonnelNumber(pid, "B-AUTO-1", "5500");
+assert(plat.personnelNumber === "5500", "platform number wins");
+assert(getEmployee(pid, "B-AUTO-1")?.personnelNumber === "5500", "stored platform nr");
+assert(getEmployee(pid, "B-AUTO-1")?.personnelNumberAuto === false, "auto flag cleared");
+deleteCompany({ id: pid });
+
 console.log("\n=== payroll batch with split names ===");
 const batch = await ingestPayrollBatch({
   kind: "platform.payroll.batch.v1",
