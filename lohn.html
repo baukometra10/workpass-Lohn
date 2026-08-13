@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=26" />
-    <link rel="stylesheet" href="lohn.css?v=71" />
+    <link rel="stylesheet" href="lohn.css?v=72" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0b1220" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -204,6 +204,37 @@
                   <div class="kpi"><span data-i18n="audit.open">Offene Aufträge</span><strong id="portalKpiMessages">0</strong></div>
                   <div class="kpi"><span data-i18n="audit.sync">Sync</span><strong id="portalKpiSync">—</strong></div>
                 </div>
+                <section class="month-close-card portal-dash-card" id="portalReadinessCard" hidden style="margin-bottom:12px">
+                  <div class="portal-card-head">
+                    <strong data-i18n="portal.readinessTitle">Monats-Bereitschaft</strong>
+                    <span class="portal-card-badge" id="portalReadinessBadge" data-i18n="lohn.ready">Bereit</span>
+                  </div>
+                  <p id="portalReadinessHint" class="section-hint" data-i18n="portal.readinessHint">Wer ist fertig, wer wartet noch auf Stunden oder Stammdaten.</p>
+                  <div class="portal-readiness-grid" id="portalReadinessGrid"></div>
+                </section>
+                <section class="month-close-card portal-dash-card" id="portalBrandingCard" hidden style="margin-bottom:12px">
+                  <div class="portal-card-head">
+                    <strong data-i18n="portal.brandingTitle">Firmenauftritt</strong>
+                    <span class="portal-card-badge" id="portalBrandingBadge">—</span>
+                  </div>
+                  <p id="portalBrandingHint" class="section-hint"></p>
+                  <div class="month-close-actions" style="margin-top:8px">
+                    <button type="button" id="btnPullBranding" data-i18n="portal.brandingPull">Logo &amp; Absender holen</button>
+                  </div>
+                </section>
+                <section class="month-close-card portal-dash-card" id="portalDiagCard" hidden style="margin-bottom:12px">
+                  <div class="portal-card-head">
+                    <strong data-i18n="portal.diagTitle">Live-Diagnose</strong>
+                    <span class="portal-card-badge" id="portalDiagBadge" data-i18n="portal.diagBadge">Offen</span>
+                  </div>
+                  <p id="portalDiagHint" class="section-hint" data-i18n="portal.diagHint">Was von der Plattform noch fehlt – klar und ohne Technikcodes.</p>
+                  <div id="portalDiagList" class="api-inbox-list"></div>
+                </section>
+                <section class="month-close-card portal-dash-card" id="portalWaitCard" hidden style="margin-bottom:12px">
+                  <div class="portal-wait-pulse" aria-hidden="true"></div>
+                  <strong id="portalWaitTitle" data-i18n="portal.waitHoursTitle">Warte auf Monatsstunden</strong>
+                  <p id="portalWaitHint" data-i18n="portal.waitHoursHint">Stundenlohn ist da. Sobald die Plattform die Stunden sendet, berechnet WorkPass automatisch.</p>
+                </section>
                 <section class="month-close-card portal-dash-card" id="portalTotalsCard" hidden style="margin-bottom:12px">
                   <strong><span data-i18n="portal.monthTotals">Monats-Summen</span> <span id="portalTotalsPeriod"></span></strong>
                   <p id="portalTotalsHint" data-i18n="portal.totalsHintEmpty">Nur echte Abrechnungen (ohne Beispieldaten).</p>
@@ -253,6 +284,8 @@
                   <p data-i18n="portal.archiveHint">Freigegebene Abrechnungen öffnen und als PDF speichern.</p>
                   <div id="portalArchiveList" class="api-inbox-list"></div>
                   <div class="month-close-actions" style="margin-top:10px">
+                    <button type="button" class="primary" id="btnArchiveBatchPdf" data-i18n="portal.archiveBatchPdf">Alle PDFs (Monat)</button>
+                    <button type="button" id="btnMonthDatevExport" data-i18n="portal.monthDatev">DATEV-Monat exportieren</button>
                     <button type="button" id="btnPurgeDemo" data-i18n="recv.purgeDemo">Beispieldaten entfernen</button>
                     <button type="button" id="btnRefreshPortal" class="primary" data-i18n="sync.refresh">Portal aktualisieren</button>
                   </div>
@@ -651,6 +684,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="workpass-pwa.js?v=4"></script>
-    <script src="lohn-app.js?v=78"></script>
+    <script src="lohn-app.js?v=79"></script>
   </body>
 </html>

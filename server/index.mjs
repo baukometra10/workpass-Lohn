@@ -34,7 +34,7 @@ import {
   autoPipelineStatus,
   autoPipelineConfig,
 } from "./auto-pipeline.mjs";
-import { listCompanyEmployees, monthOverview, listReleasedArchive, listInvoiceArchive } from "./portal-service.mjs";
+import { listCompanyEmployees, monthOverview, listReleasedArchive, listInvoiceArchive, brandingHealth, buildMonthDatevExport } from "./portal-service.mjs";
 import { buildDemoPayrollBatch } from "./demo-payroll.mjs";
 import { purgeDemoPayroll } from "./demo-purge.mjs";
 import { importEmployees, listEmployees } from "./employee-registry.mjs";
@@ -1141,6 +1141,28 @@ async function handler(req, res) {
       });
       if (!result.ok) return reply(422, result);
       return reply(200, result);
+    }
+
+    if (req.method === "GET" && path === "/v1/portal/branding") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Branding");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const result = brandingHealth(companyId);
+      if (!result.ok) return reply(result.error === "Firma nicht gefunden" ? 404 : 422, result);
+      return reply(200, { kind: "portal.branding.v1", ...result });
+    }
+
+    if (req.method === "GET" && (path === "/v1/portal/month-export" || path === "/v1/portal/datev-export")) {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const period = url.searchParams.get("period") || currentPeriod();
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Monats-Export");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const result = buildMonthDatevExport(companyId, {
+        period,
+        includeCalculated: url.searchParams.get("calculated") === "1",
+      });
+      if (!result.ok) return reply(422, result);
+      return reply(200, { kind: "portal.datev.month.v1", ...result });
     }
 
     if (req.method === "GET" && (path === "/v1/portal/invoices" || path === "/v1/invoices")) {

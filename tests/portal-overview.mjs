@@ -69,6 +69,14 @@ const arch = listReleasedArchive(id, { period });
 assert(arch.ok && arch.count >= 1, "archive has released");
 assert(!arch.items.some((i) => /mustermann|beispiel/i.test(i.employee?.name || "")), "archive without demo names");
 
+console.log("\n=== Branding + DATEV month export ===");
+const { brandingHealth, buildMonthDatevExport } = await import("../server/portal-service.mjs");
+const brand = brandingHealth(id);
+assert(brand.ok && brand.hasTax, "branding has tax");
+const datev = buildMonthDatevExport(id, { period });
+assert(datev.ok && datev.lineCount >= 1, "datev month lines");
+assert(/WorkPass_DATEV_/.test(datev.filename || ""), "datev filename");
+
 deleteCompany({ id });
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);

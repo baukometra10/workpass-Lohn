@@ -436,13 +436,14 @@
       : currentPayrollPeriod();
     if ($("payrollMonth")) $("payrollMonth").value = period;
     try {
-      const [emps, month, arch, msgs, sync, automation] = await Promise.all([
+      const [emps, month, arch, msgs, sync, automation, branding] = await Promise.all([
         apiFetch(`/v1/portal/employees?period=${encodeURIComponent(period)}`),
         apiFetch(`/v1/portal/month?period=${encodeURIComponent(period)}&months=6`),
         apiFetch(`/v1/portal/archive?period=${encodeURIComponent(period)}`),
         apiFetch("/v1/messages?status=open").catch(() => ({ messages: [] })),
         apiFetch(`/v1/platform/status?period=${encodeURIComponent(period)}`).catch(() => null),
         apiFetch(`/v1/portal/automation-status?period=${encodeURIComponent(period)}`).catch(() => null),
+        apiFetch("/v1/portal/branding").catch(() => null),
       ]);
 
       const cur = month.current || {};
@@ -486,6 +487,11 @@
         $("portalSyncBadge").classList.toggle("is-error", platformBlocked);
         $("portalSyncBadge").classList.toggle("is-ok", !platformBlocked && !pending && Boolean(Number(emps.count || 0) || cur.total));
       }
+
+      renderPortalReadiness(cur, emps);
+      renderPortalBranding(branding);
+      renderPortalDiagnosis(emps, cur);
+      renderPortalHoursWait(cur, period);
 
       const empN = Number(emps.count || 0);
       const relN = Number(cur.released || arch.count || 0);
@@ -907,6 +913,154 @@
       states: auto.steps || undefined,
     });
     if (phase === "done") hideMonthProgressSoon(2400);
+  }
+
+  function renderPortalReadiness(cur = {}, emps = {}) {
+    const card = $("portalReadinessCard");
+    const grid = $("portalReadinessGrid");
+    if (!card || !grid) return;
+    const ready = Number(cur.ready || 0);
+    const waitingHours = Number(cur.waitingHours || 0);
+    const missingSv = Number(cur.missingSv || 0);
+    const missingKk = Number(cur.missingKk || 0);
+    const released = Number(cur.released || 0);
+    const total = Number(cur.total || emps.count || 0);
+    const show = total > 0 || ready || waitingHours || missingSv || missingKk || released;
+    card.hidden = !show;
+    if (!show) return;
+    const cells = [
+      { label: uiT("sync.chipReady", "Bereit"), value: ready, cls: "ok" },
+      { label: uiT("sync.waitingHoursShort", "warten auf Stunden"), value: waitingHours, cls: waitingHours ? "warn" : "mute" },
+      { label: uiT("sync.chipSv", "SV"), value: missingSv, cls: missingSv ? "warn" : "mute" },
+      { label: uiT("sync.chipKk", "KK"), value: missingKk, cls: missingKk ? "warn" : "mute" },
+      { label: uiT("audit.released", "Freigegeben"), value: released, cls: released ? "ok" : "mute" },
+    ];
+    grid.innerHTML = cells.map((c) => `
+      <div class="portal-ready-kpi is-${c.cls}">
+        <span>${esc(c.label)}</span>
+        <strong>${esc(String(c.value))}</strong>
+      </div>`).join("");
+    const badge = $("portalReadinessBadge");
+    if (badge) {
+      badge.textContent = waitingHours
+        ? uiT("portal.waitHoursShort", "Stunden offen")
+        : (missingSv || missingKk
+          ? uiT("portal.stammdatenOpen", "Stammdaten offen")
+          : (released === total && total > 0
+            ? uiT("audit.released", "Freigegeben")
+            : uiT("lohn.ready", "Bereit")));
+      badge.classList.toggle("is-error", Boolean(waitingHours || missingSv || missingKk));
+      badge.classList.toggle("is-ok", !waitingHours && !missingSv && !missingKk && total > 0);
+    }
+  }
+
+  function renderPortalBranding(branding) {
+    const card = $("portalBrandingCard");
+    if (!card) return;
+    if (!branding?.ok) {
+      card.hidden = true;
+      return;
+    }
+    card.hidden = false;
+    const badge = $("portalBrandingBadge");
+    const hint = $("portalBrandingHint");
+    const ready = Boolean(branding.ready);
+    if (badge) {
+      badge.textContent = ready
+        ? uiT("portal.brandingOk", "Vollständig")
+        : uiT("portal.brandingIncomplete", "Unvollständig");
+      badge.classList.toggle("is-ok", ready);
+      badge.classList.toggle("is-error", !ready);
+    }
+    if (hint) {
+      const parts = [];
+      parts.push(branding.hasLogo
+        ? uiT("portal.brandingHasLogo", "Logo vorhanden")
+        : uiT("portal.brandingNoLogo", "Logo fehlt"));
+      parts.push(branding.hasSeller
+        ? uiT("portal.brandingHasSeller", "Absender vorhanden")
+        : uiT("portal.brandingNoSeller", "Absender fehlt"));
+      parts.push(branding.hasTax
+        ? uiT("portal.brandingHasTax", "Steuer-Nr. vorhanden")
+        : uiT("portal.brandingNoTax", "Steuer-Nr. fehlt"));
+      hint.textContent = parts.join(" · ");
+    }
+  }
+
+  function renderPortalDiagnosis(emps = {}, cur = {}) {
+    const card = $("portalDiagCard");
+    const list = $("portalDiagList");
+    if (!card || !list) return;
+    const rows = (emps.employees || []).filter((e) => {
+      const s = e.sync || {};
+      return s.waitingHours || !s.hasSv || !s.hasKk || (!s.ready && e.lastStatus !== "released");
+    }).slice(0, 12);
+    card.hidden = !rows.length;
+    if (!rows.length) return;
+    if ($("portalDiagBadge")) {
+      $("portalDiagBadge").textContent = `${rows.length} ${uiT("portal.diagOpen", "offen")}`;
+    }
+    list.innerHTML = rows.map((e) => {
+      const s = e.sync || {};
+      const gaps = [];
+      if (s.waitingHours || (s.hasHourlyRate && !s.hasHours && !s.hasGross)) {
+        gaps.push(uiT("sync.chipHours", "Stunden"));
+      }
+      if (!s.hasSv) gaps.push(uiT("sync.chipSv", "SV"));
+      if (!s.hasKk) gaps.push(uiT("sync.chipKk", "KK"));
+      if (!gaps.length) gaps.push(uiT("sync.chipWait", "Wartet"));
+      return `
+        <div class="api-inbox-item">
+          <div>
+            <strong>${esc(employeeTitle(e))}</strong>
+            <span class="portal-item-meta">${esc(employeeIdLine(e))} · ${esc(gaps.join(" · "))}</span>
+          </div>
+          <div class="api-inbox-actions">
+            ${e.lastJobId ? `<button type="button" class="api-diag-open primary" data-id="${esc(e.lastJobId)}">${esc(uiT("lohn.open", "Öffnen"))}</button>` : ""}
+          </div>
+        </div>`;
+    }).join("");
+    list.querySelectorAll(".api-diag-open").forEach((btn) => {
+      btn.addEventListener("click", () => openApiPayrollJob(btn.dataset.id));
+    });
+    void cur;
+  }
+
+  let hoursWaitTimer = null;
+  function stopHoursWaitRefresh() {
+    clearTimeout(hoursWaitTimer);
+    hoursWaitTimer = null;
+  }
+
+  function renderPortalHoursWait(cur = {}, period = "") {
+    const card = $("portalWaitCard");
+    if (!card) return;
+    const waiting = Number(cur.waitingHours || 0);
+    card.hidden = waiting <= 0;
+    if (waiting <= 0) {
+      stopHoursWaitRefresh();
+      return;
+    }
+    if ($("portalWaitTitle")) {
+      $("portalWaitTitle").textContent = uiT("portal.waitHoursTitle", "Warte auf Monatsstunden")
+        + ` · ${waiting}`;
+    }
+    if ($("portalWaitHint")) {
+      $("portalWaitHint").textContent = uiT(
+        "portal.waitHoursHint",
+        "Stundenlohn ist da. Sobald die Plattform die Stunden sendet, berechnet WorkPass automatisch."
+      );
+    }
+    if (!hoursWaitTimer) {
+      hoursWaitTimer = setTimeout(async () => {
+        hoursWaitTimer = null;
+        try {
+          await runAutoSyncNow({ quiet: true });
+        } catch { /* ignore */ }
+        await loadPortalDashboard(true);
+      }, 20000);
+    }
+    void period;
   }
 
   function renderPortalPlatformAlert(platformBlocked, pending = 0, employees = 0) {
@@ -1396,7 +1550,7 @@
 
   function startMonthWaitRetry(period) {
     stopMonthWaitRetry();
-    monthWaitRetryLeft = 3;
+    monthWaitRetryLeft = 5;
     const tick = async () => {
       if (monthWaitRetryLeft <= 0) {
         const host = $("monthCloseProgress");
@@ -1404,7 +1558,7 @@
           host.dataset.keep = "1";
           renderMonthProgress("pull", {
             percent: 30,
-            title: "Warten beendet – bitte erneut versuchen oder Daten in der Plattform senden",
+            title: uiT("portal.waitEnded", "Warten beendet – bitte erneut synchronisieren oder Daten in der Plattform freigeben"),
             states: { pull: "active", calc: "todo", release: "todo", done: "todo" },
           });
         }
@@ -1413,19 +1567,20 @@
       const left = monthWaitRetryLeft;
       monthWaitRetryLeft -= 1;
       renderMonthProgress("pull", {
-        percent: 35 + (3 - left) * 10,
-        title: `Warte auf Plattform… Auto-Retry in 8s (${left}×)`,
+        percent: 35 + (5 - left) * 8,
+        title: uiT("portal.waitRetry", "Warte auf Plattform… Auto-Retry in 10s ({left}×)")
+          .replace("{left}", String(left)),
         states: { pull: "active", calc: "skip", release: "skip", done: "todo" },
       });
       monthWaitRetryTimer = setTimeout(async () => {
         const data = await runMonthClose({ pull: true, autoRelease: true, fromAutoRetry: true });
-        if (data?.ok) {
+        if (data?.ok && !data.waitingForPlatform) {
           stopMonthWaitRetry();
           return;
         }
-        if (data?.waitingForPlatform) tick();
+        if (data?.waitingForPlatform || data?.ok === false) tick();
         else stopMonthWaitRetry();
-      }, 8000);
+      }, 10000);
     };
     tick();
   }
@@ -2362,7 +2517,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.38.0</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.39.0</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))
@@ -2709,6 +2864,139 @@
     setStatus(`CSV exportiert: ${built.filename}`, true);
   }
 
+  async function exportMonthDatevCsv() {
+    const period = currentPayrollPeriod();
+    try {
+      const data = await apiFetch(`/v1/portal/month-export?period=${encodeURIComponent(period)}`);
+      if (!data?.ok || !data.content) throw new Error(data?.error || "Kein Export");
+      if (!data.lineCount) {
+        toast(uiT("portal.monthDatevEmpty", "Noch keine freigegebenen Abrechnungen für diesen Monat."), "info");
+        return;
+      }
+      const blob = new Blob([data.content], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = data.filename || `WorkPass_DATEV_${period}.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast(uiT("portal.monthDatevOk", "DATEV-Monat exportiert ({n} Zeilen).").replace("{n}", String(data.lineCount)), "ok");
+    } catch (e) {
+      toast(`${uiT("portal.monthDatevFail", "DATEV-Export fehlgeschlagen")}: ${e.message || e}`, "error");
+    }
+  }
+
+  async function captureSheetPdfPage(pdf, isFirst) {
+    const sheet = window.DatevSheet?.getSheetElement();
+    const host = $("datevSheetHost");
+    if (!sheet || !window.html2canvas) throw new Error("PDF nicht verfügbar");
+    const prev = {
+      transform: sheet.style.transform,
+      origin: sheet.style.transformOrigin,
+      width: sheet.style.width,
+      height: sheet.style.height,
+      hostW: host?.style.width || "",
+      hostH: host?.style.height || "",
+    };
+    sheet.style.transform = "none";
+    sheet.style.transformOrigin = "top left";
+    sheet.style.width = "210mm";
+    sheet.style.height = "297mm";
+    if (host) {
+      host.style.width = "210mm";
+      host.style.height = "297mm";
+    }
+    try {
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const canvas = await html2canvas(sheet, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        width: Math.round(sheet.getBoundingClientRect().width) || 794,
+        height: Math.round(sheet.getBoundingClientRect().height) || 1123,
+      });
+      const img = canvas.toDataURL("image/jpeg", 0.92);
+      if (!isFirst) pdf.addPage();
+      pdf.addImage(img, "JPEG", 0, 0, 210, 297);
+    } finally {
+      sheet.style.transform = prev.transform;
+      sheet.style.transformOrigin = prev.origin;
+      sheet.style.width = prev.width;
+      sheet.style.height = prev.height;
+      if (host) {
+        host.style.width = prev.hostW;
+        host.style.height = prev.hostH;
+      }
+    }
+  }
+
+  async function exportArchiveBatchPdf() {
+    const period = currentPayrollPeriod();
+    const btn = $("btnArchiveBatchPdf");
+    try {
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add("is-busy");
+      }
+      const arch = await apiFetch(`/v1/portal/archive?period=${encodeURIComponent(period)}`);
+      const items = (arch.items || []).filter((it) => it.jobId).slice(0, 40);
+      if (!items.length) {
+        toast(uiT("portal.archiveBatchEmpty", "Keine freigegebenen Abrechnungen in diesem Monat."), "info");
+        return;
+      }
+      const JsPDF = window.jspdf?.jsPDF || window.jsPDF;
+      if (!JsPDF || !window.html2canvas) {
+        toast(uiT("portal.archiveBatchNoLib", "PDF-Bibliothek fehlt – Seite neu laden (F5)."), "error");
+        return;
+      }
+      const pdf = new JsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      toast(uiT("portal.archiveBatchStart", "Erzeuge Sammel-PDF ({n})…").replace("{n}", String(items.length)), "info");
+      for (let i = 0; i < items.length; i += 1) {
+        await openApiPayrollJob(items[i].jobId, { skipEnrich: true });
+        await new Promise((r) => setTimeout(r, 180));
+        await captureSheetPdfPage(pdf, i === 0);
+        setStatus(`Sammel-PDF ${i + 1}/${items.length}`, true);
+      }
+      pdf.save(`WorkPass-Lohn-${period}-Archiv.pdf`);
+      toast(uiT("portal.archiveBatchOk", "Sammel-PDF gespeichert ({n} Seiten).").replace("{n}", String(items.length)), "ok");
+      requestAnimationFrame(() => fitSheetPreview());
+    } catch (e) {
+      toast(`${uiT("portal.archiveBatchFail", "Sammel-PDF fehlgeschlagen")}: ${e.message || e}`, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove("is-busy");
+      }
+    }
+  }
+
+  async function pullBrandingNow() {
+    const companyId = companyPortalId || apiConfig().companyId;
+    if (!companyId) {
+      toast(uiT("lohn.noCompany", "Keine Firma – bitte anmelden."), "error");
+      return;
+    }
+    const btn = $("btnPullBranding");
+    try {
+      if (btn) btn.disabled = true;
+      const data = await apiFetch("/v1/company/pull-branding", {
+        method: "POST",
+        body: JSON.stringify({ companyId }),
+      });
+      toast(
+        data.hasLogo || data.applied?.hasLogo || data.pulled
+          ? uiT("portal.brandingPulled", "Firmenauftritt aktualisiert.")
+          : (data.message || uiT("portal.brandingPullPartial", "Branding geprüft – Logo ggf. noch nicht auf der Plattform.")),
+        data.ok || data.pulled ? "ok" : "info"
+      );
+      await loadPortalDashboard(true);
+    } catch (e) {
+      toast(String(e.message || e), "error");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
   async function changePin() {
     const oldPin = String($("pinOld")?.value || "").trim();
     const newPin = String($("pinNew")?.value || "").trim();
@@ -2862,6 +3150,9 @@
     $("btnPdfSide")?.addEventListener("click", exportPdf);
     $("btnExportJson").addEventListener("click", exportJson);
     $("btnExportCsv")?.addEventListener("click", exportCsv);
+    $("btnMonthDatevExport")?.addEventListener("click", exportMonthDatevCsv);
+    $("btnArchiveBatchPdf")?.addEventListener("click", exportArchiveBatchPdf);
+    $("btnPullBranding")?.addEventListener("click", pullBrandingNow);
     $("btnChangePin")?.addEventListener("click", changePin);
     $("btnPasteApply")?.addEventListener("click", applyPasteInbox);
     loadApiConfigIntoForm();
