@@ -221,6 +221,59 @@
                   <p id="portalCompletenessHint" class="section-hint" data-i18n="portal.completenessHint">Logo, Firma, Personal-Nr., Stunden, SV, KK und Netto auf einen Blick.</p>
                   <div class="portal-readiness-grid" id="portalCompletenessGrid"></div>
                 </section>
+                <section class="month-close-card portal-dash-card" id="portalTrustCard" hidden style="margin-bottom:12px">
+                  <div class="portal-card-head">
+                    <strong data-i18n="portal.trustTitle">Zustellung · Vertrauen</strong>
+                    <span class="portal-card-badge" id="portalTrustBadge">—</span>
+                  </div>
+                  <p id="portalTrustHint" class="section-hint" data-i18n="portal.trustHint">Freigabe lokal, Push an die Plattform, Bestätigung (Ack).</p>
+                  <div id="portalTrustList" class="api-inbox-list"></div>
+                </section>
+                <section class="month-close-card portal-dash-card" id="portalAnomalyCard" hidden style="margin-bottom:12px">
+                  <div class="portal-card-head">
+                    <strong data-i18n="portal.anomalyTitle">Auffälligkeiten (Regeln)</strong>
+                    <span class="portal-card-badge" id="portalAnomalyBadge">—</span>
+                  </div>
+                  <p id="portalAnomalyHint" class="section-hint" data-i18n="portal.anomalyHint">Keine KI-Steuer – nur Hinweise zu Stunden/Netto/SV. Mensch prüft.</p>
+                  <div id="portalAnomalyList" class="api-inbox-list"></div>
+                </section>
+                <section class="month-close-card portal-dash-card" id="portalCalendarCard" hidden style="margin-bottom:12px">
+                  <div class="portal-card-head">
+                    <strong data-i18n="portal.calendarTitle">Termine (orientierend)</strong>
+                    <span class="portal-card-badge" id="portalCalendarBadge">DE</span>
+                  </div>
+                  <p id="portalCalendarHint" class="section-hint" data-i18n="portal.calendarHint">Keine Rechtsberatung – Fristen prüft der Mensch.</p>
+                  <div id="portalCalendarList" class="api-inbox-list"></div>
+                </section>
+                <section class="month-close-card portal-dash-card" id="portalAssistantCard" hidden style="margin-bottom:12px">
+                  <div class="portal-card-head">
+                    <strong data-i18n="portal.assistantTitle">Assistent · nur erklären</strong>
+                    <span class="portal-card-badge" id="portalAssistantBadge" data-i18n="portal.assistantBadge">Mensch entscheidet</span>
+                  </div>
+                  <p id="portalAssistantHint" class="section-hint" data-i18n="portal.assistantHint">Erklärt Lücken. Setzt keine Steuerwerte. Aktionen nur nach Ihrer Bestätigung.</p>
+                  <div id="portalAssistantList" class="api-inbox-list"></div>
+                  <div class="month-close-actions" style="margin-top:8px">
+                    <button type="button" id="btnAssistantExplain" data-i18n="portal.assistantRun">Lücken erklären</button>
+                  </div>
+                </section>
+                <section class="month-close-card portal-dash-card" id="portalExportCard" style="margin-bottom:12px">
+                  <div class="portal-card-head">
+                    <strong data-i18n="portal.exportTitle">Exporte (Mensch bestätigt)</strong>
+                    <span class="portal-card-badge" data-i18n="portal.humanFinalBadge">Human final</span>
+                  </div>
+                  <p class="section-hint" data-i18n="portal.exportHint">SEPA / DATEV / LODAS / ELSTER-Vorbereitung – Upload bleibt beim Menschen.</p>
+                  <div class="month-close-actions portal-primary-actions" style="margin-top:8px">
+                    <button type="button" id="btnSepaExport" data-i18n="portal.sepaExport">SEPA XML</button>
+                    <button type="button" id="btnDatevExportConfirm" data-i18n="portal.datevExport">DATEV</button>
+                    <button type="button" id="btnLodasExportConfirm" data-i18n="portal.lodasExport">LODAS</button>
+                    <button type="button" id="btnElsterPrep" data-i18n="portal.elsterPrep">ELSTER-Checkliste</button>
+                  </div>
+                  <div id="portalElsterList" class="api-inbox-list" style="margin-top:8px"></div>
+                </section>
+                <section class="month-close-card portal-dash-card" id="portalQuietCard" hidden style="margin-bottom:12px">
+                  <strong data-i18n="portal.quietTitle">Ruhig · keine leeren Anfragen</strong>
+                  <p id="portalQuietHint" class="section-hint" data-i18n="portal.quietHint">Keine Mitarbeiter/Stunden auf der Plattform – System schaut nur nach, ohne Spam.</p>
+                </section>
                 <section class="month-close-card portal-dash-card" id="portalBrandingCard" hidden style="margin-bottom:12px">
                   <div class="portal-card-head">
                     <strong data-i18n="portal.brandingTitle">Firmenauftritt</strong>

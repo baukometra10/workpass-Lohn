@@ -480,6 +480,12 @@
       </div>
       <div class="admin-panel">
         <h2 data-i18n="admin.audit">Security-Audit (letzte Einträge)</h2>
+        <div id="adminOpsHealth" class="admin-panel" style="margin-top:12px">
+          <h3 data-i18n="admin.opsTitle">Ops · Gesundheit</h3>
+          <p class="admin-hint" data-i18n="admin.opsHint">SQLite, Backups, Webhook, Pipeline – ohne KI-Eingriff in Steuer.</p>
+          <pre id="adminOpsHealthBody" class="admin-pre" style="white-space:pre-wrap;font-size:12px">—</pre>
+          <button type="button" id="btnOpsHealth" data-i18n="admin.opsRefresh">Ops aktualisieren</button>
+        </div>
         <div id="adminAudit"><p class="admin-hint" data-i18n="admin.auditEmpty">Wird beim Laden der Übersicht gefüllt.</p></div>
       </div>
       <div class="admin-panel">
@@ -583,11 +589,15 @@
             const audit = await api("/v1/admin/audit?limit=40");
             const auditHost = document.getElementById("adminAudit");
             if (auditHost) {
-              auditHost.innerHTML = (audit.entries || []).length
+              const chain = audit.chain;
+              const chainLine = chain
+                ? ('<p class="admin-hint">' + esc(t("admin.auditChain", "Hash-Kette: {msg}", { msg: chain.message || (chain.ok ? "ok" : "Fehler") })) + "</p>")
+                : "";
+              auditHost.innerHTML = chainLine + ((audit.entries || []).length
                 ? '<ul class="admin-audit-list">' + (audit.entries || []).slice(0, 25).map((e) =>
                   "<li><code>" + esc(e.at || "") + "</code> · " + esc(e.type || "?") + " · " + esc(e.outcome || "") + (e.companyId ? (" · " + esc(e.companyId)) : "") + "</li>"
                 ).join("") + "</ul>"
-                : ('<p class="admin-hint">' + esc(t("admin.noAudit", "Noch keine Audit-Einträge.")) + "</p>");
+                : ('<p class="admin-hint">' + esc(t("admin.noAudit", "Noch keine Audit-Einträge.")) + "</p>"));
             }
           } catch { /* optional */ }
           document.querySelectorAll(".btn-delete-company").forEach((delBtn) => {
@@ -622,11 +632,16 @@
               const fileName = bakBtn.getAttribute("data-file");
               if (!fileName) return;
               if (!confirm(t("admin.confirmRestore", "Backup {file} wirklich wiederherstellen? Aktuelle DB wird überschrieben (Sicherheitskopie wird angelegt).", { file: fileName }))) return;
+              const phrase = window.prompt(t("admin.restorePhrase", "Zur Sicherheit RESTORE eingeben:"), "");
+              if (String(phrase || "").trim().toUpperCase() !== "RESTORE") {
+                setStatus(t("admin.restorePhraseFail", "Abgebrochen – RESTORE nicht bestätigt."), false);
+                return;
+              }
               setBusy(bakBtn, true, "…");
               try {
                 await api("/v1/admin/backup/restore", {
                   method: "POST",
-                  body: JSON.stringify({ fileName, confirm: true }),
+                  body: JSON.stringify({ fileName, confirm: true, confirmPhrase: "RESTORE" }),
                 });
                 setStatus(t("admin.backupRestored", "Backup {file} wiederhergestellt", { file: fileName }), true);
                 refresh();
@@ -638,10 +653,30 @@
           });
           setStatus(t("admin.loaded", "Admin-Übersicht geladen"), true);
           await refreshTaxRules();
+          await refreshOpsHealth();
         } catch (e) {
           setStatus(e.message, false);
         } finally {
           setBusy(btn, false, t("action.refresh", "Aktualisieren"));
+        }
+      }
+      async function refreshOpsHealth() {
+        const host = document.getElementById("adminOpsHealthBody");
+        if (!host) return;
+        try {
+          const h = await api("/v1/admin/ops-health");
+          host.textContent = JSON.stringify({
+            ok: h.ok,
+            issues: h.issues,
+            sqlite: h.sqlite,
+            backups: h.backups,
+            webhookOk: h.webhook?.ok,
+            autoPipeline: h.autoPipeline,
+            quarantine: h.quarantine,
+            policy: h.policy?.note,
+          }, null, 2);
+        } catch (e) {
+          host.textContent = e.message;
         }
       }
       async function refreshTaxRules() {
@@ -686,7 +721,7 @@
               try {
                 await api("/v1/tax/rulesets/" + encodeURIComponent(id) + "/review", {
                   method: "POST",
-                  body: "{}",
+                  body: JSON.stringify({ confirm: true }),
                 });
                 setStatus(t("admin.taxReviewed", "Ruleset reviewt: {id}", { id }), true);
                 await refreshTaxRules();
@@ -705,7 +740,7 @@
               try {
                 await api("/v1/tax/rulesets/" + encodeURIComponent(id) + "/publish", {
                   method: "POST",
-                  body: "{}",
+                  body: JSON.stringify({ confirm: true }),
                 });
                 setStatus(t("admin.taxPublished", "Ruleset veröffentlicht: {id}", { id }), true);
                 await refreshTaxRules();
@@ -719,6 +754,7 @@
           host.innerHTML = '<tr><td colspan="5">' + esc(e.message) + "</td></tr>";
         }
       }
+      document.getElementById("btnOpsHealth")?.addEventListener("click", refreshOpsHealth);
       document.getElementById("btnRefresh")?.addEventListener("click", refresh);
       document.getElementById("btnTaxRulesRefresh")?.addEventListener("click", () => refreshTaxRules());
       document.getElementById("btnTaxDraftFile")?.addEventListener("click", () => {

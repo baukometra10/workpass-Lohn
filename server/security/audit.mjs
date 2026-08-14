@@ -77,3 +77,39 @@ export function readAuditTail(limit = 50) {
     return [];
   }
 }
+
+/** Verify hash chain of the last N entries (oldest→newest among the window). */
+export function verifyAuditChain(limit = 100) {
+  prime();
+  if (!existsSync(logFile)) {
+    return { ok: true, checked: 0, brokenAt: null, message: "Kein Audit-Log" };
+  }
+  try {
+    const lines = readFileSync(logFile, "utf8").trim().split("\n").filter(Boolean);
+    const take = Math.max(1, Math.min(2000, Number(limit) || 100));
+    const slice = lines.slice(-take);
+    let prev = null;
+    let checked = 0;
+    for (const line of slice) {
+      let rec;
+      try {
+        rec = JSON.parse(line);
+      } catch {
+        return { ok: false, checked, brokenAt: checked, message: "JSON parse error" };
+      }
+      const { hash, ...rest } = rec;
+      const expected = sha256Hex(JSON.stringify({ ...rest, hash: undefined }));
+      if (hash !== expected) {
+        return { ok: false, checked, brokenAt: checked, message: "Hash stimmt nicht", type: rec.type };
+      }
+      if (prev != null && rec.prevHash && rec.prevHash !== prev) {
+        return { ok: false, checked, brokenAt: checked, message: "prevHash-Kette unterbrochen", type: rec.type };
+      }
+      prev = hash;
+      checked += 1;
+    }
+    return { ok: true, checked, brokenAt: null, message: `${checked} Einträge geprüft` };
+  } catch (e) {
+    return { ok: false, checked: 0, brokenAt: 0, message: e.message || String(e) };
+  }
+}

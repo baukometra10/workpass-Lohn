@@ -91,7 +91,7 @@ import {
   getApiKey,
 } from "./security/http.mjs";
 import { assertProductionSecurity, secureCompare } from "./security/crypto.mjs";
-import { audit, readAuditTail } from "./security/audit.mjs";
+import { audit, readAuditTail, verifyAuditChain } from "./security/audit.mjs";
 import { clientIp } from "./security/rate-limit.mjs";
 import { createBackup, listBackups, restoreBackup, startBackupScheduler } from "./backup/backup.mjs";
 import {
@@ -111,6 +111,21 @@ import {
   bootstrapPlatformSso,
 } from "./auth-session.mjs";
 import { clearRateLimitState } from "./security/rate-limit.mjs";
+import {
+  requireHumanConfirm,
+  assertNotAiApplyingLaw,
+  humanFinalPublicInfo,
+} from "./policy/human-final.mjs";
+import { buildComplianceCalendar } from "./compliance-calendar.mjs";
+import { buildSepaCreditTransfer } from "./sepa-export.mjs";
+import { explainPortalGaps } from "./assistant/explain.mjs";
+import {
+  buildDeliveryTrust,
+  detectPayrollAnomalies,
+  simulatePayroll,
+  buildElsterPrepChecklist,
+} from "./portal-trust.mjs";
+import { buildOpsHealth } from "./ops-health.mjs";
 
 const PORT = Number(process.env.WORKPASS_API_PORT || process.env.PORT || 8787);
 const HOST = process.env.WORKPASS_API_HOST || (process.env.PORT ? "0.0.0.0" : "127.0.0.1");
@@ -148,6 +163,7 @@ function buildHealthBody(req) {
     version: ACCOUNTING_VERSION,
     multiTenant: true,
     taxRules: taxEngineInfo(),
+    humanFinal: humanFinalPublicInfo(),
     monthCloseScheduler: monthCloseSched,
     autoMonthClose: autoMonthCloseStatus(),
     autoPipeline: autoPipelineStatus(),
@@ -583,19 +599,25 @@ async function handler(req, res) {
 
     if (req.method === "POST" && path.startsWith("/v1/tax/rulesets/") && path.endsWith("/review")) {
       const id = decodeURIComponent(path.slice("/v1/tax/rulesets/".length, -"/review".length));
+      const body = (await readBodyLimited(req)) || {};
+      const gate = requireHumanConfirm(body, "tax_ruleset_review");
+      if (!gate.ok) return reply(gate.status || 422, gate);
       const saved = taxReviewRuleset(id);
       audit({
         type: "tax.ruleset.review",
         outcome: saved.ok ? "ok" : "deny",
         ip,
         path,
-        detail: { id },
+        detail: { id, humanConfirm: true },
       });
       return reply(saved.ok ? 200 : 422, saved);
     }
 
     if (req.method === "POST" && path.startsWith("/v1/tax/rulesets/") && path.endsWith("/publish")) {
       const id = decodeURIComponent(path.slice("/v1/tax/rulesets/".length, -"/publish".length));
+      const body = (await readBodyLimited(req)) || {};
+      const gate = requireHumanConfirm(body, "tax_ruleset_publish");
+      if (!gate.ok) return reply(gate.status || 422, gate);
       const saved = taxPublishLifecycle(id);
       audit({
         type: "tax.ruleset.publish",
@@ -647,10 +669,13 @@ async function handler(req, res) {
       const body = (await readBodyLimited(req)) || {};
       const fileName = String(body.fileName || body.file || "").trim();
       if (!fileName) return reply(422, { ok: false, error: "fileName fehlt" });
-      if (body.confirm !== true) {
+      const gate = requireHumanConfirm(body, "backup_restore");
+      if (!gate.ok) return reply(gate.status || 422, gate);
+      if (String(body.confirmPhrase || "").trim().toUpperCase() !== "RESTORE") {
         return reply(422, {
           ok: false,
-          error: "Bestätigung nötig: { confirm: true, fileName }",
+          code: "confirm_phrase_required",
+          error: "Zusätzlich erforderlich: { confirmPhrase: \"RESTORE\" }",
         });
       }
       const match = listBackups().find((b) => b.fileName === fileName || b.path === fileName);
@@ -724,12 +749,24 @@ async function handler(req, res) {
     if (req.method === "GET" && path === "/v1/admin/audit") {
       const limit = Number(url.searchParams.get("limit") || 80);
       const entries = readAuditTail(limit);
+      const chain = verifyAuditChain(Math.min(200, Math.max(limit, 50)));
       return reply(200, {
         ok: true,
         count: entries.length,
         entries,
+        chain,
         path: "server/data/audit/security-audit.jsonl",
+        policy: humanFinalPublicInfo(),
       });
+    }
+
+    if (req.method === "GET" && path === "/v1/admin/ops-health") {
+      const health = buildOpsHealth();
+      return reply(health.ok ? 200 : 503, health);
+    }
+
+    if (req.method === "GET" && path === "/v1/policy/human-final") {
+      return reply(200, { ok: true, ...humanFinalPublicInfo() });
     }
 
     // --- Companies ---
@@ -1148,6 +1185,8 @@ async function handler(req, res) {
       if (!companyId) {
         return reply(422, { ok: false, error: "companyId fehlt für Monatsabschluss" });
       }
+      const gate = requireHumanConfirm(body, "month_close");
+      if (!gate.ok) return reply(gate.status || 422, gate);
       const result = await runMonthClose({
         companyId,
         period: body.period || currentPeriod(),
@@ -1167,6 +1206,7 @@ async function handler(req, res) {
           released: result.newlyReleased?.length || 0,
           pullSkipped: result.pull?.skipped,
           waitingForPlatform: result.waitingForPlatform,
+          humanConfirm: true,
         },
       });
       // Waiting for platform data is not a hard failure – UI shows guidance (HTTP 200)
@@ -1236,6 +1276,9 @@ async function handler(req, res) {
 
     if (req.method === "POST" && path.startsWith("/v1/payroll/") && path.endsWith("/release")) {
       const jobId = decodeURIComponent(path.slice("/v1/payroll/".length, -"/release".length));
+      const body = (await readBodyLimited(req)) || {};
+      const gate = requireHumanConfirm(body, "release_payslip");
+      if (!gate.ok) return reply(gate.status || 422, gate);
       const result = await releasePayrollJob(jobId, { tenantScope });
       audit({
         type: "payroll.release",
@@ -1243,7 +1286,7 @@ async function handler(req, res) {
         ip,
         path,
         companyId: result.job?.company?.id,
-        detail: { jobId },
+        detail: { jobId, humanConfirm: true },
       });
       const status = result.ok ? 200 : (String(result.error || "").includes("Tenant-Isolation") ? 403 : 422);
       return reply( status, result);
@@ -1472,6 +1515,138 @@ async function handler(req, res) {
       const result = monthCompleteness(companyId, { period });
       if (!result.ok) return reply(422, result);
       return reply(200, result);
+    }
+
+    if (req.method === "GET" && path === "/v1/portal/compliance-calendar") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const period = url.searchParams.get("period") || currentPeriod();
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Compliance");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      return reply(200, buildComplianceCalendar(period));
+    }
+
+    if (req.method === "GET" && path === "/v1/portal/delivery-trust") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const period = url.searchParams.get("period") || currentPeriod();
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Delivery-Trust");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      return reply(200, buildDeliveryTrust(companyId, { period }));
+    }
+
+    if (req.method === "GET" && path === "/v1/portal/anomalies") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const period = url.searchParams.get("period") || currentPeriod();
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Anomalies");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      return reply(200, detectPayrollAnomalies(companyId, { period }));
+    }
+
+    if (req.method === "GET" && path === "/v1/portal/elster-prep") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const period = url.searchParams.get("period") || currentPeriod();
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "ELSTER-Prep");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      return reply(200, buildElsterPrepChecklist(companyId, { period }));
+    }
+
+    if (req.method === "POST" && path === "/v1/portal/payroll/simulate") {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(body.companyId || body.company?.id || tenantScope || "");
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Simulate");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const aiGate = assertNotAiApplyingLaw(body);
+      if (!aiGate.ok) return reply(aiGate.status || 403, aiGate);
+      const result = simulatePayroll(body, { companyId });
+      audit({
+        type: "payroll.simulate",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { simulation: true, persisted: false },
+      });
+      return reply(result.ok ? 200 : 422, result);
+    }
+
+    if (req.method === "POST" && path === "/v1/portal/assistant/explain") {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(body.companyId || body.company?.id || tenantScope || "");
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Assistant");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const result = explainPortalGaps({ ...body, companyId });
+      if (!result.ok) return reply(result.status || 422, result);
+      return reply(200, result);
+    }
+
+    if (req.method === "POST" && (path === "/v1/portal/sepa-export" || path === "/v1/portal/sepa")) {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(body.companyId || tenantScope || "");
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "SEPA");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const gate = requireHumanConfirm(body, "sepa_export");
+      if (!gate.ok) return reply(gate.status || 422, gate);
+      const result = buildSepaCreditTransfer(companyId, {
+        period: body.period || currentPeriod(),
+        debtorIban: body.debtorIban,
+        debtorBic: body.debtorBic,
+        debtorName: body.debtorName,
+        executionDate: body.executionDate,
+      });
+      audit({
+        type: "portal.sepa_export",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { count: result.count, period: result.period, humanConfirm: true },
+      });
+      return reply(result.ok ? 200 : 422, result);
+    }
+
+    if (req.method === "POST" && (path === "/v1/portal/datev-export" || path === "/v1/portal/month-export")) {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(body.companyId || tenantScope || "");
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "DATEV");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const gate = requireHumanConfirm(body, "datev_export");
+      if (!gate.ok) return reply(gate.status || 422, gate);
+      const result = buildMonthDatevExport(companyId, {
+        period: body.period || currentPeriod(),
+        includeCalculated: body.includeCalculated === true,
+      });
+      audit({
+        type: "portal.datev_export",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { humanConfirm: true },
+      });
+      if (!result.ok) return reply(422, result);
+      return reply(200, { kind: "portal.datev.month.v1", humanFinal: true, ...result });
+    }
+
+    if (req.method === "POST" && (path === "/v1/portal/lodas-export" || path === "/v1/portal/month-lodas")) {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(body.companyId || tenantScope || "");
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "LODAS");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const gate = requireHumanConfirm(body, "lodas_export");
+      if (!gate.ok) return reply(gate.status || 422, gate);
+      const result = buildMonthLodasPackage(companyId, {
+        period: body.period || currentPeriod(),
+        includeCalculated: body.includeCalculated === true,
+      });
+      audit({
+        type: "portal.lodas_export",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { humanConfirm: true },
+      });
+      if (!result.ok) return reply(422, result);
+      return reply(200, { humanFinal: true, ...result });
     }
 
     if (req.method === "GET" && (path === "/v1/portal/invoices" || path === "/v1/invoices")) {

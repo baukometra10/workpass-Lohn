@@ -479,7 +479,7 @@
     if ($("portalPeriod") && !$("portalPeriod").value) $("portalPeriod").value = period;
     syncLocalizedMonthLabels();
     try {
-      const [emps, month, arch, msgs, sync, automation, branding, completeness] = await Promise.all([
+      const [emps, month, arch, msgs, sync, automation, branding, completeness, trust, anomalies, calendar] = await Promise.all([
         apiFetch(`/v1/portal/employees?period=${encodeURIComponent(period)}`),
         apiFetch(`/v1/portal/month?period=${encodeURIComponent(period)}&months=6`),
         apiFetch(`/v1/portal/archive?period=${encodeURIComponent(period)}`),
@@ -488,6 +488,9 @@
         apiFetch(`/v1/portal/automation-status?period=${encodeURIComponent(period)}`).catch(() => null),
         apiFetch("/v1/portal/branding").catch(() => null),
         apiFetch(`/v1/portal/completeness?period=${encodeURIComponent(period)}`).catch(() => null),
+        apiFetch(`/v1/portal/delivery-trust?period=${encodeURIComponent(period)}`).catch(() => null),
+        apiFetch(`/v1/portal/anomalies?period=${encodeURIComponent(period)}`).catch(() => null),
+        apiFetch(`/v1/portal/compliance-calendar?period=${encodeURIComponent(period)}`).catch(() => null),
       ]);
 
       const cur = month.current || {};
@@ -537,6 +540,14 @@
 
       renderPortalReadiness(cur, emps);
       renderPortalCompleteness(completeness);
+      renderPortalTrust(trust);
+      renderPortalAnomalies(anomalies);
+      renderPortalCalendar(calendar);
+      const quiet = $("portalQuietCard");
+      if (quiet) {
+        const empty = !(Number(emps.count || 0) > 0 || cur.total > 0);
+        quiet.hidden = !empty;
+      }
       renderPortalBranding(branding);
       renderPortalDiagnosis(emps, cur);
       renderPortalHoursWait(cur, period);
@@ -1026,6 +1037,128 @@
       badge.classList.toggle("is-ok", Boolean(data.readyForMonthClose));
       badge.classList.toggle("is-error", !data.readyForMonthClose);
     }
+  }
+
+  function renderPortalTrust(data) {
+    const card = $("portalTrustCard");
+    const list = $("portalTrustList");
+    if (!card || !list) return;
+    if (!data?.ok || !(data.items || []).length) {
+      card.hidden = true;
+      return;
+    }
+    card.hidden = false;
+    const c = data.counts || {};
+    if ($("portalTrustBadge")) {
+      $("portalTrustBadge").textContent = `${c.acked || 0}/${c.total || 0} Ack`;
+    }
+    if ($("portalTrustHint")) $("portalTrustHint").textContent = data.message || "";
+    list.innerHTML = (data.items || []).slice(0, 20).map((it) => `
+      <div class="api-inbox-item">
+        <div>
+          <strong>${esc(it.employee?.name || it.jobId)}</strong>
+          <span class="portal-item-meta">${esc(it.trust)} · Netto ${esc(it.net != null ? String(it.net) : "—")}</span>
+        </div>
+      </div>`).join("");
+  }
+
+  function renderPortalAnomalies(data) {
+    const card = $("portalAnomalyCard");
+    const list = $("portalAnomalyList");
+    if (!card || !list) return;
+    const rows = data?.anomalies || [];
+    card.hidden = !rows.length;
+    if (!rows.length) return;
+    if ($("portalAnomalyBadge")) $("portalAnomalyBadge").textContent = String(rows.length);
+    list.innerHTML = rows.slice(0, 25).map((a) => `
+      <div class="api-inbox-item">
+        <div>
+          <strong>${esc(a.employeeName || a.code)}</strong>
+          <span class="portal-item-meta">${esc(a.message || "")}</span>
+        </div>
+        <div class="api-inbox-actions">
+          ${a.jobId ? `<button type="button" class="api-anom-open" data-id="${esc(a.jobId)}">${esc(uiT("lohn.open", "Öffnen"))}</button>` : ""}
+        </div>
+      </div>`).join("");
+    list.querySelectorAll(".api-anom-open").forEach((btn) => {
+      btn.addEventListener("click", () => openApiPayrollJob(btn.dataset.id));
+    });
+  }
+
+  function renderPortalCalendar(data) {
+    const card = $("portalCalendarCard");
+    const list = $("portalCalendarList");
+    if (!card || !list) return;
+    if (!data?.ok) {
+      card.hidden = true;
+      return;
+    }
+    card.hidden = false;
+    list.innerHTML = (data.items || []).map((it) => `
+      <div class="api-inbox-item">
+        <div>
+          <strong>${esc(it.title)}</strong>
+          <span class="portal-item-meta">${esc(it.dueDate || "—")}${it.overdue ? " · überfällig" : ""} · ${esc(it.hint || "")}</span>
+        </div>
+      </div>`).join("");
+  }
+
+  function renderAssistantExplain(data) {
+    const card = $("portalAssistantCard");
+    const list = $("portalAssistantList");
+    if (!card || !list) return;
+    card.hidden = false;
+    list.innerHTML = (data.explanations || []).map((ex) => `
+      <div class="api-inbox-item">
+        <div>
+          <strong>${esc(ex.title || ex.code)}</strong>
+          <span class="portal-item-meta">${esc(ex.body || "")}</span>
+        </div>
+      </div>`).join("")
+      + ((data.suggestedHumanActions || []).length
+        ? `<p class="section-hint">${esc(uiT("portal.assistantActions", "Vorschläge (Sie entscheiden):"))} `
+          + (data.suggestedHumanActions || []).map((a) => esc(a.label)).join(" · ")
+          + `</p>`
+        : "");
+  }
+
+  async function downloadConfirmedExport(path, fileNameHint) {
+    const companyId = companyPortalId || apiConfig().companyId;
+    const period = currentPayrollPeriod();
+    if (!window.confirm(uiT(
+      "portal.confirmExport",
+      "Export wirklich erzeugen? KI setzt nichts fest – Sie laden die Datei und reichen sie selbst ein."
+    ))) return;
+    const data = await apiFetch(path, {
+      method: "POST",
+      body: JSON.stringify({ companyId, period, confirm: true }),
+    });
+    if (data.xml) {
+      const blob = new Blob([data.xml], { type: data.contentType || "application/xml" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = data.fileName || fileNameHint || "export.xml";
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast(uiT("portal.exportDone", "Export bereit – bitte selbst einreichen."), "ok");
+      return;
+    }
+    if (data.csv || data.content || data.package || data.files) {
+      const text = data.csv || data.content
+        || (Array.isArray(data.files)
+          ? data.files.map((f) => `=== ${f.name} ===\n${f.content || ""}`).join("\n\n")
+          : null)
+        || JSON.stringify(data.package || data, null, 2);
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = data.fileName || data.filename || fileNameHint || "export.txt";
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast(uiT("portal.exportDone", "Export bereit – bitte selbst einreichen."), "ok");
+      return;
+    }
+    toast(data.message || data.error || "Export", data.ok ? "ok" : "error");
   }
 
   function renderPortalReadiness(cur = {}, emps = {}) {
@@ -1715,6 +1848,13 @@
       return null;
     }
     const period = currentPayrollPeriod();
+    if (!fromAutoRetry) {
+      const ok = window.confirm(uiT(
+        "portal.confirmMonthClose",
+        "Monatsabschluss wirklich starten?\n\nBerechnung und Freigabe nur nach Ihrer Bestätigung. KI ändert keine Steuerwerte."
+      ));
+      if (!ok) return null;
+    }
     if (!fromAutoRetry) stopMonthWaitRetry();
     const btn = $("btnMonthClose");
     const btnPortal = $("btnPortalMonthClose");
@@ -1755,6 +1895,7 @@
           period,
           pull,
           autoRelease,
+          confirm: true,
         }),
       });
       clearInterval(stepTimer);
@@ -3422,6 +3563,47 @@
     $("btnApiInbox")?.addEventListener("click", loadApiInbox);
     $("btnMonthClose")?.addEventListener("click", () => runMonthClose({ pull: true, autoRelease: true }));
     $("btnMonthReleaseOnly")?.addEventListener("click", () => runMonthClose({ pull: false, autoRelease: true }));
+    $("btnSepaExport")?.addEventListener("click", () => {
+      downloadConfirmedExport("/v1/portal/sepa-export", "SEPA.xml").catch((e) => toast(e.message, "error"));
+    });
+    $("btnDatevExportConfirm")?.addEventListener("click", () => {
+      downloadConfirmedExport("/v1/portal/datev-export", "DATEV.csv").catch((e) => toast(e.message, "error"));
+    });
+    $("btnLodasExportConfirm")?.addEventListener("click", () => {
+      downloadConfirmedExport("/v1/portal/lodas-export", "LODAS.txt").catch((e) => toast(e.message, "error"));
+    });
+    $("btnElsterPrep")?.addEventListener("click", async () => {
+      try {
+        const period = currentPayrollPeriod();
+        const data = await apiFetch(`/v1/portal/elster-prep?period=${encodeURIComponent(period)}`);
+        const host = $("portalElsterList");
+        if (host) {
+          host.innerHTML = (data.steps || []).map((s) => `
+            <div class="api-inbox-item">
+              <div><strong>${esc(s.label)}</strong>
+              <span class="portal-item-meta">${s.ok ? "✓" : (s.humanOnly ? "Mensch" : "—")}</span></div>
+            </div>`).join("")
+            + `<p class="section-hint">${esc(data.note || "")}</p>`;
+        }
+        toast(uiT("portal.elsterPrepDone", "ELSTER-Checkliste geladen – Upload nur durch den Menschen."), "info");
+      } catch (e) {
+        toast(e.message, "error");
+      }
+    });
+    $("btnAssistantExplain")?.addEventListener("click", async () => {
+      try {
+        const companyId = companyPortalId || apiConfig().companyId;
+        const period = currentPayrollPeriod();
+        const data = await apiFetch("/v1/portal/assistant/explain", {
+          method: "POST",
+          body: JSON.stringify({ companyId, period }),
+        });
+        renderAssistantExplain(data);
+        toast(uiT("portal.assistantDone", "Erklärung bereit – keine automatische Ausführung."), "ok");
+      } catch (e) {
+        toast(e.message, "error");
+      }
+    });
     $("btnAutoSyncNow")?.addEventListener("click", () => runAutoSyncNow());
     $("btnPingPlatform")?.addEventListener("click", () => pingPlatformWebhook());
     $("btnRefreshMessages")?.addEventListener("click", () => loadPlatformMessages());
