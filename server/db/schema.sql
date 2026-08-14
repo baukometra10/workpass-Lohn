@@ -121,3 +121,17 @@ CREATE TABLE IF NOT EXISTS company_employees (
 );
 
 CREATE INDEX IF NOT EXISTS idx_emp_company ON company_employees(company_id);
+
+-- Effective-dated tax rulesets (published overlays; built-in packs live in tax-rules/)
+CREATE TABLE IF NOT EXISTS tax_rulesets (
+  ruleset_id TEXT PRIMARY KEY,
+  country TEXT NOT NULL DEFAULT 'DE',
+  status TEXT NOT NULL DEFAULT 'draft',
+  effective_from TEXT NOT NULL,
+  effective_to TEXT,
+  payload_json TEXT NOT NULL,
+  published_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_tax_rules_country ON tax_rulesets(country, status);

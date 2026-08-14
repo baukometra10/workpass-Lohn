@@ -13,6 +13,51 @@ import {
   assertSameTenant,
   normalizeCompanyId,
 } from "./tenant.mjs";
+import { taxResolveVat } from "./tax-rules/service.mjs";
+
+function resolveInvoiceTaxRate(payload) {
+  const asOf = String(
+    payload.invoiceDate || payload.date || payload.serviceDate || payload.period || ""
+  ).trim();
+  const category = String(payload.vatCategory || payload.taxCategory || "standard").toLowerCase();
+  const explicit = payload.taxRate;
+  if (explicit != null && explicit !== "" && Number.isFinite(Number(explicit))) {
+    return {
+      taxRate: Number(explicit),
+      taxAudit: {
+        source: "payload",
+        asOf: asOf || null,
+        category,
+      },
+    };
+  }
+  const vat = taxResolveVat({
+    country: payload.country || "DE",
+    asOf: asOf || undefined,
+    category,
+  });
+  if (vat.ok && vat.rate != null) {
+    return {
+      taxRate: Number(vat.rate),
+      taxAudit: {
+        source: "tax-rules",
+        rulesetId: vat.rulesetId,
+        asOf: vat.asOf,
+        category: vat.category,
+        citations: vat.citations || [],
+      },
+    };
+  }
+  return {
+    taxRate: 19,
+    taxAudit: {
+      source: "fallback",
+      asOf: asOf || null,
+      category,
+      error: vat.error || "Kein USt-Ruleset",
+    },
+  };
+}
 
 function normalizeInvoice(payload, company) {
   const number = String(payload.number || payload.invoiceNumber || "").trim();
@@ -25,7 +70,7 @@ function normalizeInvoice(payload, company) {
     }))
     : [];
 
-  const taxRate = Number(payload.taxRate ?? 19) || 0;
+  const { taxRate, taxAudit } = resolveInvoiceTaxRate(payload);
   const net = items.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
   const tax = Math.round(net * (taxRate / 100) * 100) / 100;
   const gross = Math.round((net + tax) * 100) / 100;
@@ -44,6 +89,7 @@ function normalizeInvoice(payload, company) {
     seller: String(payload.seller || sellerFromCompany || "").trim(),
     customer: String(payload.customer || payload.buyer || "").trim(),
     taxRate,
+    taxAudit,
     kleinunternehmer: Boolean(payload.kleinunternehmer),
     reverseCharge: Boolean(payload.reverseCharge),
     note: String(payload.note || "").trim(),

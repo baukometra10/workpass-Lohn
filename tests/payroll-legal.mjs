@@ -113,6 +113,19 @@ check("BBG: KV/PV bei hohem Brutto gedeckelt", () => {
   assert(approx(p.pension, 8050 * 0.093), `RV an BBG: ${p.pension}`);
 });
 
+check("2025-07: Tax Rules Pack 2025 (PV 1,7 %, KVZ 2,5 %)", () => {
+  const p = PC.calculate({
+    ...base,
+    payrollMonth: "2025-07",
+    grossSalary: 3500,
+    healthAdditionalPercent: 2.5,
+    employmentType: "regular",
+  });
+  assert(p.taxAudit?.rulesetId?.includes("2025") || p.taxAudit?.papYear === 2025, `taxAudit 2025: ${JSON.stringify(p.taxAudit)}`);
+  assert(approx(p.care, 3500 * 0.017), `PV 2025: ${p.care}`);
+  assert(approx(p.health, 3500 * (0.073 + 0.025 / 2)), `KV 2025: ${p.health}`);
+});
+
 if (failed) {
   console.error(`\nFAILED (${failed})`);
   process.exit(1);

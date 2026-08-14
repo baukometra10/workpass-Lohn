@@ -37,6 +37,7 @@ function loadScriptsInSandbox(extraFiles = []) {
   const ctx = vm.createContext(sandbox);
 
   const files = [
+    "tax-rules.js",
     "legal-config.js",
     "vendor/pap-standalone.js",
     "payroll-bridge.js",

@@ -166,7 +166,9 @@
       taxClass: state.taxClass || "I",
       churchTaxRate: num(state.churchTaxRate),
       childlessOver23: Boolean(state.childlessPvSurcharge),
-      healthAdditional: num(state.healthAdditionalPercent) || LEGAL_CONFIG.socialSecurity.healthAdditionalAvg,
+      healthAdditional: num(state.healthAdditionalPercent)
+        || window.TaxRulesEngine?.resolveSv?.({ asOf: state.payrollMonth })?.params?.healthAdditionalDefault
+        || LEGAL_CONFIG.socialSecurity.healthAdditionalAvg,
       privateHealth: state.healthFund === "Private Krankenversicherung",
       taxAllowanceMonthly: num(state.taxAllowanceMonthly),
       childAllowanceFactor: num(state.childAllowanceFactor),
@@ -179,6 +181,9 @@
       employmentType: state.employmentType || "regular",
       minijobRvExempt: Boolean(state.minijobRvExempt),
       minijobTaxable: Boolean(state.minijobTaxable),
+      payrollMonth: state.payrollMonth || "",
+      asOf: state.payrollMonth || "",
+      period: state.payrollMonth || "",
     };
   }
 
@@ -213,7 +218,8 @@
       hours: num(state.workHours),
       days: num(state.workDays),
       legalRatesApplied: Boolean(window.PayrollEngine?.ready),
-      method: result.method || result.taxMethod || "BMF-PAP-2026",
+      method: result.method || result.taxMethod || "BMF-PAP",
+      taxAudit: result.taxAudit || null,
     };
   }
 
@@ -456,7 +462,12 @@
       netVerdienst: formatAmountOrEmpty(net),
       netTotal: formatAmountOrEmpty(net),
       payout: formatAmountOrEmpty(net),
-      calcMethod: payroll.legalRatesApplied ? "BMF PAP 2026" : (payroll.method || ""),
+      calcMethod: (() => {
+        const a = payroll.taxAudit;
+        const pap = a?.papYear || String(payroll.method || "").match(/BMF-PAP-(\d{4})/)?.[1];
+        if (pap) return `BMF PAP ${pap}`;
+        return payroll.legalRatesApplied ? "BMF PAP" : (payroll.method || "");
+      })(),
       stBrutto: formatAmountOrEmpty(pick("taxGross", payroll.taxGross || payroll.gross)),
       lst: formatDeductionLine(pick("payrollTax", payroll.payrollTax), hasSheetContent),
       kist: formatDeductionLine(pick("churchTax", payroll.churchTax), hasSheetContent),

@@ -122,6 +122,7 @@ function applyContributionCeiling(gross, ceiling) {
 }
 
 function buildPayrollOptions(options = {}) {
+  const month = options.payrollMonth || options.asOf || options.period || "";
   return {
     taxClass: options.taxClass || "I",
     churchTaxRate: Number(options.churchTaxRate) || 0,
@@ -143,6 +144,10 @@ function buildPayrollOptions(options = {}) {
     employmentType: options.employmentType || "auto",
     minijobRvExempt: Boolean(options.minijobRvExempt),
     minijobTaxable: Boolean(options.minijobTaxable),
+    country: options.country || "DE",
+    payrollMonth: options.payrollMonth || month,
+    asOf: options.asOf || month,
+    period: options.period || month,
   };
 }
 
@@ -196,4 +201,19 @@ if (typeof window !== "undefined") {
   window.PAYROLL_LAYOUTS = PAYROLL_LAYOUTS;
   window.getLegalEmployeeRates = getLegalEmployeeRates;
   window.calculateLegalPayroll = calculateLegalPayroll;
+  try {
+    const live = window.TaxRulesEngine?.evaluate?.({
+      country: "DE",
+      kind: "payroll-params",
+      asOf: new Date().toISOString().slice(0, 10),
+    });
+    if (live?.ok && live.result?.sv) {
+      LEGAL_CONFIG.year = live.papYear || LEGAL_CONFIG.year;
+      LEGAL_CONFIG.version = live.version || LEGAL_CONFIG.version;
+      LEGAL_CONFIG.rulesetId = live.rulesetId;
+      LEGAL_CONFIG.socialSecurity.healthAdditionalAvg = live.result.sv.healthAdditionalDefault;
+      LEGAL_CONFIG.socialSecurity.minijob = live.result.sv.minijob;
+      LEGAL_CONFIG.tax.method = live.result.taxMethod || LEGAL_CONFIG.tax.method;
+    }
+  } catch { /* keep static 2026 fallback */ }
 }

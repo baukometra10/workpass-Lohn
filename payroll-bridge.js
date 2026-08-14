@@ -46,6 +46,47 @@
     regionDefault: "west",
   };
 
+  /** Effective-dated SV from Tax Rules Engine; 2026 pack is the last-known fallback. */
+  function svParams(options = {}) {
+    const asOf = options.asOf || options.period || options.payrollMonth || "";
+    const country = options.country || "DE";
+    try {
+      if (typeof taxResolveSv === "function") {
+        const r = taxResolveSv({ asOf, country });
+        if (r?.params) return r.params;
+      }
+    } catch { /* browser IIFE */ }
+    try {
+      const eng = (typeof window !== "undefined" && window.TaxRulesEngine) || null;
+      if (eng?.resolveSv) {
+        const r = eng.resolveSv({ asOf, country });
+        if (r?.params) return r.params;
+      }
+    } catch { /* ignore */ }
+    return SV_2026;
+  }
+
+  function taxAuditFrom(options = {}) {
+    const asOf = options.asOf || options.period || options.payrollMonth || "";
+    try {
+      const eng = (typeof taxResolveSv === "function")
+        ? null
+        : ((typeof window !== "undefined" && window.TaxRulesEngine) || null);
+      const r = typeof taxResolveSv === "function"
+        ? taxResolveSv({ asOf, country: options.country || "DE" })
+        : eng?.resolveSv?.({ asOf, country: options.country || "DE" });
+      if (!r?.ok) return null;
+      return {
+        rulesetId: r.rulesetId,
+        asOf: r.asOf,
+        papYear: r.papYear,
+        citations: r.citations || [],
+      };
+    } catch {
+      return null;
+    }
+  }
+
   function eurosToCent(value) {
     return Math.round(Number(value || 0) * 100);
   }
@@ -67,20 +108,27 @@
    *  Uses Midijob only in Übergangsbereich; otherwise full SV.
    */
   function resolveEmploymentType(gross, options = {}) {
+    const SV = svParams(options);
     const forced = String(options.employmentType || "auto").toLowerCase();
     if (forced === "regular" || forced === "mini" || forced === "midi") return forced;
     const ae = Number(gross) || 0;
     if (ae <= 0) return "regular";
     // Minijob is a Beschäftigungsart – never auto from low monthly hours/gross
-    if (ae > SV_2026.minijob.ceiling && ae <= SV_2026.midijob.upper) return "midi";
+    if (ae > SV.minijob.ceiling && ae <= SV.midijob.upper) return "midi";
     return "regular";
   }
 
-  function midiBases(ae) {
-    const m = SV_2026.midijob;
+  function midiBases(ae, options = {}) {
+    const m = svParams(options).midijob;
     const amount = Number(ae) || 0;
     if (amount < m.lower) {
       return { beGesamt: round2(amount * m.factorF), beAn: 0 };
+    }
+    if (m.beGesamtA == null || m.beAnA == null) {
+      return {
+        beGesamt: round2(amount * m.factorF),
+        beAn: round2(amount * m.factorF * 0.5),
+      };
     }
     return {
       beGesamt: round2(m.beGesamtA * amount - m.beGesamtB),
@@ -89,26 +137,27 @@
   }
 
   function calculateSocialInsurance(gross, options = {}) {
+    const SV = svParams(options);
     const childless = Boolean(options.childlessOver23);
-    const zusatz = Number(options.healthAdditional) || SV_2026.healthAdditionalDefault;
+    const zusatz = Number(options.healthAdditional) || SV.healthAdditionalDefault;
     const privateHealth = Boolean(options.privateHealth);
     const employmentType = resolveEmploymentType(gross, options);
     const ae = Number(gross) || 0;
 
-    const pensionBaseAe = cappedBase(ae, SV_2026.ceilings.pension);
-    const healthBaseAe = cappedBase(ae, SV_2026.ceilings.health);
-    const careBaseAe = cappedBase(ae, SV_2026.ceilings.care);
-    const unemploymentBaseAe = cappedBase(ae, SV_2026.ceilings.unemployment);
+    const pensionBaseAe = cappedBase(ae, SV.ceilings.pension);
+    const healthBaseAe = cappedBase(ae, SV.ceilings.health);
+    const careBaseAe = cappedBase(ae, SV.ceilings.care);
+    const unemploymentBaseAe = cappedBase(ae, SV.ceilings.unemployment);
 
-    const pensionAnRate = Number(options.pensionPercent) || SV_2026.pension;
+    const pensionAnRate = Number(options.pensionPercent) || SV.pension;
     const healthAnRate = privateHealth
       ? 0
-      : (Number(options.healthPercent) || SV_2026.health + zusatz / 2);
+      : (Number(options.healthPercent) || SV.health + zusatz / 2);
     const careAnRate = childless
-      ? (Number(options.carePercent) || SV_2026.careChildless)
-      : (Number(options.carePercent) || SV_2026.care);
-    const careAgRate = SV_2026.care; // Kinderlosenzuschlag nur AN
-    const unemploymentAnRate = Number(options.unemploymentPercent) || SV_2026.unemployment;
+      ? (Number(options.carePercent) || SV.careChildless)
+      : (Number(options.carePercent) || SV.care);
+    const careAgRate = SV.care; // Kinderlosenzuschlag nur AN
+    const unemploymentAnRate = Number(options.unemploymentPercent) || SV.unemployment;
 
     let pension = 0;
     let health = 0;
@@ -129,33 +178,33 @@
       healthBase = 0;
       careBase = 0;
       unemploymentBase = 0;
-      pension = rvExempt ? 0 : round2(pensionBaseAe * (SV_2026.minijob.rvEmployee / 100));
+      pension = rvExempt ? 0 : round2(pensionBaseAe * (SV.minijob.rvEmployee / 100));
       health = 0;
       care = 0;
       unemployment = 0;
-      employerPension = round2(pensionBaseAe * (SV_2026.minijob.employerRvFlat / 100));
-      employerHealth = privateHealth ? 0 : round2(pensionBaseAe * (SV_2026.minijob.employerKvFlat / 100));
+      employerPension = round2(pensionBaseAe * (SV.minijob.employerRvFlat / 100));
+      employerHealth = privateHealth ? 0 : round2(pensionBaseAe * (SV.minijob.employerKvFlat / 100));
       employerCare = 0;
       employerUnemployment = 0;
     } else if (employmentType === "midi") {
-      const { beGesamt, beAn } = midiBases(ae);
+      const { beGesamt, beAn } = midiBases(ae, options);
       pensionBase = beGesamt;
       healthBase = privateHealth ? 0 : beGesamt;
       careBase = beGesamt;
       unemploymentBase = beGesamt;
 
-      const beGesamtP = Math.min(beGesamt, SV_2026.ceilings.pension);
-      const beGesamtH = privateHealth ? 0 : Math.min(beGesamt, SV_2026.ceilings.health);
-      const beGesamtC = Math.min(beGesamt, SV_2026.ceilings.care);
-      const beGesamtU = Math.min(beGesamt, SV_2026.ceilings.unemployment);
-      const beAnP = Math.min(beAn, SV_2026.ceilings.pension);
-      const beAnH = privateHealth ? 0 : Math.min(beAn, SV_2026.ceilings.health);
-      const beAnC = Math.min(beAn, SV_2026.ceilings.care);
-      const beAnU = Math.min(beAn, SV_2026.ceilings.unemployment);
+      const beGesamtP = Math.min(beGesamt, SV.ceilings.pension);
+      const beGesamtH = privateHealth ? 0 : Math.min(beGesamt, SV.ceilings.health);
+      const beGesamtC = Math.min(beGesamt, SV.ceilings.care);
+      const beGesamtU = Math.min(beGesamt, SV.ceilings.unemployment);
+      const beAnP = Math.min(beAn, SV.ceilings.pension);
+      const beAnH = privateHealth ? 0 : Math.min(beAn, SV.ceilings.health);
+      const beAnC = Math.min(beAn, SV.ceilings.care);
+      const beAnU = Math.min(beAn, SV.ceilings.unemployment);
 
       const rvTotalRate = pensionAnRate * 2;
-      const kvTotalRate = privateHealth ? 0 : (SV_2026.health * 2 + zusatz);
-      const pvTotalRate = SV_2026.care * 2; // ohne Kinderlosenzuschlag
+      const kvTotalRate = privateHealth ? 0 : (SV.health * 2 + zusatz);
+      const pvTotalRate = SV.care * 2; // ohne Kinderlosenzuschlag
       const avTotalRate = unemploymentAnRate * 2;
 
       const rvTotal = beGesamtP * (rvTotalRate / 100);
@@ -189,9 +238,9 @@
     const u1Rate = Number(options.umlageU1);
     const u2Rate = Number(options.umlageU2);
     const insoRate = Number(options.umlageInsolvency);
-    const umlageU1Pct = Number.isFinite(u1Rate) ? u1Rate : SV_2026.umlagen.u1;
-    const umlageU2Pct = Number.isFinite(u2Rate) ? u2Rate : SV_2026.umlagen.u2;
-    const umlageInsoPct = Number.isFinite(insoRate) ? insoRate : SV_2026.umlagen.insolvency;
+    const umlageU1Pct = Number.isFinite(u1Rate) ? u1Rate : SV.umlagen.u1;
+    const umlageU2Pct = Number.isFinite(u2Rate) ? u2Rate : SV.umlagen.u2;
+    const umlageInsoPct = Number.isFinite(insoRate) ? insoRate : SV.umlagen.insolvency;
     const umlageBase = employmentType === "mini" ? pensionBaseAe : pensionBaseAe;
     const umlageU1 = ae > 0 ? round2(umlageBase * (umlageU1Pct / 100)) : 0;
     const umlageU2 = ae > 0 ? round2(umlageBase * (umlageU2Pct / 100)) : 0;
@@ -223,7 +272,7 @@
       employerTotal,
       employmentType,
       rates: {
-        pensionPercent: employmentType === "mini" ? (options.minijobRvExempt ? 0 : SV_2026.minijob.rvEmployee) : pensionAnRate,
+        pensionPercent: employmentType === "mini" ? (options.minijobRvExempt ? 0 : SV.minijob.rvEmployee) : pensionAnRate,
         healthPercent: employmentType === "mini" ? 0 : healthAnRate,
         carePercent: employmentType === "mini" ? 0 : careAnRate,
         unemploymentPercent: employmentType === "mini" ? 0 : unemploymentAnRate,
@@ -248,9 +297,12 @@
       };
     }
 
+    const SV = svParams(options);
+    const audit = taxAuditFrom(options);
+    const papYear = Number(audit?.papYear) || 2026;
     const taxClass = TAX_CLASS_MAP[options.taxClass] || 1;
     const churchRate = Number(options.churchTaxRate) || 0;
-    const zusatz = Number(options.healthAdditional) || SV_2026.healthAdditionalDefault;
+    const zusatz = Number(options.healthAdditional) || SV.healthAdditionalDefault;
 
     const papInputs = {
       LZZ: 2,
@@ -271,7 +323,12 @@
       papInputs.f = Number(options.factorValue) || 1;
     }
 
-    const pap = PapLib.calculate(2026, papInputs);
+    let pap;
+    try {
+      pap = PapLib.calculate(papYear, papInputs);
+    } catch {
+      pap = PapLib.calculate(2026, papInputs);
+    }
     const payrollTax = centToEuros(pap.LSTLZZ);
     const solidarity = centToEuros(pap.SOLZLZZ);
     // BK = Bemessungsgrundlage Kirchenlohnsteuer (Cent) laut BMF-PAP
@@ -285,7 +342,7 @@
       churchTaxRate: churchRate,
       churchTaxBase: round2(churchTaxBase),
       pap,
-      method: "BMF-PAP-2026",
+      method: `BMF-PAP-${papYear}`,
     };
   }
 
@@ -345,6 +402,7 @@
       rates: sv.rates,
       employmentType,
       legalRatesApplied: true,
+      taxAudit: taxAuditFrom(options),
       payrollTaxPercent: amount > 0 ? round2((tax.payrollTax / amount) * 100) : 0,
     };
   }
@@ -412,7 +470,7 @@ Laenge=60
       taxClass: profile.taxClass,
       churchTaxRate: Number(profile.churchTaxRate) || 0,
       childlessOver23: Boolean(profile.childlessPvSurcharge),
-      healthAdditional: Number(profile.healthAdditionalPercent) || SV_2026.healthAdditionalDefault,
+      healthAdditional: Number(profile.healthAdditionalPercent) || svParams({ payrollMonth: month }).healthAdditionalDefault,
       privateHealth: profile.healthFund === "Private Krankenversicherung",
       taxAllowanceMonthly: Number(profile.taxAllowanceMonthly) || 0,
       childAllowanceFactor: Number(profile.childAllowanceFactor) || 0,
@@ -420,6 +478,8 @@ Laenge=60
       healthPercent: Number(profile.healthPercent),
       carePercent: Number(profile.carePercent),
       unemploymentPercent: Number(profile.unemploymentPercent),
+      payrollMonth: month,
+      asOf: month,
     });
 
     const datevMonth = formatDatevMonth(month);
@@ -468,6 +528,7 @@ Laenge=60
     return parts.join(";");
   }
 
+  /* PAYROLL_ENGINE_SYNC_END */
   try {
     const papReady = typeof PapLib !== "undefined" && typeof PapLib.calculate === "function";
     window.PayrollEngine = {

@@ -2490,6 +2490,9 @@ function collectPayrollCalcOptions() {
     healthPercent: numberValue(healthPercentInput),
     carePercent: numberValue(carePercentInput),
     unemploymentPercent: numberValue(unemploymentPercentInput),
+    payrollMonth: payrollMonthInput?.value || "",
+    asOf: payrollMonthInput?.value || "",
+    period: payrollMonthInput?.value || "",
   });
 }
 
@@ -3657,6 +3660,9 @@ function calculatePayrollFromProfile(profile) {
     svGross: bases.svGross,
     allTaxFree: bases.allTaxFree,
     allSvFree: bases.allSvFree,
+    payrollMonth: profile.payrollMonth || "",
+    asOf: profile.payrollMonth || "",
+    period: profile.payrollMonth || "",
   }));
   const rates = result.rates || getLegalEmployeeRates({ childlessOver23: profile.childlessPvSurcharge, healthAdditional: profile.healthAdditionalPercent });
   return {
@@ -6513,6 +6519,9 @@ function payrollNumbersFromProfile(profile) {
     unemploymentPercent: Number(profile.unemploymentPercent),
     taxGross,
     svGross,
+    payrollMonth: profile.payrollMonth || "",
+    asOf: profile.payrollMonth || "",
+    period: profile.payrollMonth || "",
   }));
   return {
     gross,
@@ -7107,7 +7116,21 @@ syncEmployeeAddressFields("auto");
 
 window.addEventListener("payroll-engine-ready", () => {
   const legalChip = document.getElementById("legalChip");
-  if (legalChip) legalChip.textContent = "Berechnung: BMF PAP 2026 · SV gesetzlich 2026";
+  if (legalChip) {
+    const asOf = document.getElementById("payrollMonth")?.value || "";
+    let pap = "";
+    let ruleset = "";
+    try {
+      const r = window.TaxRulesEngine?.resolveSv?.({ asOf, country: "DE" });
+      if (r?.ok) {
+        pap = r.papYear || "";
+        ruleset = r.rulesetId || "";
+      }
+    } catch { /* ignore */ }
+    legalChip.textContent = pap
+      ? `Berechnung: BMF PAP ${pap} · SV gesetzlich${ruleset ? ` · ${ruleset}` : ""}`
+      : "Berechnung: BMF PAP · SV gesetzlich";
+  }
   applyLegalRatesToForm(false);
   updatePreview();
 });
@@ -7134,7 +7157,21 @@ try {
 
 if (window.PayrollEngine?.ready) {
   const legalChipEl = document.getElementById("legalChip");
-  if (legalChipEl) legalChipEl.textContent = "Berechnung: BMF PAP 2026 · SV gesetzlich 2026";
+  if (legalChipEl) {
+    const asOf = document.getElementById("payrollMonth")?.value || "";
+    let pap = "";
+    let ruleset = "";
+    try {
+      const r = window.TaxRulesEngine?.resolveSv?.({ asOf, country: "DE" });
+      if (r?.ok) {
+        pap = r.papYear || "";
+        ruleset = r.rulesetId || "";
+      }
+    } catch { /* ignore */ }
+    legalChipEl.textContent = pap
+      ? `Berechnung: BMF PAP ${pap} · SV gesetzlich${ruleset ? ` · ${ruleset}` : ""}`
+      : "Berechnung: BMF PAP · SV gesetzlich";
+  }
   applyLegalRatesToForm(false);
   updatePreview();
 }

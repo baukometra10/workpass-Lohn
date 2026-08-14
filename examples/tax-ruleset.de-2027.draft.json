@@ -1,0 +1,67 @@
+{
+  "kind": "tax.ruleset.draft.v1",
+  "extractedBy": "ai",
+  "ingestNote": "Beispiel-Entwurf 2027 – nur draft. Nach Review + Publish live. Zahlen sind Platzhalter.",
+  "id": "DE-SV-USt-2027.1",
+  "country": "DE",
+  "status": "draft",
+  "version": "2027.1",
+  "papYear": 2027,
+  "taxMethod": "BMF-PAP-2027",
+  "effectiveFrom": "2027-01-01",
+  "effectiveTo": null,
+  "source": {
+    "sv": "SGB IV / Beitragsverordnung 2027 (Entwurf)",
+    "tax": "BMF Programmablaufplan 2027 (Entwurf)",
+    "vat": "§ 12 UStG"
+  },
+  "vat": { "standard": 19, "reduced": 7, "zero": 0 },
+  "sv": {
+    "pension": 9.3,
+    "health": 7.3,
+    "care": 1.8,
+    "careChildless": 2.4,
+    "unemployment": 1.3,
+    "healthAdditionalDefault": 2.9,
+    "ceilings": {
+      "pension": 8200,
+      "pensionEast": 8200,
+      "health": 5600,
+      "care": 5600,
+      "unemployment": 8200
+    },
+    "minijob": {
+      "ceiling": 620,
+      "rvEmployee": 3.6,
+      "employerKvFlat": 13,
+      "employerRvFlat": 15
+    },
+    "midijob": {
+      "lower": 620.01,
+      "upper": 2000,
+      "factorF": 0.66
+    },
+    "umlagen": { "u1": 1.1, "u2": 0.49, "insolvency": 0.15 },
+    "regionDefault": "west"
+  },
+  "citations": [
+    {
+      "kind": "sv",
+      "ruleId": "de.sv.minijob.ceiling.2027",
+      "title": "Geringfügigkeitsgrenze",
+      "source": "SGB IV",
+      "article": "§ 8 Abs. 1 Nr. 1 SGB IV",
+      "effectiveFrom": "2027-01-01",
+      "value": 620
+    },
+    {
+      "kind": "vat",
+      "ruleId": "de.ust.standard",
+      "title": "Regelsteuersatz",
+      "source": "UStG",
+      "article": "§ 12 Abs. 1 UStG",
+      "effectiveFrom": "2007-01-01",
+      "value": 19
+    }
+  ]
+}

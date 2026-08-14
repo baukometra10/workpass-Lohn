@@ -14,6 +14,7 @@
 | Webhook المقترح | `https://suppix-ai-workpass.com/api/workpass/webhooks/accounting` |
 
 **عقد الاستقبال في المنصة (Headers + JSON + Ack):** [`PLATFORM_WEBHOOK.md`](PLATFORM_WEBHOOK.md)  
+**Tax Rules Engine (Gesetze nach Datum, ohne Accounting-Rewrite):** [`TAX_RULES_ENGINE.md`](TAX_RULES_ENGINE.md)  
 أمثلة: `examples/webhook-payslip.released.json`, `examples/webhook-invoice.released.json`
 
 ضبط عبر `.env` / Railway – انظر `.env.example`.

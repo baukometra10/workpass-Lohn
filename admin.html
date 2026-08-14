@@ -440,6 +440,27 @@
         </div>
       </div>
       <div class="admin-panel">
+        <h2 data-i18n="admin.taxRulesTitle">Tax Rules Engine</h2>
+        <p class="admin-hint" data-i18n="admin.taxRulesHint">
+          Veröffentlicht: live in der Berechnung. Entwürfe (z.&nbsp;B. KI-Extrakt) müssen reviewt und veröffentlicht werden – die Buchhaltung liest keine Gesetze selbst.
+        </p>
+        <div class="admin-actions" style="margin-top:8px;margin-bottom:8px">
+          <button type="button" id="btnTaxRulesRefresh" data-i18n="admin.taxRulesRefresh">Rulesets laden</button>
+        </div>
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th data-i18n="admin.taxThId">ID</th>
+              <th data-i18n="admin.taxThStatus">Status</th>
+              <th data-i18n="admin.taxThFrom">Gültig ab</th>
+              <th data-i18n="admin.taxThPap">BMF PAP</th>
+              <th data-i18n="admin.taxThActions">Aktion</th>
+            </tr>
+          </thead>
+          <tbody id="adminTaxRules"></tbody>
+        </table>
+      </div>
+      <div class="admin-panel">
         <h2 data-i18n="admin.companies">Firmen / Abteilungen</h2>
         <table class="admin-table">
           <thead>
@@ -459,7 +480,7 @@
       <p class="admin-foot" data-i18n="admin.foot">WorkPass Steuerprogramm · Bridge-Admin</p>
     </div>
 
-    <script src="workpass-i18n-packs.js?v=13"></script>
+    <script src="workpass-i18n-packs.js?v=14"></script>
     <script src="workpass-i18n.js?v=6"></script>
     <script src="workpass-pwa.js?v=4"></script>
     <script src="auth-gate.js?v=17"></script>
@@ -607,13 +628,90 @@
             });
           });
           setStatus(t("admin.loaded", "Admin-Übersicht geladen"), true);
+          await refreshTaxRules();
         } catch (e) {
           setStatus(e.message, false);
         } finally {
           setBusy(btn, false, t("action.refresh", "Aktualisieren"));
         }
       }
+      async function refreshTaxRules() {
+        const host = document.getElementById("adminTaxRules");
+        if (!host) return;
+        try {
+          const data = await api("/v1/admin/tax/rulesets");
+          const rows = (data.items || []).map((p) => {
+            const st = String(p.status || "");
+            const badge =
+              st === "published" ? "badge-on" : st === "reviewed" ? "badge-warn" : "badge-off";
+            let actions = "";
+            if (p.origin === "store" && st === "draft") {
+              actions =
+                '<button type="button" class="btn-tax-review" data-id="' + esc(p.id) + '">' +
+                esc(t("admin.taxReview", "Review")) + "</button>";
+            } else if (p.origin === "store" && st === "reviewed") {
+              actions =
+                '<button type="button" class="btn-tax-publish" data-id="' + esc(p.id) + '">' +
+                esc(t("admin.taxPublish", "Veröffentlichen")) + "</button>";
+            } else if (st === "published") {
+              actions = "<span class=\"admin-hint\">" + esc(t("admin.taxLive", "Live")) + "</span>";
+            }
+            return (
+              "<tr>" +
+              "<td><code>" + esc(p.id || "") + "</code>" +
+              (p.origin === "builtin" ? " <small>builtin</small>" : "") +
+              "</td>" +
+              '<td><span class="badge ' + badge + '">' + esc(st || "—") + "</span></td>" +
+              "<td>" + esc(p.effectiveFrom || "—") + "</td>" +
+              "<td>" + esc(p.papYear != null ? ("BMF PAP " + p.papYear) : "—") + "</td>" +
+              "<td>" + actions + "</td>" +
+              "</tr>"
+            );
+          }).join("");
+          host.innerHTML = rows || ('<tr><td colspan="5">' + esc(t("admin.taxEmpty", "Keine Rulesets.")) + "</td></tr>");
+          host.querySelectorAll(".btn-tax-review").forEach((btn) => {
+            btn.addEventListener("click", async () => {
+              const id = btn.getAttribute("data-id");
+              if (!id) return;
+              setBusy(btn, true, "…");
+              try {
+                await api("/v1/tax/rulesets/" + encodeURIComponent(id) + "/review", {
+                  method: "POST",
+                  body: "{}",
+                });
+                setStatus(t("admin.taxReviewed", "Ruleset reviewt: {id}", { id }), true);
+                await refreshTaxRules();
+              } catch (e) {
+                setStatus(e.message, false);
+                setBusy(btn, false, t("admin.taxReview", "Review"));
+              }
+            });
+          });
+          host.querySelectorAll(".btn-tax-publish").forEach((btn) => {
+            btn.addEventListener("click", async () => {
+              const id = btn.getAttribute("data-id");
+              if (!id) return;
+              if (!confirm(t("admin.taxConfirmPublish", "Ruleset „{id}“ wirklich veröffentlichen? Danach gilt es live ab effectiveFrom.", { id }))) return;
+              setBusy(btn, true, "…");
+              try {
+                await api("/v1/tax/rulesets/" + encodeURIComponent(id) + "/publish", {
+                  method: "POST",
+                  body: "{}",
+                });
+                setStatus(t("admin.taxPublished", "Ruleset veröffentlicht: {id}", { id }), true);
+                await refreshTaxRules();
+              } catch (e) {
+                setStatus(e.message, false);
+                setBusy(btn, false, t("admin.taxPublish", "Veröffentlichen"));
+              }
+            });
+          });
+        } catch (e) {
+          host.innerHTML = '<tr><td colspan="5">' + esc(e.message) + "</td></tr>";
+        }
+      }
       document.getElementById("btnRefresh")?.addEventListener("click", refresh);
+      document.getElementById("btnTaxRulesRefresh")?.addEventListener("click", () => refreshTaxRules());
       document.getElementById("btnBackup")?.addEventListener("click", async () => {
         const btn = document.getElementById("btnBackup");
         setBusy(btn, true, t("admin.backupBusy", "Backup…"));

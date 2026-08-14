@@ -1948,9 +1948,14 @@
       </li>`).join("");
     const hint = $("calcMethodHint");
     if (hint) {
+      const audit = payroll?.taxAudit;
+      const pap = audit?.papYear || "";
+      const ruleset = audit?.rulesetId || "";
       const legal = payroll?.legalRatesApplied ? "aktiv" : "Fallback";
       const abzug = payroll?.netDeductions > 0 ? ` · Netto-Abzüge ${PayrollCore.formatAmount(payroll.netDeductions)}` : "";
-      hint.textContent = `Berechnung: BMF PAP 2026 + SGB IV (${legal})${abzug}`;
+      const papLabel = pap ? `BMF PAP ${pap}` : "BMF PAP";
+      const svLabel = ruleset ? `SV SGB IV (${ruleset}, ${legal})` : `SV SGB IV (${legal})`;
+      hint.textContent = `Berechnung: ${papLabel} + ${svLabel}${abzug}`;
     }
   }
 

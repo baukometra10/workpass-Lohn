@@ -35,6 +35,18 @@ import {
   autoPipelineConfig,
 } from "./auto-pipeline.mjs";
 import { startDeliveryReplayScheduler, replayPendingDeliveries } from "./delivery-replay.mjs";
+import {
+  hydrateTaxRulesFromStore,
+  taxEvaluate,
+  taxListRulesets,
+  taxResolveRuleset,
+  taxIngestDraft,
+  taxReviewRuleset,
+  taxPublishLifecycle,
+  taxGetStoredRuleset,
+  taxListStored,
+  taxEngineInfo,
+} from "./tax-rules/service.mjs";
 import { listCompanyEmployees, monthOverview, listReleasedArchive, listInvoiceArchive, brandingHealth, buildMonthDatevExport, buildMonthLodasPackage, monthCompleteness } from "./portal-service.mjs";
 import { buildDemoPayrollBatch } from "./demo-payroll.mjs";
 import { purgeDemoPayroll } from "./demo-purge.mjs";
@@ -114,6 +126,7 @@ try {
   posture = assertProductionSecurity();
   logDataPaths();
   initDb();
+  hydrateTaxRulesFromStore();
 } catch (err) {
   console.error("[boot] FATAL:", err?.message || err);
   process.exit(1);
@@ -165,6 +178,7 @@ async function handler(req, res) {
       service: SERVICE_NAME,
       version: ACCOUNTING_VERSION,
       multiTenant: true,
+      taxRules: taxEngineInfo(),
       monthCloseScheduler: monthCloseSched,
       autoMonthClose: autoMonthCloseStatus(),
       autoPipeline: autoPipelineStatus(),
@@ -227,6 +241,52 @@ async function handler(req, res) {
   // --- Public auth (no API key) ---
   if (req.method === "GET" && path === "/v1/auth/config") {
     return reply(200, authPublicConfig());
+  }
+
+  if (req.method === "GET" && path === "/v1/tax/rulesets") {
+    const country = url.searchParams.get("country") || "DE";
+    // Public: published only (drafts never drive live calc / public list)
+    const items = taxListRulesets({ country, includeDraft: false }).map((p) => ({
+      id: p.id,
+      country: p.country,
+      status: p.status,
+      version: p.version,
+      papYear: p.papYear,
+      effectiveFrom: p.effectiveFrom,
+      effectiveTo: p.effectiveTo,
+      source: p.source || null,
+    }));
+    return reply(200, { ok: true, country, items, engine: "tax-rules" });
+  }
+
+  if (req.method === "GET" && path === "/v1/tax/ruleset") {
+    const resolved = taxResolveRuleset({
+      country: url.searchParams.get("country") || "DE",
+      asOf: url.searchParams.get("asOf") || url.searchParams.get("period") || "",
+    });
+    return reply(resolved.ok ? 200 : 404, {
+      ok: resolved.ok,
+      country: resolved.country,
+      asOf: resolved.asOf,
+      ruleset: resolved.pack
+        ? {
+          id: resolved.pack.id,
+          version: resolved.pack.version,
+          status: resolved.pack.status,
+          papYear: resolved.pack.papYear,
+          effectiveFrom: resolved.pack.effectiveFrom,
+          effectiveTo: resolved.pack.effectiveTo,
+          citations: resolved.pack.citations || [],
+          source: resolved.pack.source || null,
+        }
+        : null,
+    });
+  }
+
+  if (req.method === "POST" && path === "/v1/tax/evaluate") {
+    const body = (await readBodyLimited(req)) || {};
+    const result = taxEvaluate({ ...body, includeDraft: false });
+    return reply(result.ok ? 200 : 422, result);
   }
 
   if (req.method === "POST" && path === "/v1/auth/login") {
@@ -401,6 +461,7 @@ async function handler(req, res) {
       || path.startsWith("/v1/platform")
       || path.startsWith("/v1/sync")
       || path.startsWith("/v1/portal/")
+      || path.startsWith("/v1/tax")
       || path.startsWith("/v1/demo/");
     if (sess.ok && sessionPathsOk) {
       req._workpassSession = sess.user;
@@ -426,6 +487,9 @@ async function handler(req, res) {
         || path === "/v1/company/purge"
         || path === "/v1/company/login-sync"
         || path === "/v1/company/ensure-login"
+        || path === "/v1/tax/rulesets"
+        || path.startsWith("/v1/tax/rulesets/")
+        || path === "/v1/admin/tax/rulesets"
         || path.endsWith("/login-credentials");
       if (needsAdmin && sess.user.role !== "admin") {
         return reply(403, { ok: false, error: "Nur Accounting-Admin" });
@@ -459,6 +523,85 @@ async function handler(req, res) {
       const origins = mergeCorsOrigins(list);
       audit({ type: "platform.cors", outcome: "ok", ip, path, detail: { added: list.length } });
       return reply(200, { ok: true, origins });
+    }
+
+    if (req.method === "GET" && path === "/v1/admin/tax/rulesets") {
+      const country = url.searchParams.get("country") || "DE";
+      const builtin = taxListRulesets({ country, includeDraft: true });
+      const stored = taxListStored({ country });
+      const byId = new Map();
+      for (const p of builtin) byId.set(p.id, { ...p, origin: "builtin" });
+      for (const p of stored) {
+        byId.set(p.id, { ...p, origin: "store" });
+      }
+      const items = [...byId.values()]
+        .sort((a, b) => String(a.effectiveFrom).localeCompare(String(b.effectiveFrom)))
+        .map((p) => ({
+          id: p.id,
+          country: p.country,
+          status: p.status,
+          version: p.version,
+          papYear: p.papYear,
+          effectiveFrom: p.effectiveFrom,
+          effectiveTo: p.effectiveTo,
+          origin: p.origin,
+          source: p.source || null,
+          extractedBy: p.extractedBy || null,
+        }));
+      return reply(200, { ok: true, country, items, engine: "tax-rules" });
+    }
+
+    if (req.method === "POST" && path === "/v1/tax/rulesets") {
+      const body = (await readBodyLimited(req)) || {};
+      const pack = body.ruleset || body.pack || body;
+      // Ingest is always draft – AI / extractors never go live here
+      const saved = taxIngestDraft(pack, {
+        source: body.source || pack.extractedBy || undefined,
+        ingestNote: body.ingestNote,
+      });
+      audit({
+        type: "tax.ruleset.ingest",
+        outcome: saved.ok ? "ok" : "deny",
+        ip,
+        path,
+        detail: { id: pack?.id, status: "draft" },
+      });
+      return reply(saved.ok ? 200 : 422, saved);
+    }
+
+    if (req.method === "POST" && path.startsWith("/v1/tax/rulesets/") && path.endsWith("/review")) {
+      const id = decodeURIComponent(path.slice("/v1/tax/rulesets/".length, -"/review".length));
+      const saved = taxReviewRuleset(id);
+      audit({
+        type: "tax.ruleset.review",
+        outcome: saved.ok ? "ok" : "deny",
+        ip,
+        path,
+        detail: { id },
+      });
+      return reply(saved.ok ? 200 : 422, saved);
+    }
+
+    if (req.method === "POST" && path.startsWith("/v1/tax/rulesets/") && path.endsWith("/publish")) {
+      const id = decodeURIComponent(path.slice("/v1/tax/rulesets/".length, -"/publish".length));
+      const saved = taxPublishLifecycle(id);
+      audit({
+        type: "tax.ruleset.publish",
+        outcome: saved.ok ? "ok" : "deny",
+        ip,
+        path,
+        detail: { id },
+      });
+      return reply(saved.ok ? 200 : 422, saved);
+    }
+
+    if (req.method === "GET" && path.startsWith("/v1/tax/rulesets/") && path !== "/v1/tax/rulesets") {
+      const id = decodeURIComponent(path.slice("/v1/tax/rulesets/".length));
+      if (id && !id.includes("/")) {
+        const pack = taxGetStoredRuleset(id);
+        if (!pack) return reply(404, { ok: false, error: "Ruleset nicht gefunden" });
+        return reply(200, { ok: true, ruleset: pack });
+      }
     }
 
     // --- Sync admin ---
