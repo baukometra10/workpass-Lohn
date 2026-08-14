@@ -45,7 +45,7 @@
     "backup:restore": "node scripts/backup-cli.mjs restore",
     "sync": "node -e \"import('./server/db/repository.mjs').then(m=>m.flushSyncOutbox(500).then(r=>console.log(JSON.stringify(r,null,2))))\"",
     "sync:tax-rules": "node scripts/sync-tax-rules-browser.mjs",
-    "sync:payroll-engine": "node scripts/sync-payroll-engine.mjs",
+    "sync:payroll-engine": "node scripts/sync-payroll-engine.mjs"
   },
   "optionalDependencies": {
     "pg": "^8.22.0"
