@@ -20,9 +20,31 @@ function compactIban(iban) {
   return String(iban || "").replace(/\s+/g, "").toUpperCase();
 }
 
-function validIbanShape(iban) {
+/** ISO 13616 IBAN mod-97 check */
+export function ibanMod97Ok(iban) {
   const s = compactIban(iban);
-  return /^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(s);
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(s)) return false;
+  const rearranged = s.slice(4) + s.slice(0, 4);
+  let expanded = "";
+  for (const ch of rearranged) {
+    const code = ch.charCodeAt(0);
+    expanded += code >= 65 ? String(code - 55) : ch;
+  }
+  let remainder = 0;
+  for (let i = 0; i < expanded.length; i += 1) {
+    remainder = (remainder * 10 + Number(expanded[i])) % 97;
+  }
+  return remainder === 1;
+}
+
+function validIbanShape(iban) {
+  return ibanMod97Ok(iban);
+}
+
+function validBic(bic) {
+  const s = String(bic || "").replace(/\s+/g, "").toUpperCase();
+  if (!s) return true; // optional
+  return /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(s);
 }
 
 function fmtAmt(n) {
@@ -59,9 +81,25 @@ export function buildSepaCreditTransfer(companyId, opts = {}) {
     .sort((a, b) => String(a.employee?.name || "").localeCompare(String(b.employee?.name || ""), "de"));
 
   const warnings = [];
+  const errors = [];
   if (!debtorIban || !validIbanShape(debtorIban)) {
-    warnings.push("Schuldner-IBAN der Firma fehlt oder ungültig – bitte vor Bank-Upload prüfen.");
+    errors.push("Schuldner-IBAN der Firma fehlt oder IBAN-Prüfziffer ungültig.");
   }
+  if (!validBic(debtorBic)) {
+    warnings.push("Schuldner-BIC Format prüfen.");
+  }
+  if (opts.requireDebtor !== false && errors.length && !opts.allowInvalidDebtor) {
+    return {
+      ok: false,
+      error: errors[0],
+      errors,
+      warnings,
+      period,
+      companyId: cid,
+      humanFinal: true,
+    };
+  }
+  if (errors.length) warnings.push(...errors);
 
   const txs = [];
   for (const job of jobs) {

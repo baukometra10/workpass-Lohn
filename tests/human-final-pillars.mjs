@@ -92,9 +92,21 @@ assert(execBlocked.ok === false, "execute blocked");
 
 console.log("\n=== Calendar / anomalies / trust / elster ===");
 assert(buildComplianceCalendar("2026-08").ok, "calendar");
+const cal = buildComplianceCalendar("2026-08", { companyId: id, asOf: "2026-08-15" });
+assert(cal.kind === "portal.compliance_calendar.v2", "calendar v2");
+assert(cal.items.some((i) => i.dueBankingDay), "banking day enrichment");
 assert(detectPayrollAnomalies(id, { period: "2026-08" }).ok, "anomalies");
+const anom = detectPayrollAnomalies(id, { period: "2026-08" });
+assert(anom.kind === "portal.anomalies.v2", "anomalies v2");
 assert(buildDeliveryTrust(id, { period: "2026-08" }).ok, "trust");
+const trust = buildDeliveryTrust(id, { period: "2026-08" });
+assert(typeof trust.score === "number", "trust score");
 assert(buildElsterPrepChecklist(id, { period: "2026-08" }).humanFinal === true, "elster prep");
+
+console.log("\n=== IBAN mod97 ===");
+const { ibanMod97Ok } = await import("../server/sepa-export.mjs");
+assert(ibanMod97Ok("DE89370400440532013000") === true, "valid test IBAN");
+assert(ibanMod97Ok("DE00370400440532013000") === false, "bad IBAN rejected");
 
 console.log("\n=== Ops + audit chain ===");
 audit({ type: "test.human_final", outcome: "ok", detail: { t: 1 } });

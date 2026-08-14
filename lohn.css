@@ -2858,3 +2858,52 @@ body.is-rtl .missing-panel ul {
   padding-left: 0;
   padding-right: 1.1rem;
 }
+
+/* Human-final confirm modal */
+.hf-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+.hf-modal[hidden] { display: none !important; }
+.hf-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 12, 22, 0.62);
+}
+.hf-modal-card {
+  position: relative;
+  z-index: 1;
+  width: min(440px, 100%);
+  background: var(--surface, #121a2b);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  padding: 1.15rem 1.25rem 1.2rem;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.45);
+}
+.hf-modal-card h3 {
+  margin: 0 0 0.5rem;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.15rem;
+}
+.hf-policy {
+  font-size: 0.82rem;
+  opacity: 0.8;
+  margin: 0.35rem 0 0.85rem;
+}
+.hf-check {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+.hf-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}

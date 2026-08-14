@@ -19,6 +19,47 @@
   let companyPortalId = "";
   let inboxPollTimer = null;
 
+  /** Promise-based human confirm modal (never AI). */
+  function humanConfirm({ title, body, requireCheck = true } = {}) {
+    return new Promise((resolve) => {
+      const modal = $("humanConfirmModal");
+      const titleEl = $("hfModalTitle");
+      const bodyEl = $("hfModalBody");
+      const check = $("hfModalCheck");
+      const checkWrap = $("hfCheckWrap");
+      const btnOk = $("hfModalOk");
+      const btnCancel = $("hfModalCancel");
+      if (!modal || !btnOk || !btnCancel) {
+        resolve(window.confirm(`${title || ""}\n\n${body || ""}`));
+        return;
+      }
+      if (titleEl) titleEl.textContent = title || uiT("hf.title", "Menschliche Bestätigung");
+      if (bodyEl) bodyEl.textContent = body || "";
+      if (check) check.checked = false;
+      if (checkWrap) checkWrap.hidden = !requireCheck;
+      modal.hidden = false;
+      modal.setAttribute("aria-hidden", "false");
+      const close = (val) => {
+        modal.hidden = true;
+        modal.setAttribute("aria-hidden", "true");
+        btnOk.onclick = null;
+        btnCancel.onclick = null;
+        modal.querySelector(".hf-modal-backdrop")?.removeEventListener("click", onDismiss);
+        resolve(val);
+      };
+      const onDismiss = () => close(false);
+      btnCancel.onclick = () => close(false);
+      modal.querySelector(".hf-modal-backdrop")?.addEventListener("click", onDismiss);
+      btnOk.onclick = () => {
+        if (requireCheck && check && !check.checked) {
+          toast(uiT("hf.needCheck", "Bitte Bestätigung anklicken."), "error");
+          return;
+        }
+        close(true);
+      };
+    });
+  }
+
   function sessionCompanyId() {
     const u = window.WorkPassAuth?.getSessionUser?.();
     if (!u?.companyId) return "";
@@ -1043,23 +1084,59 @@
     const card = $("portalTrustCard");
     const list = $("portalTrustList");
     if (!card || !list) return;
-    if (!data?.ok || !(data.items || []).length) {
+    if (!data?.ok) {
+      card.hidden = true;
+      return;
+    }
+    if (!(data.items || []).length && !(data.gaps || []).length) {
       card.hidden = true;
       return;
     }
     card.hidden = false;
-    const c = data.counts || {};
     if ($("portalTrustBadge")) {
-      $("portalTrustBadge").textContent = `${c.acked || 0}/${c.total || 0} Ack`;
+      $("portalTrustBadge").textContent = `${data.score ?? "—"}/100 ${data.grade || ""}`.trim();
+      $("portalTrustBadge").classList.toggle("is-ok", Number(data.score) >= 70);
+      $("portalTrustBadge").classList.toggle("is-error", Number(data.score) < 40);
     }
     if ($("portalTrustHint")) $("portalTrustHint").textContent = data.message || "";
-    list.innerHTML = (data.items || []).slice(0, 20).map((it) => `
+    const gapHtml = (data.gaps || []).map((g) => `
+      <div class="api-inbox-item">
+        <div><strong>${esc(g.label || g.code)}</strong></div>
+      </div>`).join("");
+    const itemHtml = (data.items || []).slice(0, 15).map((it) => `
       <div class="api-inbox-item">
         <div>
           <strong>${esc(it.employee?.name || it.jobId)}</strong>
-          <span class="portal-item-meta">${esc(it.trust)} · Netto ${esc(it.net != null ? String(it.net) : "—")}</span>
+          <span class="portal-item-meta">${esc(it.trust)}${it.webhookLastError ? (" · " + esc(it.webhookLastError)) : ""}</span>
         </div>
       </div>`).join("");
+    const actions = (data.nextHumanActions || []).some((a) => a.id === "replay_deliveries")
+      ? `<div class="month-close-actions" style="margin-top:8px">
+          <button type="button" id="btnTrustReplay">${esc(uiT("portal.trustReplay", "Zustellung erneut anstoßen"))}</button>
+        </div>`
+      : "";
+    list.innerHTML = gapHtml + itemHtml + actions;
+    $("btnTrustReplay")?.addEventListener("click", () => {
+      replayDeliveryTrust().catch((e) => toast(e.message, "error"));
+    });
+  }
+
+  async function replayDeliveryTrust() {
+    const companyId = companyPortalId || apiConfig().companyId;
+    const period = currentPayrollPeriod();
+    const ok = await humanConfirm({
+      title: uiT("portal.trustReplayTitle", "Zustellung erneut?"),
+      body: uiT("portal.trustReplayBody", "Webhook/Delivery erneut anstoßen. KI sendet keine Steuerwerte – nur Transport."),
+      requireCheck: true,
+    });
+    if (!ok) return;
+    const data = await apiFetch("/v1/portal/delivery-trust/replay", {
+      method: "POST",
+      body: JSON.stringify({ companyId, period, confirm: true }),
+    });
+    renderPortalTrust(data.trust || data);
+    toast(uiT("portal.trustReplayDone", "Zustellung angestoßen."), "ok");
+    await loadPortalDashboard(true);
   }
 
   function renderPortalAnomalies(data) {
@@ -1070,10 +1147,10 @@
     card.hidden = !rows.length;
     if (!rows.length) return;
     if ($("portalAnomalyBadge")) $("portalAnomalyBadge").textContent = String(rows.length);
-    list.innerHTML = rows.slice(0, 25).map((a) => `
+    list.innerHTML = rows.slice(0, 30).map((a) => `
       <div class="api-inbox-item">
         <div>
-          <strong>${esc(a.employeeName || a.code)}</strong>
+          <strong>${esc(a.employeeName || a.code)} · ${esc(a.severity || "warn")}</strong>
           <span class="portal-item-meta">${esc(a.message || "")}</span>
         </div>
         <div class="api-inbox-actions">
@@ -1094,11 +1171,21 @@
       return;
     }
     card.hidden = false;
-    list.innerHTML = (data.items || []).map((it) => `
+    if ($("portalCalendarBadge")) {
+      const s = data.summary || {};
+      $("portalCalendarBadge").textContent = s.overdue
+        ? `${s.overdue} überfällig`
+        : (s.soon ? `${s.soon} bald` : "OK");
+      $("portalCalendarBadge").classList.toggle("is-error", Boolean(s.overdue));
+    }
+    const blockers = (data.blockers || []).map((b) => `
+      <div class="api-inbox-item"><div><strong>${esc(b.label || b.code)}</strong>
+      <span class="portal-item-meta">${esc(uiT("portal.calendarBlocker", "blockiert Abschluss"))}</span></div></div>`).join("");
+    list.innerHTML = blockers + (data.items || []).map((it) => `
       <div class="api-inbox-item">
         <div>
           <strong>${esc(it.title)}</strong>
-          <span class="portal-item-meta">${esc(it.dueDate || "—")}${it.overdue ? " · überfällig" : ""} · ${esc(it.hint || "")}</span>
+          <span class="portal-item-meta">${esc(it.dueBankingDay || it.dueDate || "—")}${it.overdue ? " · überfällig" : (it.urgency === "soon" ? " · bald" : "")} · ${esc(it.hint || "")}</span>
         </div>
       </div>`).join("");
   }
@@ -1125,10 +1212,15 @@
   async function downloadConfirmedExport(path, fileNameHint) {
     const companyId = companyPortalId || apiConfig().companyId;
     const period = currentPayrollPeriod();
-    if (!window.confirm(uiT(
-      "portal.confirmExport",
-      "Export wirklich erzeugen? KI setzt nichts fest – Sie laden die Datei und reichen sie selbst ein."
-    ))) return;
+    const ok = await humanConfirm({
+      title: uiT("portal.exportConfirmTitle", "Export bestätigen"),
+      body: uiT(
+        "portal.confirmExport",
+        "Export wirklich erzeugen? KI setzt nichts fest – Sie laden die Datei und reichen sie selbst ein."
+      ),
+      requireCheck: true,
+    });
+    if (!ok) return;
     const data = await apiFetch(path, {
       method: "POST",
       body: JSON.stringify({ companyId, period, confirm: true }),
@@ -1849,10 +1941,14 @@
     }
     const period = currentPayrollPeriod();
     if (!fromAutoRetry) {
-      const ok = window.confirm(uiT(
-        "portal.confirmMonthClose",
-        "Monatsabschluss wirklich starten?\n\nBerechnung und Freigabe nur nach Ihrer Bestätigung. KI ändert keine Steuerwerte."
-      ));
+      const ok = await humanConfirm({
+        title: uiT("portal.monthCloseTitle", "Monatsabschluss"),
+        body: uiT(
+          "portal.confirmMonthClose",
+          "Monatsabschluss wirklich starten?\n\nBerechnung und Freigabe nur nach Ihrer Bestätigung. KI ändert keine Steuerwerte."
+        ),
+        requireCheck: true,
+      });
       if (!ok) return null;
     }
     if (!fromAutoRetry) stopMonthWaitRetry();
@@ -3600,6 +3696,38 @@
         });
         renderAssistantExplain(data);
         toast(uiT("portal.assistantDone", "Erklärung bereit – keine automatische Ausführung."), "ok");
+      } catch (e) {
+        toast(e.message, "error");
+      }
+    });
+    $("btnSimulatePayroll")?.addEventListener("click", async () => {
+      try {
+        const companyId = companyPortalId || apiConfig().companyId;
+        const period = currentPayrollPeriod();
+        const hours = Number($("simHours")?.value || 0);
+        const jobId = String($("simJobId")?.value || "").trim() || undefined;
+        const data = await apiFetch("/v1/portal/payroll/simulate", {
+          method: "POST",
+          body: JSON.stringify({
+            companyId,
+            period,
+            jobId,
+            workHours: hours,
+            attendance: { hours },
+          }),
+        });
+        const out = $("portalSimulateOut");
+        if (out) {
+          out.style.display = "block";
+          out.textContent = JSON.stringify({
+            simulation: data.simulation,
+            persisted: data.persisted,
+            totals: data.totals,
+            errors: data.errors,
+            note: data.note,
+          }, null, 2);
+        }
+        toast(uiT("portal.simulateDone", "Simulation fertig – nichts gespeichert."), "ok");
       } catch (e) {
         toast(e.message, "error");
       }

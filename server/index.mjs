@@ -1522,7 +1522,8 @@ async function handler(req, res) {
       const period = url.searchParams.get("period") || currentPeriod();
       const scopeCheck = assertSameTenant(tenantScope, companyId, "Compliance");
       if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
-      return reply(200, buildComplianceCalendar(period));
+      const dauerfrist = url.searchParams.get("dauerfrist") === "1";
+      return reply(200, buildComplianceCalendar(period, { companyId, dauerfrist }));
     }
 
     if (req.method === "GET" && path === "/v1/portal/delivery-trust") {
@@ -1531,6 +1532,46 @@ async function handler(req, res) {
       const scopeCheck = assertSameTenant(tenantScope, companyId, "Delivery-Trust");
       if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
       return reply(200, buildDeliveryTrust(companyId, { period }));
+    }
+
+    if (req.method === "POST" && path === "/v1/portal/delivery-trust/replay") {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(body.companyId || tenantScope || "");
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Delivery-Replay");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const gate = requireHumanConfirm(body, "delivery_replay");
+      if (!gate.ok) return reply(gate.status || 422, gate);
+      const period = body.period || currentPeriod();
+      let deliver = null;
+      try {
+        deliver = await deliverReleasedPayslips({
+          companyId,
+          period,
+          reason: "portal_trust_replay",
+        });
+      } catch (e) {
+        deliver = { ok: false, error: e.message };
+      }
+      const replay = await replayPendingDeliveries({
+        companyId,
+        reason: "portal_trust_replay",
+      });
+      const trust = buildDeliveryTrust(companyId, { period });
+      audit({
+        type: "portal.delivery_replay",
+        outcome: replay?.ok !== false ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { period, humanConfirm: true },
+      });
+      return reply(200, {
+        ok: true,
+        humanFinal: true,
+        deliver,
+        replay,
+        trust,
+      });
     }
 
     if (req.method === "GET" && path === "/v1/portal/anomalies") {

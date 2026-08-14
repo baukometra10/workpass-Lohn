@@ -30,6 +30,7 @@ export const CONFIRM_REQUIRED_ACTIONS = Object.freeze([
   "backup_restore",
   "tax_ruleset_publish",
   "tax_ruleset_review",
+  "delivery_replay",
 ]);
 
 const AI_ACTOR_RE = /^(ai|assistant|llm|bot|copilot|auto[_-]?ai)$/i;

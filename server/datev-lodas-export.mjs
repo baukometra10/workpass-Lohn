@@ -162,18 +162,30 @@ export function buildMonthDatevPackage(companyId, opts = {}) {
     }
   }
   const fileBase = `WorkPass_DATEV_${period}_${safeFilePart(companyName)}`;
+  const content = `\ufeff${lines.join("\r\n")}`;
+  const checklist = [
+    { id: "has_jobs", ok: jobs.length > 0, label: "Mindestens eine Abrechnung" },
+    { id: "client_no", ok: Boolean(clientNo), label: "DATEV-Mandantennummer" },
+    { id: "consultant_no", ok: Boolean(consultantNo), label: "DATEV-Beraternummer" },
+    { id: "warnings_clear", ok: warnings.length === 0, label: "Keine Export-Warnungen" },
+  ];
   return {
     ok: true,
-    kind: "portal.datev.month.v1",
+    kind: "portal.datev.month.v2",
     companyId: cid,
     period,
     count: jobs.length,
     warnings: [...new Set(warnings)].slice(0, 40),
     filename: `${fileBase}.csv`,
-    content: `\ufeff${lines.join("\r\n")}`,
+    fileName: `${fileBase}.csv`,
+    content,
     lineCount: lines.length - 1,
     datevClientNo: clientNo,
     datevConsultantNo: consultantNo,
+    humanFinal: true,
+    checklist,
+    readyForHumanImport: checklist.every((c) => c.ok),
+    note: "CSV nur erzeugen – Import in DATEV durch den Menschen.",
   };
 }
 
