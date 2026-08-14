@@ -137,6 +137,54 @@ const monthCloseSched = startMonthCloseScheduler();
 const autoPipeSched = startAutoPipelineScheduler();
 const deliveryReplaySched = startDeliveryReplayScheduler();
 
+let healthSnapshot = { at: 0, body: null };
+const HEALTH_CACHE_MS = 15_000;
+
+function buildHealthBody(req) {
+  const db = syncHealth();
+  return {
+    ok: true,
+    service: SERVICE_NAME,
+    version: ACCOUNTING_VERSION,
+    multiTenant: true,
+    taxRules: taxEngineInfo(),
+    monthCloseScheduler: monthCloseSched,
+    autoMonthClose: autoMonthCloseStatus(),
+    autoPipeline: autoPipelineStatus(),
+    platform: {
+      domain: PLATFORM_DOMAIN,
+      corsOrigins: getCorsOrigins(),
+      webhookUrlConfigured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),
+      webhookUrlSuggested: platformWebhookUrl(),
+    },
+    ui: {
+      served: SERVE_UI,
+      paths: ["/", "/index.html", "/lohn.html", "/admin.html"],
+    },
+    https: {
+      forceHttps: FORCE_HTTPS,
+      forwardedProto: req.headers["x-forwarded-proto"] || null,
+      note: "Railway provides TLS at the edge (https://*.up.railway.app)",
+    },
+    security: publicSecurityInfo(),
+    storage: {
+      local: "sqlite",
+      encryptionAtRest: true,
+      localAlwaysOn: true,
+      postgres: db.postgres,
+      outboxPending: db.outboxPending,
+    },
+    backup: {
+      scheduler: backupSched,
+      count: listBackups().length,
+    },
+    time: new Date().toISOString(),
+    webhookConfigured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),
+    lastWebhook: getLastWebhookStatus(),
+    lastEnrich: getLastEnrichStatus(),
+  };
+}
+
 function sendJson(res, status, body, req) {
   const json = JSON.stringify(body, null, 2);
   res.writeHead(status, {
@@ -172,48 +220,11 @@ async function handler(req, res) {
   const ip = clientIp(req);
 
   if (req.method === "GET" && path === "/health") {
-    const db = syncHealth();
-    return reply(200, {
-      ok: true,
-      service: SERVICE_NAME,
-      version: ACCOUNTING_VERSION,
-      multiTenant: true,
-      taxRules: taxEngineInfo(),
-      monthCloseScheduler: monthCloseSched,
-      autoMonthClose: autoMonthCloseStatus(),
-      autoPipeline: autoPipelineStatus(),
-      platform: {
-        domain: PLATFORM_DOMAIN,
-        corsOrigins: getCorsOrigins(),
-        webhookUrlConfigured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),
-        webhookUrlSuggested: platformWebhookUrl(),
-      },
-      ui: {
-        served: SERVE_UI,
-        paths: ["/", "/index.html", "/lohn.html"],
-      },
-      https: {
-        forceHttps: FORCE_HTTPS,
-        forwardedProto: req.headers["x-forwarded-proto"] || null,
-        note: "Railway provides TLS at the edge (https://*.up.railway.app)",
-      },
-      security: publicSecurityInfo(),
-      storage: {
-        local: "sqlite",
-        encryptionAtRest: true,
-        localAlwaysOn: true,
-        postgres: db.postgres,
-        outboxPending: db.outboxPending,
-      },
-      backup: {
-        scheduler: backupSched,
-        count: listBackups().length,
-      },
-      time: new Date().toISOString(),
-      webhookConfigured: Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL),
-      lastWebhook: getLastWebhookStatus(),
-      lastEnrich: getLastEnrichStatus(),
-    });
+    const now = Date.now();
+    if (!healthSnapshot.body || now - healthSnapshot.at > HEALTH_CACHE_MS) {
+      healthSnapshot = { at: now, body: buildHealthBody(req) };
+    }
+    return reply(200, { ...healthSnapshot.body, time: new Date().toISOString() });
   }
 
   // UI (Rechnung / Lohn) – öffentlich, ohne API-Key
@@ -293,6 +304,7 @@ async function handler(req, res) {
     const body = await readBodyLimited(req);
     const result = await loginWithPassword(body?.email, body?.password, req, {
       locale: body?.locale || body?.language || body?.preferredLocale,
+      audience: body?.audience || body?.page,
     });
     return reply(result.status || (result.ok ? 200 : 401), result);
   }

@@ -104,6 +104,10 @@
       } catch { /* ignore */ }
     }
     const path = String(location.pathname || "").toLowerCase();
+    if (/admin\.html$/i.test(path)) {
+      history.replaceState(null, "", location.pathname);
+      return;
+    }
     const isFirm = Boolean(companyId && user?.role !== "admin");
     history.replaceState(null, "", location.pathname);
     if (isFirm) {
@@ -122,6 +126,7 @@
   const STORE_KEY = "workpassLohnAuthV1";
   const SESSION_KEY = "workpassLohnSessionV2"; // localStorage – login once
   const PLATFORM_SESSION_KEY = "workpassPlatformSessionV2";
+  const ADMIN_SESSION_KEY = "workpassAdminSessionV2";
   const LEGACY_SESSION_KEY = "workpassLohnSessionV1";
   const LEGACY_PLATFORM_KEY = "workpassPlatformSessionV1";
   // Long-lived UI session (default 8h, aligned with bridge token TTL)
@@ -176,9 +181,19 @@
     localStorage.setItem(STORE_KEY, JSON.stringify(data));
   }
 
+  function isAdminPage() {
+    return /admin\.html$/i.test(String(location.pathname || ""));
+  }
+
+  function platformSessionKey() {
+    return isAdminPage() ? ADMIN_SESSION_KEY : PLATFORM_SESSION_KEY;
+  }
+
   function loadPlatformSession() {
     try {
-      const raw = storageGet(PLATFORM_SESSION_KEY) || storageGet(LEGACY_PLATFORM_KEY);
+      const raw = isAdminPage()
+        ? storageGet(ADMIN_SESSION_KEY)
+        : (storageGet(PLATFORM_SESSION_KEY) || storageGet(LEGACY_PLATFORM_KEY));
       return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
@@ -186,11 +201,17 @@
   }
 
   function savePlatformSession(data) {
-    storageSet(PLATFORM_SESSION_KEY, JSON.stringify(data));
-    try { sessionStorage.removeItem(LEGACY_PLATFORM_KEY); } catch { /* ignore */ }
+    storageSet(platformSessionKey(), JSON.stringify(data));
+    if (!isAdminPage()) {
+      try { sessionStorage.removeItem(LEGACY_PLATFORM_KEY); } catch { /* ignore */ }
+    }
   }
 
   function clearPlatformSession() {
+    if (isAdminPage()) {
+      storageRemove(ADMIN_SESSION_KEY);
+      return;
+    }
     storageRemove(PLATFORM_SESSION_KEY);
     storageRemove(LEGACY_PLATFORM_KEY);
   }
@@ -254,9 +275,13 @@
     return true;
   }
 
-  /** One successful login (Konto oder PIN) keeps the app open. */
+  /** One successful login (Konto oder PIN) keeps the app open. Admin is a separate session. */
   function isUnlocked() {
     if (storageGet(TEST_BYPASS) === "1" || sessionStorage.getItem(TEST_BYPASS) === "1") return true;
+    if (isAdminPage()) {
+      const s = loadPlatformSession();
+      return Boolean(s?.token && s.user?.role === "admin");
+    }
     return sessionActive() || platformSessionActive();
   }
 
@@ -286,8 +311,12 @@
     })();
     const remaining = s?.until ? Math.max(1000, s.until - Date.now()) : IDLE_MS;
     idleTimer = setTimeout(() => {
-      clearSession();
-      clearPlatformSession();
+      if (isAdminPage()) {
+        clearPlatformSession();
+      } else {
+        clearSession();
+        clearPlatformSession();
+      }
       showGate("Sitzung abgelaufen – bitte einmal erneut anmelden.");
     }, remaining);
   }
@@ -372,6 +401,19 @@
     const tabPin = document.getElementById("authTabPin");
     if (tabPin) tabPin.hidden = !pinOk || (requirePlat && !setupIncomplete);
     const hint = document.getElementById("authHint");
+    if (isAdminPage()) {
+      if (tabs) tabs.hidden = true;
+      if (tabPin) tabPin.hidden = true;
+      setLoginMode("platform");
+      if (hint) {
+        hint.textContent = authConfig?.adminHint
+          || tt("auth.adminHint", "Admin ist getrennt vom Firmen-Zugang. E-Mail + Passwort aus Railway (WORKPASS_ADMIN_EMAIL). Der Plattform-Knopf öffnet Lohn, nicht Admin.");
+        if (authConfig?.setupGaps?.length) {
+          hint.textContent = `${hint.textContent} · Fehlt: ${authConfig.setupGaps.join(", ")}`;
+        }
+      }
+      return;
+    }
     if (hint && authConfig?.hint) hint.textContent = authConfig.hint;
     if (hint && authConfig?.setupGaps?.length) {
       hint.textContent = `${authConfig.hint} · Fehlt: ${authConfig.setupGaps.join(", ")}`;
@@ -390,6 +432,10 @@
     const err = document.getElementById("authError");
     if (err) err.textContent = msg || "";
     applyConfigToGate();
+    if (isAdminPage()) {
+      setLoginMode("platform");
+      return;
+    }
     const preferPlatform = authConfig?.platformAuthConfigured || authConfig?.localAdminFallback;
     const setupIncomplete = Boolean(authConfig?.setupIncomplete);
     // If admin/platform setup incomplete → prefer PIN so the app stays usable
@@ -458,7 +504,12 @@
           "Content-Type": "application/json",
           "Accept-Language": localeHint,
         },
-        body: JSON.stringify({ email, password, locale: localeHint }),
+        body: JSON.stringify({
+          email,
+          password,
+          locale: localeHint,
+          audience: isAdminPage() ? "admin" : undefined,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
@@ -571,6 +622,11 @@
   }
 
   function lock() {
+    if (isAdminPage()) {
+      clearPlatformSession();
+      showGate("");
+      return;
+    }
     clearSession();
     clearPlatformSession();
     showGate("");

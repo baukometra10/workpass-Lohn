@@ -348,7 +348,7 @@
           <div><span data-i18n="admin.metaAccess">Zugang</span><span data-i18n="auth.mode.admin">Nur Admin-Rolle</span></div>
         </div>
         <h1 id="authTitle" data-i18n="auth.unlock">Admin-Zugang</h1>
-        <p class="auth-hint" id="authHint" data-i18n="auth.hint">Nur Accounting-Admin · Plattform-Konto oder Geräte-PIN</p>
+        <p class="auth-hint" id="authHint" data-i18n="auth.adminHint">Admin ist getrennt vom Firmen-Zugang. E-Mail + Passwort aus Railway (WORKPASS_ADMIN_EMAIL). Der Plattform-Knopf öffnet Lohn, nicht Admin.</p>
         <div class="auth-mode-tabs" id="authModeTabs" hidden>
           <button type="button" class="auth-mode-tab active" id="authTabPlatform" data-i18n="auth.tab.platform">Plattform-Konto</button>
           <button type="button" class="auth-mode-tab" id="authTabPin" data-i18n="auth.tab.pin">Geräte-PIN</button>
@@ -489,10 +489,10 @@
       <p class="admin-foot" data-i18n="admin.foot">WorkPass Steuerprogramm · Bridge-Admin</p>
     </div>
 
-    <script src="workpass-i18n-packs.js?v=15"></script>
+    <script src="workpass-i18n-packs.js?v=16"></script>
     <script src="workpass-i18n.js?v=6"></script>
     <script src="workpass-pwa.js?v=4"></script>
-    <script src="auth-gate.js?v=17"></script>
+    <script src="auth-gate.js?v=18"></script>
     <script>
       if (window.WorkPassI18n) {
         window.WorkPassI18n.init();
@@ -837,7 +837,7 @@
           const u = window.WorkPassAuth.getSessionUser?.();
           if (u && u.role !== "admin") {
             setStatus(t("admin.firmNoAdmin", "Firmen-Login hat keinen Admin-Zugang. Bitte Admin-Konto nutzen."), false);
-            window.location.href = "lohn.html";
+            window.WorkPassAuth.lock();
             return;
           }
           refresh();

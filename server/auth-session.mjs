@@ -68,6 +68,16 @@ function adminSetupGaps() {
   return gaps;
 }
 
+function maskEmail(email) {
+  const raw = String(email || "").trim().toLowerCase();
+  const at = raw.indexOf("@");
+  if (at < 1) return "";
+  const user = raw.slice(0, at);
+  const domain = raw.slice(at + 1);
+  const keep = user.slice(0, Math.min(2, user.length));
+  return `${keep}***@${domain}`;
+}
+
 export function authPublicConfig() {
   const platformUrl = String(process.env.WORKPASS_PLATFORM_AUTH_URL || "").trim();
   const hasLocalAdmin = hasLocalAdminConfigured();
@@ -76,11 +86,16 @@ export function authPublicConfig() {
   const setupIncomplete = !hasLocalAdmin;
   const requirePlatform = requirePlatformRaw && hasLocalAdmin;
   const gaps = adminSetupGaps();
+  const adminHint = hasLocalAdmin
+    ? `Admin-Login: ${maskEmail(process.env.WORKPASS_ADMIN_EMAIL)} + WORKPASS_ADMIN_PASSWORD (Railway)`
+    : "Admin-Login: WORKPASS_ADMIN_EMAIL und WORKPASS_ADMIN_PASSWORD in Railway setzen (min. 8 Zeichen). Der Plattform-Knopf ist Firmen-Zugang, kein Admin.";
 
   return {
     ok: true,
     platformAuthConfigured: Boolean(platformUrl),
     localAdminFallback: hasLocalAdmin,
+    adminLoginReady: hasLocalAdmin,
+    adminEmailHint: hasLocalAdmin ? maskEmail(process.env.WORKPASS_ADMIN_EMAIL) : null,
     requirePlatformLogin: requirePlatform,
     devicePinAllowed: process.env.WORKPASS_DEVICE_PIN_ALLOWED !== "0",
     setupIncomplete,
@@ -89,6 +104,7 @@ export function authPublicConfig() {
     hint: setupIncomplete
       ? "WORKPASS_ADMIN_EMAIL/PASSWORD setzen ODER Firmen-Login nach activate (name@firma.de + PIN)"
       : "Admin-Konto ODER Firmen-Login (z. B. luf@firma.de + 4-stellige PIN)",
+    adminHint,
     localAdminFirst: true,
     companyLoginDomain: companyLoginDomain(),
     companyPasswordMin: 4,
@@ -317,6 +333,7 @@ export async function loginWithPassword(email, password, req, opts = {}) {
 
   const mail = String(email || "").trim().toLowerCase();
   const pass = String(password || "");
+  const adminOnly = String(opts.audience || opts.page || "").toLowerCase() === "admin";
   if (!mail || !pass || pass.length < 4) {
     return {
       ok: false,
@@ -351,31 +368,40 @@ export async function loginWithPassword(email, password, req, opts = {}) {
   }
 
   // 2) Company login (platform firm accounts synced via activate)
-  const companyLogin = verifyCompanyLogin(mail, pass);
-  if (companyLogin.ok) {
-    const session = createSession(withLocale(companyLogin.user));
-    noteAuthSuccess(ip);
-    audit({
-      type: "auth.login.ok",
-      outcome: "ok",
-      ip,
-      detail: {
-        email: session.user.email,
-        role: session.user.role,
-        companyId: session.user.companyId,
+  // Admin page never accepts a firm session – that was kicking users back to Lohn.
+  let companyLogin = { ok: false, error: "" };
+  if (!adminOnly) {
+    companyLogin = verifyCompanyLogin(mail, pass);
+    if (companyLogin.ok) {
+      const session = createSession(withLocale(companyLogin.user));
+      noteAuthSuccess(ip);
+      audit({
+        type: "auth.login.ok",
+        outcome: "ok",
+        ip,
+        detail: {
+          email: session.user.email,
+          role: session.user.role,
+          companyId: session.user.companyId,
+          via: "company-login",
+          locale: session.user.locale,
+        },
+      });
+      return {
+        ok: true,
+        status: 200,
+        session: session.token,
+        expiresAt: session.expiresAt,
+        user: session.user,
         via: "company-login",
-        locale: session.user.locale,
-      },
-    });
-    return {
-      ok: true,
-      status: 200,
-      session: session.token,
-      expiresAt: session.expiresAt,
-      user: session.user,
-      via: "company-login",
-      companyId: session.user.companyId,
-      preferredLocale: session.user.locale,
+        companyId: session.user.companyId,
+        preferredLocale: session.user.locale,
+      };
+    }
+  } else {
+    companyLogin = {
+      ok: false,
+      error: "Firmen-Login hat keinen Admin-Zugang. Bitte WORKPASS_ADMIN_EMAIL + Passwort aus Railway nutzen.",
     };
   }
 
@@ -384,14 +410,15 @@ export async function loginWithPassword(email, password, req, opts = {}) {
   if (result === null) {
     result = {
       ok: false,
-      error: companyLogin.error
-        || local?.error
-        || `Kein Login. Domain für Firmen: @${companyLoginDomain()}`,
+      error: local?.error
+        || (adminOnly
+          ? "Firmen-Login hat keinen Admin-Zugang. Bitte WORKPASS_ADMIN_EMAIL + Passwort aus Railway nutzen."
+          : (companyLogin.error || `Kein Login. Domain für Firmen: @${companyLoginDomain()}`)),
     };
   } else if (!result.ok) {
     result = {
       ok: false,
-      error: companyLogin.error || local?.error || result.error,
+      error: local?.error || (adminOnly ? companyLogin.error : companyLogin.error) || result.error,
     };
   }
 
@@ -407,6 +434,16 @@ export async function loginWithPassword(email, password, req, opts = {}) {
   }
 
   const role = result.user.role === "admin" ? "admin" : resolveRole(result.user.email);
+  if (adminOnly && role !== "admin") {
+    noteAuthFailure(ip);
+    audit({ type: "auth.login.fail", outcome: "deny", ip, detail: { email: mail, reason: "not-admin" } });
+    return {
+      ok: false,
+      status: 403,
+      error: "Dieses Konto hat keinen Admin-Zugang. WORKPASS_ADMIN_EMAIL in Railway setzen und genau diese E-Mail verwenden.",
+      setupGaps: adminSetupGaps(),
+    };
+  }
   const session = createSession(withLocale({ ...result.user, role }));
   noteAuthSuccess(ip);
   audit({

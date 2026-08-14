@@ -130,6 +130,14 @@ const altTok = mintWith(process.env.WORKPASS_API_KEY, {
   companyId: bootId,
 });
 assert(verifySessionToken(altTok).ok, "token signed with API_KEY still verifies");
+
+console.log("\n=== Admin audience ===");
+assert(cfg.adminLoginReady === true, "adminLoginReady");
+assert(cfg.adminEmailHint && cfg.adminEmailHint.includes("***"), "admin email is masked");
+const firmOnAdmin = await loginWithPassword(`${bootId}@firma.de`, "4821", req, { audience: "admin" });
+assert(!firmOnAdmin.ok, "firm login rejected for admin audience");
+const adminOnAdmin = await loginWithPassword("admin@example.test", "super-secret-admin-pass", req, { audience: "admin" });
+assert(adminOnAdmin.ok && adminOnAdmin.user.role === "admin", "local admin still works with audience=admin");
 deleteCompany({ company: { id: bootId }, event: "company.deleted" });
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
