@@ -43,7 +43,9 @@ POST /v1/tax/rulesets/DE-SV-USt-2027.1/publish
 
 Vor `publish`: Schema-Validierung + Acceptance-Tests. Status: `draft` | `reviewed` | `published`. Nur `published` geht in die Berechnung.
 
-Admin-UI: `admin.html` → Tax Rules Engine (`GET /v1/admin/tax/rulesets`).
+Admin-UI: `admin.html` → Tax Rules Engine (`GET /v1/admin/tax/rulesets`). JSON-Entwurf einfügen oder Datei wählen → immer **draft**.
+
+Hub: „Gesetzliche Sätze übernehmen“ füllt RV/KV/PV/AV aus dem Ruleset des **Abrechnungsmonats** (nicht fest 2026). Rechnungen ohne gesetzten Satz holen USt aus dem Engine (Rechnungsdatum).
 
 ## Evaluate / Ruleset lookup
 

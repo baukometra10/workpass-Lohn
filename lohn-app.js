@@ -3364,10 +3364,22 @@
       loadApiInbox(true);
       loadPlatformMessages(true);
     });
+    function applyRulesetDefaultsForMonth(period) {
+      const cfg = window.getLegalConfigForDate?.(period || currentPayrollPeriod());
+      const ss = cfg?.socialSecurity;
+      if (!ss) return;
+      const addEl = $("healthAdditionalPercent");
+      const known = new Set(["", "2.5", "2.50", "2.9", "2.90"]);
+      if (addEl && known.has(String(addEl.value).trim().replace(",", "."))) {
+        addEl.value = String(ss.healthAdditionalAvg);
+        state.healthAdditionalPercent = ss.healthAdditionalAvg;
+      }
+    }
     $("payrollMonth")?.addEventListener("change", () => {
       if ($("portalPeriod") && $("payrollMonth").value) {
         $("portalPeriod").value = $("payrollMonth").value;
       }
+      applyRulesetDefaultsForMonth($("payrollMonth").value);
       // keep labels in sync without rebuilding options mid-interaction
       const bannerMonth = document.querySelector("#companyPortalBanner .portal-brand-block small");
       const fmt = window.WorkPassI18n?.formatMonthYear;
@@ -3378,11 +3390,13 @@
           .replace("{monthLabel}", uiT("lohn.month", "Monat"))
           .replace("{period}", (fmt ? fmt(period) : period));
       }
+      onUserEdit();
     });
     $("portalPeriod")?.addEventListener("change", () => {
       if ($("payrollMonth") && $("portalPeriod").value) {
         $("payrollMonth").value = $("portalPeriod").value;
       }
+      applyRulesetDefaultsForMonth($("portalPeriod").value);
     });
     // remove obsolete input listeners for native month overlay
     $("btnPreviewEmpfang")?.addEventListener("click", () => {

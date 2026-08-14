@@ -130,24 +130,82 @@
     };
   }
 
+function resolveVat(ctx) {
+    const { ok, country, asOf, pack } = resolveRuleset(ctx || {});
+    const category = String(ctx?.category || ctx?.facts?.vatCategory || "standard").toLowerCase();
+    if (!ok || !pack?.vat) return { ok: false, country, asOf, rate: null, citations: [] };
+    const rate = category === "reduced"
+      ? pack.vat.reduced
+      : (category === "zero" ? pack.vat.zero : pack.vat.standard);
+    return {
+      ok: true,
+      country,
+      asOf,
+      rulesetId: pack.id,
+      category,
+      rate,
+      params: pack.vat,
+      citations: (pack.citations || []).filter((c) => !c.kind || c.kind === "vat"),
+    };
+  }
+
+  function legalConfig(ctx) {
+    const { pack, asOf, country } = resolveRuleset(ctx || {});
+    const sv = pack?.sv;
+    if (!sv) return null;
+    return {
+      year: pack.papYear || Number(String(asOf).slice(0, 4)),
+      version: pack.version,
+      rulesetId: pack.id,
+      country,
+      asOf,
+      vat: pack.vat,
+      socialSecurity: {
+        pension: { total: sv.pension * 2, employee: sv.pension, label: "Rentenversicherung (RV)" },
+        health: { total: sv.health * 2, employee: sv.health, label: "Krankenversicherung (KV)" },
+        care: {
+          total: sv.care * 2,
+          employee: sv.care,
+          employeeChildless: sv.careChildless,
+          employer: sv.care,
+          label: "Pflegeversicherung (PV)",
+        },
+        unemployment: { total: sv.unemployment * 2, employee: sv.unemployment, label: "Arbeitslosenversicherung (AV)" },
+        healthAdditionalAvg: sv.healthAdditionalDefault,
+        contributionCeiling: {
+          pensionWest: sv.ceilings.pension,
+          pensionEast: sv.ceilings.pensionEast || sv.ceilings.pension,
+          health: sv.ceilings.health,
+          care: sv.ceilings.care,
+          unemployment: sv.ceilings.unemployment,
+        },
+        minijob: sv.minijob,
+        midijob: sv.midijob,
+        umlagen: sv.umlagen,
+        regionDefault: sv.regionDefault || "west",
+      },
+      tax: { method: pack.taxMethod || `BMF-PAP-${pack.papYear}` },
+    };
+  }
+
   function evaluate(input) {
     const kind = String(input?.kind || "sv").toLowerCase();
     const ctx = {
       country: input?.country || "DE",
       asOf: input?.asOf || input?.date || input?.period || input?.payrollMonth,
+      category: input?.facts?.vatCategory || input?.vatCategory,
+      facts: input?.facts || {},
     };
     if (kind === "vat" || kind === "invoice") {
-      const { pack, asOf, country, ok } = resolveRuleset(ctx);
-      const category = String(input?.facts?.vatCategory || "standard").toLowerCase();
-      const rate = !ok ? null : (category === "reduced" ? pack.vat.reduced : (category === "zero" ? pack.vat.zero : pack.vat.standard));
+      const vat = resolveVat(ctx);
       return {
-        ok,
+        ok: vat.ok,
         kind: "vat",
-        country,
-        asOf,
-        rulesetId: pack?.id || null,
-        result: ok ? { vatRate: rate, category } : null,
-        citations: (pack?.citations || []).filter((c) => c.kind === "vat"),
+        country: vat.country,
+        asOf: vat.asOf,
+        rulesetId: vat.rulesetId || null,
+        result: vat.ok ? { vatRate: vat.rate, category: vat.category } : null,
+        citations: vat.citations || [],
         engine: "tax-rules",
         deterministic: true,
       };
@@ -171,6 +229,8 @@
     listRulesets,
     resolveRuleset,
     resolveSv,
+    resolveVat,
+    legalConfig,
     evaluate,
     packs: PACKS,
   };

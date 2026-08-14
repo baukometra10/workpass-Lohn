@@ -1,7 +1,6 @@
 /**
- * Gesetzliche Sätze und Grenzen für Deutschland (Stand 2026).
- * Quellen: SGB IV, Beitragsverordnung, UStG.
- * Lohnsteuer: BMF-Programmablaufplan 2026 via payroll-engine.js (lohnsteuerrechner).
+ * Gesetzliche Sätze – Fallback 2026, live aus Tax Rules Engine nach Beleg-/Abrechnungsdatum.
+ * Die Buchhaltung liest keine Gesetze; getLegalConfigForDate() fragt den Engine.
  */
 const LEGAL_CONFIG = {
   year: 2026,
@@ -98,8 +97,32 @@ const PAYROLL_LAYOUTS = {
   },
 };
 
+function getLegalConfigForDate(asOf) {
+  const fallback = LEGAL_CONFIG;
+  try {
+    const eng = typeof window !== "undefined" ? window.TaxRulesEngine : null;
+    const live = eng?.legalConfig
+      ? eng.legalConfig({ asOf: asOf || "", country: "DE" })
+      : null;
+    if (!live?.socialSecurity) return fallback;
+    return {
+      year: live.year || fallback.year,
+      version: live.version || fallback.version,
+      rulesetId: live.rulesetId || fallback.rulesetId,
+      asOf: live.asOf || asOf || fallback.asOf,
+      vat: live.vat ? { ...fallback.vat, ...live.vat } : fallback.vat,
+      socialSecurity: { ...fallback.socialSecurity, ...live.socialSecurity },
+      tax: { ...fallback.tax, ...(live.tax || {}) },
+      invoice: fallback.invoice,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
 function getLegalEmployeeRates(options = {}) {
-  const ss = LEGAL_CONFIG.socialSecurity;
+  const cfg = getLegalConfigForDate(options.asOf || options.payrollMonth || options.period);
+  const ss = cfg.socialSecurity;
   const childless = Boolean(options.childlessOver23);
   const zusatz = Number(options.healthAdditional) || ss.healthAdditionalAvg;
 
@@ -114,6 +137,9 @@ function getLegalEmployeeRates(options = {}) {
     employerHealthPercent: ss.health.employee + zusatz / 2,
     employerCarePercent: ss.care.employer || ss.care.employee,
     employerUnemploymentPercent: ss.unemployment.employee,
+    papYear: cfg.year,
+    rulesetId: cfg.rulesetId || "",
+    asOf: cfg.asOf || "",
   };
 }
 
@@ -127,7 +153,8 @@ function buildPayrollOptions(options = {}) {
     taxClass: options.taxClass || "I",
     churchTaxRate: Number(options.churchTaxRate) || 0,
     childlessOver23: Boolean(options.childlessOver23),
-    healthAdditional: Number(options.healthAdditional) || LEGAL_CONFIG.socialSecurity.healthAdditionalAvg,
+    healthAdditional: Number(options.healthAdditional)
+      || getLegalConfigForDate(month).socialSecurity.healthAdditionalAvg,
     privateHealth: Boolean(options.privateHealth),
     taxAllowanceMonthly: Number(options.taxAllowanceMonthly) || 0,
     childAllowanceFactor: Number(options.childAllowanceFactor) || 0,
@@ -200,20 +227,6 @@ if (typeof window !== "undefined") {
   window.LEGAL_CONFIG = LEGAL_CONFIG;
   window.PAYROLL_LAYOUTS = PAYROLL_LAYOUTS;
   window.getLegalEmployeeRates = getLegalEmployeeRates;
+  window.getLegalConfigForDate = getLegalConfigForDate;
   window.calculateLegalPayroll = calculateLegalPayroll;
-  try {
-    const live = window.TaxRulesEngine?.evaluate?.({
-      country: "DE",
-      kind: "payroll-params",
-      asOf: new Date().toISOString().slice(0, 10),
-    });
-    if (live?.ok && live.result?.sv) {
-      LEGAL_CONFIG.year = live.papYear || LEGAL_CONFIG.year;
-      LEGAL_CONFIG.version = live.version || LEGAL_CONFIG.version;
-      LEGAL_CONFIG.rulesetId = live.rulesetId;
-      LEGAL_CONFIG.socialSecurity.healthAdditionalAvg = live.result.sv.healthAdditionalDefault;
-      LEGAL_CONFIG.socialSecurity.minijob = live.result.sv.minijob;
-      LEGAL_CONFIG.tax.method = live.result.taxMethod || LEGAL_CONFIG.tax.method;
-    }
-  } catch { /* keep static 2026 fallback */ }
 }

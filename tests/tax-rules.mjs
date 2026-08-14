@@ -2,7 +2,7 @@
  * Tax Rules Engine – effective dating + citations
  * Run: node tests/tax-rules.mjs
  */
-import { evaluate, resolveSv, listRulesets, setExtraPacks } from "../tax-rules/engine.mjs";
+import { evaluate, resolveSv, listRulesets, setExtraPacks, legalConfig } from "../tax-rules/engine.mjs";
 
 let passed = 0;
 let failed = 0;
@@ -20,6 +20,12 @@ console.log("\n=== Tax Rules Engine ===");
 const sets = listRulesets({ country: "DE" });
 assert(sets.some((p) => p.id.includes("2025")), "2025 pack published");
 assert(sets.some((p) => p.id.includes("2026")), "2026 pack published");
+
+const cfg25 = legalConfig({ country: "DE", asOf: "2025-06-01" });
+const cfg26 = legalConfig({ country: "DE", asOf: "2026-06-01" });
+assert(cfg25?.socialSecurity?.care?.employee === 1.7, "legalConfig 2025 PV 1,7");
+assert(cfg26?.socialSecurity?.care?.employee === 1.8, "legalConfig 2026 PV 1,8");
+assert(cfg25?.year === 2025 && cfg26?.year === 2026, "legalConfig pap years");
 
 const y25 = resolveSv({ country: "DE", asOf: "2025-12-15" });
 assert(y25.ok && y25.params.minijob.ceiling === 556, `2025-12-15 Mini = 556 (got ${y25.params?.minijob?.ceiling})`);

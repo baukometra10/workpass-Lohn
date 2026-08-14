@@ -447,6 +447,15 @@
         <div class="admin-actions" style="margin-top:8px;margin-bottom:8px">
           <button type="button" id="btnTaxRulesRefresh" data-i18n="admin.taxRulesRefresh">Rulesets laden</button>
         </div>
+        <label class="admin-hint" style="display:block;margin-top:8px" for="taxDraftJson">
+          <span data-i18n="admin.taxIngestLabel">Entwurf einspielen (JSON, immer draft)</span>
+        </label>
+        <textarea id="taxDraftJson" rows="8" style="width:100%;margin-top:6px;padding:8px 10px;border-radius:8px;border:1px solid rgba(90,140,200,0.3);background:#0a101c;color:#fff;font:0.78rem/1.4 ui-monospace,monospace" placeholder='{ "id": "DE-SV-USt-2027.1", "country": "DE", "effectiveFrom": "2027-01-01", … }'></textarea>
+        <div class="admin-actions" style="margin-top:8px;margin-bottom:12px">
+          <input id="taxDraftFile" type="file" accept="application/json,.json" hidden />
+          <button type="button" id="btnTaxDraftFile" data-i18n="admin.taxIngestFile">JSON-Datei wählen</button>
+          <button type="button" class="primary" id="btnTaxIngest" data-i18n="admin.taxIngest">Als Entwurf speichern</button>
+        </div>
         <table class="admin-table">
           <thead>
             <tr>
@@ -480,7 +489,7 @@
       <p class="admin-foot" data-i18n="admin.foot">WorkPass Steuerprogramm · Bridge-Admin</p>
     </div>
 
-    <script src="workpass-i18n-packs.js?v=14"></script>
+    <script src="workpass-i18n-packs.js?v=15"></script>
     <script src="workpass-i18n.js?v=6"></script>
     <script src="workpass-pwa.js?v=4"></script>
     <script src="auth-gate.js?v=17"></script>
@@ -712,6 +721,48 @@
       }
       document.getElementById("btnRefresh")?.addEventListener("click", refresh);
       document.getElementById("btnTaxRulesRefresh")?.addEventListener("click", () => refreshTaxRules());
+      document.getElementById("btnTaxDraftFile")?.addEventListener("click", () => {
+        document.getElementById("taxDraftFile")?.click();
+      });
+      document.getElementById("taxDraftFile")?.addEventListener("change", async (ev) => {
+        const file = ev.target.files?.[0];
+        if (!file) return;
+        try {
+          document.getElementById("taxDraftJson").value = await file.text();
+        } catch (e) {
+          setStatus(e.message, false);
+        }
+        ev.target.value = "";
+      });
+      document.getElementById("btnTaxIngest")?.addEventListener("click", async () => {
+        const btn = document.getElementById("btnTaxIngest");
+        const raw = String(document.getElementById("taxDraftJson")?.value || "").trim();
+        if (!raw) {
+          setStatus(t("admin.taxIngestNeedJson", "Bitte JSON-Entwurf einfügen oder Datei wählen."), false);
+          return;
+        }
+        let pack;
+        try {
+          pack = JSON.parse(raw);
+        } catch {
+          setStatus(t("admin.taxIngestBadJson", "JSON ungültig."), false);
+          return;
+        }
+        setBusy(btn, true, t("admin.taxIngestBusy", "Speichert…"));
+        try {
+          const saved = await api("/v1/tax/rulesets", {
+            method: "POST",
+            body: JSON.stringify(pack),
+          });
+          const id = saved.ruleset?.id || pack.id || "";
+          setStatus(t("admin.taxIngested", "Entwurf gespeichert: {id}", { id }), true);
+          await refreshTaxRules();
+        } catch (e) {
+          setStatus(e.message, false);
+        } finally {
+          setBusy(btn, false, t("admin.taxIngest", "Als Entwurf speichern"));
+        }
+      });
       document.getElementById("btnBackup")?.addEventListener("click", async () => {
         const btn = document.getElementById("btnBackup");
         setBusy(btn, true, t("admin.backupBusy", "Backup…"));

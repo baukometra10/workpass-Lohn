@@ -311,10 +311,13 @@
 
   function formatKkPercent(state) {
     if (num(state.healthPercent) > 0) return formatNumber(num(state.healthPercent));
+    const cfg = typeof getLegalConfigForDate === "function"
+      ? getLegalConfigForDate(state.payrollMonth)
+      : window.LEGAL_CONFIG;
     const add = num(state.healthAdditionalPercent)
-      || (window.LEGAL_CONFIG?.socialSecurity?.healthAdditionalAvg)
+      || cfg?.socialSecurity?.healthAdditionalAvg
       || 2.9;
-    const baseEmp = (window.LEGAL_CONFIG?.socialSecurity?.health?.employee) || 7.3;
+    const baseEmp = cfg?.socialSecurity?.health?.employee || 7.3;
     // Show employee KV share (half of 14.6 + half Zusatz) when KK known or SV applies
     if (String(state.healthFund || "").trim() || num(state.grossSalary) > 0 || (state.wageItems || []).length) {
       return formatNumber(baseEmp + add / 2);

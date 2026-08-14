@@ -80,6 +80,13 @@ assert(sheetData.wageRows?.length >= 2, "Lohnarten-Zeilen");
 assert(sheetData.wageRows?.[0]?.amount === "120,00", "Lohnart 840 Betrag");
 assert(sheetData.wageRows?.[1]?.amount === "3.500,00", "Lohnart 2000 Betrag");
 
+console.log("\n=== Test 2b: Legal rates from Tax Rules Engine ===");
+const r25 = sb.window.getLegalEmployeeRates({ payrollMonth: "2025-07" });
+const r26 = sb.window.getLegalEmployeeRates({ payrollMonth: "2026-07" });
+assert(r25.carePercent === 1.7, `2025 PV AN 1,7 (got ${r25.carePercent})`);
+assert(r26.carePercent === 1.8, `2026 PV AN 1,8 (got ${r26.carePercent})`);
+assert(r25.papYear === 2025 && r26.papYear === 2026, "papYear follows payroll month");
+
 console.log("\n=== Test 3: DATEV CSV Import ===");
 const csvSample = `Personal-Nr.;Lohnart-Nr.;Betrag;Abrechnungsmonat;Mitarbeitername
 02006;2000;3500,00;07.2025;Mustermann

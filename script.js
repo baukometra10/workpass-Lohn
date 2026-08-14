@@ -2444,9 +2444,15 @@ function getPayrollAssessmentDays(monthValue, workDays) {
 /* ── Legal Rates ── */
 
 function applyLegalRatesToForm(showMessage = true) {
+  const month = payrollMonthInput?.value || "";
+  const cfg = typeof getLegalConfigForDate === "function"
+    ? getLegalConfigForDate(month)
+    : LEGAL_CONFIG;
   const rates = getLegalEmployeeRates({
     childlessOver23: childlessPvSurchargeInput?.checked,
-    healthAdditional: numberValue(healthAdditionalPercentInput),
+    healthAdditional: cfg.socialSecurity.healthAdditionalAvg,
+    payrollMonth: month,
+    asOf: month,
   });
 
   pensionPercentInput.value = String(rates.pensionPercent);
@@ -2454,12 +2460,30 @@ function applyLegalRatesToForm(showMessage = true) {
   carePercentInput.value = String(rates.carePercent);
   unemploymentPercentInput.value = String(rates.unemploymentPercent);
   if (healthAdditionalPercentInput) {
-    healthAdditionalPercentInput.value = String(LEGAL_CONFIG.socialSecurity.healthAdditionalAvg);
+    healthAdditionalPercentInput.value = String(cfg.socialSecurity.healthAdditionalAvg);
+  }
+
+  const title = document.getElementById("legalRatesBannerTitle");
+  const text = document.getElementById("legalRatesBannerText");
+  const pap = cfg.year || rates.papYear || "";
+  const ss = cfg.socialSecurity;
+  if (title) title.textContent = pap
+    ? `Gesetzliche Sätze ${pap} · BMF PAP`
+    : "Gesetzliche Sätze · BMF PAP";
+  if (text && ss) {
+    text.textContent =
+      `Lohnsteuer nach BMF PAP ${pap || ""} · SV: RV ${ss.pension.employee} · KV ${ss.health.employee}+${ss.healthAdditionalAvg} % · PV ${ss.care.employee}/${ss.care.employeeChildless} · AV ${ss.unemployment.employee}`
+        .replace(/\s+/g, " ").trim();
   }
 
   updatePreview();
   saveDraft(false);
-  if (showMessage) window.alert("Gesetzliche Sätze 2026 wurden übernommen.");
+  if (showMessage) {
+    const id = cfg.rulesetId ? ` (${cfg.rulesetId})` : "";
+    window.alert(pap
+      ? `Gesetzliche Sätze ${pap} wurden übernommen${id}.`
+      : "Gesetzliche Sätze wurden übernommen.");
+  }
 }
 
 function syncHealthPercentFromAdditional() {
@@ -5723,6 +5747,18 @@ function setDefaultDates() {
   }
 }
 
+function defaultVatRateFromEngine(date) {
+  try {
+    const r = window.TaxRulesEngine?.evaluate?.({
+      kind: "vat",
+      country: "DE",
+      asOf: date || invoiceDateInput?.value || "",
+    });
+    if (r?.ok && r.result?.vatRate != null) return String(r.result.vatRate);
+  } catch { /* ignore */ }
+  return "19";
+}
+
 function setDefaultInvoiceNumber() {
   if (invoiceNumberInput.value.trim()) return;
   const now = new Date();
@@ -5878,6 +5914,9 @@ function seedFreshInvoiceWorkspace() {
   createItemRow("Dienstleistung", 1, 100);
   if (!invoiceNumberInput.value.trim()) setDefaultInvoiceNumber();
   setDefaultDates();
+  if (taxRateInput && !kleinunternehmerInput?.checked && !reverseChargeInput?.checked) {
+    taxRateInput.value = defaultVatRateFromEngine(invoiceDateInput?.value);
+  }
   toggleModeUI();
   updatePreview();
   setDraftSaveState(false);
@@ -6207,7 +6246,7 @@ function resetForm() {
   if (!window.confirm("Alle Eingaben wirklich zurücksetzen?")) return;
   documentTypeInput.value = "invoice";
   invoiceNumberInput.value = "";
-  taxRateInput.value = "19";
+  taxRateInput.value = defaultVatRateFromEngine(invoiceDateInput?.value);
   if (kleinunternehmerInput) kleinunternehmerInput.checked = false;
   if (reverseChargeInput) reverseChargeInput.checked = false;
   sellerInput.value = "";
@@ -6859,9 +6898,12 @@ if (employeeNameInput && employeeSearchInput) {
   });
 }
 
-if (payrollMonthInput && employeeReferenceMonthInput) {
+if (payrollMonthInput) {
   payrollMonthInput.addEventListener("change", () => {
-    if (!employeeReferenceMonthInput.value) employeeReferenceMonthInput.value = payrollMonthInput.value;
+    if (employeeReferenceMonthInput && !employeeReferenceMonthInput.value) {
+      employeeReferenceMonthInput.value = payrollMonthInput.value;
+    }
+    applyLegalRatesToForm(false);
   });
 }
 
