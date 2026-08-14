@@ -26,14 +26,8 @@ Backup dir: ${getBackupDir()}
 }
 
 async function main() {
-  initDb();
   if (!cmd || cmd === "help" || cmd === "-h") {
     help();
-    return;
-  }
-  if (cmd === "create") {
-    const r = createBackup();
-    console.log(JSON.stringify(r, null, 2));
     return;
   }
   if (cmd === "list") {
@@ -45,10 +39,17 @@ async function main() {
       console.error("Pfad zur .wpbak Datei erforderlich");
       process.exit(1);
     }
+    // Do not open/init DB first – restore must work when SQLite is already corrupt.
     const full = path.resolve(arg);
     const r = restoreBackup(full);
     console.log(JSON.stringify(r, null, 2));
     console.log("Hinweis: Bridge danach neu starten (npm start).");
+    return;
+  }
+  if (cmd === "create") {
+    initDb();
+    const r = createBackup();
+    console.log(JSON.stringify(r, null, 2));
     return;
   }
   help();

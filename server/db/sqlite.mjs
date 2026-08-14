@@ -18,20 +18,60 @@ export function getSqlitePath() {
   return resolveSqlitePath();
 }
 
+/** True for SQLITE_CORRUPT / “database disk image malformed” style errors. */
+export function isSqliteCorruptError(err) {
+  const m = String(err?.message || err || "").toLowerCase();
+  return (
+    m.includes("malformed")
+    || m.includes("not a database")
+    || m.includes("file is not a database")
+    || m.includes("corrupt")
+    || m.includes("sqlite_corrupt")
+  );
+}
+
+function integrityOk(database) {
+  try {
+    const rows = database.prepare("PRAGMA integrity_check").all();
+    if (!rows?.length) return false;
+    const texts = rows.map((r) => {
+      if (r == null) return "";
+      if (typeof r === "string") return r;
+      return String(r.integrity_check ?? Object.values(r)[0] ?? "");
+    });
+    return texts.length === 1 && texts[0].toLowerCase() === "ok";
+  } catch {
+    return false;
+  }
+}
+
+function assertIntegrity(database) {
+  if (!integrityOk(database)) {
+    throw new Error("database disk image malformed");
+  }
+}
+
 export function openSqlite(dbPath = getSqlitePath()) {
   if (db && dbPathUsed === dbPath) return db;
   const dir = path.dirname(dbPath);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  db = new DatabaseSync(dbPath);
+  let opened;
+  try {
+    opened = new DatabaseSync(dbPath);
+    assertIntegrity(opened);
+    opened.exec("PRAGMA journal_mode = WAL;");
+    opened.exec("PRAGMA foreign_keys = ON;");
+    const schema = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "schema.sql"), "utf8");
+    opened.exec(schema);
+    opened.prepare(
+      "INSERT INTO meta(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+    ).run("schema_version", "1");
+  } catch (err) {
+    try { opened?.close(); } catch { /* ignore */ }
+    throw err;
+  }
+  db = opened;
   dbPathUsed = dbPath;
-  db.exec("PRAGMA journal_mode = WAL;");
-  db.exec("PRAGMA foreign_keys = ON;");
-  const schema = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "schema.sql"), "utf8");
-  // Strip PRAGMA lines already applied; exec full schema safely
-  db.exec(schema);
-  db.prepare(
-    "INSERT INTO meta(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
-  ).run("schema_version", "1");
   return db;
 }
 

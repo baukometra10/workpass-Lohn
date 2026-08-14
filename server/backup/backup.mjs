@@ -7,6 +7,8 @@
  *   WORKPASS_BACKUP_KEY       optional; falls back to WORKPASS_DATA_KEY / local key
  *   WORKPASS_BACKUP_KEEP      max files to retain (default 30)
  *   WORKPASS_BACKUP_INTERVAL_HOURS  if set (e.g. 24), server auto-schedules
+ *   WORKPASS_AUTO_RESTORE_ON_CORRUPT  default 1 – restore newest .wpbak if SQLite corrupt
+ *   WORKPASS_RESET_CORRUPT_DB         default 0 – quarantine + empty DB if no backup
  */
 import {
   createCipheriv,
@@ -32,6 +34,102 @@ import { getSqlitePath, getSqlite, closeSqlite } from "../db/sqlite.mjs";
 import { getDataKey } from "../security/crypto.mjs";
 import { audit } from "../security/audit.mjs";
 import { resolveBackupDir } from "../paths.mjs";
+
+function envFlag(name, defaultOn = false) {
+  const raw = process.env[name];
+  if (raw == null || String(raw).trim() === "") return defaultOn;
+  return !/^(0|false|no|off)$/i.test(String(raw).trim());
+}
+
+function removeSidecars(target) {
+  for (const suffix of ["-wal", "-shm"]) {
+    const p = `${target}${suffix}`;
+    if (existsSync(p)) {
+      try { unlinkSync(p); } catch { /* ignore */ }
+    }
+  }
+}
+
+/**
+ * Quarantine a corrupt SQLite file (+ WAL/SHM) so a restore or fresh open can proceed.
+ */
+export function quarantineCorruptSqlite(target = getSqlitePath()) {
+  closeSqlite();
+  removeSidecars(target);
+  if (!existsSync(target)) {
+    return { ok: true, quarantined: null, target };
+  }
+  const quarantine = `${target}.corrupt-${Date.now()}`;
+  renameSync(target, quarantine);
+  return { ok: true, quarantined: quarantine, target };
+}
+
+/**
+ * If the live DB is corrupt and encrypted backups exist, restore the newest one.
+ * Default ON (disable with WORKPASS_AUTO_RESTORE_ON_CORRUPT=0).
+ */
+export function recoverCorruptDatabase(err) {
+  const detail = String(err?.message || err || "database disk image malformed");
+  if (!envFlag("WORKPASS_AUTO_RESTORE_ON_CORRUPT", true)) {
+    return {
+      ok: false,
+      reason: "auto_restore_disabled",
+      message: `SQLite korrupt (${detail}). Auto-Restore aus (WORKPASS_AUTO_RESTORE_ON_CORRUPT=0).`,
+    };
+  }
+
+  const backups = listBackups();
+  if (!backups.length) {
+    return {
+      ok: false,
+      reason: "no_backups",
+      message:
+        `SQLite korrupt (${detail}). Keine .wpbak unter ${getBackupDir()}. `
+        + "Volume/Backup prüfen oder WORKPASS_RESET_CORRUPT_DB=1 setzen (leere DB).",
+    };
+  }
+
+  const newest = backups[0];
+  console.error(`[sqlite] CORRUPT – stelle wieder her aus ${newest.fileName}`);
+  const q = quarantineCorruptSqlite();
+  const restored = restoreBackup(newest.path, { skipSafetyCopy: true });
+  try {
+    audit({
+      type: "backup.auto_restore",
+      outcome: "ok",
+      detail: { fileName: newest.fileName, quarantined: q.quarantined, error: detail },
+    });
+  } catch { /* ignore */ }
+
+  return {
+    ok: true,
+    fileName: newest.fileName,
+    quarantined: q.quarantined,
+    restored,
+    message: `SQLite aus Backup ${newest.fileName} wiederhergestellt`,
+  };
+}
+
+/**
+ * Last resort: quarantine corrupt file and let openSqlite create an empty DB.
+ * Only when WORKPASS_RESET_CORRUPT_DB=1.
+ */
+export function resetCorruptDatabase(err) {
+  if (!envFlag("WORKPASS_RESET_CORRUPT_DB", false)) {
+    return { ok: false, reason: "reset_disabled" };
+  }
+  const detail = String(err?.message || err || "malformed");
+  const q = quarantineCorruptSqlite();
+  console.error(`[sqlite] CORRUPT – leere DB nach Quarantäne (${q.quarantined || "n/a"}): ${detail}`);
+  try {
+    audit({
+      type: "backup.reset_corrupt",
+      outcome: "ok",
+      detail: { quarantined: q.quarantined, error: detail },
+    });
+  } catch { /* ignore */ }
+  return { ok: true, quarantined: q.quarantined };
+}
 
 const MAGIC = "WPBK1";
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -201,13 +299,7 @@ export function restoreBackup(backupPath, opts = {}) {
   writeFileSync(tmp, plain);
   renameSync(tmp, target);
 
-  // remove wal/shm if present
-  for (const suffix of ["-wal", "-shm"]) {
-    const p = `${target}${suffix}`;
-    if (existsSync(p)) {
-      try { unlinkSync(p); } catch { /* ignore */ }
-    }
-  }
+  removeSidecars(target);
 
   try {
     audit({ type: "backup.restore", outcome: "ok", detail: { file: full, sha256: digest } });

@@ -5,10 +5,11 @@
 import { readFileSync, existsSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { sqliteExec, sqliteGet, sqliteAll, getSqlite, openSqlite } from "./sqlite.mjs";
+import { sqliteExec, sqliteGet, sqliteAll, getSqlite, openSqlite, closeSqlite, isSqliteCorruptError } from "./sqlite.mjs";
 import { enqueueSync, scheduleSyncFlush, syncHealth, flushSyncOutbox } from "./sync.mjs";
 import { normalizeCompanyId } from "../tenant.mjs";
 import { encryptJson, decryptJson, isEncryptedBlob } from "../security/crypto.mjs";
+import { recoverCorruptDatabase, resetCorruptDatabase } from "../backup/backup.mjs";
 
 const dataRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "data");
 let ready = false;
@@ -34,7 +35,27 @@ function unpackPayload(raw, fallback = null) {
 
 export function initDb() {
   if (ready) return syncHealth();
-  openSqlite();
+  try {
+    openSqlite();
+  } catch (err) {
+    if (!isSqliteCorruptError(err)) throw err;
+    console.error(`[db] SQLite korrupt: ${err.message}`);
+    closeSqlite();
+    const recovered = recoverCorruptDatabase(err);
+    if (recovered.ok) {
+      console.error(`[db] ${recovered.message}`);
+      openSqlite();
+    } else {
+      const reset = resetCorruptDatabase(err);
+      if (!reset.ok) {
+        throw new Error(
+          `${recovered.message || err.message} `
+          + "Admin: neuestes .wpbak wiederherstellen oder WORKPASS_RESET_CORRUPT_DB=1."
+        );
+      }
+      openSqlite();
+    }
+  }
   migrateJsonIfNeeded();
   ready = true;
   return syncHealth();
