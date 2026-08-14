@@ -85,7 +85,7 @@ assert(result.batch?.count === 2, "2 employees calculated");
 assert((result.newlyReleased?.length || 0) === 2, "2 released to platform queue");
 assert(listPayrollJobs({ companyId: id, period }).every((j) => j.status === "released"), "all released");
 
-console.log("\n=== Waiting state without data ===");
+console.log("\n=== Quiet idle without employees/hours (no platform spam) ===");
 const idleId = `idle${Date.now().toString(36)}`;
 activateCompany({
   company: { id: idleId, name: "Idle GmbH" },
@@ -99,8 +99,8 @@ const wait = await runMonthClose({
   autoRelease: true,
   tenantScope: idleId,
 });
-assert(!wait.ok && wait.waitingForPlatform, "waiting for platform");
-assert(Boolean(wait.message || wait.error), "has guidance message");
+assert(!wait.ok && !wait.waitingForPlatform, "not waiting – empty firm stays quiet");
+assert(/keine mitarbeiter|keine anfrage/i.test(wait.message || wait.error || ""), `quiet message: ${wait.message || wait.error}`);
 deleteCompany({ id: idleId });
 
 deleteCompany({ id });

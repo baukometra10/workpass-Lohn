@@ -69,7 +69,7 @@ const skip = await askPlatformAndSyncCompany({
 assert(skip.skipped === true || skip.ok === true, "skip or ok");
 assert(/fertig|freigegeben/i.test(skip.message || ""), `complete message: ${skip.message}`);
 
-console.log("\n=== ask platform sync (no pull data) ===");
+console.log("\n=== quiet idle: no employees/hours → no platform ask ===");
 const idle = `ap2${Date.now().toString(36)}`;
 activateCompany({
   company: { id: idle, name: "Idle Auto GmbH", taxNumber: "12/345/67891" },
@@ -82,12 +82,27 @@ const sync = await askPlatformAndSyncCompany({
   period: "2026-08",
   pull: false,
   autoRelease: true,
-  notify: false,
+  notify: true,
   forceAsk: true,
   reason: "test",
+  skipInvoices: true,
 });
-assert(Boolean(sync.message), "sync message");
-assert(sync.companyId === idle, "company id");
+assert(sync.quietIdle === true, "quietIdle when empty firm");
+assert(sync.skippedAsk === true, "skippedAsk when nothing to request");
+assert(sync.employeesNotify?.reason === "no_platform_employees_or_hours", "no employees.list request");
+assert(sync.monthNotify?.reason === "no_platform_employees_or_hours", "no payroll.month request");
+assert(sync.perEmployeeAsked === 0, "no per-employee asks");
+assert(/keine anfrage|nachgeschaut|keine mitarbeiter/i.test(sync.message || ""), `quiet message: ${sync.message}`);
+
+console.log("\n=== signal helper ===");
+const { summarizePlatformPayrollSignal } = await import("../server/month-close.mjs");
+assert(summarizePlatformPayrollSignal({ employees: [] }).hasWork === false, "empty batch = no work");
+assert(summarizePlatformPayrollSignal({
+  employees: [{ employee: { id: "1", name: "A" }, attendance: { hours: 0 } }],
+}).hasEmployees === true, "employee without hours still counts");
+assert(summarizePlatformPayrollSignal({
+  employees: [{ employee: { id: "1", name: "A" }, attendance: { hours: 12 } }],
+}).hasHours === true, "hours detected");
 
 console.log("\n=== inbound invoice batch auto release ===");
 const invBatch = await processInboundInvoiceBatch({

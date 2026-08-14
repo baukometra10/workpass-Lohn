@@ -1,7 +1,8 @@
 /**
  * WorkPass Steuerprogramm auto-pipeline:
- * 1) Ask platform for employees + month payroll + invoices
- * 2) When platform pushes data → calculate/ingest + release automatically
+ * 1) LOOK at platform (pull employees + hours) – no spam if empty
+ * 2) Only if employees/hours exist (or local registry has people): ask for missing person fields
+ * 3) Ingest → calculate → release automatically
  *
  * Env:
  *   WORKPASS_AUTO_PIPELINE=1          (default ON; set 0 to disable)
@@ -21,6 +22,7 @@ import {
   currentPeriod,
   pullPlatformPayrollBatch,
   requestEmployeeDataFromPlatform,
+  summarizePlatformPayrollSignal,
 } from "./month-close.mjs";
 import { ingestPayroll, ingestPayrollBatch, releasePayrollJob } from "./payroll-service.mjs";
 import { ingestInvoice, ingestInvoiceBatch, releaseInvoiceJob } from "./invoice-service.mjs";
@@ -485,7 +487,7 @@ export async function processInboundPayrollBatch(batch, options = {}) {
 }
 
 /**
- * Ask platform for employees + month data for one company, then pull/close if possible.
+ * Ask platform only when employees/hours exist (after a silent pull), then close the month.
  */
 export async function askPlatformAndSyncCompany(options = {}) {
   const companyId = normalizeCompanyId(options.companyId || options.company?.id || "");
@@ -569,123 +571,166 @@ export async function askPlatformAndSyncCompany(options = {}) {
   const prev = companySyncState.get(companyId);
   const reaskMs = cfg.reaskMinutes * 60_000;
   const recentlyAsked = prev?.askedAt && (Date.now() - new Date(prev.askedAt).getTime()) < reaskMs;
-  const shouldAsk = forceAsk || !recentlyAsked || !progress.hasWork;
 
-  let employeesNotify = { skipped: true };
-  let monthNotify = { skipped: true };
+  // Branding / Mandant: PULL logo+profile automatically (never ask – already on platform)
+  try {
+    const firm = loadCompany(companyId);
+    if (firm && hubProfileNeedsEnrichment(firm.meta?.hubProfile)) {
+      await pullAndSyncCompanyBranding(companyId, {
+        ask: false,
+        reason: options.reason || "auto_pipeline",
+        source: "auto-pipeline",
+      });
+      await hydrateCompanyLogoFromUrl(companyId);
+    }
+  } catch { /* ignore branding bootstrap */ }
+
+  // 1) LOOK first: pull employees/hours from platform (no outbound request yet)
+  let pull = { skipped: true };
+  if (options.pull !== false && cfg.pull) {
+    pull = await pullPlatformPayrollBatch({ companyId, period });
+  }
+  const platformSignal = summarizePlatformPayrollSignal(pull);
+  const localEmployees = listEmployees(companyId);
+  const localHasPeople = localEmployees.length > 0 || progress.hasWork;
+  // Only ask the platform when there is something to ask about
+  const allowPlatformRequests = platformSignal.hasWork || localHasPeople;
+  const shouldAsk = Boolean(
+    options.notify !== false
+    && allowPlatformRequests
+    && (forceAsk || !recentlyAsked || !progress.hasWork || platformSignal.hasWork)
+  );
+
+  let employeesNotify = { skipped: true, reason: "not_needed" };
+  let monthNotify = { skipped: true, reason: "not_needed" };
   let employeesMessage = null;
   let monthMessage = null;
   let webhookProbe = getLastWebhookStatus();
 
-  if (options.notify !== false && shouldAsk) {
+  if (!allowPlatformRequests) {
+    employeesNotify = { skipped: true, reason: "no_platform_employees_or_hours" };
+    monthNotify = { skipped: true, reason: "no_platform_employees_or_hours" };
+  } else if (shouldAsk) {
     companySyncState.set(companyId, {
       ...(prev || {}),
       period,
       askedAt: new Date().toISOString(),
     });
-    // Branding / Mandant: PULL logo+profile automatically (never ask – already on platform)
-    try {
-      const firm = loadCompany(companyId);
-      if (firm && hubProfileNeedsEnrichment(firm.meta?.hubProfile)) {
-        await pullAndSyncCompanyBranding(companyId, {
-          ask: false,
-          reason: options.reason || "auto_pipeline",
-          source: "auto-pipeline",
-        });
-        await hydrateCompanyLogoFromUrl(companyId);
-      }
-    } catch { /* ignore branding bootstrap */ }
-    // Durable inbox entries so platform can POLL even if webhook URL is broken/404
-    try {
-      const empMsg = await upsertPlatformMessage({
-        type: "employees.list.requested",
-        severity: "action_needed",
-        company,
-        period,
-        code: "employees_list_requested",
-        dedupeKey: `employees.list.requested::${companyId}::${period}`,
-        title: `Mitarbeiterliste anfordern · ${period}`,
-        body:
-          `WorkPass Lohn braucht die vollständige Mitarbeiterliste für ${period} (nicht nur IDs).\n\n`
-          + `Bitte senden: POST ${process.env.WORKPASS_PUBLIC_URL || "https://workpass-lohn.up.railway.app"}/v1/employees/import\n`
-          + `Body: { "companyId": "${companyId}", "employees": [{ "badgeId", "name" | "firstName"+"lastName", "address", "taxClass", "personnelNumber" }] }\n`
-          + `Jeder Datensatz sollte Name + Badge-ID und möglichst alle Stammdaten enthalten.`,
-        gaps: [{
+    // Broad list/month requests only when we already know people locally but month pull was empty
+    if (!platformSignal.hasWork && localHasPeople) {
+      try {
+        const empMsg = await upsertPlatformMessage({
+          type: "employees.list.requested",
+          severity: "action_needed",
+          company,
+          period,
           code: "employees_list_requested",
-          field: "employees",
-          label: "Mitarbeiterliste mit Namen fehlt",
-          severity: "action_needed",
-        }],
-        source: "auto-pipeline",
-      }, { notify: false, forceNotify: false });
-      employeesMessage = empMsg.message;
-    } catch { /* ignore */ }
+          dedupeKey: `employees.list.requested::${companyId}::${period}`,
+          title: `Mitarbeiterliste anfordern · ${period}`,
+          body:
+            `WorkPass Lohn braucht die vollständige Mitarbeiterliste für ${period} (nicht nur IDs).\n\n`
+            + `Bitte senden: POST ${process.env.WORKPASS_PUBLIC_URL || "https://workpass-lohn.up.railway.app"}/v1/employees/import\n`
+            + `Body: { "companyId": "${companyId}", "employees": [{ "badgeId", "name" | "firstName"+"lastName", "address", "taxClass", "personnelNumber" }] }\n`
+            + `Jeder Datensatz sollte Name + Badge-ID und möglichst alle Stammdaten enthalten.`,
+          gaps: [{
+            code: "employees_list_requested",
+            field: "employees",
+            label: "Mitarbeiterliste mit Namen fehlt",
+            severity: "action_needed",
+          }],
+          source: "auto-pipeline",
+        }, { notify: false, forceNotify: false });
+        employeesMessage = empMsg.message;
+      } catch { /* ignore */ }
 
-    try {
-      const monMsg = await upsertPlatformMessage({
-        type: "payroll.month.requested",
-        severity: "action_needed",
-        company,
-        period,
-        code: "payroll_month_requested",
-        dedupeKey: `payroll.month.requested::${companyId}::${period}`,
-        title: `Monatsdaten anfordern · ${period}`,
-        body:
-          `WorkPass Lohn braucht Lohn-/Stundendaten für ${period}.\n\n`
-          + `Bitte senden: POST ${process.env.WORKPASS_PUBLIC_URL || "https://workpass-lohn.up.railway.app"}/v1/payroll/batch\n`
-          + `Body: platform.payroll.batch.v1 mit company.id="${companyId}" und employees[]\n`
-          + `(auch unvollständig OK – fehlende Felder werden nachgefragt).`,
-        gaps: [{
+      try {
+        const monMsg = await upsertPlatformMessage({
+          type: "payroll.month.requested",
+          severity: "action_needed",
+          company,
+          period,
           code: "payroll_month_requested",
-          field: "payroll.batch",
-          label: "Monatsdaten fehlen",
-          severity: "action_needed",
-        }],
-        source: "auto-pipeline",
-      }, { notify: false, forceNotify: false });
-      monthMessage = monMsg.message;
-    } catch { /* ignore */ }
+          dedupeKey: `payroll.month.requested::${companyId}::${period}`,
+          title: `Monatsdaten anfordern · ${period}`,
+          body:
+            `WorkPass Lohn braucht Lohn-/Stundendaten für ${period}.\n\n`
+            + `Bitte senden: POST ${process.env.WORKPASS_PUBLIC_URL || "https://workpass-lohn.up.railway.app"}/v1/payroll/batch\n`
+            + `Body: platform.payroll.batch.v1 mit company.id="${companyId}" und employees[]\n`
+            + `(auch unvollständig OK – fehlende Felder werden nachgefragt).`,
+          gaps: [{
+            code: "payroll_month_requested",
+            field: "payroll.batch",
+            label: "Monatsdaten fehlen",
+            severity: "action_needed",
+          }],
+          source: "auto-pipeline",
+        }, { notify: false, forceNotify: false });
+        monthMessage = monMsg.message;
+      } catch { /* ignore */ }
 
-    employeesNotify = await notifyPlatform({
-      event: "employees.list.requested",
-      company,
-      message: employeesMessage,
-      meta: {
-        period,
-        reason: options.reason || "auto_pipeline",
-        hint: "Bitte Mitarbeiter mit Namen (nicht nur ID) + badgeId per POST /v1/employees/import senden",
-        replyPath: "/v1/employees/import",
-      },
-      idempotencyKey: `emp-list:${companyId}:${period}:${Math.floor(Date.now() / 600000)}`,
-    });
+      employeesNotify = await notifyPlatform({
+        event: "employees.list.requested",
+        company,
+        message: employeesMessage,
+        meta: {
+          period,
+          reason: options.reason || "auto_pipeline",
+          hint: "Bitte Mitarbeiter mit Namen (nicht nur ID) + badgeId per POST /v1/employees/import senden",
+          replyPath: "/v1/employees/import",
+        },
+        idempotencyKey: `emp-list:${companyId}:${period}:${Math.floor(Date.now() / 600000)}`,
+      });
 
-    monthNotify = await notifyPlatform({
-      event: "payroll.month.requested",
-      company,
-      message: monthMessage,
-      meta: {
-        period,
-        allowIncomplete: true,
-        reason: options.reason || "auto_pipeline",
-        hint: "Bitte Monatsdaten per POST /v1/payroll/batch senden (auch unvollständig)",
-        replyPath: "/v1/payroll/batch",
-      },
-      idempotencyKey: `month-req:${companyId}:${period}:${Math.floor(Date.now() / 300000)}`,
-    });
+      monthNotify = await notifyPlatform({
+        event: "payroll.month.requested",
+        company,
+        message: monthMessage,
+        meta: {
+          period,
+          allowIncomplete: true,
+          reason: options.reason || "auto_pipeline",
+          hint: "Bitte Monatsdaten per POST /v1/payroll/batch senden (auch unvollständig)",
+          replyPath: "/v1/payroll/batch",
+        },
+        idempotencyKey: `month-req:${companyId}:${period}:${Math.floor(Date.now() / 300000)}`,
+      });
+    } else {
+      employeesNotify = { skipped: true, reason: "platform_already_has_data" };
+      monthNotify = { skipped: true, reason: "platform_already_has_data" };
+    }
 
     webhookProbe = getLastWebhookStatus();
     if (options.probeWebhook) {
       webhookProbe = await probePlatformWebhook();
     }
-  } else if (!shouldAsk) {
+  } else if (!shouldAsk && allowPlatformRequests) {
     employeesNotify = { skipped: true, reason: "recently_asked" };
     monthNotify = { skipped: true, reason: "recently_asked" };
   }
 
-  // 3) Ask only for employees still missing/error this period (not every tick)
-  const known = listEmployees(companyId).slice(0, 30);
+  // 2) Month close first: ingest pulled batch, calculate + release
+  let close = null;
+  close = await runMonthClose({
+    companyId,
+    period,
+    pull: false,
+    batch: pull.ok && pull.batch ? pull.batch : null,
+    autoRelease: options.autoRelease !== undefined ? options.autoRelease : cfg.autoRelease,
+    tenantScope: companyId,
+    notify: shouldAsk,
+    company,
+  });
+
+  // 3) Person-specific asks only for known people still incomplete after ingest
+  const known = (platformSignal.hasWork
+    ? (pull.batch?.employees || []).map((row) => ({
+      badgeId: row?.employee?.badgeId || row?.employee?.id || row?.badgeId || row?.id,
+      name: row?.employee?.name || row?.name || "",
+    })).filter((e) => e.badgeId)
+    : localEmployees
+  ).slice(0, 30);
   const perEmployee = [];
-  if (options.notify !== false && shouldAsk) {
+  if (shouldAsk && known.length) {
     const byBadge = new Map(
       listPayrollJobs({ companyId, period })
         .filter((j) => !isDemoPayrollJob(j))
@@ -713,23 +758,6 @@ export async function askPlatformAndSyncCompany(options = {}) {
     }
   }
 
-  // 4) Try pull + month close (calculate + release what we get)
-  let pull = { skipped: true };
-  let close = null;
-  if (options.pull !== false && cfg.pull) {
-    pull = await pullPlatformPayrollBatch({ companyId, period });
-  }
-  close = await runMonthClose({
-    companyId,
-    period,
-    pull: !(pull.ok && pull.batch),
-    batch: pull.ok && pull.batch ? pull.batch : null,
-    autoRelease: options.autoRelease !== undefined ? options.autoRelease : cfg.autoRelease,
-    tenantScope: companyId,
-    notify: options.notify !== false,
-    company,
-  });
-
   const after = monthProgress(companyId, period);
   if (after.complete || (close?.newlyReleased?.length > 0)) {
     lastSuccessAt = new Date().toISOString();
@@ -751,13 +779,17 @@ export async function askPlatformAndSyncCompany(options = {}) {
   recordCompanyAutomation(companyId, period, {
     phase: after.complete
       ? "done"
-      : (close?.waitingForPlatform || !after.hasWork ? "waiting" : (after.released < after.jobs ? "release" : "calc")),
+      : (!allowPlatformRequests
+        ? "idle"
+        : (close?.waitingForPlatform || !after.hasWork ? "waiting" : (after.released < after.jobs ? "release" : "calc"))),
     source: options.reason?.startsWith("portal") ? "manual" : "auto_pipeline",
-    ok: Boolean(after.complete || close?.ok),
-    waitingForPlatform: Boolean(close?.waitingForPlatform) && !after.hasWork,
-    message: after.complete
-      ? `Fertig: ${after.released} Abrechnung(en) für ${period} an die Plattform gesendet.`
-      : (close?.message || null),
+    ok: Boolean(after.complete || close?.ok || !allowPlatformRequests),
+    waitingForPlatform: Boolean(close?.waitingForPlatform) && !after.hasWork && allowPlatformRequests,
+    message: !allowPlatformRequests
+      ? `Keine Mitarbeiter/Stunden für ${period} auf der Plattform – ruhig, keine Anfrage gesendet.`
+      : (after.complete
+        ? `Fertig: ${after.released} Abrechnung(en) für ${period} an die Plattform gesendet.`
+        : (close?.message || null)),
   });
 
   const invoices = options.skipInvoices
@@ -776,9 +808,11 @@ export async function askPlatformAndSyncCompany(options = {}) {
   const webhookOk = webhookProbe?.ok === true;
   const webhookBroken = webhookProbe?.ok === false && Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_URL);
   return {
-    ok: Boolean(close?.ok || after.hasWork || invoices?.pendingReleased || invoices?.invoices?.hasWork),
+    ok: Boolean(close?.ok || after.hasWork || invoices?.pendingReleased || invoices?.invoices?.hasWork || !allowPlatformRequests),
     skippedAsk: !shouldAsk,
-    waitingForPlatform: Boolean(close?.waitingForPlatform) && !after.hasWork,
+    quietIdle: !allowPlatformRequests,
+    platformSignal,
+    waitingForPlatform: Boolean(close?.waitingForPlatform) && !after.hasWork && allowPlatformRequests,
     companyId,
     period,
     employeesNotify,
@@ -797,6 +831,8 @@ export async function askPlatformAndSyncCompany(options = {}) {
       skipped: pull.skipped,
       incomplete: pull.incomplete,
       error: pull.error,
+      employees: platformSignal.employeeCount,
+      withHours: platformSignal.withHours,
     },
     close,
     jobs: {
@@ -805,29 +841,33 @@ export async function askPlatformAndSyncCompany(options = {}) {
       calculated: after.calculated,
       error: after.error,
     },
-    message: after.complete
-      ? `Fertig: ${after.released} Abrechnung(en) für ${period} an die Plattform gesendet.`
-      : (close?.ok
-        ? `Auto-Sync ${period}: ${close.newlyReleased?.length || 0} freigegeben.`
-        : (webhookBroken
-          ? `Plattform-Webhook antwortet nicht (${webhookProbe?.status || webhookProbe?.error || "Fehler"}). `
-            + `Anfragen liegen unter GET /v1/messages/pending – Plattform muss Endpoint reparieren und Daten pushen.`
-          : (!shouldAsk
-            ? `Zuletzt gefragt – warte auf Plattform-Antwort (erneut in ~${cfg.reaskMinutes} Min. oder „Jetzt synchronisieren“).`
-            : (close?.message || "Plattform nach Mitarbeitern, Monatsdaten und Rechnungen gefragt.")))),
-    nextActions: webhookBroken
-      ? [
-          "Auf der Plattform den Webhook-Endpoint live schalten (aktuell oft HTTP 404)",
-          "Erwartete URL: WORKPASS_PLATFORM_WEBHOOK_URL",
-          "Fallback: Plattform pollt GET /v1/messages/pending und sendet dann Import/Batch",
-          "Danach: POST /v1/employees/import + POST /v1/payroll/batch + POST /v1/invoice/batch",
-        ]
-      : (close?.waitingForPlatform && !after.hasWork
+    message: !allowPlatformRequests
+      ? `Keine Mitarbeiter und keine Stunden für ${period} – System hat nur nachgeschaut, keine Plattform-Anfrage gesendet.`
+      : (after.complete
+        ? `Fertig: ${after.released} Abrechnung(en) für ${period} an die Plattform gesendet.`
+        : (close?.ok
+          ? `Auto-Sync ${period}: ${close.newlyReleased?.length || 0} freigegeben.`
+          : (webhookBroken
+            ? `Plattform-Webhook antwortet nicht (${webhookProbe?.status || webhookProbe?.error || "Fehler"}). `
+              + `Anfragen liegen unter GET /v1/messages/pending – Plattform muss Endpoint reparieren und Daten pushen.`
+            : (!shouldAsk
+              ? `Zuletzt gefragt – warte auf Plattform-Antwort (erneut in ~${cfg.reaskMinutes} Min. oder „Jetzt synchronisieren“).`
+              : (close?.message || "Plattform-Daten übernommen; fehlende Personenfelder nachgefragt."))))),
+    nextActions: !allowPlatformRequests
+      ? []
+      : (webhookBroken
         ? [
-            "Plattform muss auf employees.list.requested / payroll.month.requested / invoices.export.requested reagieren",
-            "Daten senden: POST /v1/employees/import, POST /v1/payroll/batch, POST /v1/invoice/batch",
+            "Auf der Plattform den Webhook-Endpoint live schalten (aktuell oft HTTP 404)",
+            "Erwartete URL: WORKPASS_PLATFORM_WEBHOOK_URL",
+            "Fallback: Plattform pollt GET /v1/messages/pending und sendet dann Import/Batch",
+            "Danach: POST /v1/employees/import + POST /v1/payroll/batch + POST /v1/invoice/batch",
           ]
-        : []),
+        : (close?.waitingForPlatform && !after.hasWork
+          ? [
+              "Plattform muss auf employees.list.requested / payroll.month.requested / invoices.export.requested reagieren",
+              "Daten senden: POST /v1/employees/import, POST /v1/payroll/batch, POST /v1/invoice/batch",
+            ]
+          : [])),
   };
 }
 

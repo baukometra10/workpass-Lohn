@@ -52,6 +52,39 @@ function realPeriodJobs(companyId, period) {
 }
 
 /**
+ * Detect whether a platform payroll batch has employees and/or hours.
+ * Used to avoid spamming the platform when there is nothing to request yet.
+ */
+export function summarizePlatformPayrollSignal(batchOrPull) {
+  const batch = batchOrPull?.batch && typeof batchOrPull.batch === "object"
+    ? batchOrPull.batch
+    : batchOrPull;
+  const employees = Array.isArray(batch?.employees) ? batch.employees : [];
+  let withHours = 0;
+  for (const row of employees) {
+    if (!row || typeof row !== "object") continue;
+    const h = Number(
+      row.attendance?.hours
+      ?? row.workHours
+      ?? row.hours
+      ?? row.stunden
+      ?? row.state?.workHours
+      ?? row.employee?.workHours
+      ?? row.employee?.hours
+      ?? 0
+    );
+    if (Number.isFinite(h) && h > 0) withHours += 1;
+  }
+  return {
+    employeeCount: employees.length,
+    withHours,
+    hasEmployees: employees.length > 0,
+    hasHours: withHours > 0,
+    hasWork: employees.length > 0 || withHours > 0,
+  };
+}
+
+/**
  * Accept many platform shapes – including incomplete employee rows.
  * Returns null only when no employee-like payload is present at all.
  */
@@ -449,7 +482,7 @@ export async function runMonthClose(options = {}) {
     }
   }
 
-  // If month pull empty: notify platform for known employees (no N× pull storm)
+  // If month pull empty: only ask for known local employees (never invent requests for empty firms)
   if ((!batchIngest || !batchIngest.count) && options.notify !== false) {
     const known = listEmployees(companyId).filter((e) => e?.badgeId && e?.name);
     for (const emp of known.slice(0, 25)) {
@@ -541,7 +574,10 @@ export async function runMonthClose(options = {}) {
     || (batchIngest?.results || []).some((r) => (r.printHints || []).length > 0)
   );
   const missingOnPlatform = !pull.skipped && !pull.ok && isMissingPlatformData(pull);
-  const waitingForPlatform = !hasWork && (pull.skipped || !pull.ok);
+  const localPeople = listEmployees(companyId).length;
+  // Empty firm / empty month: do not spam platform with "please send data"
+  const mayRequestPlatform = hasWork || localPeople > 0 || Boolean(batchIngest?.count);
+  const waitingForPlatform = !hasWork && (pull.skipped || !pull.ok) && mayRequestPlatform;
   // Partial success is OK: incomplete employees stay as error + platform asked
   const ok = hasWork && releaseErrors.length === 0 && (!batchIngest || batchIngest.count > 0);
   const pullHint = humanizePullError(pull, period);
@@ -562,7 +598,9 @@ export async function runMonthClose(options = {}) {
     error: ok
       ? undefined
       : (!hasWork
-        ? pullHint
+        ? (mayRequestPlatform
+          ? pullHint
+          : `Keine Mitarbeiter/Stunden für ${period} – keine Plattform-Anfrage.`)
         : (releaseErrors[0]?.error || batchIngest?.errors?.join?.(" · ") || "Monatsabschluss unvollständig")),
     period,
     companyId,
@@ -598,9 +636,11 @@ export async function runMonthClose(options = {}) {
     alreadyReleased: alreadyReleased.map((j) => j.jobId),
     errored: errored.map((j) => ({ jobId: j.jobId, errors: j.errors })),
     message: !hasWork
-      ? (waitingForPlatform
-        ? `Noch keine Monatsdaten für ${period}. Die Plattform wurde aufgefordert zu senden – bitte „Erneut versuchen“ oder in der Plattform den Monat an die Buchhaltung pushen.`
-        : pullHint)
+      ? (mayRequestPlatform
+        ? (waitingForPlatform
+          ? `Noch keine Monatsdaten für ${period}. Die Plattform wurde aufgefordert zu senden – bitte „Erneut versuchen“ oder in der Plattform den Monat an die Buchhaltung pushen.`
+          : pullHint)
+        : `Keine Mitarbeiter und keine Stunden für ${period} auf der Plattform – keine Anfrage gesendet.`)
       : partial
         ? `Teilweise übernommen (${period}): ${released.length} freigegeben${gapSuffix ? ` · ${gapSuffix}` : ""} – fertige Personen laufen weiter, Lücken werden nachgefragt.`
         : autoRelease
@@ -617,7 +657,9 @@ export async function runMonthClose(options = {}) {
             "Plattform: Monatsstunden (attendance.hours) senden",
             "Danach erneut synchronisieren",
           ]
-        : []),
+        : (!hasWork && !mayRequestPlatform
+          ? ["Wenn die Plattform Mitarbeiter/Stunden hat: erneut synchronisieren"]
+          : [])),
   };
 
   const company = { id: companyId, name: options.company?.name || "" };
@@ -633,7 +675,7 @@ export async function runMonthClose(options = {}) {
     message: result.message,
   };
 
-  if (waitingForPlatform && options.notify !== false) {
+  if (waitingForPlatform && options.notify !== false && mayRequestPlatform) {
     await upsertPlatformMessage({
       type: "payroll.waiting",
       severity: "action_needed",
