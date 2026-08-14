@@ -30,7 +30,7 @@ import {
 } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { getSqlitePath, getSqlite, closeSqlite } from "../db/sqlite.mjs";
+import { getSqlitePath, getSqlite, closeSqlite, sqliteFileIntegrityOk } from "../db/sqlite.mjs";
 import { getDataKey } from "../security/crypto.mjs";
 import { audit } from "../security/audit.mjs";
 import { resolveBackupDir } from "../paths.mjs";
@@ -50,6 +50,10 @@ function removeSidecars(target) {
   }
 }
 
+function sqlPathLiteral(filePath) {
+  return `'${String(filePath).replace(/'/g, "''")}'`;
+}
+
 /**
  * Quarantine a corrupt SQLite file (+ WAL/SHM) so a restore or fresh open can proceed.
  */
@@ -64,8 +68,22 @@ export function quarantineCorruptSqlite(target = getSqlitePath()) {
   return { ok: true, quarantined: quarantine, target };
 }
 
+/** Move a bad .wpbak aside so crash-loops do not keep reusing it. */
+function quarantineBadBackup(backupPath) {
+  try {
+    if (!existsSync(backupPath)) return null;
+    const dest = `${backupPath}.bad-${Date.now()}`;
+    renameSync(backupPath, dest);
+    console.error(`[sqlite] Backup quarantined → ${path.basename(dest)}`);
+    return dest;
+  } catch (e) {
+    console.error(`[sqlite] Backup quarantine failed: ${e.message}`);
+    return null;
+  }
+}
+
 /**
- * If the live DB is corrupt and encrypted backups exist, restore the newest one.
+ * If the live DB is corrupt, try encrypted backups newest-first until one passes integrity_check.
  * Default ON (disable with WORKPASS_AUTO_RESTORE_ON_CORRUPT=0).
  */
 export function recoverCorruptDatabase(err) {
@@ -89,24 +107,51 @@ export function recoverCorruptDatabase(err) {
     };
   }
 
-  const newest = backups[0];
-  console.error(`[sqlite] CORRUPT – stelle wieder her aus ${newest.fileName}`);
   const q = quarantineCorruptSqlite();
-  const restored = restoreBackup(newest.path, { skipSafetyCopy: true });
-  try {
-    audit({
-      type: "backup.auto_restore",
-      outcome: "ok",
-      detail: { fileName: newest.fileName, quarantined: q.quarantined, error: detail },
-    });
-  } catch { /* ignore */ }
+  const tried = [];
+
+  for (const bak of backups) {
+    console.error(`[sqlite] CORRUPT – versuche Restore ${bak.fileName}`);
+    try {
+      const restored = restoreBackup(bak.path, { skipSafetyCopy: true, verifyIntegrity: true });
+      try {
+        audit({
+          type: "backup.auto_restore",
+          outcome: "ok",
+          detail: { fileName: bak.fileName, quarantined: q.quarantined, error: detail, tried },
+        });
+      } catch { /* ignore */ }
+
+      return {
+        ok: true,
+        fileName: bak.fileName,
+        quarantined: q.quarantined,
+        restored,
+        tried,
+        message: `SQLite aus Backup ${bak.fileName} wiederhergestellt`,
+      };
+    } catch (e) {
+      const why = e?.message || String(e);
+      console.error(`[sqlite] Backup unbrauchbar ${bak.fileName}: ${why}`);
+      tried.push({ fileName: bak.fileName, error: why });
+      quarantineBadBackup(bak.path);
+      // Drop any partial restore before next attempt
+      const target = getSqlitePath();
+      removeSidecars(target);
+      if (existsSync(target)) {
+        try { unlinkSync(target); } catch { /* ignore */ }
+      }
+    }
+  }
 
   return {
-    ok: true,
-    fileName: newest.fileName,
+    ok: false,
+    reason: "all_backups_corrupt",
+    tried,
     quarantined: q.quarantined,
-    restored,
-    message: `SQLite aus Backup ${newest.fileName} wiederhergestellt`,
+    message:
+      `SQLite korrupt (${detail}). Alle ${backups.length} Backups unbrauchbar. `
+      + "WORKPASS_RESET_CORRUPT_DB=1 setzen (leere DB) oder gültiges .wpbak einspielen.",
   };
 }
 
@@ -183,7 +228,8 @@ function pruneBackups(dir, keep = Number(process.env.WORKPASS_BACKUP_KEEP || 30)
 }
 
 /**
- * Create an encrypted backup of the live SQLite file.
+ * Create an encrypted backup via VACUUM INTO (consistent snapshot), then integrity_check.
+ * Never hot-copy the live WAL main file – that produced unusable .wpbak on Railway.
  */
 export function createBackup(opts = {}) {
   const dir = opts.dir || getBackupDir();
@@ -195,7 +241,19 @@ export function createBackup(opts = {}) {
     throw new Error(`SQLite nicht gefunden: ${sqlitePath}`);
   }
 
-  const plain = readFileSync(sqlitePath);
+  const snapPath = path.join(dir, `workpass-snap-${Date.now()}-${process.pid}.sqlite`);
+  let plain;
+  try {
+    const database = getSqlite();
+    database.exec(`VACUUM INTO ${sqlPathLiteral(snapPath)}`);
+    if (!sqliteFileIntegrityOk(snapPath)) {
+      throw new Error("VACUUM-Snapshot failed integrity_check – Backup abgebrochen");
+    }
+    plain = readFileSync(snapPath);
+  } finally {
+    try { if (existsSync(snapPath)) unlinkSync(snapPath); } catch { /* ignore */ }
+  }
+
   const digest = createHash("sha256").update(plain).digest("hex");
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", backupKey(), iv);
@@ -203,7 +261,8 @@ export function createBackup(opts = {}) {
   const tag = cipher.getAuthTag();
 
   const meta = {
-    kind: "workpass.backup.v1",
+    kind: "workpass.backup.v2",
+    method: "vacuum_into",
     createdAt: new Date().toISOString(),
     sqliteSha256: digest,
     bytes: plain.length,
@@ -232,7 +291,7 @@ export function createBackup(opts = {}) {
   };
 
   try {
-    audit({ type: "backup.create", outcome: "ok", detail: { fileName, sha256: digest, bytes: plain.length } });
+    audit({ type: "backup.create", outcome: "ok", detail: { fileName, sha256: digest, bytes: plain.length, method: "vacuum_into" } });
   } catch { /* ignore */ }
 
   return result;
@@ -297,8 +356,15 @@ export function restoreBackup(backupPath, opts = {}) {
 
   const tmp = `${target}.restore-tmp`;
   writeFileSync(tmp, plain);
-  renameSync(tmp, target);
+  removeSidecars(target);
 
+  const verify = opts.verifyIntegrity !== false;
+  if (verify && !sqliteFileIntegrityOk(tmp)) {
+    try { unlinkSync(tmp); } catch { /* ignore */ }
+    throw new Error("Backup SQLite integrity_check fehlgeschlagen (Datei unbrauchbar)");
+  }
+
+  renameSync(tmp, target);
   removeSidecars(target);
 
   try {

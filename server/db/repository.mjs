@@ -44,13 +44,25 @@ export function initDb() {
     const recovered = recoverCorruptDatabase(err);
     if (recovered.ok) {
       console.error(`[db] ${recovered.message}`);
-      openSqlite();
+      try {
+        openSqlite();
+      } catch (err2) {
+        console.error(`[db] Restore öffnen fehlgeschlagen: ${err2.message}`);
+        const reset = resetCorruptDatabase(err2);
+        if (!reset.ok) {
+          throw new Error(
+            `${recovered.message}; erneutes Öffnen fehlgeschlagen (${err2.message}). `
+            + "WORKPASS_RESET_CORRUPT_DB=1 setzen oder gültiges Backup einspielen."
+          );
+        }
+        openSqlite();
+      }
     } else {
       const reset = resetCorruptDatabase(err);
       if (!reset.ok) {
         throw new Error(
           `${recovered.message || err.message} `
-          + "Admin: neuestes .wpbak wiederherstellen oder WORKPASS_RESET_CORRUPT_DB=1."
+          + "Admin: WORKPASS_RESET_CORRUPT_DB=1 oder gültiges .wpbak."
         );
       }
       openSqlite();

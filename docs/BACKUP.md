@@ -52,9 +52,10 @@ WORKPASS_BACKUP_INTERVAL_HOURS=24
 
 عند الإقلاع يفحص WorkPass الـ DB (`PRAGMA integrity_check`). إذا كانت تالفة:
 
-1. **تلقائياً** يستعيد أحدث `.wpbak` (افتراضي؛ عطّله بـ `WORKPASS_AUTO_RESTORE_ON_CORRUPT=0`)
-2. الملف التالف يُنقل إلى `workpass-local.sqlite.corrupt-<timestamp>`
-3. بدون نسخ احتياطية: اضبط مؤقتاً `WORKPASS_RESET_CORRUPT_DB=1` لبدء DB فارغة (فقدان البيانات) — أو استعد يدوياً:
+1. **تلقائياً** يجرّب `.wpbak` من الأحدث للأقدم؛ كل نسخة تُفحص بـ `integrity_check`
+2. النسخ التالفة تُنقل إلى `*.wpbak.bad-<timestamp>`، والـ DB التالف إلى `workpass-local.sqlite.corrupt-…`
+3. النسخ الجديدة تُنشأ عبر `VACUUM INTO` (لقطة متسقة) — لا Hot-Copy لملف WAL
+4. بدون نسخة صالحة: اضبط مؤقتاً `WORKPASS_RESET_CORRUPT_DB=1` لبدء DB فارغة، ثم أعد مزامنة المنصة
 
 ```bash
 npm run backup:list
