@@ -1,5 +1,5 @@
 /**
- * BMF-PAP 2026 + SV 2026 – klassisches Skript (file://-fähig, ohne ES-Module).
+ * Effective-dated SV + BMF PAP (Jahr aus Tax Rules Engine). file://-fähig, ohne ES-Module.
  * Nutzt vendor/pap-standalone.js (PapLib).
  * SV: BBG, AG/AN-Trennung, Minijob, Midijob/Übergangsbereich (§ 20 Abs. 2a SGB IV).
  */

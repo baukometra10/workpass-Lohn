@@ -63,4 +63,4 @@ Rechnungen ohne `taxRate` im Payload holen den USt-Satz aus dem Engine (Rechnung
 
 Jede Auswertung enthält `citations` (Quelle, Artikel, Gültigkeit). Payroll speichert `taxAudit` (rulesetId, asOf, papYear, citations). Invoice speichert `draft.taxAudit`.
 
-Built-in Packs: `tax-rules/packs.mjs` (`DE-SV-USt-2025.1`, `DE-SV-USt-2026.1`). Lohnsteuerbetrag bleibt **BMF PAP**-Modul (`papYear` aus dem Pack) – nicht KI.
+Built-in Packs: `tax-rules/packs.mjs` (`DE-SV-USt-2025.1`, `DE-SV-USt-2026.1`). Browser-Kopie: `npm run sync:tax-rules` → `tax-rules.js`. Lohnsteuerbetrag bleibt **BMF PAP**-Modul (`papYear` aus dem Pack) – nicht KI.

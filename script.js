@@ -2443,6 +2443,36 @@ function getPayrollAssessmentDays(monthValue, workDays) {
 
 /* ── Legal Rates ── */
 
+function resolvePapYear(payroll) {
+  const fromAudit = payroll?.taxAudit?.papYear;
+  if (fromAudit) return Number(fromAudit) || fromAudit;
+  const fromMethod = String(payroll?.taxMethod || payroll?.method || "").match(/(\d{4})/);
+  if (fromMethod) return fromMethod[1];
+  try {
+    const asOf = payrollMonthInput?.value || "";
+    const r = window.TaxRulesEngine?.resolveSv?.({ asOf, country: "DE" });
+    if (r?.ok && r.papYear) return r.papYear;
+  } catch { /* ignore */ }
+  return "";
+}
+
+function syncHubPapLabels(payroll) {
+  const pap = resolvePapYear(payroll);
+  const ruleset = payroll?.taxAudit?.rulesetId || "";
+  const chip = document.getElementById("legalChip");
+  if (chip) {
+    chip.textContent = pap
+      ? `Berechnung: BMF PAP ${pap} · SV gesetzlich${ruleset ? ` · ${ruleset}` : ""}`
+      : "Berechnung: BMF PAP · SV gesetzlich";
+  }
+  const taxLabel = document.getElementById("payrollTaxPapLabel");
+  if (taxLabel) taxLabel.textContent = pap ? `Lohnsteuer (BMF PAP ${pap})` : "Lohnsteuer (BMF PAP)";
+  const legend = document.getElementById("pvLegendCalc");
+  if (legend) legend.textContent = pap
+    ? `* Berechnung Lohnsteuer: BMF PAP ${pap}`
+    : "* Berechnung Lohnsteuer: BMF PAP";
+}
+
 function applyLegalRatesToForm(showMessage = true) {
   const month = payrollMonthInput?.value || "";
   const cfg = typeof getLegalConfigForDate === "function"
@@ -2475,6 +2505,7 @@ function applyLegalRatesToForm(showMessage = true) {
       `Lohnsteuer nach BMF PAP ${pap || ""} · SV: RV ${ss.pension.employee} · KV ${ss.health.employee}+${ss.healthAdditionalAvg} % · PV ${ss.care.employee}/${ss.care.employeeChildless} · AV ${ss.unemployment.employee}`
         .replace(/\s+/g, " ").trim();
   }
+  syncHubPapLabels({ taxAudit: { papYear: pap, rulesetId: cfg.rulesetId } });
 
   updatePreview();
   saveDraft(false);
@@ -2535,7 +2566,11 @@ function updatePayrollTaxEffectiveDisplay(payroll) {
   const pct = payroll.gross > 0
     ? ((payroll.payrollTax / payroll.gross) * 100).toFixed(2).replace(".", ",")
     : "0,00";
-  payrollTaxEffective.value = `${eur.format(payroll.payrollTax)} (${pct} % vom Brutto, PAP 2026)`;
+  const pap = resolvePapYear(payroll);
+  payrollTaxEffective.value = pap
+    ? `${eur.format(payroll.payrollTax)} (${pct} % vom Brutto, BMF PAP ${pap})`
+    : `${eur.format(payroll.payrollTax)} (${pct} % vom Brutto, BMF PAP)`;
+  syncHubPapLabels(payroll);
 }
 
 /* ── Employee History ── */
@@ -7157,22 +7192,7 @@ initPayrollSheetEditors();
 syncEmployeeAddressFields("auto");
 
 window.addEventListener("payroll-engine-ready", () => {
-  const legalChip = document.getElementById("legalChip");
-  if (legalChip) {
-    const asOf = document.getElementById("payrollMonth")?.value || "";
-    let pap = "";
-    let ruleset = "";
-    try {
-      const r = window.TaxRulesEngine?.resolveSv?.({ asOf, country: "DE" });
-      if (r?.ok) {
-        pap = r.papYear || "";
-        ruleset = r.rulesetId || "";
-      }
-    } catch { /* ignore */ }
-    legalChip.textContent = pap
-      ? `Berechnung: BMF PAP ${pap} · SV gesetzlich${ruleset ? ` · ${ruleset}` : ""}`
-      : "Berechnung: BMF PAP · SV gesetzlich";
-  }
+  syncHubPapLabels(null);
   applyLegalRatesToForm(false);
   updatePreview();
 });
@@ -7198,22 +7218,7 @@ try {
 }
 
 if (window.PayrollEngine?.ready) {
-  const legalChipEl = document.getElementById("legalChip");
-  if (legalChipEl) {
-    const asOf = document.getElementById("payrollMonth")?.value || "";
-    let pap = "";
-    let ruleset = "";
-    try {
-      const r = window.TaxRulesEngine?.resolveSv?.({ asOf, country: "DE" });
-      if (r?.ok) {
-        pap = r.papYear || "";
-        ruleset = r.rulesetId || "";
-      }
-    } catch { /* ignore */ }
-    legalChipEl.textContent = pap
-      ? `Berechnung: BMF PAP ${pap} · SV gesetzlich${ruleset ? ` · ${ruleset}` : ""}`
-      : "Berechnung: BMF PAP · SV gesetzlich";
-  }
+  syncHubPapLabels(null);
   applyLegalRatesToForm(false);
   updatePreview();
 }

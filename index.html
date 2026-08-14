@@ -241,7 +241,7 @@
             <div class="topbar-status ui-status-bar" aria-live="polite">
               <span id="modeChip" class="ui-chip" data-i18n="status.modeInvoice">Modus: Rechnung</span>
               <span id="completionChip" class="ui-chip" data-i18n="status.openShort">Status: Offen</span>
-              <span id="legalChip" class="ui-chip ui-chip-legal">BMF PAP 2026</span>
+              <span id="legalChip" class="ui-chip ui-chip-legal">BMF PAP</span>
             </div>
           </div>
         </div>
@@ -920,7 +920,7 @@
                   <span class="field-hint">Schnelleingabe – wird auf die erste Lohnart (Gehalt) übernommen</span>
                 </label>
                 <label>
-                  Lohnsteuer (BMF PAP 2026)
+                  <span id="payrollTaxPapLabel">Lohnsteuer (BMF PAP)</span>
                   <input id="payrollTaxEffective" type="text" readonly value="wird berechnet…" />
                 </label>
                 <label>
@@ -1610,7 +1610,7 @@
                     <p class="ag-legend layout-agenda-only">*) M = mehrjährig · St = Steuer · SV = sozialversicherungspflichtig · GB = Gesamt-Brutto · KKN = KV-Beitragssatz</p>
                     <p class="ag-legend ag-legend-datev layout-datev-only" id="pvDatevLegend">1 = Hinzurechnungsbetrag · 2 = Vortragswert · 3 = Anrechnungswert · 4 = Herausrechnungsbetrag · E = Einmalbezug · F = Frei · L = laufender Bezug · M = mehrjährig · N = Nachberechnung · P = pauschal · S = sonstiger Bezug · St = Steuer · SV = sozialversicherungspflichtig · Z = Zuschlag/Kürzung · GB = Gesamt-Brutto · KKN = KV-Beitragssatz</p>
                     <p class="ag-legend layout-datev-only" id="pvDatevFormNr">Form.-Nr. LOHN17</p>
-                    <p class="ag-legend" id="pvLegendCalc">* Berechnung Lohnsteuer: BMF-Programmablaufplan 2026</p>
+                    <p class="ag-legend" id="pvLegendCalc">* Berechnung Lohnsteuer: BMF PAP</p>
                     <p class="ag-legend ag-legend-legal" id="pvFooterLegal">Abrechnung nach § 108 Abs. 3 GewO · Entgeltabrechnung nach SGB IV</p>
                     <pre class="ag-legend-company" id="pvFooterBlock"></pre>
                   </div>
@@ -1792,7 +1792,7 @@
     <script src="vendor/pdf.min.js"></script>
     <script src="vendor/pap-standalone.js"></script>
     <script src="datev-import.js?v=2"></script>
-    <script src="tax-rules.js?v=3"></script>
+    <script src="tax-rules.js?v=4"></script>
     <script src="payroll-bridge.js?v=4"></script>
     <script src="legal-config.js?v=3"></script>
     <script src="annual-certificate.js?v=2"></script>
@@ -1807,6 +1807,6 @@
     <script src="workpass-hub.js?v=11"></script>
     <script src="templates.js?v=1" defer></script>
     <script src="signature-engine.js?v=4"></script>
-    <script src="script.js?v=98" defer></script>
+    <script src="script.js?v=99" defer></script>
   </body>
 </html>

@@ -3,6 +3,10 @@
  * Run: node tests/tax-rules.mjs
  */
 import { evaluate, resolveSv, listRulesets, setExtraPacks, legalConfig } from "../tax-rules/engine.mjs";
+import { builtinPacks } from "../tax-rules/packs.mjs";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 
 let passed = 0;
 let failed = 0;
@@ -20,6 +24,12 @@ console.log("\n=== Tax Rules Engine ===");
 const sets = listRulesets({ country: "DE" });
 assert(sets.some((p) => p.id.includes("2025")), "2025 pack published");
 assert(sets.some((p) => p.id.includes("2026")), "2026 pack published");
+
+const browserSrc = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../tax-rules.js"), "utf8");
+assert(browserSrc.includes("TAX_RULES_PACKS_START"), "browser file has pack sync markers");
+for (const p of builtinPacks) {
+  assert(browserSrc.includes(`"id": "${p.id}"`), `browser pack synced: ${p.id}`);
+}
 
 const cfg25 = legalConfig({ country: "DE", asOf: "2025-06-01" });
 const cfg26 = legalConfig({ country: "DE", asOf: "2026-06-01" });
