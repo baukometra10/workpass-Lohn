@@ -1873,6 +1873,15 @@
     if (!companyId) return;
     const period = currentPayrollPeriod();
     try {
+      const ok = await humanConfirm({
+        title: uiT("portal.monthCloseTitle", "Monatsabschluss"),
+        body: uiT(
+          "portal.confirmPingPlatform",
+          "Plattform auffordern, Monatsdaten zu senden? Keine Steueränderung durch KI."
+        ),
+        requireCheck: true,
+      });
+      if (!ok) return;
       setStatus("Plattform wird aufgefordert, Monatsdaten zu senden…", true);
       const data = await apiFetch("/v1/payroll/month-close", {
         method: "POST",
@@ -1881,6 +1890,7 @@
           period,
           pull: true,
           autoRelease: false,
+          confirm: true,
         }),
       });
       renderMonthCloseStatus(data);
@@ -2588,6 +2598,12 @@
       if (res.status === 401) {
         throw new Error("Nicht autorisiert – API-Key oder Plattform-Login prüfen.");
       }
+      if (res.status === 422 && data.code === "confirm_required") {
+        throw new Error(
+          data.error
+          || "Bitte die Aktion im Dialog bestätigen (Menschliche Bestätigung)."
+        );
+      }
       throw new Error(
         data.error
         || data.message
@@ -3087,7 +3103,10 @@
       if (!go) return null;
     }
     try {
-      const data = await apiFetch(`/v1/payroll/${encodeURIComponent(jobId)}/release`, { method: "POST", body: "{}" });
+      const data = await apiFetch(`/v1/payroll/${encodeURIComponent(jobId)}/release`, {
+        method: "POST",
+        body: JSON.stringify({ confirm: true }),
+      });
       if (!data.ok) throw new Error(data.error || "Freigabe fehlgeschlagen");
       if (!silent) setStatus(`Freigegeben → Plattform/Mitarbeiter-App · ${jobId}`, true);
       else setStatus(uiT("portal.autoReleased", "Abrechnung sofort an die Plattform gesendet."), true);
@@ -3113,6 +3132,7 @@
           pull: false,
           autoRelease: true,
           notify: true,
+          confirm: true,
         }),
       });
       const n = Array.isArray(data?.newlyReleased) ? data.newlyReleased.length : Number(data?.released || 0);
