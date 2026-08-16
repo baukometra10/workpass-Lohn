@@ -2907,3 +2907,90 @@ body.is-rtl .missing-panel ul {
   justify-content: flex-end;
   flex-wrap: wrap;
 }
+
+/* GoBD / export CTAs + human-readable audit */
+body.company-portal .portal-cta-primary {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0 16px;
+  font-weight: 700;
+  border-radius: 11px;
+  border: 1px solid rgba(120, 210, 255, 0.45);
+  background: linear-gradient(180deg, #2a7fd4 0%, #185fa8 100%);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(16, 60, 120, 0.28);
+}
+body.company-portal .portal-cta-primary:hover {
+  filter: brightness(1.07);
+}
+body.company-portal #portalExportCard .portal-primary-actions,
+body.company-portal .portal-gobd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+body.company-portal .portal-gobd-summary {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(120, 180, 230, 0.28);
+  background: rgba(12, 28, 48, 0.45);
+  color: #d9e8f8;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+body.company-portal .portal-gobd-summary strong {
+  color: #fff;
+}
+body.company-portal .portal-gobd-list {
+  margin-top: 8px;
+  max-height: 360px;
+  overflow: auto;
+}
+body.company-portal .portal-gobd-list .api-inbox-item {
+  align-items: flex-start;
+}
+body.company-portal .portal-gobd-op {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  background: rgba(70, 140, 210, 0.25);
+  color: #cfe6ff;
+}
+body.company-portal .portal-gobd-op.is-ok {
+  background: rgba(46, 160, 110, 0.28);
+  color: #c8f0da;
+}
+body.company-portal .portal-gobd-op.is-warn {
+  background: rgba(200, 140, 40, 0.28);
+  color: #ffe2b0;
+}
+body.company-portal .portal-gobd-op.is-bad {
+  background: rgba(190, 70, 70, 0.3);
+  color: #ffd0d0;
+}
+body.company-portal .portal-gobd-meta {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--muted, #9bb0c7);
+  line-height: 1.4;
+}
+body.theme-light .portal-gobd-summary {
+  background: #f4f8fc;
+  border-color: #c9d9ea;
+  color: #243447;
+}
+body.theme-light .portal-gobd-summary strong {
+  color: #122033;
+}
+body.theme-light .portal-gobd-op {
+  background: #e7f1fb;
+  color: #1f4f7a;
+}
+

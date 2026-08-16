@@ -3690,6 +3690,201 @@
         toast(e.message, "error");
       }
     });
+    function euroDe(n) {
+      if (n == null || n === "" || Number.isNaN(Number(n))) return "—";
+      return Number(n).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+    }
+
+    function formatWhen(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return String(iso);
+      return d.toLocaleString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
+    function gobdOpLabel(op) {
+      const map = {
+        "payroll.created": uiT("portal.opPayrollCreated", "Abrechnung erstellt"),
+        "payroll.upsert": uiT("portal.opPayrollUpdated", "Abrechnung aktualisiert"),
+        "payroll.corrected": uiT("portal.opPayrollCorrected", "Abrechnung korrigiert"),
+        "payroll.revision_archived": uiT("portal.opRevisionArchived", "Original archiviert (vor Korrektur)"),
+        "sync.status": uiT("portal.opSyncStatus", "Zustell-Status geändert"),
+        "invoice.revision_archived": uiT("portal.opInvoiceRevision", "Rechnung archiviert (vor Korrektur)"),
+      };
+      return map[String(op || "")] || uiT("portal.opGeneric", "Vorgang") + (op ? `: ${op}` : "");
+    }
+
+    function gobdSourceLabel(src) {
+      const map = {
+        user: uiT("portal.srcUser", "Mensch in WorkPass"),
+        api: uiT("portal.srcApi", "API / Schnittstelle"),
+        job: uiT("portal.srcJob", "Hintergrund-Job"),
+        platform: uiT("portal.srcPlatform", "Plattform SUPPIX"),
+        system: uiT("portal.srcSystem", "System"),
+      };
+      return map[String(src || "").toLowerCase()] || (src || "—");
+    }
+
+    function gobdStatusLabel(st) {
+      const map = {
+        PENDING: uiT("portal.stPending", "Wartend"),
+        PROCESSING: uiT("portal.stProcessing", "In Bearbeitung"),
+        COMPLETED: uiT("portal.stCompleted", "Erledigt"),
+        FAILED: uiT("portal.stFailed", "Fehlgeschlagen"),
+        RETRYING: uiT("portal.stRetrying", "Wird erneut versucht"),
+        DEAD_LETTER: uiT("portal.stDeadLetter", "Blockiert – manueller Eingriff"),
+      };
+      return map[String(st || "").toUpperCase()] || (st || "—");
+    }
+
+    function gobdStatusClass(st) {
+      const s = String(st || "").toUpperCase();
+      if (s === "COMPLETED") return "is-ok";
+      if (s === "RETRYING" || s === "PENDING" || s === "PROCESSING") return "is-warn";
+      if (s === "FAILED" || s === "DEAD_LETTER") return "is-bad";
+      return "";
+    }
+
+    function showGobdPanel(summaryHtml, itemsHtml) {
+      const sum = $("portalGobdSummary");
+      const list = $("portalGobdList");
+      if (sum) {
+        sum.hidden = !summaryHtml;
+        sum.innerHTML = summaryHtml || "";
+      }
+      if (list) {
+        list.hidden = !itemsHtml;
+        list.innerHTML = itemsHtml || "";
+      }
+    }
+
+    function renderGobdAuditHuman(data) {
+      const events = (data.events || []).slice().reverse().slice(0, 25);
+      const verifyOk = data.verify?.ok !== false;
+      const summary = `
+        <strong>${esc(uiT("portal.auditTitle", "Prüfprotokoll"))}</strong><br/>
+        ${esc(uiT("portal.auditCount", "{n} Einträge").replace("{n}", String(data.count ?? events.length)))}
+        · ${verifyOk
+          ? esc(uiT("portal.auditChainOk", "Protokollkette in Ordnung"))
+          : esc(uiT("portal.auditChainBad", "Protokollkette prüfen"))}
+      `;
+      if (!events.length) {
+        showGobdPanel(summary, `<div class="api-inbox-item"><div><strong>${esc(uiT("portal.auditEmpty", "Noch keine Vorgänge für diese Firma."))}</strong></div></div>`);
+        return;
+      }
+      const items = events.map((ev) => {
+        const oldNet = ev.oldValue?.payroll?.net ?? ev.oldValue?.payroll?.netto;
+        const newNet = ev.newValue?.payroll?.net ?? ev.newValue?.payroll?.netto;
+        const oldGross = ev.oldValue?.payroll?.gross ?? ev.oldValue?.payroll?.brutto;
+        const newGross = ev.newValue?.payroll?.gross ?? ev.newValue?.payroll?.brutto;
+        const reason = ev.detail?.reason || "";
+        const moneyBits = [];
+        if (oldGross != null || newGross != null) {
+          moneyBits.push(`${uiT("lohn.brutto", "Brutto")}: ${euroDe(oldGross)} → ${euroDe(newGross)}`);
+        }
+        if (oldNet != null || newNet != null) {
+          moneyBits.push(`${uiT("lohn.netto", "Netto")}: ${euroDe(oldNet)} → ${euroDe(newNet)}`);
+        }
+        const who = ev.actor && ev.actor !== "system" && ev.actor !== "api"
+          ? ev.actor
+          : gobdSourceLabel(ev.source);
+        const meta = [
+          formatWhen(ev.createdAt),
+          who ? `${uiT("portal.auditBy", "von")}: ${who}` : "",
+          ev.employeeId ? `${uiT("lohn.id", "ID")}: ${ev.employeeId}` : "",
+          reason ? `${uiT("portal.correctReason", "Korrekturgrund")}: ${reason}` : "",
+          ...moneyBits,
+        ].filter(Boolean).join(" · ");
+        return `
+          <div class="api-inbox-item">
+            <div>
+              <strong>${esc(gobdOpLabel(ev.op))}</strong>
+              <span class="portal-gobd-op ${gobdStatusClass(ev.status)}">${esc(gobdStatusLabel(ev.status))}</span>
+              <div class="portal-gobd-meta">${esc(meta)}</div>
+            </div>
+          </div>`;
+      }).join("");
+      showGobdPanel(summary, items);
+    }
+
+    function renderGobdSyncHuman(data) {
+      const c = data.counts || {};
+      const summary = `
+        <strong>${esc(uiT("portal.syncHumanTitle", "Zustellung an die Plattform"))}</strong><br/>
+        ${esc(uiT("portal.syncHumanTotal", "{n} Lieferungen").replace("{n}", String(data.total || 0)))}
+      `;
+      const rows = [
+        ["PENDING", c.PENDING],
+        ["PROCESSING", c.PROCESSING],
+        ["RETRYING", c.RETRYING],
+        ["COMPLETED", c.COMPLETED],
+        ["FAILED", c.FAILED],
+        ["DEAD_LETTER", c.DEAD_LETTER],
+      ].filter(([, n]) => Number(n) > 0);
+
+      const statusItems = rows.map(([st, n]) => `
+        <div class="api-inbox-item">
+          <div>
+            <strong>${esc(gobdStatusLabel(st))}</strong>
+            <span class="portal-gobd-op ${gobdStatusClass(st)}">${esc(String(n))}</span>
+            <div class="portal-gobd-meta">${esc(uiT("portal.syncHumanHint." + st, syncHintFallback(st)))}</div>
+          </div>
+        </div>`).join("");
+
+      const dead = (data.deadLetter || []).slice(0, 8).map((d) => `
+        <div class="api-inbox-item">
+          <div>
+            <strong>${esc(uiT("portal.stDeadLetter", "Blockiert – manueller Eingriff"))}</strong>
+            <div class="portal-gobd-meta">${esc([
+              d.deliveryId || "",
+              d.lastError || "",
+              d.attempts != null ? `${uiT("portal.attempts", "Versuche")}: ${d.attempts}` : "",
+            ].filter(Boolean).join(" · "))}</div>
+          </div>
+        </div>`).join("");
+
+      const empty = !rows.length
+        ? `<div class="api-inbox-item"><div><strong>${esc(uiT("portal.syncEmpty", "Keine offenen Zustellungen."))}</strong></div></div>`
+        : "";
+
+      showGobdPanel(summary, statusItems + dead + empty);
+    }
+
+    function syncHintFallback(st) {
+      const map = {
+        PENDING: "Wartet auf Versand an die Plattform.",
+        PROCESSING: "An Plattform gesendet – wartet auf Bestätigung.",
+        RETRYING: "Fehler – erneuter Versuch geplant.",
+        COMPLETED: "Erfolgreich zugestellt / bestätigt.",
+        FAILED: "Fehlgeschlagen.",
+        DEAD_LETTER: "Nach mehreren Fehlern gestoppt – bitte manuell prüfen.",
+      };
+      return map[st] || "";
+    }
+
+    function renderGobdCorrectHuman(data) {
+      const summary = data.ok
+        ? `<strong>${esc(uiT("portal.correctDone", "Korrektur gespeichert."))}</strong><br/>${esc(data.message || uiT("portal.correctBody", "Original archiviert. Erneute Freigabe nötig."))}`
+        : `<strong>${esc(uiT("portal.correctFailed", "Korrektur fehlgeschlagen"))}</strong><br/>${esc((data.errors || []).join(" · ") || data.error || data.message || "")}`;
+      const items = `
+        <div class="api-inbox-item">
+          <div>
+            <strong>${esc(uiT("portal.correctStatus", "Neuer Status"))}: ${esc(data.job?.status || "—")}</strong>
+            <div class="portal-gobd-meta">${esc([
+              data.job?.revisionNo != null ? `${uiT("portal.revision", "Version")}: ${data.job.revisionNo}` : "",
+              data.job?.correctionReason || "",
+            ].filter(Boolean).join(" · "))}</div>
+          </div>
+        </div>`;
+      showGobdPanel(summary, items);
+    }
+
     $("btnGobdExport")?.addEventListener("click", async () => {
       try {
         const companyId = companyPortalId || apiConfig().companyId;
@@ -3716,6 +3911,10 @@
         a.download = data.fileName || `gobd-${companyId}.json`;
         a.click();
         URL.revokeObjectURL(a.href);
+        showGobdPanel(
+          `<strong>${esc(uiT("portal.gobdExportDone", "GoBD-Export erstellt."))}</strong><br/>${esc(uiT("portal.gobdExportHuman", "Datei wurde heruntergeladen – für Steuerprüfung / Archiv."))}`,
+          ""
+        );
         toast(uiT("portal.gobdExportDone", "GoBD-Export erstellt."), "ok");
       } catch (e) {
         toast(e.message, "error");
@@ -3750,17 +3949,7 @@
             source: "user",
           }),
         });
-        const out = $("portalGobdOut");
-        if (out) {
-          out.style.display = "block";
-          out.textContent = JSON.stringify({
-            ok: data.ok,
-            status: data.job?.status,
-            revisionNo: data.job?.revisionNo,
-            message: data.message,
-            errors: data.errors,
-          }, null, 2);
-        }
+        renderGobdCorrectHuman(data);
         toast(data.message || uiT("portal.correctDone", "Korrektur gespeichert."), data.ok ? "ok" : "error");
         await loadPortalDashboard(true);
       } catch (e) {
@@ -3771,16 +3960,8 @@
       try {
         const companyId = companyPortalId || apiConfig().companyId;
         const data = await apiFetch(`/v1/gobd/audit?companyId=${encodeURIComponent(companyId)}&limit=50`);
-        const out = $("portalGobdOut");
-        if (out) {
-          out.style.display = "block";
-          out.textContent = JSON.stringify({
-            count: data.count,
-            verify: data.verify,
-            events: (data.events || []).slice(-15),
-          }, null, 2);
-        }
-        toast(uiT("portal.gobdAuditDone", "Audit geladen."), "ok");
+        renderGobdAuditHuman(data);
+        toast(uiT("portal.gobdAuditDone", "Prüfprotokoll geladen."), "ok");
       } catch (e) {
         toast(e.message, "error");
       }
@@ -3789,17 +3970,8 @@
       try {
         const companyId = companyPortalId || apiConfig().companyId;
         const data = await apiFetch(`/v1/gobd/sync?companyId=${encodeURIComponent(companyId)}`);
-        const out = $("portalGobdOut");
-        if (out) {
-          out.style.display = "block";
-          out.textContent = JSON.stringify({
-            counts: data.counts,
-            deadLetter: data.deadLetter,
-            retrying: data.retrying,
-            total: data.total,
-          }, null, 2);
-        }
-        toast(uiT("portal.gobdSyncDone", "Sync-Status geladen."), "ok");
+        renderGobdSyncHuman(data);
+        toast(uiT("portal.gobdSyncDone", "Zustell-Status geladen."), "ok");
       } catch (e) {
         toast(e.message, "error");
       }
