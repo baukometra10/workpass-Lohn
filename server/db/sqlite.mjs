@@ -86,7 +86,7 @@ export function openSqlite(dbPath = getSqlitePath()) {
     opened.exec(schema);
     opened.prepare(
       "INSERT INTO meta(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
-    ).run("schema_version", "1");
+    ).run("schema_version", "2");
   } catch (err) {
     try { opened?.close(); } catch { /* ignore */ }
     throw err;

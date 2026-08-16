@@ -10,6 +10,10 @@ import { enqueueSync, scheduleSyncFlush, syncHealth, flushSyncOutbox } from "./s
 import { normalizeCompanyId } from "../tenant.mjs";
 import { encryptJson, decryptJson, isEncryptedBlob } from "../security/crypto.mjs";
 import { recoverCorruptDatabase, resetCorruptDatabase } from "../backup/backup.mjs";
+import { guardPayrollWrite, guardInvoiceWrite, GobdImmutableError, isLockedStatus } from "../gobd/revisions.mjs";
+import { appendBusinessAudit } from "../gobd/business-audit.mjs";
+
+export { GobdImmutableError };
 
 const dataRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "data");
 let ready = false;
@@ -257,6 +261,42 @@ export function savePayrollJob(job, opts = {}) {
       updatedAt: now(),
     }, { skipSync: opts.skipSync, skipInit: true });
   }
+  const prevRow = sqliteGet(`SELECT payload_json FROM payroll_jobs WHERE job_id = ?`, [String(job.jobId)]);
+  const prev = prevRow ? unpackPayload(prevRow.payload_json) : null;
+  const guard = opts.skipGobdGuard
+    ? { ok: true, archived: null, materialHash: null }
+    : guardPayrollWrite(prev, job, opts);
+  if (guard.corrected && guard.archived) {
+    job.revisionNo = (Number(prev?.revisionNo) || guard.archived.revisionNo || 1) + 1;
+    job.previousRevisionId = guard.archived.revisionId;
+    job.correctionReason = opts.correction?.reason || job.correctionReason;
+    job.correctedAt = now();
+    job.correctedBy = opts.correction?.actor || opts.actor || job.correctedBy;
+    job.materialHash = guard.materialHash;
+    // After correction: document is draft again until human re-releases
+    if (!opts.keepReleased) {
+      job.status = job.status === "error" ? "error" : "calculated";
+      job.releasedAt = null;
+      if (job.payslip) {
+        job.payslip.status = job.status;
+        job.payslip.releasedAt = null;
+      }
+    }
+  } else if (prev && isLockedStatus(prev.status) && guard.sameMaterial && !opts.correction && !opts.forceStatus) {
+    // Idempotent re-push: never silently unlock a released document
+    job.status = prev.status;
+    job.releasedAt = prev.releasedAt || job.releasedAt;
+    job.revisionNo = prev.revisionNo || 1;
+    job.materialHash = guard.materialHash || prev.materialHash;
+    if (job.payslip) {
+      job.payslip.status = prev.status;
+      job.payslip.releasedAt = job.releasedAt;
+    }
+  } else if (!job.materialHash && guard.materialHash) {
+    job.materialHash = guard.materialHash;
+  }
+  if (!job.revisionNo) job.revisionNo = Number(prev?.revisionNo) || 1;
+
   const ts = now();
   sqliteExec(
     `INSERT INTO payroll_jobs(job_id, company_id, employee_id, period, status, payload_json, created_at, updated_at, released_at, sync_version)
@@ -282,6 +322,37 @@ export function savePayrollJob(job, opts = {}) {
       job.releasedAt || null,
     ]
   );
+  if (!opts.skipAudit && !opts.skipInit) {
+    try {
+      appendBusinessAudit({
+        companyId,
+        employeeId: job.employee?.id || "",
+        actor: opts.actor || opts.correction?.actor || "system",
+        source: opts.source || opts.correction?.source || (prev ? "api" : "api"),
+        op: guard.corrected ? "payroll.corrected" : (prev ? "payroll.upsert" : "payroll.created"),
+        entityType: "payroll",
+        entityId: job.jobId,
+        status: "COMPLETED",
+        correlationId: opts.correlationId || opts.correction?.correlationId || job.jobId,
+        oldValue: prev ? {
+          status: prev.status,
+          revisionNo: prev.revisionNo || 1,
+          payroll: prev.payroll || prev.payslip?.totals || null,
+          materialHash: prev.materialHash || null,
+        } : null,
+        newValue: {
+          status: job.status,
+          revisionNo: job.revisionNo || 1,
+          payroll: job.payroll || job.payslip?.totals || null,
+          materialHash: job.materialHash || guard.materialHash || null,
+        },
+        detail: {
+          corrected: Boolean(guard.corrected),
+          reason: opts.correction?.reason || null,
+        },
+      });
+    } catch { /* audit must not block payroll */ }
+  }
   if (!opts.skipSync) {
     enqueueSync("payroll", job.jobId, job);
     scheduleSyncFlush();
@@ -338,6 +409,11 @@ export function saveInvoiceJob(job, opts = {}) {
       createdAt: job.createdAt || now(),
       updatedAt: now(),
     }, { skipSync: opts.skipSync, skipInit: true });
+  }
+  const prevRow = sqliteGet(`SELECT payload_json FROM invoice_jobs WHERE id = ?`, [String(job.id)]);
+  const prev = prevRow ? unpackPayload(prevRow.payload_json) : null;
+  if (!opts.skipGobdGuard) {
+    guardInvoiceWrite(prev, job, opts);
   }
   const ts = now();
   sqliteExec(

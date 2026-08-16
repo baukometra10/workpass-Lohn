@@ -14,6 +14,9 @@ WorkPass Lohn treats **tax and statutory decisions as human-only**.
 - SEPA validates **IBAN mod-97**; invalid debtor IBAN blocks export.
 - Compliance calendar v2 uses **German banking days** (weekends + federal holidays + Easter) and links readiness blockers.
 - Delivery trust v2 exposes a **0–100 score**, gaps, and human replay (`POST /v1/portal/delivery-trust/replay`).
+- GoBD: released payslips are **immutable** without `POST /v1/payroll/:jobId/correct` (reason + confirm); see `docs/VERFAHRENSDOKUMENTATION.md`.
+- Business audit + GoBD export: `GET /v1/gobd/audit`, `POST /v1/gobd/export`.
+- Auditor role (`WORKPASS_AUDITOR_EMAILS`): read-only sessions.
 
 ## Code
 

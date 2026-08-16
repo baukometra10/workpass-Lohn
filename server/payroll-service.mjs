@@ -4,6 +4,7 @@
  */
 import { getPayrollCore } from "./engine.mjs";
 import { loadPayrollJob, savePayrollJob, listPayrollJobs } from "./store.mjs";
+import { GobdImmutableError } from "./gobd/revisions.mjs";
 import { buildEmployeeDelivery, notifyPlatform } from "./notify.mjs";
 import { enqueueDelivery, ackDelivery, markDeliveryWebhook, getDelivery } from "./delivery-queue.mjs";
 import { ensureCompanyFromPayload } from "./company-service.mjs";
@@ -197,6 +198,9 @@ export async function ingestPayroll(payload, options = {}) {
 
   const now = new Date().toISOString();
   const prev = loadPayrollJob(id);
+  const correction = options.correction && typeof options.correction === "object"
+    ? options.correction
+    : null;
   // Never mark released here – delivery must go through releasePayrollJob (enqueue + webhook).
   const job = {
     jobId: id,
@@ -205,7 +209,8 @@ export async function ingestPayroll(payload, options = {}) {
     status,
     createdAt: prev?.createdAt || now,
     updatedAt: now,
-    releasedAt: prev?.releasedAt || null,
+    releasedAt: correction ? null : (prev?.releasedAt || null),
+    revisionNo: prev?.revisionNo || 1,
     company: {
       id: companyId,
       name: payslip.company.name,
@@ -226,7 +231,27 @@ export async function ingestPayroll(payload, options = {}) {
     printHints: soft,
   };
 
-  savePayrollJob(job);
+  try {
+    savePayrollJob(job, {
+      correction: correction || undefined,
+      actor: options.actor || correction?.actor || "api",
+      source: options.source || correction?.source || "api",
+      correlationId: options.correlationId || correction?.correlationId || id,
+    });
+  } catch (e) {
+    if (e instanceof GobdImmutableError || e?.code === "immutable_document") {
+      return {
+        ok: false,
+        code: e.code || "immutable_document",
+        errors: [e.message],
+        detail: e.detail || null,
+        job: prev,
+        payslip: prev?.payslip || null,
+        immutable: true,
+      };
+    }
+    throw e;
+  }
 
   let platformMessages = null;
   if (options.notifyGaps !== false) {
@@ -390,7 +415,7 @@ export async function releasePayrollJob(jobId, options = {}) {
       job.payslip.status = "released";
       job.payslip.releasedAt = job.releasedAt;
     }
-    savePayrollJob(job);
+    savePayrollJob(job, { actor: options.actor || "user", source: options.source || "user", forceStatus: true });
   }
 
   const delivery = buildEmployeeDelivery("payroll", job);
@@ -545,6 +570,81 @@ export async function deliverReleasedPayslips(options = {}) {
       : (skipped
         ? `${skipped} bereits einmal gesendet – kein erneuter Webhook.`
         : "Freigegebene Abrechnungen in Warteschlange – Plattform pollt /v1/delivery/pending."),
+  };
+}
+
+/**
+ * Explicit correction of a released payslip (GoBD): archives original, writes new values, requires reason.
+ * Does not auto-release – human must release again.
+ */
+export async function correctPayrollJob(jobId, options = {}) {
+  const prev = loadPayrollJob(jobId);
+  if (!prev) return { ok: false, status: 404, error: "Job nicht gefunden" };
+  const scopeCheck = assertSameTenant(options.tenantScope, prev.company?.id, "Payroll-Korrektur");
+  if (!scopeCheck.ok) return { ok: false, status: 403, error: scopeCheck.error };
+
+  const reason = String(options.reason || "").trim();
+  if (reason.length < 3) {
+    return { ok: false, status: 422, error: "Korrekturgrund (reason) mindestens 3 Zeichen" };
+  }
+
+  const inbound = options.payload && typeof options.payload === "object"
+    ? options.payload
+    : (prev.inbound || {
+      kind: "platform.payroll.v1",
+      company: prev.company,
+      employee: prev.employee,
+      period: prev.period,
+      state: options.state || prev.state,
+    });
+
+  // Allow amount/hours overrides on top of previous inbound
+  if (options.state && typeof options.state === "object") {
+    inbound.state = { ...(inbound.state || prev.state || {}), ...options.state };
+  }
+  if (options.hours != null) {
+    inbound.attendance = {
+      ...(inbound.attendance || {}),
+      hours: options.hours,
+    };
+    inbound.state = { ...(inbound.state || prev.state || {}), hours: options.hours, workedHours: options.hours };
+  }
+  if (Array.isArray(options.wageItems)) {
+    inbound.wageItems = options.wageItems;
+  } else if (options.wageAmountDelta != null && Array.isArray(inbound.wageItems)) {
+    inbound.wageItems = inbound.wageItems.map((w, i) => (
+      i === 0
+        ? { ...w, amount: Number(w.amount || 0) + Number(options.wageAmountDelta) }
+        : w
+    ));
+  }
+  if (!inbound.company) inbound.company = prev.company;
+  if (!inbound.employee) inbound.employee = prev.employee;
+  if (!inbound.period) inbound.period = prev.period;
+
+  const result = await ingestPayroll(inbound, {
+    jobId: prev.jobId,
+    tenantScope: options.tenantScope || prev.company?.id,
+    autoRelease: false,
+    notifyGaps: options.notifyGaps !== false,
+    actor: options.actor || "user",
+    source: options.source || "user",
+    correlationId: options.correlationId || `correct:${prev.jobId}:${Date.now()}`,
+    correction: {
+      reason,
+      actor: options.actor || "user",
+      source: options.source || "user",
+      correlationId: options.correlationId || `correct:${prev.jobId}`,
+    },
+  });
+
+  return {
+    ...result,
+    corrected: Boolean(result.ok && !result.immutable),
+    previousStatus: prev.status,
+    message: result.ok
+      ? "Korrektur gespeichert. Original archiviert. Erneute Freigabe erforderlich."
+      : (result.errors || []).join(" · "),
   };
 }
 

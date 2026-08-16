@@ -112,17 +112,36 @@ export function authPublicConfig() {
   };
 }
 
+function normalizeRole(role, email = "") {
+  const r = String(role || "").toLowerCase().trim();
+  if (r === "admin" || adminEmails().includes(String(email || "").toLowerCase())) return "admin";
+  if (r === "auditor" || auditorEmails().includes(String(email || "").toLowerCase())) return "auditor";
+  return "accountant";
+}
+
+function auditorEmails() {
+  return String(process.env.WORKPASS_AUDITOR_EMAILS || "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export function isReadOnlyRole(role) {
+  return String(role || "") === "auditor";
+}
+
 export function createSession(user) {
   const now = Date.now();
   const locale = String(user.locale || user.language || user.preferredLocale || "")
     .trim()
     .toLowerCase()
     .slice(0, 2);
+  const role = normalizeRole(user.role, user.email);
   const payload = {
     sub: String(user.id || user.email || "user"),
     email: String(user.email || "").toLowerCase(),
     name: String(user.name || user.email || ""),
-    role: user.role === "admin" ? "admin" : "accountant",
+    role,
     companyId: user.companyId ? String(user.companyId) : "",
     locale: locale || "",
     iat: now,
@@ -140,6 +159,7 @@ export function createSession(user) {
       role: payload.role,
       companyId: payload.companyId || null,
       locale: payload.locale || null,
+      readOnly: role === "auditor",
     },
   };
 }
@@ -177,9 +197,10 @@ export function verifySessionToken(token) {
       id: payload.sub,
       email: payload.email,
       name: payload.name,
-      role: payload.role === "admin" ? "admin" : "accountant",
+      role: normalizeRole(payload.role, payload.email),
       companyId: payload.companyId || null,
       locale: payload.locale || null,
+      readOnly: normalizeRole(payload.role, payload.email) === "auditor",
     },
     payload,
   };
@@ -205,7 +226,9 @@ function adminEmails() {
 function resolveRole(email) {
   const e = String(email || "").toLowerCase();
   if (adminEmails().includes(e)) return "admin";
+  if (auditorEmails().includes(e)) return "auditor";
   if (process.env.WORKPASS_DEFAULT_ROLE === "admin") return "admin";
+  if (process.env.WORKPASS_DEFAULT_ROLE === "auditor") return "auditor";
   return "accountant";
 }
 
@@ -247,7 +270,7 @@ async function verifyWithPlatform(email, password) {
         id: user.id || mail,
         email: mail,
         name: user.name || mail,
-        role: user.role === "admin" || adminEmails().includes(mail) ? "admin" : (user.role || "accountant"),
+        role: normalizeRole(user.role, mail),
       },
       via: "platform",
     };
@@ -433,7 +456,9 @@ export async function loginWithPassword(email, password, req, opts = {}) {
     };
   }
 
-  const role = result.user.role === "admin" ? "admin" : resolveRole(result.user.email);
+  const role = result.user.role === "admin" || result.user.role === "auditor"
+    ? normalizeRole(result.user.role, result.user.email)
+    : resolveRole(result.user.email);
   if (adminOnly && role !== "admin") {
     noteAuthFailure(ip);
     audit({ type: "auth.login.fail", outcome: "deny", ip, detail: { email: mail, reason: "not-admin" } });

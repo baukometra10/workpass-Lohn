@@ -19,8 +19,8 @@ const invoiceDir = path.join(dataDir, "invoices");
 
 /** Persistence is opened via initDb() in server/index.mjs */
 
-export function savePayrollJob(job) {
-  return repoSavePayroll(job);
+export function savePayrollJob(job, opts = {}) {
+  return repoSavePayroll(job, opts);
 }
 
 export function loadPayrollJob(jobId) {
@@ -31,8 +31,8 @@ export function listPayrollJobs(filter = {}) {
   return repoListPayroll(filter);
 }
 
-export function saveInvoiceJob(job) {
-  return repoSaveInvoice(job);
+export function saveInvoiceJob(job, opts = {}) {
+  return repoSaveInvoice(job, opts);
 }
 
 export function loadInvoiceJob(id) {

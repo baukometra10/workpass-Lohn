@@ -10,7 +10,7 @@
 import http from "node:http";
 import { URL } from "node:url";
 import { ACCOUNTING_VERSION, SERVICE_NAME } from "./version.mjs";
-import { ingestPayroll, ingestPayrollBatch, releasePayrollJob, deliverReleasedPayslips } from "./payroll-service.mjs";
+import { ingestPayroll, ingestPayrollBatch, releasePayrollJob, deliverReleasedPayslips, correctPayrollJob } from "./payroll-service.mjs";
 import { enrichPayrollJob, getLastEnrichStatus } from "./employee-enrich.mjs";
 import { runMonthClose, currentPeriod, requestEmployeeDataFromPlatform, resolvePlatformPullUrls } from "./month-close.mjs";
 import {
@@ -109,6 +109,7 @@ import {
   unlockAuthRateLimits,
   createPlatformHandoff,
   bootstrapPlatformSso,
+  isReadOnlyRole,
 } from "./auth-session.mjs";
 import { clearRateLimitState } from "./security/rate-limit.mjs";
 import {
@@ -126,6 +127,9 @@ import {
   buildElsterPrepChecklist,
 } from "./portal-trust.mjs";
 import { buildOpsHealth } from "./ops-health.mjs";
+import { buildGobdExport } from "./gobd/export.mjs";
+import { listBusinessAudit, verifyBusinessAuditChain, SYNC_STATUSES } from "./gobd/business-audit.mjs";
+import { listRevisions, getRevision } from "./gobd/revisions.mjs";
 
 const PORT = Number(process.env.WORKPASS_API_PORT || process.env.PORT || 8787);
 const HOST = process.env.WORKPASS_API_HOST || (process.env.PORT ? "0.0.0.0" : "127.0.0.1");
@@ -490,6 +494,7 @@ async function handler(req, res) {
       || path.startsWith("/v1/sync")
       || path.startsWith("/v1/portal/")
       || path.startsWith("/v1/tax")
+      || path.startsWith("/v1/gobd")
       || path.startsWith("/v1/demo/");
     if (sess.ok && sessionPathsOk) {
       req._workpassSession = sess.user;
@@ -506,6 +511,18 @@ async function handler(req, res) {
         return reply(scoped.status || 403, { ok: false, error: scoped.error });
       }
       tenantScope = scoped.tenantScope;
+      if (isReadOnlyRole(sess.user.role)) {
+        const writeOk = req.method === "GET" || req.method === "HEAD"
+          || (req.method === "POST" && path === "/v1/gobd/export");
+        if (!writeOk) {
+          return reply(403, {
+            ok: false,
+            error: "Auditor: Nur Lesezugriff (Read-only). Änderungen sind gesperrt.",
+            code: "auditor_readonly",
+            role: "auditor",
+          });
+        }
+      }
       const needsAdmin =
         path.startsWith("/v1/admin")
         || path === "/v1/company/activate"
@@ -1279,7 +1296,11 @@ async function handler(req, res) {
       const body = (await readBodyLimited(req)) || {};
       const gate = requireHumanConfirm(body, "release_payslip");
       if (!gate.ok) return reply(gate.status || 422, gate);
-      const result = await releasePayrollJob(jobId, { tenantScope });
+      const result = await releasePayrollJob(jobId, {
+        tenantScope,
+        actor: req._workpassSession?.email || req._workpassSession?.id || "user",
+        source: "user",
+      });
       audit({
         type: "payroll.release",
         outcome: result.ok ? "ok" : "error",
@@ -1290,6 +1311,139 @@ async function handler(req, res) {
       });
       const status = result.ok ? 200 : (String(result.error || "").includes("Tenant-Isolation") ? 403 : 422);
       return reply( status, result);
+    }
+
+    if (req.method === "POST" && path.startsWith("/v1/payroll/") && path.endsWith("/correct")) {
+      const jobId = decodeURIComponent(path.slice("/v1/payroll/".length, -"/correct".length));
+      const body = (await readBodyLimited(req)) || {};
+      const gate = requireHumanConfirm(body, "payroll_correct");
+      if (!gate.ok) return reply(gate.status || 422, gate);
+      const result = await correctPayrollJob(jobId, {
+        tenantScope,
+        reason: body.reason,
+        payload: body.payload,
+        state: body.state,
+        hours: body.hours,
+        actor: req._workpassSession?.email || body.actor || "user",
+        source: body.source || "user",
+        correlationId: body.correlationId || body.eventId || "",
+      });
+      audit({
+        type: "payroll.correct",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId: result.job?.company?.id,
+        detail: { jobId, reason: body.reason || null },
+      });
+      const status = result.ok ? 200 : (result.status || (result.immutable ? 409 : 422));
+      return reply(status, result);
+    }
+
+    if (req.method === "GET" && path === "/v1/gobd/info") {
+      return reply(200, {
+        ok: true,
+        kind: "workpass.gobd.info.v1",
+        features: {
+          immutableReleased: true,
+          documentRevisions: true,
+          businessAudit: true,
+          gobdExport: true,
+          auditorReadOnly: true,
+          syncStatuses: SYNC_STATUSES,
+        },
+        endpoints: {
+          export: "POST /v1/gobd/export",
+          audit: "GET /v1/gobd/audit",
+          revisions: "GET /v1/gobd/revisions",
+          correct: "POST /v1/payroll/:jobId/correct",
+        },
+      });
+    }
+
+    if (req.method === "POST" && path === "/v1/gobd/export") {
+      const body = (await readBodyLimited(req)) || {};
+      const gate = requireHumanConfirm(body, "gobd_export");
+      if (!gate.ok) return reply(gate.status || 422, gate);
+      const companyId = normalizeCompanyId(body.companyId || tenantScope || "");
+      if (tenantScope && companyId && tenantScope !== companyId) {
+        return reply(403, { ok: false, error: "Tenant-Isolation: companyId passt nicht zur Session" });
+      }
+      const result = buildGobdExport({
+        companyId,
+        from: body.from || body.periodFrom || null,
+        to: body.to || body.periodTo || null,
+        include: body.include,
+        actor: req._workpassSession?.email || body.actor || "user",
+        correlationId: body.correlationId || body.eventId || "",
+      });
+      audit({
+        type: "gobd.export",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { exportId: result.exportId || null },
+      });
+      if (!result.ok) return reply(result.status || 400, result);
+      return reply(200, {
+        ok: true,
+        exportId: result.exportId,
+        fileName: result.fileName,
+        manifest: result.manifest,
+        package: body.includePackage === false ? undefined : result.package,
+      });
+    }
+
+    if (req.method === "GET" && path === "/v1/gobd/audit") {
+      const companyId = normalizeCompanyId(url.searchParams.get("companyId") || tenantScope || "");
+      if (!companyId) return reply(400, { ok: false, error: "companyId erforderlich" });
+      if (tenantScope && tenantScope !== companyId) {
+        return reply(403, { ok: false, error: "Tenant-Isolation" });
+      }
+      const rows = listBusinessAudit({
+        companyId,
+        from: url.searchParams.get("from") || undefined,
+        to: url.searchParams.get("to") || undefined,
+        employeeId: url.searchParams.get("employeeId") || undefined,
+        entityId: url.searchParams.get("entityId") || undefined,
+        correlationId: url.searchParams.get("correlationId") || undefined,
+        limit: Number(url.searchParams.get("limit") || 200),
+      });
+      return reply(200, {
+        ok: true,
+        companyId,
+        count: rows.length,
+        verify: verifyBusinessAuditChain({ companyId, limit: 2000 }),
+        events: rows,
+      });
+    }
+
+    if (req.method === "GET" && path === "/v1/gobd/revisions") {
+      const companyId = normalizeCompanyId(url.searchParams.get("companyId") || tenantScope || "");
+      if (!companyId) return reply(400, { ok: false, error: "companyId erforderlich" });
+      if (tenantScope && tenantScope !== companyId) {
+        return reply(403, { ok: false, error: "Tenant-Isolation" });
+      }
+      const rows = listRevisions({
+        companyId,
+        entityType: url.searchParams.get("entityType") || undefined,
+        entityId: url.searchParams.get("entityId") || undefined,
+        from: url.searchParams.get("from") || undefined,
+        to: url.searchParams.get("to") || undefined,
+        limit: Number(url.searchParams.get("limit") || 200),
+      });
+      return reply(200, { ok: true, companyId, count: rows.length, revisions: rows });
+    }
+
+    if (req.method === "GET" && path.startsWith("/v1/gobd/revisions/")) {
+      const revisionId = decodeURIComponent(path.slice("/v1/gobd/revisions/".length));
+      const rev = getRevision(revisionId);
+      if (!rev) return reply(404, { ok: false, error: "Revision nicht gefunden" });
+      if (tenantScope && rev.companyId && tenantScope !== rev.companyId) {
+        return reply(403, { ok: false, error: "Tenant-Isolation" });
+      }
+      return reply(200, { ok: true, revision: rev });
     }
 
     if (req.method === "GET" && path.startsWith("/v1/payroll/") && path !== "/v1/payroll") {

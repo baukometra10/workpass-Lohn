@@ -31,6 +31,8 @@ export const CONFIRM_REQUIRED_ACTIONS = Object.freeze([
   "tax_ruleset_publish",
   "tax_ruleset_review",
   "delivery_replay",
+  "payroll_correct",
+  "gobd_export",
 ]);
 
 const AI_ACTOR_RE = /^(ai|assistant|llm|bot|copilot|auto[_-]?ai)$/i;
