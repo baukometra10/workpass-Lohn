@@ -33,6 +33,7 @@ export const CONFIRM_REQUIRED_ACTIONS = Object.freeze([
   "delivery_replay",
   "payroll_correct",
   "gobd_export",
+  "erechnung_export",
 ]);
 
 const AI_ACTOR_RE = /^(ai|assistant|llm|bot|copilot|auto[_-]?ai)$/i;

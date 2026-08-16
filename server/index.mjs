@@ -130,6 +130,9 @@ import { buildOpsHealth } from "./ops-health.mjs";
 import { buildGobdExport } from "./gobd/export.mjs";
 import { listBusinessAudit, verifyBusinessAuditChain, SYNC_STATUSES } from "./gobd/business-audit.mjs";
 import { listRevisions, getRevision } from "./gobd/revisions.mjs";
+import { summarizeSyncDeliveries, buildIdempotencyKey } from "./gobd/sync-lifecycle.mjs";
+import { listAllDeliveries } from "./delivery-queue.mjs";
+import { buildXRechnungUbl } from "./erechnung/xrechnung.mjs";
 
 const PORT = Number(process.env.WORKPASS_API_PORT || process.env.PORT || 8787);
 const HOST = process.env.WORKPASS_API_HOST || (process.env.PORT ? "0.0.0.0" : "127.0.0.1");
@@ -513,7 +516,7 @@ async function handler(req, res) {
       tenantScope = scoped.tenantScope;
       if (isReadOnlyRole(sess.user.role)) {
         const writeOk = req.method === "GET" || req.method === "HEAD"
-          || (req.method === "POST" && path === "/v1/gobd/export");
+          || (req.method === "POST" && (path === "/v1/gobd/export" || path.endsWith("/xrechnung")));
         if (!writeOk) {
           return reply(403, {
             ok: false,
@@ -1350,15 +1353,36 @@ async function handler(req, res) {
           businessAudit: true,
           gobdExport: true,
           auditorReadOnly: true,
+          syncLifecycle: true,
+          erechnungXRechnung: true,
           syncStatuses: SYNC_STATUSES,
         },
         endpoints: {
           export: "POST /v1/gobd/export",
           audit: "GET /v1/gobd/audit",
           revisions: "GET /v1/gobd/revisions",
+          sync: "GET /v1/gobd/sync",
           correct: "POST /v1/payroll/:jobId/correct",
+          xrechnung: "POST /v1/invoice/:id/xrechnung",
         },
+        idempotencyExample: buildIdempotencyKey({
+          kind: "PAYROLL",
+          period: "2026-08",
+          companyId: "tenant123",
+          employeeId: "employee456",
+        }),
       });
+    }
+
+    if (req.method === "GET" && path === "/v1/gobd/sync") {
+      const companyId = normalizeCompanyId(url.searchParams.get("companyId") || tenantScope || "");
+      if (!companyId) return reply(400, { ok: false, error: "companyId erforderlich" });
+      if (tenantScope && tenantScope !== companyId) {
+        return reply(403, { ok: false, error: "Tenant-Isolation" });
+      }
+      const deliveries = listAllDeliveries({ companyId, limit: 2000 });
+      const summary = summarizeSyncDeliveries(deliveries);
+      return reply(200, { ok: true, companyId, ...summary });
     }
 
     if (req.method === "POST" && path === "/v1/gobd/export") {
@@ -2218,6 +2242,28 @@ async function handler(req, res) {
       });
       const status = result.count > 0 ? 200 : (result.ok ? 200 : 422);
       return reply(status, result);
+    }
+
+    if (req.method === "POST" && path.startsWith("/v1/invoice/") && path.endsWith("/xrechnung")) {
+      const id = decodeURIComponent(path.slice("/v1/invoice/".length, -"/xrechnung".length));
+      const body = (await readBodyLimited(req)) || {};
+      const gate = requireHumanConfirm(body, "erechnung_export");
+      if (!gate.ok) return reply(gate.status || 422, gate);
+      const job = loadInvoiceJob(id);
+      if (!job) return reply(404, { ok: false, error: "Rechnung nicht gefunden" });
+      const scopeCheck = assertSameTenant(tenantScope, job.company?.id || job.draft?.company?.id, "Rechnung");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const result = buildXRechnungUbl(job);
+      audit({
+        type: "invoice.xrechnung",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId: job.company?.id,
+        detail: { id, humanConfirm: true },
+      });
+      if (!result.ok) return reply(422, result);
+      return reply(200, { ok: true, invoiceId: id, ...result });
     }
 
     if (req.method === "POST" && path.startsWith("/v1/invoice/") && path.endsWith("/release")) {

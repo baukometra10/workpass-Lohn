@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=26" />
-    <link rel="stylesheet" href="lohn.css?v=78" />
+    <link rel="stylesheet" href="lohn.css?v=79" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0b1220" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -267,8 +267,36 @@
                     <button type="button" id="btnDatevExportConfirm" data-i18n="portal.datevExport">DATEV</button>
                     <button type="button" id="btnLodasExportConfirm" data-i18n="portal.lodasExport">LODAS</button>
                     <button type="button" id="btnElsterPrep" data-i18n="portal.elsterPrep">ELSTER-Checkliste</button>
+                    <button type="button" id="btnGobdExport" data-i18n="portal.gobdExport">GoBD Export</button>
                   </div>
                   <div id="portalElsterList" class="api-inbox-list" style="margin-top:8px"></div>
+                </section>
+                <section class="month-close-card portal-dash-card" id="portalGobdCard" style="margin-bottom:12px">
+                  <div class="portal-card-head">
+                    <strong data-i18n="portal.gobdTitle">GoBD · Prüfung &amp; Korrektur</strong>
+                    <span class="portal-card-badge" id="portalGobdBadge" data-i18n="portal.humanFinalBadge">Human final</span>
+                  </div>
+                  <p class="section-hint" data-i18n="portal.gobdHint">Freigegebene Abrechnungen sind unveränderlich. Korrektur nur mit Grund. Sync-Status und Audit einsehen.</p>
+                  <div class="field-grid" style="margin-top:8px">
+                    <div>
+                      <label for="correctJobId" data-i18n="portal.correctJob">Job-ID</label>
+                      <input id="correctJobId" type="text" placeholder="cmp-…::emp::2026-08" />
+                    </div>
+                    <div>
+                      <label for="correctReason" data-i18n="portal.correctReason">Korrekturgrund</label>
+                      <input id="correctReason" type="text" placeholder="z. B. Stundenkorrektur" />
+                    </div>
+                    <div>
+                      <label for="correctWageDelta" data-i18n="portal.correctDelta">Lohnart ± € (erste Position)</label>
+                      <input id="correctWageDelta" type="number" step="0.01" value="0" />
+                    </div>
+                  </div>
+                  <div class="month-close-actions" style="margin-top:8px">
+                    <button type="button" id="btnPayrollCorrect" data-i18n="portal.correctRun">Korrektur speichern</button>
+                    <button type="button" id="btnGobdAudit" data-i18n="portal.gobdAudit">Audit laden</button>
+                    <button type="button" id="btnGobdSync" data-i18n="portal.gobdSync">Sync-Status</button>
+                  </div>
+                  <pre id="portalGobdOut" class="admin-pre" style="margin-top:8px;white-space:pre-wrap;font-size:12px;display:none"></pre>
                 </section>
                 <section class="month-close-card portal-dash-card" id="portalSimulateCard" style="margin-bottom:12px">
                   <div class="portal-card-head">
@@ -775,13 +803,13 @@
     <script src="templates.js?v=1"></script>
     <script src="datev-sheet.js?v=43"></script>
     <script src="payroll-core.js?v=31"></script>
-    <script src="workpass-i18n-packs.js?v=23"></script>
+    <script src="workpass-i18n-packs.js?v=24"></script>
     <script src="workpass-i18n.js?v=8"></script>
     <script src="auth-gate.js?v=18"></script>
     <script src="mandant-checklist.js?v=4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="workpass-pwa.js?v=4"></script>
-    <script src="lohn-app.js?v=92"></script>
+    <script src="lohn-app.js?v=93"></script>
   </body>
 </html>

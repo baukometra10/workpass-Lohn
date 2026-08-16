@@ -1107,15 +1107,19 @@
       <div class="api-inbox-item">
         <div>
           <strong>${esc(it.employee?.name || it.jobId)}</strong>
-          <span class="portal-item-meta">${esc(it.trust)}${it.webhookLastError ? (" · " + esc(it.webhookLastError)) : ""}</span>
+          <span class="portal-item-meta">${esc(it.trust)}${it.syncStatus ? (" · " + esc(it.syncStatus)) : ""}${it.webhookLastError ? (" · " + esc(it.webhookLastError)) : ""}</span>
         </div>
       </div>`).join("");
-    const actions = (data.nextHumanActions || []).some((a) => a.id === "replay_deliveries")
+    const sync = data.syncLifecycle?.counts || {};
+    const syncLine = Object.keys(sync).length
+      ? `<p class="section-hint">Sync: PENDING ${sync.PENDING || 0} · RETRYING ${sync.RETRYING || 0} · PROCESSING ${sync.PROCESSING || 0} · COMPLETED ${sync.COMPLETED || 0} · DEAD_LETTER ${sync.DEAD_LETTER || 0}</p>`
+      : "";
+    const actions = (data.nextHumanActions || []).some((a) => a.id === "replay_deliveries" || a.id === "replay_dead_letter")
       ? `<div class="month-close-actions" style="margin-top:8px">
           <button type="button" id="btnTrustReplay">${esc(uiT("portal.trustReplay", "Zustellung erneut anstoßen"))}</button>
         </div>`
       : "";
-    list.innerHTML = gapHtml + itemHtml + actions;
+    list.innerHTML = syncLine + gapHtml + itemHtml + actions;
     $("btnTrustReplay")?.addEventListener("click", () => {
       replayDeliveryTrust().catch((e) => toast(e.message, "error"));
     });
@@ -3682,6 +3686,120 @@
             + `<p class="section-hint">${esc(data.note || "")}</p>`;
         }
         toast(uiT("portal.elsterPrepDone", "ELSTER-Checkliste geladen – Upload nur durch den Menschen."), "info");
+      } catch (e) {
+        toast(e.message, "error");
+      }
+    });
+    $("btnGobdExport")?.addEventListener("click", async () => {
+      try {
+        const companyId = companyPortalId || apiConfig().companyId;
+        const period = currentPayrollPeriod();
+        const ok = await humanConfirm({
+          title: uiT("portal.gobdExportTitle", "GoBD-Export bestätigen"),
+          body: uiT("portal.gobdExportBody", "Erstellt ein Prüfungs-Paket (JSON) für diesen Mandanten. Keine Änderung an Belegen."),
+          requireCheck: true,
+        });
+        if (!ok) return;
+        const data = await apiFetch("/v1/gobd/export", {
+          method: "POST",
+          body: JSON.stringify({
+            confirm: true,
+            companyId,
+            from: period,
+            to: period,
+            includePackage: true,
+          }),
+        });
+        const blob = new Blob([JSON.stringify(data.package || data.manifest, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = data.fileName || `gobd-${companyId}.json`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        toast(uiT("portal.gobdExportDone", "GoBD-Export erstellt."), "ok");
+      } catch (e) {
+        toast(e.message, "error");
+      }
+    });
+    $("btnPayrollCorrect")?.addEventListener("click", async () => {
+      try {
+        const jobId = String($("correctJobId")?.value || "").trim();
+        const reason = String($("correctReason")?.value || "").trim();
+        const delta = Number($("correctWageDelta")?.value || 0);
+        if (!jobId) {
+          toast(uiT("portal.correctNeedJob", "Job-ID fehlt."), "error");
+          return;
+        }
+        if (reason.length < 3) {
+          toast(uiT("portal.correctNeedReason", "Korrekturgrund fehlt."), "error");
+          return;
+        }
+        const ok = await humanConfirm({
+          title: uiT("portal.correctTitle", "Korrektur bestätigen"),
+          body: uiT("portal.correctBody", "Original wird archiviert. Erneute Freigabe nötig. Keine stille Überschreibung."),
+          requireCheck: true,
+        });
+        if (!ok) return;
+        const data = await apiFetch(`/v1/payroll/${encodeURIComponent(jobId)}/correct`, {
+          method: "POST",
+          body: JSON.stringify({
+            confirm: true,
+            reason,
+            wageAmountDelta: delta || undefined,
+            actor: "portal-user",
+            source: "user",
+          }),
+        });
+        const out = $("portalGobdOut");
+        if (out) {
+          out.style.display = "block";
+          out.textContent = JSON.stringify({
+            ok: data.ok,
+            status: data.job?.status,
+            revisionNo: data.job?.revisionNo,
+            message: data.message,
+            errors: data.errors,
+          }, null, 2);
+        }
+        toast(data.message || uiT("portal.correctDone", "Korrektur gespeichert."), data.ok ? "ok" : "error");
+        await loadPortalDashboard(true);
+      } catch (e) {
+        toast(e.message, "error");
+      }
+    });
+    $("btnGobdAudit")?.addEventListener("click", async () => {
+      try {
+        const companyId = companyPortalId || apiConfig().companyId;
+        const data = await apiFetch(`/v1/gobd/audit?companyId=${encodeURIComponent(companyId)}&limit=50`);
+        const out = $("portalGobdOut");
+        if (out) {
+          out.style.display = "block";
+          out.textContent = JSON.stringify({
+            count: data.count,
+            verify: data.verify,
+            events: (data.events || []).slice(-15),
+          }, null, 2);
+        }
+        toast(uiT("portal.gobdAuditDone", "Audit geladen."), "ok");
+      } catch (e) {
+        toast(e.message, "error");
+      }
+    });
+    $("btnGobdSync")?.addEventListener("click", async () => {
+      try {
+        const companyId = companyPortalId || apiConfig().companyId;
+        const data = await apiFetch(`/v1/gobd/sync?companyId=${encodeURIComponent(companyId)}`);
+        const out = $("portalGobdOut");
+        if (out) {
+          out.style.display = "block";
+          out.textContent = JSON.stringify({
+            counts: data.counts,
+            deadLetter: data.deadLetter,
+            retrying: data.retrying,
+            total: data.total,
+          }, null, 2);
+        }
+        toast(uiT("portal.gobdSyncDone", "Sync-Status geladen."), "ok");
       } catch (e) {
         toast(e.message, "error");
       }

@@ -9,6 +9,7 @@ import { isDemoPayrollJob } from "./demo-detect.mjs";
 import { getPayrollCore } from "./engine.mjs";
 import { employeeSyncReadiness, monthOverview } from "./portal-service.mjs";
 import { assertNotAiApplyingLaw } from "./policy/human-final.mjs";
+import { summarizeSyncDeliveries, deriveDeliverySyncStatus } from "./gobd/sync-lifecycle.mjs";
 
 function realJobs(companyId, period) {
   return (listPayrollJobs({ companyId, period }) || []).filter((j) => !isDemoPayrollJob(j));
@@ -46,12 +47,13 @@ export function buildDeliveryTrust(companyId, opts = {}) {
   if (!cid) return { ok: false, error: "companyId fehlt" };
   const period = String(opts.period || currentPeriod()).trim();
   const jobs = realJobs(cid, period).filter((j) => j.status === "released");
-  const allDel = listAllDeliveries();
+  const allDel = listAllDeliveries({ companyId: cid });
   const deliveries = allDel.filter((d) => {
     if (normalizeCompanyId(d.company?.id) !== cid) return false;
     const p = String(d.period || d.payload?.period || d.payslip?.period || "").slice(0, 7);
     return !period || p === period || !p;
   });
+  const syncLifecycle = summarizeSyncDeliveries(deliveries);
 
   const byJob = new Map();
   const byBadge = new Map();
@@ -87,11 +89,16 @@ export function buildDeliveryTrust(companyId, opts = {}) {
       deliveryId: d?.deliveryId || null,
       trust,
       trustRank,
+      syncStatus: d ? deriveDeliverySyncStatus(d) : null,
+      eventId: d?.eventId || d?.deliveryId || null,
+      correlationId: d?.correlationId || d?.deliveryId || null,
+      idempotencyKey: d?.idempotencyKey || d?.webhookIdempotencyKey || d?.deliveryId || null,
       webhookPushedAt: d?.webhookPushedAt || null,
       webhookLastError: d?.webhookLastError || d?.lastError || null,
       webhookPushCount: d?.webhookPushCount ?? null,
       ackedAt: d?.ackedAt || d?.ackAt || null,
-      needsHuman: trust === "released_local" || trust === "push_failed" || trust === "queued",
+      needsHuman: trust === "released_local" || trust === "push_failed" || trust === "queued"
+        || (d && deriveDeliverySyncStatus(d) === "DEAD_LETTER"),
     };
   });
 
@@ -162,6 +169,19 @@ export function buildDeliveryTrust(companyId, opts = {}) {
     });
   }
 
+  if (syncLifecycle.counts.DEAD_LETTER) {
+    gaps.push({
+      code: "dead_letter",
+      label: `${syncLifecycle.counts.DEAD_LETTER} Dead-Letter – manueller Replay nötig`,
+      action: "replay_deliveries",
+    });
+    nextHumanActions.push({
+      id: "replay_dead_letter",
+      label: "Dead-Letter Zustellung (Mensch bestätigt)",
+      requiresConfirm: true,
+    });
+  }
+
   return {
     ok: true,
     kind: "portal.delivery_trust.v2",
@@ -173,10 +193,12 @@ export function buildDeliveryTrust(companyId, opts = {}) {
     gaps,
     nextHumanActions,
     items,
+    syncLifecycle,
     humanFinal: true,
     message: counts.total === 0
       ? "Keine freigegebenen Abrechnungen in diesem Monat."
-      : `Vertrauen ${score}/100 (${counts.acked || 0} Ack · ${counts.pushed || 0} Push · ${counts.queued || 0} Queue · ${counts.push_failed || 0} Fehler)`,
+      : `Vertrauen ${score}/100 (${counts.acked || 0} Ack · ${counts.pushed || 0} Push · ${counts.queued || 0} Queue · ${counts.push_failed || 0} Fehler)`
+        + (syncLifecycle.counts.DEAD_LETTER ? ` · ${syncLifecycle.counts.DEAD_LETTER} Dead-Letter` : ""),
   };
 }
 

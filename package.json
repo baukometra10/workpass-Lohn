@@ -1,6 +1,6 @@
 {
   "name": "workpass-lohn",
-  "version": "2.49.0",
+  "version": "2.50.0",
   "private": true,
   "description": "WorkPass Steuerprogramm – Buchhaltung + Platform Bridge API",
   "type": "module",
@@ -41,6 +41,7 @@
     "test:backup": "node tests/backup.mjs",
     "test:human-final": "node tests/human-final-pillars.mjs",
     "test:gobd": "node tests/gobd.mjs",
+    "test:sync-erechnung": "node tests/sync-erechnung.mjs",
     "test:fields": "node tests/e2e-fields.mjs",
     "backup:create": "node scripts/backup-cli.mjs create",
     "backup:list": "node scripts/backup-cli.mjs list",

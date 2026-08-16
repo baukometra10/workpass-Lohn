@@ -12,6 +12,11 @@ import { encryptJson, decryptJson, isEncryptedBlob } from "../security/crypto.mj
 import { recoverCorruptDatabase, resetCorruptDatabase } from "../backup/backup.mjs";
 import { guardPayrollWrite, guardInvoiceWrite, GobdImmutableError, isLockedStatus } from "../gobd/revisions.mjs";
 import { appendBusinessAudit } from "../gobd/business-audit.mjs";
+import {
+  applySyncLifecycle,
+  deriveDeliverySyncStatus,
+  auditSyncTransition,
+} from "../gobd/sync-lifecycle.mjs";
 
 export { GobdImmutableError };
 
@@ -473,12 +478,13 @@ export function enqueueDeliveryRow(delivery, opts = {}) {
   ensure(opts);
   if (!delivery?.deliveryId) throw new Error("deliveryId fehlt");
   const companyId = normalizeCompanyId(delivery.company?.id || "");
-  const row = {
+  const row = applySyncLifecycle({
     ...delivery,
     queueStatus: delivery.queueStatus || "pending",
     enqueuedAt: delivery.enqueuedAt || now(),
     ackedAt: delivery.ackedAt || null,
-  };
+    syncStatus: delivery.syncStatus || "PENDING",
+  });
   sqliteExec(
     `INSERT INTO deliveries(delivery_id, company_id, type, queue_status, payload_json, enqueued_at, acked_at, sync_version)
      VALUES(?, ?, ?, ?, ?, ?, ?, 1)
@@ -519,11 +525,20 @@ export function listPendingDeliveries(filter = {}) {
   return sqliteAll(sql, params).map((r) => unpackPayload(r.payload_json)).filter(Boolean);
 }
 
-export function listAllDeliveries() {
+export function listAllDeliveries(filter = {}) {
   initDb();
-  return sqliteAll(`SELECT payload_json FROM deliveries ORDER BY enqueued_at DESC`)
-    .map((r) => unpackPayload(r.payload_json))
-    .filter(Boolean);
+  let sql = `SELECT payload_json FROM deliveries WHERE 1=1`;
+  const params = [];
+  if (filter.companyId) {
+    sql += ` AND company_id = ?`;
+    params.push(normalizeCompanyId(filter.companyId));
+  }
+  sql += ` ORDER BY enqueued_at DESC`;
+  if (filter.limit) {
+    sql += ` LIMIT ?`;
+    params.push(Math.max(1, Math.min(5000, Number(filter.limit) || 500)));
+  }
+  return sqliteAll(sql, params).map((r) => unpackPayload(r.payload_json)).filter(Boolean);
 }
 
 export function ackDeliveryRow(deliveryId, meta = {}) {
@@ -531,15 +546,21 @@ export function ackDeliveryRow(deliveryId, meta = {}) {
   const existing = sqliteGet(`SELECT payload_json FROM deliveries WHERE delivery_id = ?`, [deliveryId]);
   if (!existing) return { ok: false, error: "Delivery nicht gefunden" };
   const delivery = unpackPayload(existing.payload_json);
+  const from = deriveDeliverySyncStatus(delivery);
   delivery.queueStatus = "delivered";
   delivery.ackedAt = now();
   delivery.ackMeta = meta;
+  delivery.processedAt = delivery.ackedAt;
+  applySyncLifecycle(delivery, { syncStatus: "COMPLETED", processedAt: delivery.ackedAt });
   sqliteExec(
     `UPDATE deliveries SET queue_status = ?, acked_at = ?, payload_json = ?, sync_version = sync_version + 1 WHERE delivery_id = ?`,
     ["delivered", delivery.ackedAt, packPayload(delivery), deliveryId]
   );
   enqueueSync("delivery", deliveryId, delivery);
   scheduleSyncFlush();
+  if (from !== "COMPLETED") {
+    auditSyncTransition(delivery, from, "COMPLETED", { reason: meta.via || "ack", source: "api" });
+  }
   return { ok: true, delivery };
 }
 
@@ -550,8 +571,10 @@ export function markDeliveryWebhookRow(deliveryId, meta = {}) {
   if (!existing) return { ok: false, error: "Delivery nicht gefunden" };
   const delivery = unpackPayload(existing.payload_json);
   if (delivery.queueStatus === "delivered") {
+    applySyncLifecycle(delivery, { syncStatus: "COMPLETED" });
     return { ok: true, delivery, alreadyDelivered: true };
   }
+  const from = deriveDeliverySyncStatus(delivery);
   const pushCount = Number(delivery.webhookPushCount || 0) + 1;
   delivery.webhookPushCount = pushCount;
   delivery.webhookLastAt = meta.at || now();
@@ -563,14 +586,28 @@ export function markDeliveryWebhookRow(deliveryId, meta = {}) {
   if (meta.reached) {
     delivery.webhookPushedAt = delivery.webhookPushedAt || delivery.webhookLastAt;
   }
+  applySyncLifecycle(delivery, {
+    idempotencyKey: delivery.webhookIdempotencyKey,
+    lastError: meta.error || null,
+    processedAt: meta.reached ? delivery.webhookLastAt : undefined,
+  });
+  const to = deriveDeliverySyncStatus(delivery);
+  delivery.syncStatus = to;
   // Keep queue_status pending so GET /v1/delivery/pending still works until ack
+  // Dead-letter stays pending for visibility but excluded from auto-push
   sqliteExec(
     `UPDATE deliveries SET payload_json = ?, sync_version = sync_version + 1 WHERE delivery_id = ?`,
     [packPayload(delivery), deliveryId]
   );
   enqueueSync("delivery", deliveryId, delivery);
   scheduleSyncFlush();
-  return { ok: true, delivery };
+  if (from !== to) {
+    auditSyncTransition(delivery, from, to, {
+      reason: meta.error || (meta.reached ? "webhook_reached" : "webhook_attempt"),
+      source: "job",
+    });
+  }
+  return { ok: true, delivery, syncStatus: to };
 }
 
 export function getDeliveryRow(deliveryId) {

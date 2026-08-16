@@ -177,8 +177,10 @@ export function buildGobdExport(opts = {}) {
 
   const packageJson = { manifest, ...files };
   if (!existsSync(exportRoot)) mkdirSync(exportRoot, { recursive: true });
+  const tenantDir = path.join(exportRoot, companyId.replace(/[^\w.-]+/g, "_").slice(0, 80) || "unknown");
+  if (!existsSync(tenantDir)) mkdirSync(tenantDir, { recursive: true });
   const fileName = `${exportId}.json`;
-  const filePath = path.join(exportRoot, fileName);
+  const filePath = path.join(tenantDir, fileName);
   writeFileSync(filePath, JSON.stringify(packageJson, null, 2), "utf8");
 
   return {
@@ -186,6 +188,7 @@ export function buildGobdExport(opts = {}) {
     exportId,
     fileName,
     path: filePath,
+    companyId,
     manifest,
     package: packageJson,
   };

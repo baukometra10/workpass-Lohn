@@ -95,10 +95,16 @@ Erzeugt JSON-Paket unter `server/data/gobd-exports/` mit Manifest + SHA-256 je D
 ## 9. Plattform-Synchronisation
 
 - Outbox + Delivery-Queue; Webhook mit `X-WorkPass-Idempotency-Key`.  
-- Kein Endlos-Resend nach erfolgreichem Reach (siehe `delivery-replay.mjs`).  
-- Correlation über `deliveryId` / `correlationId` in GoBD-Audit.
+- Sync-Statusmaschine: `PENDING` → `RETRYING` → `PROCESSING` → `COMPLETED` | `FAILED` | `DEAD_LETTER`.  
+- API: `GET /v1/gobd/sync?companyId=…`  
+- Kein Endlos-Resend nach Reach; Dead-Letter erst nach max. Versuchen (env `WORKPASS_DELIVERY_MAX_PUSH_ATTEMPTS`).  
+- Idempotency-Beispiel: `PAYROLL-2026-08-tenant-employee` (`buildIdempotencyKey`).
 
-## 10. Fehlerbehandlung
+## 9b. E-Rechnung
+
+- Foundation: `POST /v1/invoice/:id/xrechnung` erzeugt UBL 2.1 / XRechnung-orientiertes XML (Mensch bestätigt).  
+- Kein automatischer Peppol-Versand; Checkliste `readyForHumanSend` im Response.  
+- ZUGFeRD/PDF-A3 Embedding: Roadmap.
 
 - Validierungsfehler → Job `error`, Gap-Messages an Plattform.  
 - SQLite-Korruption → Auto-Restore aus Backup (`backup.mjs`).  
@@ -119,7 +125,7 @@ Siehe `docs/BACKUP.md`. Periodische Backups, Integritätscheck, Restore nur mit 
 
 ## 13. E-Rechnung / ISO 27001
 
-- E-Rechnung (XRechnung/ZUGFeRD): **noch nicht** in diesem Repo implementiert – Roadmap.  
+- E-Rechnung: XRechnung-UBL-Export vorhanden; ZUGFeRD/Peppol-Gateway und Leitweg-ID-Vollprüfung Roadmap.  
 - ISO 27001: organisatorisch später; technisch Security-Audit/Pentest empfohlen vor Enterprise.
 
 ## 14. Verantwortlichkeiten
@@ -133,4 +139,5 @@ Siehe `docs/BACKUP.md`. Periodische Backups, Integritätscheck, Restore nur mit 
 
 ## 15. Änderungshistorie dieser Doku
 
+- 2.50.0: Sync-Lifecycle (DEAD_LETTER), Portal GoBD/Korrektur-UI, XRechnung-Export, tenant-scoped GoBD-Dateien.  
 - 2.49.0: Erstfassung Verfahrensdokumentation + GoBD-Module (Revisionen, Business-Audit, Export, Auditor).

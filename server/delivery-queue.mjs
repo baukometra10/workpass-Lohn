@@ -21,8 +21,8 @@ export function listPendingDeliveries(filter = {}) {
   return repoPending(filter);
 }
 
-export function listAllDeliveries() {
-  return repoAll();
+export function listAllDeliveries(filter = {}) {
+  return repoAll(filter);
 }
 
 export function ackDelivery(deliveryId, meta = {}) {
@@ -40,6 +40,7 @@ export function getDelivery(deliveryId) {
 /**
  * Pending items that still need a webhook push (never reached, or hard failure).
  * Already-pushed (HTTP 2xx) deliveries are NOT returned – platform polls pending instead.
+ * DEAD_LETTER excluded until human force replay.
  */
 export function listDeliveriesNeedingWebhookPush(filter = {}) {
   const pending = listPendingDeliveries(filter);
@@ -52,6 +53,8 @@ export function listDeliveriesNeedingWebhookPush(filter = {}) {
 
   return pending.filter((d) => {
     if (!d?.deliveryId) return false;
+    const sync = String(d.syncStatus || "").toUpperCase();
+    if (sync === "DEAD_LETTER" || sync === "COMPLETED") return false;
     // Already delivered to transport once → do not spam webhook again
     if (d.webhookPushedAt || d.webhookReached) return false;
     const attempts = Number(d.webhookPushCount || 0);
