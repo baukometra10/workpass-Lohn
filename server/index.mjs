@@ -131,7 +131,6 @@ import { buildGobdExport } from "./gobd/export.mjs";
 import { listBusinessAudit, verifyBusinessAuditChain, SYNC_STATUSES } from "./gobd/business-audit.mjs";
 import { listRevisions, getRevision } from "./gobd/revisions.mjs";
 import { summarizeSyncDeliveries, buildIdempotencyKey } from "./gobd/sync-lifecycle.mjs";
-import { listAllDeliveries } from "./delivery-queue.mjs";
 import { buildXRechnungUbl } from "./erechnung/xrechnung.mjs";
 
 const PORT = Number(process.env.WORKPASS_API_PORT || process.env.PORT || 8787);
