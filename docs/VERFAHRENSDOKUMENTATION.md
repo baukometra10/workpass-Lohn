@@ -106,9 +106,12 @@ Erzeugt JSON-Paket unter `server/data/gobd-exports/` mit Manifest + SHA-256 je D
 - Kein automatischer Peppol-Versand; Checkliste `readyForHumanSend` im Response.  
 - ZUGFeRD/PDF-A3 Embedding: Roadmap.
 
+## 10. Fehlerbehandlung
+
 - Validierungsfehler → Job `error`, Gap-Messages an Plattform.  
 - SQLite-Korruption → Auto-Restore aus Backup (`backup.mjs`).  
-- Immutable-Konflikt → HTTP 409 `immutable_document`.
+- Immutable-Konflikt → HTTP 409 `immutable_document`.  
+- Sync Dead-Letter → kein Auto-Push; Mensch kann Replay mit Confirm anstoßen.
 
 ## 11. Backup → Restore → Verification
 
