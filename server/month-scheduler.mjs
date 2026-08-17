@@ -8,8 +8,8 @@
  *   WORKPASS_AUTO_MONTH_CLOSE_HOUR=6     (local server hour, default 6)
  *   WORKPASS_AUTO_MONTH_CLOSE_CONFIRM=1  (calculate only, no autoRelease)
  *   WORKPASS_AUTO_MONTH_CLOSE_PULL=0     (skip pull)
- *   WORKPASS_AUTO_MONTH_CLOSE_CATCHUP_DAYS=0
- *   WORKPASS_AUTO_PARALLEL_MONTHS=1  (opt-in: current + previous in one tick; default off)
+ *   WORKPASS_AUTO_MONTH_CLOSE_CATCHUP_DAYS=7
+ *   WORKPASS_AUTO_PARALLEL_MONTHS=1  (current + previous in one tick; set 0 to disable)
  */
 import { listCompanies } from "./db/repository.mjs";
 import { runMonthClose, currentPeriod, previousPeriod } from "./month-close.mjs";
@@ -29,21 +29,21 @@ function isLastDayOfMonth(d = new Date()) {
 export function autoMonthCloseConfig() {
   const disabled = process.env.WORKPASS_AUTO_MONTH_CLOSE === "0"
     || process.env.WORKPASS_AUTO_MONTH_CLOSE === "false";
-  const parallelMonths = process.env.WORKPASS_AUTO_PARALLEL_MONTHS === "1"
-    || process.env.WORKPASS_AUTO_PARALLEL_MONTHS === "true";
+  const parallelMonths = process.env.WORKPASS_AUTO_PARALLEL_MONTHS !== "0"
+    && process.env.WORKPASS_AUTO_PARALLEL_MONTHS !== "false";
   return {
     enabled: !disabled,
     hour: Number(process.env.WORKPASS_AUTO_MONTH_CLOSE_HOUR || 6),
     autoRelease: process.env.WORKPASS_AUTO_MONTH_CLOSE_CONFIRM !== "1",
     pull: process.env.WORKPASS_AUTO_MONTH_CLOSE_PULL !== "0",
     parallelMonths,
-    catchUpDays: Math.max(0, Number(process.env.WORKPASS_AUTO_MONTH_CLOSE_CATCHUP_DAYS || 0)),
+    catchUpDays: Math.max(0, Number(process.env.WORKPASS_AUTO_MONTH_CLOSE_CATCHUP_DAYS || 7)),
   };
 }
 
 /**
- * Default: only the current calendar month (never two months at once).
- * Opt in to previous+current with WORKPASS_AUTO_PARALLEL_MONTHS=1.
+ * Default: current and previous month in parallel.
+ * Opt out with WORKPASS_AUTO_PARALLEL_MONTHS=0 (then month-end + catch-up window).
  */
 export function periodsForAutoMonthClose(now = new Date(), cfg = autoMonthCloseConfig()) {
   if (cfg.parallelMonths) {

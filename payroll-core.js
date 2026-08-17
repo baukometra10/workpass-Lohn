@@ -64,8 +64,28 @@
     if (v === "midi" || v === "midijob" || v === "uebergang" || v === "übergang" || v === "gleitzone") {
       return "midi";
     }
+    if (v === "one_month" || v === "1month" || v === "kurzfristig" || v === "short_term" || v === "monatsvertrag") {
+      return "regular";
+    }
     if (v === "auto") return "auto";
     return "regular";
+  }
+
+  function isOneMonthContract(employee = {}, data = {}) {
+    const raw = String(
+      employee.contractDuration
+      || employee.contractMonths
+      || employee.employmentDuration
+      || data.contractDuration
+      || data.contractMonths
+      || employee.employmentType
+      || ""
+    ).toLowerCase().trim();
+    if (raw === "1" || raw === "one_month" || raw === "1month" || raw === "kurzfristig" || raw === "monatsvertrag") {
+      return true;
+    }
+    const months = Number(employee.contractMonths ?? data.contractMonths);
+    return months === 1;
   }
 
   function parseIsoDateParts(value) {
@@ -822,6 +842,7 @@
         importedAt: new Date().toISOString(),
         attendance,
         importedTotals: data.totals || null,
+        oneMonthContract: isOneMonthContract(employee, data),
       },
     };
 

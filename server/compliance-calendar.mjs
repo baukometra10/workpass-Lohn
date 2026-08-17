@@ -247,7 +247,7 @@ export function buildComplianceCalendar(period, opts = {}) {
       title: "LStB / ELSTER-Vorbereitung",
       dueDate: iso(year + (month === 12 ? 1 : 0), 2, 28),
       severity: "action",
-      hint: "Nur Vorbereitung in WorkPass – Übermittlung auf elster.de durch den Menschen.",
+      hint: "ELSTER mit hinterlegtem Zertifikat oder Upload auf elster.de.",
       humanAction: "elster_prep",
       seasonal: true,
     });

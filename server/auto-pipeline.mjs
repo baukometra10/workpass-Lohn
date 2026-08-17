@@ -8,7 +8,7 @@
  *   WORKPASS_AUTO_PIPELINE=1          (default ON; set 0 to disable)
  *   WORKPASS_AUTO_PIPELINE_MINUTES=15 (poll / ask interval)
  *   WORKPASS_AUTO_RELEASE=1           (default ON: release on inbound batch)
- *   WORKPASS_AUTO_PARALLEL_MONTHS=1   (opt-in: also auto previous month; default off)
+ *   WORKPASS_AUTO_PARALLEL_MONTHS=1   (default ON: also auto previous month; set 0 to disable)
  */
 import { listCompanies, listPayrollJobs, listInvoiceJobs, loadCompany } from "./db/repository.mjs";
 import {
@@ -41,8 +41,8 @@ let lastSuccessAt = null;
 const companySyncState = new Map(); // companyId -> { period, askedAt, invoiceAskedAt, successAt, released }
 
 function autoParallelMonths() {
-  return process.env.WORKPASS_AUTO_PARALLEL_MONTHS === "1"
-    || process.env.WORKPASS_AUTO_PARALLEL_MONTHS === "true";
+  return process.env.WORKPASS_AUTO_PARALLEL_MONTHS !== "0"
+    && process.env.WORKPASS_AUTO_PARALLEL_MONTHS !== "false";
 }
 
 function periodIsAutoActive(period, options = {}) {

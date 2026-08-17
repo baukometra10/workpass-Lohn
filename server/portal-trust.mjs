@@ -10,6 +10,7 @@ import { getPayrollCore } from "./engine.mjs";
 import { employeeSyncReadiness, monthOverview } from "./portal-service.mjs";
 import { assertNotAiApplyingLaw } from "./policy/human-final.mjs";
 import { summarizeSyncDeliveries, deriveDeliverySyncStatus } from "./gobd/sync-lifecycle.mjs";
+import { elsterCertStatus } from "./elster/submit.mjs";
 
 function realJobs(companyId, period) {
   return (listPayrollJobs({ companyId, period }) || []).filter((j) => !isDemoPayrollJob(j));
@@ -551,6 +552,7 @@ export function buildElsterPrepChecklist(companyId, opts = {}) {
     (j) => !compactIban(j.state?.bankIban || j.payslip?.bank?.iban || "")
   ).length;
 
+  const cert = elsterCertStatus(cid);
   const steps = [
     {
       id: "released",
@@ -572,6 +574,13 @@ export function buildElsterPrepChecklist(companyId, opts = {}) {
         : "IBAN vorhanden",
     },
     {
+      id: "elster_cert",
+      ok: Boolean(cert.configured),
+      label: cert.configured
+        ? `ELSTER-Zertifikat hinterlegt (${cert.fingerprint || "PKCS#12"})`
+        : "ELSTER-Zertifikat (PKCS#12) hinterlegen",
+    },
+    {
       id: "human_review",
       ok: false,
       label: "Mensch hat Jahressummen gegen LStB geprüft (manuell)",
@@ -579,9 +588,13 @@ export function buildElsterPrepChecklist(companyId, opts = {}) {
     },
     {
       id: "elster_upload",
-      ok: false,
-      label: "Übermittlung auf elster.de durch den Menschen (kein Auto-Send)",
-      humanOnly: true,
+      ok: Boolean(cert.configured && cert.autoSubmit),
+      label: cert.configured && cert.autoSubmit
+        ? "Automatischer ELSTER-Versand aktiv (Zertifikat)"
+        : (cert.configured
+          ? "Zertifikat da – Versand manuell oder Auto-Versand aktivieren"
+          : "Ohne Zertifikat: Upload auf elster.de durch den Menschen"),
+      humanOnly: !cert.configured,
     },
   ];
 
@@ -596,9 +609,11 @@ export function buildElsterPrepChecklist(companyId, opts = {}) {
     releasedInYear: yearJobs.length,
     jobsInFocusMonth: jobs.length,
     readyForHumanUpload,
+    cert: { configured: Boolean(cert.configured), autoSubmit: Boolean(cert.autoSubmit) },
     steps,
     humanFinal: true,
-    note:
-      "Nur Vorbereitung. WorkPass sendet nichts an ELSTER – Zertifikat und Upload bleiben beim Menschen.",
+    note: cert.configured
+      ? "Zertifikat gespeichert. Versand über WorkPass (ERiC-Sidecar/Submit-URL) oder manuell."
+      : "Zertifikat hinterlegen für automatischen Versand, sonst Upload auf elster.de.",
   };
 }

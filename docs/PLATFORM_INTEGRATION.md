@@ -382,4 +382,16 @@ Nach Freigabe: Delivery-Queue + optional Webhook.
 - [ ] Nach Zustellung `ack` aufrufen
 - [ ] `npm run demo:delivery` gegen Staging laufen lassen
 
+## SUPPIX · Ein-Monats-Vertrag
+
+Die Plattform sendet die Beschäftigungsart, WorkPass rät **nicht** Minijob aus einem niedrigen Monatsbrutto.
+
+| Feld | Bedeutung |
+|------|-----------|
+| `employee.employmentType` | `regular` \| `mini` \| `midi` \| `auto` \| `one_month` / `kurzfristig` |
+| `employee.contractMonths` | `1` = Monatsvertrag, bleibt SV-pflichtig `regular` |
+| `employee.contractDuration` | `one_month` / `monatsvertrag` |
+
+`meta.oneMonthContract` wird am Job gesetzt. Minijob nur bei explizit `employmentType=mini`.
+
 Wenn du den Plattform-Pfad oder die Webhook-URL schickst, verdrahten wir den letzten Schritt direkt.

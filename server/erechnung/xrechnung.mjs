@@ -53,6 +53,10 @@ export function buildXRechnungUbl(job) {
   const currency = "EUR";
   const vatId = String(draft.vatId || company.vatId || "").trim();
   const taxNumber = String(draft.taxNumber || company.taxNumber || "").trim();
+  const leitwegId = String(
+    draft.leitwegId || draft.buyerReference || draft.leitweg || company.leitwegId || ""
+  ).trim();
+  const buyerReference = leitwegId || companyId || "NA";
 
   const checklist = {
     hasNumber: Boolean(number),
@@ -61,6 +65,7 @@ export function buildXRechnungUbl(job) {
     hasBuyerName: Boolean(buyer.name),
     hasLines: items.length > 0,
     hasVatOrTaxId: Boolean(vatId || taxNumber),
+    hasLeitwegId: Boolean(leitwegId),
     kleinunternehmer: Boolean(draft.kleinunternehmer),
     reverseCharge: Boolean(draft.reverseCharge),
     readyForHumanSend: Boolean(number && issueDate && seller.name && buyer.name && items.length),
@@ -96,7 +101,7 @@ export function buildXRechnungUbl(job) {
   ${dueDate ? `<cbc:DueDate>${escXml(dueDate)}</cbc:DueDate>` : ""}
   <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
   <cbc:DocumentCurrencyCode>${currency}</cbc:DocumentCurrencyCode>
-  <cbc:BuyerReference>${escXml(companyId || "NA")}</cbc:BuyerReference>
+  <cbc:BuyerReference>${escXml(buyerReference)}</cbc:BuyerReference>
   <cac:AccountingSupplierParty>
     <cac:Party>
       <cac:PartyName><cbc:Name>${escXml(seller.name)}</cbc:Name></cac:PartyName>
@@ -150,10 +155,11 @@ export function buildXRechnungUbl(job) {
     fileName: `xrechnung-${safeNo}.xml`,
     xml,
     checklist,
+    leitwegId: leitwegId || null,
     totals: { net, tax, gross, taxRate, currency },
     note:
-      "E-Rechnung-Export zur Prüfung/Weitergabe. Kein automatischer Versand. "
-      + "Vollständige Peppol/Leitweg-ID-Validierung bleibt beim Menschen / Gateway.",
+      "E-Rechnung-Export (XRechnung UBL). Leitweg-ID in BuyerReference, sofern angegeben. "
+      + "ZUGFeRD-PDF-Einbettung und Peppol-Versand bleiben Gateway/Mensch.",
     humanFinal: true,
   };
 }

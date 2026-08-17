@@ -498,6 +498,12 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   }
 
+  function previousCalendarPeriod() {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }
+
   function isManualPeriodOverride() {
     try {
       return sessionStorage.getItem("wpManualPeriod") === "1";
@@ -900,6 +906,8 @@
               ? ` · ${waitH} ${uiT("sync.waitingHoursShort", "warten auf Stunden")}`
               : (readyN ? ` · ${readyN} ${uiT("sync.readyShort", "bereit")}` : "");
             line = `${uiT("portal.monthCurrent", "Aktueller Monat")} · ${firmStatusLabel(m.status)} · ${m.released}/${m.total}${extra}`;
+          } else if (m.period === previousCalendarPeriod()) {
+            line = `${uiT("portal.monthParallel", "Parallel abrechnen")} · ${firmStatusLabel(m.status)} · ${m.released}/${m.total}`;
           } else if (!m.total) {
             line = uiT("audit.dataNo", "Keine Daten");
           } else if (m.status === "released") {
@@ -963,6 +971,7 @@
         });
       }
       if (!silent) setStatus(`Portal · ${emps.count || 0} MA · Monat ${period}`, true);
+      refreshElsterCertStatus().catch(() => {});
     } catch (e) {
       if (!silent) setStatus(`Portal: ${e.message}`, false);
     }
@@ -4217,24 +4226,6 @@
       let binary = "";
       for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
       return btoa(binary);
-    }
-
-    async function refreshElsterCertStatus() {
-      const host = $("portalElsterCertStatus");
-      if (!host) return;
-      try {
-        const data = await apiFetch("/v1/portal/elster-cert");
-        if (!data.configured) {
-          host.textContent = uiT("portal.elsterCertMissing", "Noch kein Zertifikat hinterlegt.");
-          return;
-        }
-        host.textContent = uiT(
-          "portal.elsterCertOk",
-          "Zertifikat gespeichert · Auto-Versand {auto} · Fingerprint {fp}"
-        ).replace("{auto}", data.autoSubmit ? "an" : "aus").replace("{fp}", data.fingerprint || "—");
-      } catch {
-        host.textContent = "";
-      }
     }
 
     $("btnElsterCertSave")?.addEventListener("click", async () => {

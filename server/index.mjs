@@ -120,6 +120,13 @@ import {
 import { buildComplianceCalendar } from "./compliance-calendar.mjs";
 import { buildSepaCreditTransfer } from "./sepa-export.mjs";
 import { explainPortalGaps } from "./assistant/explain.mjs";
+import { applyEngineTax } from "./assistant/apply-engine.mjs";
+import {
+  elsterCertStatus,
+  saveElsterCert,
+  submitElsterYear,
+  listElsterSubmissions,
+} from "./elster/submit.mjs";
 import {
   buildDeliveryTrust,
   detectPayrollAnomalies,
@@ -1794,6 +1801,84 @@ async function handler(req, res) {
       const result = explainPortalGaps({ ...body, companyId });
       if (!result.ok) return reply(result.status || 422, result);
       return reply(200, result);
+    }
+
+    if (req.method === "POST" && path === "/v1/portal/assistant/apply-engine-tax") {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(body.companyId || body.company?.id || tenantScope || "");
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Assistant-Engine");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const gate = requireHumanConfirm({ ...body, applyEngineTax: true }, "apply_engine_tax");
+      if (!gate.ok) return reply(gate.status || 422, gate);
+      const result = await applyEngineTax({ ...body, companyId, applyEngineTax: true });
+      audit({
+        type: "assistant.apply_engine_tax",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { applied: result.applied?.length || 0, skipped: result.skipped?.length || 0 },
+      });
+      return reply(result.ok ? 200 : (result.status || 422), result);
+    }
+
+    if (req.method === "GET" && path === "/v1/portal/elster-cert") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "ELSTER-Zertifikat");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      return reply(200, elsterCertStatus(companyId));
+    }
+
+    if (req.method === "POST" && path === "/v1/portal/elster-cert") {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(body.companyId || tenantScope || "");
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "ELSTER-Zertifikat");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const gate = requireHumanConfirm(body, "elster_cert_save");
+      if (!gate.ok) return reply(gate.status || 422, gate);
+      try {
+        const saved = saveElsterCert({
+          companyId,
+          p12Base64: body.p12Base64 || body.p12 || body.certificate,
+          pin: body.pin || body.password,
+          autoSubmit: body.autoSubmit === true,
+        });
+        audit({ type: "elster.cert_save", outcome: "ok", ip, path, companyId, detail: { autoSubmit: saved.autoSubmit } });
+        return reply(200, { ...saved, message: "ELSTER-Zertifikat verschlüsselt gespeichert." });
+      } catch (e) {
+        return reply(422, { ok: false, error: e.message || String(e) });
+      }
+    }
+
+    if (req.method === "GET" && path === "/v1/portal/elster-submissions") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "ELSTER");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      return reply(200, { ok: true, submissions: listElsterSubmissions(companyId) });
+    }
+
+    if (req.method === "POST" && path === "/v1/portal/elster-submit") {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(body.companyId || tenantScope || "");
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "ELSTER");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const gate = requireHumanConfirm(body, "elster_submit");
+      if (!gate.ok) return reply(gate.status || 422, gate);
+      const result = await submitElsterYear({
+        companyId,
+        period: body.period || currentPeriod(),
+        year: body.year,
+        actor: "user",
+      });
+      audit({
+        type: "elster.submit",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { year: result.year, status: result.status, mode: result.mode },
+      });
+      return reply(result.ok ? 200 : (result.status || 422), result);
     }
 
     if (req.method === "POST" && (path === "/v1/portal/sepa-export" || path === "/v1/portal/sepa")) {

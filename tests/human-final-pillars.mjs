@@ -29,11 +29,14 @@ function assert(cond, msg) {
 
 console.log("\n=== Human-final policy ===");
 assert(humanFinalPublicInfo().humanFinal === true, "policy public");
+assert(humanFinalPublicInfo().policyVersion === "2", "policy v2");
 assert(!requireHumanConfirm({}, "month_close").ok, "confirm required");
 assert(requireHumanConfirm({ confirm: true }, "month_close").ok, "confirm ok");
 assert(!assertNotAiApplyingLaw({ appliedBy: "ai" }).ok, "reject ai actor");
 assert(!assertNotAiApplyingLaw({ execute: true }).ok, "reject execute");
 assert(assertNotAiApplyingLaw({ confirm: true }).ok, "human ok");
+assert(assertNotAiApplyingLaw({ applyEngineTax: true, appliedBy: "assistant" }).ok, "engine tax allowed");
+assert(!assertNotAiApplyingLaw({ applyTax: true }).ok, "invented applyTax blocked");
 
 const id = `hf${Date.now().toString(36)}`;
 activateCompany({

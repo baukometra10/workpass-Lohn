@@ -97,6 +97,7 @@ const xr = buildXRechnungUbl({
     seller: "Sync GmbH\nMusterstr. 1",
     customer: "Kunde AG\nKundenweg 2",
     taxRate: 19,
+    leitwegId: "04011000-12345678-90",
     items: [{ description: "Leistung", quantity: 1, unitPrice: 100 }],
     net: 100,
     tax: 19,
@@ -104,6 +105,8 @@ const xr = buildXRechnungUbl({
   },
 });
 assert(xr.ok && xr.xml.includes("CustomizationID") && xr.xml.includes("RE-1"), "xrechnung xml");
+assert(xr.xml.includes("04011000-12345678-90"), "leitweg in BuyerReference");
+assert(xr.checklist.hasLeitwegId === true, "leitweg checklist");
 assert(xr.checklist.readyForHumanSend === true, "xrechnung checklist ready");
 
 const exp = buildGobdExport({ companyId, include: ["company", "businessAudit"] });

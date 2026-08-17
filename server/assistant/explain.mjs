@@ -1,6 +1,5 @@
 /**
- * Rule-based explain-only assistant.
- * Never executes actions, never applies tax/legal rates.
+ * Rule-based assistant: explains gaps and may suggest engine-backed tax (BMF PAP).
  */
 import { assertNotAiApplyingLaw } from "../policy/human-final.mjs";
 import { monthCompleteness, employeeSyncReadiness } from "../portal-service.mjs";
@@ -38,6 +37,16 @@ const ACTION_CATALOG = {
   datev_export: {
     id: "datev_export",
     label: "DATEV-Export (Mensch bestätigt)",
+    requiresConfirm: true,
+  },
+  apply_engine_tax: {
+    id: "apply_engine_tax",
+    label: "Steuer mit BMF PAP setzen (bestätigen)",
+    requiresConfirm: true,
+  },
+  elster_submit: {
+    id: "elster_submit",
+    label: "ELSTER mit Zertifikat senden (bestätigen)",
     requiresConfirm: true,
   },
 };
@@ -145,6 +154,19 @@ export function explainPortalGaps(input = {}) {
     }
   }
 
+  const calculatedOpen = jobs.filter((j) => j.status === "calculated");
+  if (calculatedOpen.length) {
+    explanations.push({
+      code: "apply_engine_tax",
+      severity: "info",
+      title: "Steuer mit BMF PAP setzen",
+      body:
+        `${calculatedOpen.length} Abrechnung(en) können mit der gesetzlichen Engine (BMF PAP / SV) neu berechnet werden. `
+        + "Keine LLM-Beträge – nur amtliche Berechnung nach Ihrer Bestätigung.",
+    });
+    pushAction("apply_engine_tax");
+  }
+
   const readyCount = jobs.filter((j) => j.status === "calculated" || j.status === "released").length;
   const released = jobs.filter((j) => j.status === "released").length;
   if (jobs.length && readyCount === jobs.length && released < jobs.length) {
@@ -194,6 +216,6 @@ export function explainPortalGaps(input = {}) {
     explanations,
     suggestedHumanActions,
     disclaimer:
-      "Nur Erklärung. Keine Steuerwerte, kein ELSTER-Versand, keine Freigabe durch KI.",
+      "KI setzt Steuer nur über BMF PAP / SV gesetzlich. Keine erfundenen Beträge. ELSTER braucht Zertifikat.",
   };
 }

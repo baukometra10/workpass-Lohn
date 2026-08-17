@@ -54,21 +54,21 @@ assert(isPayrollAutomationEnabled({ id: "x", meta: {} }) === false, "missing acc
 assert(isPayrollAutomationEnabled({ id: "y", meta: { accountingEnabled: false } }) === false, "false flag not eligible");
 
 console.log("\n=== period window ===");
-assert(autoMonthCloseConfig().parallelMonths === false, "parallel months default off");
-assert(autoMonthCloseConfig().catchUpDays === 0, "catch-up default 0");
+assert(autoMonthCloseConfig().parallelMonths === true, "parallel months default on");
+assert(autoMonthCloseConfig().catchUpDays === 7, "catch-up default 7");
 const lastDay = new Date(2026, 7, 31); // Aug 31 2026
 const periodsLast = periodsForAutoMonthClose(lastDay);
-assert(periodsLast.includes("2026-08"), `last day includes current (${periodsLast})`);
-assert(periodsLast.length === 1, "last day only one month");
+assert(periodsLast.includes("2026-08") && periodsLast.includes("2026-07"), `parallel current+previous (${periodsLast})`);
 const early = new Date(2026, 8, 2); // Sep 2
 const periodsEarly = periodsForAutoMonthClose(early);
-assert(periodsEarly.includes("2026-09") || periodsEarly.length === 0, `default catch-up off (${periodsEarly})`);
-assert(!periodsEarly.includes("2026-08"), "auto never closes previous+current together");
+assert(periodsEarly.includes("2026-09") && periodsEarly.includes("2026-08"), `Sep parallel (${periodsEarly})`);
 const mid = new Date(2026, 8, 15);
-assert(periodsForAutoMonthClose(mid).length === 0, "mid-month outside close window");
-const catchCfg = { ...autoMonthCloseConfig(), catchUpDays: 7 };
-assert(periodsForAutoMonthClose(early, catchCfg).includes("2026-08"), "optional catch-up previous only");
-assert(!periodsForAutoMonthClose(early, catchCfg).includes("2026-09"), "catch-up does not add current month");
+const periodsMid = periodsForAutoMonthClose(mid);
+assert(periodsMid.includes("2026-09") && periodsMid.includes("2026-08"), "mid-month still parallel");
+const sequential = { ...autoMonthCloseConfig(), parallelMonths: false, catchUpDays: 7 };
+assert(periodsForAutoMonthClose(early, sequential).includes("2026-08"), "opt-out catch-up previous");
+assert(!periodsForAutoMonthClose(early, sequential).includes("2026-09"), "opt-out catch-up does not add current");
+assert(periodsForAutoMonthClose(mid, sequential).length === 0, "opt-out mid-month empty");
 
 console.log("\n=== config default on ===");
 delete process.env.WORKPASS_AUTO_MONTH_CLOSE;

@@ -8,8 +8,9 @@ Geltungsbereich: elektronische Lohn-/Rechnungsverarbeitung im Accounting-Bridge 
 ## 1. Systemübersicht
 
 - **Produkt:** WorkPass Lohn / Accounting Bridge  
-- **Rolle:** berechnet und speichert Lohnabrechnungen/Rechnungen lokal, liefert Ergebnisse an die Plattform (Webhook/Pull), exportiert DATEV/SEPA/ELSTER-Vorbereitung.  
-- **Human-final:** KI darf Steuer nicht anwenden; sensible Aktionen brauchen `{ confirm: true }` (siehe `docs/HUMAN_FINAL_POLICY.md`).
+- **Rolle:** berechnet und speichert Lohnabrechnungen/Rechnungen lokal, liefert Ergebnisse an die Plattform (Webhook/Pull), exportiert DATEV/SEPA/ELSTER (Zertifikat optional).  
+- **Human-final v2:** KI setzt Steuer nur über BMF PAP / SV gesetzlich nach `{ confirm: true }`. Keine erfundenen LLM-Beträge (siehe `docs/HUMAN_FINAL_POLICY.md`).  
+- **Zwei Monate parallel:** Automatik rechnet aktuellen und vorherigen Monat (`WORKPASS_AUTO_PARALLEL_MONTHS`).
 
 ```
 SUPPIX / Plattform  ←→  Accounting Bridge (dieses Repo)  ←→  Exporte (DATEV, SEPA, GoBD-Paket)
