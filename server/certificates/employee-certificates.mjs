@@ -79,6 +79,37 @@ function formatCertPeriod(start, end) {
   return a || b || "-";
 }
 
+const DE_MONTHS = [
+  "Januar", "Februar", "März", "April", "Mai", "Juni",
+  "Juli", "August", "September", "Oktober", "November", "Dezember",
+];
+
+function monthNameFromIso(value) {
+  const m = String(value || "").match(/^(\d{4})-(\d{2})/);
+  if (!m) return null;
+  const month = Number(m[2]);
+  if (month < 1 || month > 12) return null;
+  return { year: Number(m[1]), month, name: DE_MONTHS[month - 1] };
+}
+
+/** e.g. "von Januar bis Dezember 2027" or "von August 2026 bis März 2027" */
+function formatCertPeriodVonBis(start, end) {
+  const a = monthNameFromIso(start);
+  const b = monthNameFromIso(end);
+  if (!a && !b) return "";
+  if (a && b) {
+    if (a.year === b.year && a.month === b.month) {
+      return `von ${a.name} ${a.year}`;
+    }
+    if (a.year === b.year) {
+      return `von ${a.name} bis ${b.name} ${a.year}`;
+    }
+    return `von ${a.name} ${a.year} bis ${b.name} ${b.year}`;
+  }
+  const one = a || b;
+  return `von ${one.name} ${one.year}`;
+}
+
 function resolveYearBounds(year, months, entryDate, exitDate) {
   const y = Number(year) || new Date().getFullYear();
   const yearStart = `${y}-01-01`;
@@ -283,6 +314,7 @@ export function buildEmployeeLstbCertificate(companyId, employeeId, year) {
     state.employeeExitDate || reg.exitDate
   );
   const certPeriod = formatCertPeriod(bounds.start, bounds.end);
+  const certPeriodLabel = formatCertPeriodVonBis(bounds.start, bounds.end);
 
   const rowValues = {
     certPeriod,
@@ -321,6 +353,7 @@ export function buildEmployeeLstbCertificate(companyId, employeeId, year) {
     seller: sellerBlock(company),
     taxNumber: String(company.taxNumber || company.meta?.hubProfile?.taxNumber || "").trim(),
     certPeriod,
+    certPeriodLabel,
     periodStart: bounds.start,
     periodEnd: bounds.end,
     totals,
@@ -379,9 +412,16 @@ export function buildEmployeeVerdienstCertificate(companyId, employeeId, year, p
     period: focusRow.period,
     employeeId: eid,
     employeeName: employeeDisplayName(focusRow.job, reg.name),
-    personnelNumber: String(state.personnelNumber || state.employeeId || eid).trim(),
+    employeeTaxId: String(state.employeeTaxId || reg.taxId || "").trim(),
+    employeeInsuranceNo: String(state.employeeInsuranceNo || reg.insuranceNo || "").trim(),
+    employeeBirthDate: String(state.employeeBirthDate || reg.birthDate || "").trim(),
+    employeeAddress: String(state.employeeAddress || reg.address || "").trim(),
+    personnelNumber: String(state.personnelNumber || "").trim() || String(state.employeeId || eid).trim(),
+    taxClass: String(state.taxClass || "I").trim(),
     seller: sellerBlock(company),
+    taxNumber: String(company.taxNumber || company.meta?.hubProfile?.taxNumber || "").trim(),
     monthsInYear: rows.map((r) => r.period),
+    monthsCount: rows.length,
     monthly,
     ytd: {
       gross: ytd.gross,
@@ -395,6 +435,7 @@ export function buildEmployeeVerdienstCertificate(companyId, employeeId, year, p
       care: ytd.care,
       unemployment: ytd.unemployment,
       net: ytd.net,
+      employerShare: ytd.employerShare,
     },
     rows: tableRows,
     note: "Verdienstbescheinigung aus freigegebenen Abrechnungen · Monat + Jahressumme",

@@ -5198,18 +5198,29 @@ function updateAnnualPreview() {
 
   setNodeText(document.getElementById("lstbYear"), String(year));
   setNodeText(document.getElementById("lstbYearTitle"), String(year));
-  const kmId = window.ElsterExport?.generateKmId(data) || `FD${year}${(data?.employeeId || "").replace(/\W/g, "").slice(0, 8)}`;
+  const kmId = window.ElsterExport?.generateKmId(data) || `FD${year}${String(data?.personnelNumber || data?.employeeTaxId || "0000").replace(/\W/g, "").slice(0, 8)}`;
   setNodeText(document.getElementById("lstbKmId"), kmId);
-  setNodeText(document.getElementById("lstbCertNr"), `${year}-${String(data?.employeeId || "0").padStart(5, "0")}`);
-  setNodeText(document.getElementById("lstbFinanzamt"), taxNumberInput?.value?.trim() ? `Finanzamt ${taxNumberInput.value.trim()}` : "Finanzamt (Steuernummer im Mandantenprofil eintragen)");
-  setNodeText(document.getElementById("lstbPersNr"), data?.employeeId || "-");
+  setNodeText(document.getElementById("lstbFinanzamt"), taxNumberInput?.value?.trim() || "— bitte Steuernummer der Firma eintragen —");
+  setNodeText(
+    document.getElementById("lstbFinanzamtHint"),
+    taxNumberInput?.value?.trim()
+      ? "Steuernummer der Firma (Betriebsstättenfinanzamt) · nicht Wohnsitzfinanzamt des Mitarbeiters"
+      : "Firma → Steuer-Nr. eintragen (z. B. 143/123/45678)"
+  );
+  const periodDates = data?.certPeriod || "-";
+  const periodVonBis = data?.certPeriodLabel
+    || window.AnnualCertificate?.formatCertPeriodVonBis?.(data?.periodStart, data?.periodEnd)
+    || "";
+  setNodeText(document.getElementById("lstbPeriodBanner"), periodVonBis || "-");
+  setNodeText(document.getElementById("lstbPeriodDates"), periodDates);
+  setNodeText(document.getElementById("lstbPersNr"), data?.personnelNumber || data?.employeeId || "-");
   setNodeText(document.getElementById("lstbTaxId"), data?.employeeTaxId || "-");
   setNodeText(document.getElementById("lstbInsuranceNo"), data?.employeeInsuranceNo || "-");
   setNodeText(document.getElementById("lstbBirthDate"), formatDateForView(data?.employeeBirthDate));
   setNodeText(document.getElementById("lstbTaxClass"), taxClassToDisplay(data?.taxClass || "I"));
   setNodeText(document.getElementById("lstbChildAllowance"), formatNumber(data?.childAllowanceFactor || 0));
   setNodeText(document.getElementById("lstbChurch"), data?.churchTaxRate > 0 ? `${data.churchTaxRate} %` : "keine");
-  setNodeText(document.getElementById("lstbPeriod"), data?.certPeriod || "-");
+  setNodeText(document.getElementById("lstbPeriod"), periodVonBis ? `${periodVonBis} (${periodDates})` : periodDates);
 
   const empEl = document.getElementById("lstbEmployee");
   const emplAddr = data?.employeeAddress || employeeName;

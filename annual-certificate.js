@@ -57,6 +57,37 @@ function formatCertPeriod(start, end) {
   return a || b || "-";
 }
 
+const DE_MONTHS = [
+  "Januar", "Februar", "März", "April", "Mai", "Juni",
+  "Juli", "August", "September", "Oktober", "November", "Dezember",
+];
+
+function monthNameFromIso(value) {
+  const m = String(value || "").match(/^(\d{4})-(\d{2})/);
+  if (!m) return null;
+  const month = Number(m[2]);
+  if (month < 1 || month > 12) return null;
+  return { year: Number(m[1]), month, name: DE_MONTHS[month - 1] };
+}
+
+/** e.g. "von Januar bis Dezember 2027" */
+function formatCertPeriodVonBis(start, end) {
+  const a = monthNameFromIso(start);
+  const b = monthNameFromIso(end);
+  if (!a && !b) return "";
+  if (a && b) {
+    if (a.year === b.year && a.month === b.month) {
+      return `von ${a.name} ${a.year}`;
+    }
+    if (a.year === b.year) {
+      return `von ${a.name} bis ${b.name} ${a.year}`;
+    }
+    return `von ${a.name} ${a.year} bis ${b.name} ${b.year}`;
+  }
+  const one = a || b;
+  return `von ${one.name} ${one.year}`;
+}
+
 function resolveYearBounds(year, months, entryDate, exitDate) {
   const y = Number(year) || new Date().getFullYear();
   const yearStart = `${y}-01-01`;
@@ -187,6 +218,7 @@ function buildAnnualCertificateData(options = {}) {
 
   const bounds = resolveYearBounds(y, totals.months, employeeEntryDate, employeeExitDate);
   const certPeriod = formatCertPeriod(bounds.start, bounds.end);
+  const certPeriodLabel = formatCertPeriodVonBis(bounds.start, bounds.end);
 
   const rowValues = {
     certPeriod,
@@ -233,6 +265,7 @@ function buildAnnualCertificateData(options = {}) {
     churchTaxRate,
     childAllowanceFactor,
     certPeriod,
+    certPeriodLabel,
     periodStart: bounds.start,
     periodEnd: bounds.end,
     totals,
@@ -250,5 +283,6 @@ if (typeof window !== "undefined") {
     LSTB_ROWS,
     buildAnnualCertificateData,
     formatCertPeriod,
+    formatCertPeriodVonBis,
   };
 }

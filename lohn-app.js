@@ -1419,11 +1419,18 @@
 
   function renderLstbPrintHtml(data) {
     const year = data.year || new Date().getFullYear();
-    const kmId = `FD${year}${String(data.employeeId || "").replace(/\W/g, "").slice(0, 8)}`;
-    const certNr = `${year}-${String(data.employeeId || "0").padStart(5, "0")}`;
+    const kmId = window.ElsterExport?.generateKmId?.(data)
+      || `FD${year}${String(data.personnelNumber || data.employeeTaxId || "0000").replace(/\W/g, "").slice(0, 8)}`;
     const finanzamt = data.taxNumber
-      ? `Finanzamt ${data.taxNumber}`
-      : "Finanzamt (Steuernummer im Mandantenprofil eintragen)";
+      ? String(data.taxNumber).trim()
+      : "— bitte Steuernummer der Firma eintragen —";
+    const finanzamtHint = data.taxNumber
+      ? "Steuernummer der Firma (Betriebsstättenfinanzamt) · nicht Wohnsitzfinanzamt des Mitarbeiters"
+      : "Firma → Steuer-Nr. eintragen (z. B. 143/123/45678)";
+    const periodDates = data.certPeriod || "-";
+    const periodVonBis = data.certPeriodLabel
+      || (window.AnnualCertificate?.formatCertPeriodVonBis?.(data.periodStart, data.periodEnd) || "")
+      || (periodDates !== "-" ? `Zeitraum ${periodDates}` : "");
     const church = Number(data.churchTaxRate) > 0 ? `${data.churchTaxRate} %` : "keine";
     const empBlock = [data.employeeName, data.employeeAddress].filter(Boolean).join("\n").trim() || data.employeeName || "-";
     const monthsSummary = data.hasData
@@ -1436,16 +1443,18 @@
           <div class="lstb-header-left">
             <p class="lstb-finanzamt">Finanzamt / Gemeinde</p>
             <p class="lstb-finanzamt-val">${esc(finanzamt)}</p>
+            <p class="lstb-finanzamt-hint">${esc(finanzamtHint)}</p>
           </div>
           <div class="lstb-header-center">
             <h2>Lohnsteuerbescheinigung</h2>
             <p>für das Kalenderjahr <strong>${year}</strong></p>
+            <p class="lstb-period-banner">${esc(periodVonBis)}</p>
+            <p class="lstb-period-dates">${esc(periodDates)}</p>
             <p class="lstb-sub">Ausdruck der elektronischen Lohnsteuerbescheinigung nach § 39 Abs. 1 EStG</p>
           </div>
           <div class="lstb-header-right">
             <p>KmId</p>
             <p class="lstb-kmid">${esc(kmId)}</p>
-            <p class="lstb-cert-nr">Certifikat-Nr. <span>${esc(certNr)}</span></p>
           </div>
         </header>
         <header class="lstb-title-block lstb-title-block-secondary">
@@ -1462,7 +1471,7 @@
                 <tr><td class="lstb-lbl">Steuerklasse</td><td>${esc(certTaxClassDisplay(data.taxClass))}</td></tr>
                 <tr><td class="lstb-lbl">Kinderfreibeträge (ZKF)</td><td>${esc(String(data.childAllowanceFactor ?? 0))}</td></tr>
                 <tr><td class="lstb-lbl">Kirchensteuer</td><td>${esc(church)}</td></tr>
-                <tr><td class="lstb-lbl">Zeitraum</td><td>${esc(data.certPeriod || "-")}</td></tr>
+                <tr><td class="lstb-lbl">Zeitraum</td><td>${esc(periodVonBis ? `${periodVonBis} (${periodDates})` : periodDates)}</td></tr>
               </tbody>
             </table>
             <div class="lstb-address-block">
@@ -1496,29 +1505,74 @@
   }
 
   function renderVerdienstPrintHtml(data) {
+    const year = data.year || new Date().getFullYear();
     const periodLabel = formatPeriodLabel(data.period) || data.period || "-";
-    const rows = (data.rows || []).map((row) => `
-      <tr>
+    const months = Array.isArray(data.monthsInYear) ? data.monthsInYear : [];
+    const monthsLabel = months.length
+      ? months.map((m) => formatPeriodLabel(m) || m).join(", ")
+      : "-";
+    const persNr = String(data.personnelNumber || "").trim() || "—";
+    const empBlock = [data.employeeName, data.employeeAddress].filter(Boolean).join("\n").trim() || data.employeeName || "-";
+    const rows = (data.rows || []).map((row) => {
+      const cls = row.deduction ? " class=\"vb-deduction\"" : "";
+      return `
+      <tr${cls}>
         <td>${esc(row.label)}</td>
         <td class="num">${esc(PayrollCore.formatAmount(row.monthly || 0))}</td>
         <td class="num">${esc(PayrollCore.formatAmount(row.yearly || 0))}</td>
-      </tr>`).join("");
+      </tr>`;
+    }).join("");
     return `
-      <article class="payroll-document verdienst-document">
+      <article class="verdienst-document vb-sheet-a4">
         <header class="vb-header">
-          <h2 class="vb-title">Verdienstbescheinigung</h2>
-          <p class="vb-meta">${esc(data.employeeName || "-")} · ${esc(data.personnelNumber || data.employeeId || "-")} · ${esc(periodLabel)}</p>
-          <p class="vb-sub">${esc(data.seller || "")}</p>
+          <div class="vb-header-top">
+            <div>
+              <p class="vb-kicker">WorkPass Lohn · Form VB</p>
+              <h2 class="vb-title">Verdienstbescheinigung</h2>
+            </div>
+            <div class="vb-header-period">
+              <span>Bezugsmonat</span>
+              <strong>${esc(periodLabel)}</strong>
+              <em>Jahr ${esc(String(year))}</em>
+            </div>
+          </div>
+          <p class="vb-sub">Ausdruck für den Arbeitnehmer · Beträge aus freigegebenen Monatsabrechnungen</p>
         </header>
-        <table class="portal-vb-table ag-verdienst ag-verdienst-block">
+        <div class="vb-grid">
+          <section class="vb-party">
+            <h3>Arbeitnehmer/in</h3>
+            <pre>${esc(empBlock)}</pre>
+            <table class="vb-meta-table">
+              <tr><td>Personal-Nr.</td><td>${esc(persNr)}</td></tr>
+              <tr><td>Identifikationsnummer</td><td>${esc(data.employeeTaxId || "—")}</td></tr>
+              <tr><td>SV-Nummer</td><td>${esc(data.employeeInsuranceNo || "—")}</td></tr>
+              <tr><td>Geburtsdatum</td><td>${esc(certFormatDateDe(data.employeeBirthDate))}</td></tr>
+              <tr><td>Steuerklasse</td><td>${esc(certTaxClassDisplay(data.taxClass))}</td></tr>
+            </table>
+          </section>
+          <section class="vb-party">
+            <h3>Arbeitgeber</h3>
+            <pre>${esc(data.seller || "—")}</pre>
+            <table class="vb-meta-table">
+              <tr><td>Steuernummer</td><td>${esc(data.taxNumber || "—")}</td></tr>
+              <tr><td>Abgerechnete Monate ${esc(String(year))}</td><td>${esc(String(data.monthsCount || months.length || 0))}</td></tr>
+            </table>
+            <p class="vb-months">${esc(monthsLabel)}</p>
+          </section>
+        </div>
+        <table class="portal-vb-table vb-amounts">
           <thead>
-            <tr><th>Bezeichnung</th><th class="num">mtl.</th><th class="num">Jahr</th></tr>
+            <tr>
+              <th>Bezeichnung</th>
+              <th class="num">mtl. (${esc(periodLabel)})</th>
+              <th class="num">Jahr ${esc(String(year))}</th>
+            </tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
         <footer class="vb-footer">
-          <p>${esc(new Date().toLocaleString("de-DE"))}</p>
-          <p class="vb-legal">Ausdruck für den Arbeitnehmer · nicht Bestandteil der Monatsabrechnung</p>
+          <p>mtl. = Bezugsmonat · Jahr = Summe freigegebener Monate ${esc(String(year))}</p>
+          <p class="vb-legal">Ausdruck für den Arbeitnehmer · nicht Bestandteil der Monatsabrechnung · ${esc(new Date().toLocaleString("de-DE"))}</p>
         </footer>
       </article>`;
   }
@@ -1665,7 +1719,8 @@
     const year = data.year || certYearValue();
     const employees = data.employees || [];
     host.innerHTML = employees.length
-      ? employees.map((e) => `
+      ? `<p class="section-hint portal-cert-summary-head">${esc(uiT("portal.certSummaryHead", "Jahresübersicht {year}: {n} Mitarbeiter mit freigegebenen Monaten").replace("{year}", String(year)).replace("{n}", String(employees.length)))}</p>`
+        + employees.map((e) => `
         <div class="api-inbox-item">
           <div>
             <strong>${esc(e.name)}</strong>
@@ -1683,19 +1738,42 @@
     host.querySelectorAll(".api-cert-vb").forEach((btn) => {
       btn.addEventListener("click", () => showVerdienstCertificate(btn.dataset.emp, Number(btn.dataset.year)));
     });
+    host.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
   async function loadCertificateSummary() {
-    if (!$("portalCertList")) return;
+    const host = $("portalCertList");
+    if (!host) {
+      toast(uiT("portal.certSummaryMissing", "Jahresübersicht-Bereich nicht gefunden."), "error");
+      return;
+    }
     ensureCertDefaults(currentPayrollPeriod());
+    const btn = $("btnCertSummary");
+    if (btn) btn.disabled = true;
+    host.innerHTML = `<p class="section-hint">${esc(uiT("portal.certSummaryLoading", "Jahresübersicht wird geladen…"))}</p>`;
     try {
       const companyId = companyPortalId || apiConfig().companyId;
+      if (!companyId) {
+        throw new Error(uiT("portal.needCompany", "Firmen-ID fehlt. Bitte anmelden oder Firma wählen."));
+      }
       const year = certYearValue();
       const data = await apiFetch(`/v1/portal/certificates/summary?companyId=${encodeURIComponent(companyId)}&year=${year}`);
-      if (data.ok) renderCertificateSummaryList(data);
-    } catch {
-      const host = $("portalCertList");
-      if (host) host.innerHTML = "";
+      if (!data.ok) {
+        throw new Error(data.error || uiT("portal.certSummaryFail", "Jahresübersicht konnte nicht geladen werden."));
+      }
+      renderCertificateSummaryList(data);
+      const n = (data.employees || []).length;
+      toast(
+        n
+          ? uiT("portal.certSummaryOk", "Jahresübersicht: {n} Mitarbeiter").replace("{n}", String(n))
+          : uiT("portal.certEmpty", "Keine freigegebenen Monate für dieses Jahr."),
+        n ? "ok" : "error"
+      );
+    } catch (e) {
+      host.innerHTML = `<p class="section-hint">${esc(e.message || uiT("portal.certSummaryFail", "Jahresübersicht konnte nicht geladen werden."))}</p>`;
+      toast(e.message || uiT("portal.certSummaryFail", "Jahresübersicht konnte nicht geladen werden."), "error");
+    } finally {
+      if (btn) btn.disabled = false;
     }
   }
 

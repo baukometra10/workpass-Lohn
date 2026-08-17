@@ -3080,17 +3080,156 @@ body.theme-light .portal-gobd-op {
 .portal-cert-page {
   background: #fff;
   color: #000;
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 .portal-cert-print-host .lstb-document,
 .portal-cert-print-host .verdienst-document {
+  width: 210mm;
+  min-height: 297mm;
   max-width: 210mm;
   margin: 0 auto;
   background: #fff;
+  box-sizing: border-box;
 }
 .portal-cert-print-host .verdienst-document {
-  padding: 8mm;
+  padding: 8mm 9mm;
   border: 1px solid #000;
   font-family: Arial, Helvetica, sans-serif;
+  color: #000;
+  display: flex;
+  flex-direction: column;
+  gap: 3.5mm;
+}
+.portal-cert-print-host .vb-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 4mm;
+  border-bottom: 1.2pt solid #1a2a33;
+  padding-bottom: 2.5mm;
+}
+.portal-cert-print-host .vb-kicker {
+  margin: 0 0 1mm;
+  font-size: 7pt;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.portal-cert-print-host .vb-title {
+  margin: 0;
+  font-size: 14pt;
+}
+.portal-cert-print-host .vb-header-period {
+  text-align: right;
+  min-width: 42mm;
+  border: 0.5pt solid #1a2a33;
+  padding: 2mm 2.5mm;
+  background: #f8fafc;
+}
+.portal-cert-print-host .vb-header-period span,
+.portal-cert-print-host .vb-header-period em {
+  display: block;
+  font-size: 6.5pt;
+  font-style: normal;
+  color: #475569;
+}
+.portal-cert-print-host .vb-header-period strong {
+  display: block;
+  font-size: 11pt;
+  margin: 0.6mm 0;
+}
+.portal-cert-print-host .vb-sub {
+  margin: 0;
+  font-size: 7.5pt;
+  color: #334155;
+}
+.portal-cert-print-host .vb-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3mm;
+}
+.portal-cert-print-host .vb-party {
+  border: 0.5pt solid #1a2a33;
+  padding: 2.5mm 3mm;
+  min-height: 42mm;
+}
+.portal-cert-print-host .vb-party h3 {
+  margin: 0 0 1.5mm;
+  font-size: 7pt;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 0.35pt solid #cbd5e1;
+  padding-bottom: 1mm;
+}
+.portal-cert-print-host .vb-party pre {
+  margin: 0 0 2mm;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 8.5pt;
+  line-height: 1.35;
+}
+.portal-cert-print-host .vb-meta-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 7.2pt;
+}
+.portal-cert-print-host .vb-meta-table td {
+  padding: 0.7mm 0;
+  vertical-align: top;
+}
+.portal-cert-print-host .vb-meta-table td:first-child {
+  color: #475569;
+  width: 42%;
+}
+.portal-cert-print-host .vb-months {
+  margin: 2mm 0 0;
+  font-size: 6.5pt;
+  color: #475569;
+  line-height: 1.3;
+}
+.portal-cert-print-host .vb-amounts {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8.5pt;
+  flex: 1 1 auto;
+}
+.portal-cert-print-host .vb-amounts th,
+.portal-cert-print-host .vb-amounts td {
+  border: 0.45pt solid #334155;
+  padding: 1.6mm 2mm;
+}
+.portal-cert-print-host .vb-amounts th {
+  background: #e8eef2;
+  text-align: left;
+  font-size: 7pt;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.portal-cert-print-host .vb-amounts .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  width: 28mm;
+}
+.portal-cert-print-host .vb-amounts tr.vb-deduction td {
+  color: #334155;
+}
+.portal-cert-print-host .vb-footer {
+  margin-top: auto;
+  padding-top: 2mm;
+  border-top: 0.4pt solid #94a3b8;
+  font-size: 6.5pt;
+  color: #475569;
+}
+.portal-cert-print-host .vb-footer p {
+  margin: 0 0 0.8mm;
+}
+.portal-cert-summary-head {
+  margin: 0 0 8px;
+  font-weight: 600;
 }
 .portal-cert-print-host .vb-title {
   margin: 0 0 4mm;
@@ -3116,6 +3255,10 @@ body.theme-light .portal-gobd-op {
   }
 }
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
   body.portal-cert-printing > *:not(.portal-cert-print-host) {
     display: none !important;
   }
@@ -3130,12 +3273,21 @@ body.theme-light .portal-gobd-op {
     display: none !important;
   }
   .portal-cert-page {
+    width: 210mm !important;
+    min-height: 297mm !important;
     page-break-after: always;
     break-after: page;
   }
   .portal-cert-page:last-of-type {
     page-break-after: auto;
     break-after: auto;
+  }
+  .portal-cert-print-host .lstb-document,
+  .portal-cert-print-host .verdienst-document {
+    width: 210mm !important;
+    min-height: 297mm !important;
+    max-width: 210mm !important;
+    box-shadow: none !important;
   }
   .portal-vb-table {
     width: 100%;
@@ -3166,4 +3318,188 @@ body.theme-light .portal-gobd-op {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* —— Schmale / mittlere Fenster: Fläche füllen, nicht leer wirken —— */
+@media (max-width: 1200px) {
+  body.company-portal .lohn-layout:has(.preview-stage.is-empty) {
+    grid-template-columns: minmax(0, 1fr) minmax(200px, 0.38fr);
+  }
+  body.company-portal .lohn-preview:has(.preview-stage.is-empty) {
+    padding: 8px;
+  }
+  body.company-portal .preview-stage.is-empty {
+    min-height: 0;
+    background:
+      radial-gradient(ellipse at 50% 30%, rgba(59, 158, 255, 0.14), transparent 55%),
+      linear-gradient(165deg, rgba(14, 24, 42, 0.95), rgba(8, 14, 26, 0.9));
+  }
+  body.company-portal .preview-empty {
+    position: relative;
+    left: auto;
+    top: auto;
+    transform: none;
+    width: 100%;
+    margin: 8px auto;
+    padding: 14px 12px;
+  }
+}
+
+@media (max-width: 1100px) {
+  body.company-portal .lohn-layout {
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: none;
+    overflow: visible;
+  }
+  body.company-portal .lohn-form {
+    order: 0;
+    max-width: none;
+    width: 100%;
+    padding: 6px 12px 20px;
+  }
+  body.company-portal .lohn-preview {
+    order: 1;
+    width: 100%;
+  }
+  body.company-portal .lohn-preview:has(.preview-stage.is-empty) {
+    order: 2;
+    max-height: 180px;
+    min-height: 0;
+  }
+  body.company-portal .lohn-preview:has(.preview-stage:not(.is-empty)) {
+    order: 1;
+    max-height: min(56vh, 680px);
+  }
+  body.company-portal .form-jump {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    padding-bottom: 2px;
+  }
+  body.company-portal .form-jump a {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 7px 10px;
+    font-size: 0.72rem;
+  }
+  body.company-portal .portal-kpi-row,
+  body.company-portal .portal-totals-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  body.company-portal .month-close-actions,
+  body.company-portal .portal-gobd-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  body.company-portal .month-close-actions > .portal-cta-primary,
+  body.company-portal .month-close-actions > .portal-cta-secondary,
+  body.company-portal .month-close-actions > button,
+  body.company-portal .portal-gobd-actions > button {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+  body.company-portal .field-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  body.company-portal .month-close-card,
+  body.company-portal .portal-dash-card,
+  body.company-portal .form-section {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 720px) {
+  body.company-portal .field-grid,
+  .field-grid {
+    grid-template-columns: 1fr;
+  }
+  body.company-portal .month-close-actions,
+  body.company-portal .portal-gobd-actions {
+    grid-template-columns: 1fr;
+  }
+  body.company-portal .portal-kpi-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  body.company-portal .kpi-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  body.company-portal .lohn-form {
+    padding: 4px 10px 18px;
+  }
+  body.company-portal .company-portal-banner-inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  body.company-portal .portal-workspace-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  body.company-portal .portal-workspace-bar #btnWorkspaceCurrent {
+    width: 100%;
+  }
+  body.company-portal .api-inbox-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  body.company-portal .api-inbox-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  body.company-portal .api-inbox-actions button {
+    width: 100%;
+  }
+  .preview-empty {
+    position: relative;
+    left: auto;
+    top: auto;
+    transform: none;
+    width: calc(100% - 12px);
+    margin: 8px auto;
+  }
+  body.company-portal .lohn-preview:has(.preview-stage.is-empty) {
+    max-height: 160px;
+  }
+  body.company-portal .preview-toolbar {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  body.company-portal .preview-note {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  body.company-portal .portal-kpi-row,
+  body.company-portal .kpi-strip {
+    grid-template-columns: 1fr;
+  }
+  body.company-portal .form-jump a {
+    font-size: 0.68rem;
+    padding: 6px 8px;
+  }
+}
+
+@media (max-height: 700px) and (max-width: 1100px) {
+  body.company-portal .lohn-preview:has(.preview-stage.is-empty) {
+    max-height: 120px;
+  }
+  body.company-portal .form-section {
+    padding: 10px;
+  }
+  body.company-portal .section-hint {
+    margin-bottom: 6px;
+  }
+}
+
 

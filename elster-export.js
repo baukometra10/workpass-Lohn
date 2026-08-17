@@ -45,7 +45,10 @@ function formatElsterMoney(value) {
 
 function generateKmId(certData) {
   const year = certData?.year || new Date().getFullYear();
-  const pers = String(certData?.employeeId || "0000").replace(/\W/g, "").slice(0, 12);
+  // Prefer payroll Pers.-Nr. / tax ID — never put platform employee IDs on the printed LStB.
+  const pers = String(certData?.personnelNumber || certData?.employeeTaxId || "0000")
+    .replace(/\W/g, "")
+    .slice(0, 12);
   const stamp = Date.now().toString(36).toUpperCase();
   return `FD${year}${pers}${stamp}`.slice(0, 32);
 }
@@ -90,7 +93,7 @@ function buildElsterLstbXml(certData, options = {}) {
   <Bescheinigungszeitraum von="${xmlEscape(formatElsterDate(certData.periodStart))}" bis="${xmlEscape(formatElsterDate(certData.periodEnd))}"/>
   <Arbeitnehmer>
     <Identifikationsnummer>${xmlEscape(idNr)}</Identifikationsnummer>
-    <Personalnummer>${xmlEscape(certData.employeeId || "")}</Personalnummer>
+    <Personalnummer>${xmlEscape(certData.personnelNumber || "")}</Personalnummer>
     <Name>${xmlEscape(certData.employeeName || "")}</Name>
     <Geburtsdatum>${xmlEscape(formatElsterDate(certData.employeeBirthDate))}</Geburtsdatum>
     <Versicherungsnummer>${xmlEscape(certData.employeeInsuranceNo || "")}</Versicherungsnummer>

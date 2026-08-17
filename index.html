@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="datev-sheet.css?v=2" />
     <link rel="stylesheet" href="print-datev.css?v=3" />
     <link rel="stylesheet" href="verdienst-sheet.css?v=1" />
-    <link rel="stylesheet" href="annual-certificate.css?v=3" />
+    <link rel="stylesheet" href="annual-certificate.css?v=6" />
     <link rel="stylesheet" href="documents-bw.css?v=1" />
     <link rel="stylesheet" href="workpass-theme.css?v=26" />
     <link rel="manifest" href="manifest.webmanifest" />
@@ -1658,16 +1658,18 @@
                 <div class="lstb-header-left">
                   <p class="lstb-finanzamt">Finanzamt / Gemeinde</p>
                   <p class="lstb-finanzamt-val" id="lstbFinanzamt">-</p>
+                  <p class="lstb-finanzamt-hint" id="lstbFinanzamtHint">Steuernummer der Firma (Betriebsstättenfinanzamt)</p>
                 </div>
                 <div class="lstb-header-center">
                   <h2>Lohnsteuerbescheinigung</h2>
                   <p>für das Kalenderjahr <strong id="lstbYearTitle">2026</strong></p>
+                  <p class="lstb-period-banner" id="lstbPeriodBanner">-</p>
+                  <p class="lstb-period-dates" id="lstbPeriodDates">-</p>
                   <p class="lstb-sub">Ausdruck der elektronischen Lohnsteuerbescheinigung nach § 39 Abs. 1 EStG</p>
                 </div>
                 <div class="lstb-header-right">
                   <p>KmId</p>
                   <p class="lstb-kmid" id="lstbKmId">-</p>
-                  <p class="lstb-cert-nr">Certifikat-Nr. <span id="lstbCertNr">-</span></p>
                 </div>
               </header>
               <header class="lstb-title-block lstb-title-block-secondary">
@@ -1796,8 +1798,8 @@
     <script src="tax-rules.js?v=4"></script>
     <script src="payroll-bridge.js?v=4"></script>
     <script src="legal-config.js?v=3"></script>
-    <script src="annual-certificate.js?v=2"></script>
-    <script src="elster-export.js?v=1"></script>
+    <script src="annual-certificate.js?v=3"></script>
+    <script src="elster-export.js?v=2"></script>
     <script src="datev-sheet.js?v=52"></script>
     <script src="payroll-core.js?v=34"></script>
     <script src="workpass-i18n-packs.js?v=17"></script>
@@ -1808,6 +1810,6 @@
     <script src="workpass-hub.js?v=11"></script>
     <script src="templates.js?v=1" defer></script>
     <script src="signature-engine.js?v=4"></script>
-    <script src="script.js?v=100" defer></script>
+    <script src="script.js?v=103" defer></script>
   </body>
 </html>
