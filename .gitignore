@@ -3,6 +3,7 @@ node_modules/
 .env.*
 !.env.example
 server/data/
+mock-elster/data/
 server/.data-key
 *.sqlite
 *.wpbak

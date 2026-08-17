@@ -125,7 +125,7 @@ Siehe `docs/BACKUP.md`. Periodische Backups, Integritätscheck, Restore nur mit 
 | GoBD-Paket | Digitale Betriebsprüfung / Nachvollziehbarkeit |
 | DATEV / LODAS | Übergabe an Kanzlei-Software |
 | SEPA | Zahlungsdatei (nach Confirm) |
-| ELSTER | LStB-XML; Versand mit hinterlegtem PKCS#12 möglich (`WORKPASS_ELSTER_*`) |
+| ELSTER | LStB-XML aus Jahresbescheinigungen; Sidecar `WORKPASS_ELSTER_SUBMIT_URL` / ERiC. Ohne Kanal: `PENDING` lokal, nicht Finanzamt. Sidecar angenommen: `SENT`. Testmerker 700000004 bis `WORKPASS_ELSTER_TEST=0`. |
 | LStB / VB | Pro Mitarbeiter aus **freigegebenen** Monaten: Jahres-Lohnsteuerbescheinigung und druckbare Verdienstbescheinigung |
 
 ## 13. E-Rechnung / ISO 27001
@@ -144,6 +144,7 @@ Siehe `docs/BACKUP.md`. Periodische Backups, Integritätscheck, Restore nur mit 
 
 ## 15. Änderungshistorie dieser Doku
 
+- 2.51.4: ELSTER-Kanal (Sidecar/Mock): LStB-XML aus Jahresbescheinigungen, PENDING lokal vs SENT an Kanal, Portal-Status auf Deutsch; kein Fake-Finanzamt.  
 - 2.51.3: Lohnarten-Tabelle A4-stabil (keine Dehnung auf großen Bildschirmen); leere Bezeichnung STD → Stundenlohn.  
 - 2.51.2: Firmenlogo per GET von der Plattform; sonst klare Anfrage `company.logo.requested`.  
 - 2.51.1: Portal-Bescheinigungen pro Mitarbeiter (LStB Jahresende, Verdienstbescheinigung druckbar).  

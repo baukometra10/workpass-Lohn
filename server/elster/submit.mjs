@@ -1,20 +1,24 @@
 /**
  * ELSTER submission with stored company certificate (PKCS#12).
  * Live Finanzamt send uses WORKPASS_ELSTER_SUBMIT_URL or WORKPASS_ELSTER_ERIC_CMD.
- * Without those, the job is queued with XML and marked READY (operator/ERiC sidecar).
+ * Without those, the job is queued with XML (not treated as arrived at the Finanzamt).
  */
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { sqliteExec, sqliteGet, sqliteAll } from "../db/sqlite.mjs";
 import { encryptString, decryptString, sha256Hex } from "../security/crypto.mjs";
 import { normalizeCompanyId } from "../tenant.mjs";
-import { listPayrollJobs, loadCompany } from "../db/repository.mjs";
-import { isDemoPayrollJob } from "../demo-detect.mjs";
 import { appendBusinessAudit } from "../gobd/business-audit.mjs";
-import { ACCOUNTING_VERSION } from "../version.mjs";
+import { buildYearLstbXml, elsterTestMode } from "./lstb-xml.mjs";
 
 function now() {
   return new Date().toISOString();
+}
+
+function ensureColumn(table, column, defSql) {
+  const cols = sqliteAll(`PRAGMA table_info(${table})`);
+  if (cols.some((c) => c.name === column)) return;
+  sqliteExec(`ALTER TABLE ${table} ADD COLUMN ${column} ${defSql}`);
 }
 
 function ensureTables() {
@@ -39,22 +43,49 @@ function ensureTables() {
       xml TEXT NOT NULL DEFAULT '',
       error TEXT,
       created_at TEXT NOT NULL,
-      submitted_at TEXT
+      submitted_at TEXT,
+      mode TEXT,
+      remote_id TEXT,
+      test_mode INTEGER NOT NULL DEFAULT 1,
+      employee_count INTEGER NOT NULL DEFAULT 0
     )
   `);
+  ensureColumn("elster_submissions", "mode", "TEXT");
+  ensureColumn("elster_submissions", "remote_id", "TEXT");
+  ensureColumn("elster_submissions", "test_mode", "INTEGER NOT NULL DEFAULT 1");
+  ensureColumn("elster_submissions", "employee_count", "INTEGER NOT NULL DEFAULT 0");
+}
+
+export function elsterChannelStatus() {
+  const url = String(process.env.WORKPASS_ELSTER_SUBMIT_URL || "").trim();
+  const cmd = String(process.env.WORKPASS_ELSTER_ERIC_CMD || "").trim();
+  let mode = "none";
+  if (url) mode = "submit-url";
+  else if (cmd) mode = "eric-cmd";
+  return {
+    connected: Boolean(url || cmd),
+    mode,
+    testMode: elsterTestMode(),
+    submitUrlSet: Boolean(url),
+    ericCmdSet: Boolean(cmd),
+  };
 }
 
 export function elsterCertStatus(companyId) {
   ensureTables();
   const id = normalizeCompanyId(companyId);
+  const channel = elsterChannelStatus();
   const row = sqliteGet(`SELECT company_id, auto_submit, fingerprint, updated_at FROM elster_certs WHERE company_id = ?`, [id]);
-  if (!row) return { ok: true, configured: false, autoSubmit: false };
+  if (!row) {
+    return { ok: true, configured: false, autoSubmit: false, channel };
+  }
   return {
     ok: true,
     configured: true,
     autoSubmit: Boolean(row.auto_submit),
     fingerprint: row.fingerprint,
     updatedAt: row.updated_at,
+    channel,
   };
 }
 
@@ -94,52 +125,6 @@ function loadCertSecrets(companyId) {
   };
 }
 
-function buildYearLstbXml(companyId, year) {
-  const jobs = (listPayrollJobs({ companyId }) || []).filter(
-    (j) => !isDemoPayrollJob(j) && String(j.period || "").startsWith(String(year)) && j.status === "released"
-  );
-  const company = loadCompany(companyId) || {};
-  const lines = jobs.map((j) => {
-    const t = j.payslip?.totals || j.payroll || {};
-    return `  <Arbeitnehmer id="${esc(j.employee?.id || "")}" name="${esc(j.employee?.name || "")}" period="${esc(j.period || "")}" brutto="${num(t.gross)}" lst="${num(t.payrollTax)}" soli="${num(t.solidarity)}" kist="${num(t.churchTax)}" netto="${num(t.net)}"/>`;
-  });
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<Elster xmlns="http://www.elster.de/elsterxml/schema/v11">
-  <TransferHeader>
-    <Verfahren>ElsterLohn</Verfahren>
-    <DatenArt>LStB</DatenArt>
-    <Vorgang>send-Auth</Vorgang>
-    <Testmerker>${process.env.WORKPASS_ELSTER_TEST === "0" ? "0" : "700000004"}</Testmerker>
-    <HerstellerID>WorkPass Lohn ${ACCOUNTING_VERSION}</HerstellerID>
-    <DatenLieferant>${esc(company.name || companyId)}</DatenLieferant>
-    <Datei>
-      <Verschluesselung>PKCS#12</Verschluesselung>
-    </Datei>
-  </TransferHeader>
-  <DatenTeil>
-    <Nutzdaten>
-      <NutzdatenHeader>
-        <NutzdatenTicket>${crypto.randomUUID()}</NutzdatenTicket>
-        <Empfaenger id="F">${esc(String(company.taxNumber || "").replace(/\s+/g, ""))}</Empfaenger>
-      </NutzdatenHeader>
-      <NutzdatenBlock>
-        <Lohnsteuerbescheinigungen jahr="${esc(year)}" firma="${esc(companyId)}" anzahl="${jobs.length}">
-${lines.join("\n")}
-        </Lohnsteuerbescheinigungen>
-      </NutzdatenBlock>
-    </Nutzdaten>
-  </DatenTeil>
-</Elster>
-`;
-}
-
-function esc(s) {
-  return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
-}
-function num(n) {
-  return (Math.round((Number(n) || 0) * 100) / 100).toFixed(2);
-}
-
 async function deliverToElsterChannel({ xml, cert, submissionId }) {
   const url = String(process.env.WORKPASS_ELSTER_SUBMIT_URL || "").trim();
   const cmd = String(process.env.WORKPASS_ELSTER_ERIC_CMD || "").trim();
@@ -148,6 +133,7 @@ async function deliverToElsterChannel({ xml, cert, submissionId }) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Connection: "close",
         "X-WorkPass-Elster-Key": process.env.WORKPASS_ELSTER_SUBMIT_KEY || "",
       },
       body: JSON.stringify({
@@ -162,7 +148,13 @@ async function deliverToElsterChannel({ xml, cert, submissionId }) {
     if (!res.ok || data.ok === false) {
       throw new Error(data.error || `ELSTER-Kanal HTTP ${res.status}`);
     }
-    return { mode: "submit-url", accepted: true, remoteId: data.id || null };
+    return {
+      mode: "submit-url",
+      accepted: data.accepted !== false,
+      remoteId: data.id || null,
+      finanzamtReached: data.finanzamtReached === true,
+      hint: data.hint || null,
+    };
   }
   if (cmd) {
     const run = spawnSync(cmd, ["--submit", submissionId], {
@@ -173,13 +165,27 @@ async function deliverToElsterChannel({ xml, cert, submissionId }) {
     if (run.status !== 0) {
       throw new Error((run.stderr || run.stdout || "ERiC-Fehler").slice(0, 400));
     }
-    return { mode: "eric-cmd", accepted: true };
+    return { mode: "eric-cmd", accepted: true, finanzamtReached: false };
   }
   return {
     mode: "queued-local",
     accepted: false,
-    hint: "Kein ERiC/Submit-URL. XML und Zertifikat liegen bereit – Sidecar setzen: WORKPASS_ELSTER_SUBMIT_URL oder WORKPASS_ELSTER_ERIC_CMD.",
+    finanzamtReached: false,
+    hint: "Kein ELSTER-Sidecar. XML und Zertifikat liegen lokal bereit – nicht beim Finanzamt. Setzen Sie WORKPASS_ELSTER_SUBMIT_URL oder WORKPASS_ELSTER_ERIC_CMD.",
   };
+}
+
+function userMessage({ year, delivered, testMode, employeeCount }) {
+  if (delivered.accepted) {
+    if (delivered.finanzamtReached) {
+      return `ELSTER-Übermittlung ${year} vom Sidecar als beim Finanzamt angenommen gemeldet.`;
+    }
+    if (testMode) {
+      return `ELSTER-Auftrag ${year} an den Testkanal übergeben (${employeeCount} LStB). Das ist nicht das Finanzamt.`;
+    }
+    return `ELSTER-Auftrag ${year} an den Kanal übergeben (${employeeCount} LStB). Die Annahme beim Finanzamt bestätigt nur ERiC/Sidecar – nicht dieser Server.`;
+  }
+  return `ELSTER-Auftrag ${year} liegt lokal bereit (${employeeCount} LStB). Noch nicht beim Finanzamt. ${delivered.hint || ""}`.trim();
 }
 
 export async function submitElsterYear({ companyId, period, year, actor = "user" }) {
@@ -189,21 +195,32 @@ export async function submitElsterYear({ companyId, period, year, actor = "user"
   if (!cert) {
     return { ok: false, status: 422, error: "Kein ELSTER-Zertifikat hinterlegt" };
   }
-  const y = String(year || String(period || "").slice(0, 4) || new Date().getFullYear());
-  const xml = buildYearLstbXml(id, y);
+  const built = buildYearLstbXml(id, year || String(period || "").slice(0, 4) || new Date().getFullYear());
+  const y = String(built.year);
+  const xml = built.xml;
   const submissionId = `elster:${id}:${y}:${crypto.randomUUID().slice(0, 8)}`;
   const createdAt = now();
+  const testMode = built.testMode ? 1 : 0;
   sqliteExec(
-    `INSERT INTO elster_submissions(submission_id, company_id, period, year, status, xml, created_at)
-     VALUES(?,?,?,?,?,?,?)`,
-    [submissionId, id, period || "", y, "PROCESSING", xml, createdAt]
+    `INSERT INTO elster_submissions(submission_id, company_id, period, year, status, xml, created_at, test_mode, employee_count)
+     VALUES(?,?,?,?,?,?,?,?,?)`,
+    [submissionId, id, period || "", y, "PROCESSING", xml, createdAt, testMode, built.employeeCount]
   );
   try {
     const delivered = await deliverToElsterChannel({ xml, cert, submissionId });
-    const status = delivered.accepted ? "COMPLETED" : "PENDING";
+    const status = delivered.accepted ? "SENT" : "PENDING";
     sqliteExec(
-      `UPDATE elster_submissions SET status = ?, submitted_at = ?, error = ? WHERE submission_id = ?`,
-      [status, now(), delivered.hint || null, submissionId]
+      `UPDATE elster_submissions SET status = ?, submitted_at = ?, error = ?, mode = ?, remote_id = ?, test_mode = ?, employee_count = ? WHERE submission_id = ?`,
+      [
+        status,
+        now(),
+        delivered.hint || null,
+        delivered.mode || null,
+        delivered.remoteId || null,
+        testMode,
+        built.employeeCount,
+        submissionId,
+      ]
     );
     appendBusinessAudit({
       companyId: id,
@@ -213,7 +230,14 @@ export async function submitElsterYear({ companyId, period, year, actor = "user"
       entityType: "elster",
       entityId: submissionId,
       status,
-      detail: { year: y, mode: delivered.mode },
+      detail: {
+        year: y,
+        mode: delivered.mode,
+        testMode: Boolean(testMode),
+        accepted: delivered.accepted,
+        finanzamtReached: Boolean(delivered.finanzamtReached),
+        employeeCount: built.employeeCount,
+      },
     });
     return {
       ok: true,
@@ -221,15 +245,19 @@ export async function submitElsterYear({ companyId, period, year, actor = "user"
       status,
       year: y,
       mode: delivered.mode,
+      remoteId: delivered.remoteId || null,
+      testMode: Boolean(testMode),
+      employeeCount: built.employeeCount,
+      skipped: built.skipped,
+      finanzamtReached: Boolean(delivered.finanzamtReached),
       hint: delivered.hint || null,
-      message: delivered.accepted
-        ? `ELSTER-Übermittlung ${y} gesendet.`
-        : `ELSTER-Auftrag ${y} bereit (Zertifikat gespeichert). ${delivered.hint || ""}`,
+      channel: elsterChannelStatus(),
+      message: userMessage({ year: y, delivered, testMode: Boolean(testMode), employeeCount: built.employeeCount }),
     };
   } catch (e) {
     sqliteExec(
-      `UPDATE elster_submissions SET status = ?, error = ? WHERE submission_id = ?`,
-      ["FAILED", e.message || String(e), submissionId]
+      `UPDATE elster_submissions SET status = ?, error = ?, mode = ? WHERE submission_id = ?`,
+      ["FAILED", e.message || String(e), elsterChannelStatus().mode, submissionId]
     );
     return { ok: false, status: 502, error: e.message || String(e), submissionId };
   }
@@ -239,7 +267,7 @@ export function listElsterSubmissions(companyId, limit = 20) {
   ensureTables();
   const id = normalizeCompanyId(companyId);
   return sqliteAll(
-    `SELECT submission_id, period, year, status, error, created_at, submitted_at
+    `SELECT submission_id, period, year, status, error, created_at, submitted_at, mode, remote_id, test_mode, employee_count
      FROM elster_submissions WHERE company_id = ? ORDER BY created_at DESC LIMIT ?`,
     [id, Math.max(1, Math.min(100, Number(limit) || 20))]
   ).map((r) => ({
@@ -250,6 +278,10 @@ export function listElsterSubmissions(companyId, limit = 20) {
     error: r.error,
     createdAt: r.created_at,
     submittedAt: r.submitted_at,
+    mode: r.mode || null,
+    remoteId: r.remote_id || null,
+    testMode: r.test_mode == null ? true : Boolean(r.test_mode),
+    employeeCount: Number(r.employee_count) || 0,
   }));
 }
 
@@ -262,7 +294,7 @@ export async function maybeAutoSubmitElster(companyId, period) {
   const y = String(period || "").slice(0, 4) || String(new Date().getFullYear());
   const existing = sqliteGet(
     `SELECT submission_id, status FROM elster_submissions
-     WHERE company_id = ? AND year = ? AND status IN ('PENDING','PROCESSING','COMPLETED')
+     WHERE company_id = ? AND year = ? AND status IN ('PENDING','PROCESSING','COMPLETED','SENT')
      ORDER BY created_at DESC LIMIT 1`,
     [id, y]
   );

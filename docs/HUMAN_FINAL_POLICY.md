@@ -9,7 +9,7 @@ WorkPass Lohn treats **invented tax amounts as forbidden**. Statutory tax is app
 - Sensitive APIs still require `{ "confirm": true }` from a human session.
 - Firm UI uses a **checkbox modal** (`humanConfirm`) for month-close, exports, engine tax, ELSTER cert, and ELSTER submit.
 - Backup restore additionally requires `confirmPhrase: "RESTORE"`.
-- **ELSTER:** store PKCS#12 encrypted; submit via `WORKPASS_ELSTER_SUBMIT_URL` or `WORKPASS_ELSTER_ERIC_CMD`. Without a sidecar the job is queued (not faked as Finanzamt-success).
+- **ELSTER:** store PKCS#12 encrypted; submit via `WORKPASS_ELSTER_SUBMIT_URL` or `WORKPASS_ELSTER_ERIC_CMD`. Without a sidecar the job is `PENDING` (local, not Finanzamt). Sidecar `accepted` → `SENT` (channel only). Live Testmerker only with `WORKPASS_ELSTER_TEST=0`.
 - SEPA / DATEV / LODAS: generate files after confirm; bank/DATEV upload by the human.
 - SEPA validates **IBAN mod-97**; invalid debtor IBAN blocks export.
 - GoBD: released payslips are **immutable** without `POST /v1/payroll/:jobId/correct` (reason + confirm).

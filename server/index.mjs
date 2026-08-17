@@ -123,6 +123,7 @@ import { explainPortalGaps } from "./assistant/explain.mjs";
 import { applyEngineTax } from "./assistant/apply-engine.mjs";
 import {
   elsterCertStatus,
+  elsterChannelStatus,
   saveElsterCert,
   submitElsterYear,
   listElsterSubmissions,
@@ -1885,7 +1886,11 @@ async function handler(req, res) {
       const companyId = tenantScope || url.searchParams.get("companyId") || "";
       const scopeCheck = assertSameTenant(tenantScope, companyId, "ELSTER");
       if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
-      return reply(200, { ok: true, submissions: listElsterSubmissions(companyId) });
+      return reply(200, {
+        ok: true,
+        channel: elsterChannelStatus(),
+        submissions: listElsterSubmissions(companyId),
+      });
     }
 
     if (req.method === "POST" && path === "/v1/portal/elster-submit") {

@@ -981,6 +981,7 @@
       if (!silent) setStatus(`Portal · ${emps.count || 0} MA · Monat ${period}`, true);
       ensureCertDefaults(period);
       refreshElsterCertStatus().catch(() => {});
+      loadElsterSubmissions().catch(() => {});
       loadCertificateSummary().catch(() => {});
     } catch (e) {
       if (!silent) setStatus(`Portal: ${e.message}`, false);
@@ -1347,19 +1348,79 @@
 
   async function refreshElsterCertStatus() {
     const host = $("portalElsterCertStatus");
-    if (!host) return;
+    const channelHost = $("portalElsterChannelStatus");
+    const badge = $("portalElsterChannelBadge");
     try {
       const data = await apiFetch("/v1/portal/elster-cert");
-      if (!data.configured) {
-        host.textContent = uiT("portal.elsterCertMissing", "Noch kein Zertifikat hinterlegt.");
+      const channel = data.channel || {};
+      if (host) {
+        if (!data.configured) {
+          host.textContent = uiT("portal.elsterCertMissing", "Noch kein Zertifikat hinterlegt.");
+        } else {
+          host.textContent = uiT(
+            "portal.elsterCertOk",
+            "Zertifikat gespeichert · Auto-Versand {auto} · Fingerprint {fp}"
+          ).replace("{auto}", data.autoSubmit ? "an" : "aus").replace("{fp}", data.fingerprint || "—");
+        }
+      }
+      const modeLabel = channel.mode === "eric-cmd"
+        ? "ERiC"
+        : (channel.mode === "submit-url" ? "HTTP-Sidecar" : "aus");
+      if (channelHost) {
+        const line = channel.connected
+          ? uiT("portal.elsterChannelOn", "ELSTER-Kanal verbunden ({mode}).").replace("{mode}", modeLabel)
+          : uiT("portal.elsterChannelOff", "ELSTER-Kanal aus — Aufträge bleiben lokal (nicht beim Finanzamt).");
+        const testLine = channel.testMode
+          ? uiT("portal.elsterTestMode", "Testmodus (Testmerker 700000004) — nicht das Finanzamt.")
+          : uiT("portal.elsterLiveMode", "Produktivmodus (WORKPASS_ELSTER_TEST=0).");
+        channelHost.textContent = `${line} ${testLine}`;
+      }
+      if (badge) {
+        badge.hidden = false;
+        badge.textContent = channel.connected
+          ? uiT("portal.elsterBadgeOn", "ELSTER-Kanal an")
+          : uiT("portal.elsterBadgeOff", "ELSTER-Kanal aus");
+        badge.classList.toggle("is-ok", Boolean(channel.connected));
+        badge.classList.toggle("is-error", !channel.connected);
+      }
+    } catch {
+      if (host) host.textContent = "";
+      if (channelHost) channelHost.textContent = "";
+    }
+  }
+
+  function elsterStatusLabel(status) {
+    const map = {
+      PENDING: uiT("portal.elsterStatusPending", "Bereit lokal — nicht beim Finanzamt"),
+      PROCESSING: uiT("portal.elsterStatusProcessing", "Wird an den Kanal gesendet"),
+      SENT: uiT("portal.elsterStatusSent", "An ELSTER-Kanal übergeben"),
+      COMPLETED: uiT("portal.elsterStatusCompleted", "An ELSTER-Kanal übergeben"),
+      FAILED: uiT("portal.elsterStatusFailed", "Senden fehlgeschlagen"),
+    };
+    return map[String(status || "").toUpperCase()] || String(status || "");
+  }
+
+  async function loadElsterSubmissions() {
+    const host = $("portalElsterList");
+    if (!host) return;
+    try {
+      const data = await apiFetch("/v1/portal/elster-submissions");
+      const rows = data.submissions || [];
+      if (!rows.length) {
+        host.innerHTML = `<p class="section-hint">${esc(uiT("portal.elsterSubmissionsEmpty", "Noch keine ELSTER-Aufträge."))}</p>`;
         return;
       }
-      host.textContent = uiT(
-        "portal.elsterCertOk",
-        "Zertifikat gespeichert · Auto-Versand {auto} · Fingerprint {fp}"
-      ).replace("{auto}", data.autoSubmit ? "an" : "aus").replace("{fp}", data.fingerprint || "—");
-    } catch {
-      host.textContent = "";
+      host.innerHTML = `<p class="section-hint">${esc(uiT("portal.elsterSubmissionsHead", "ELSTER-Aufträge"))}</p>`
+        + rows.map((r) => {
+          const meta = [elsterStatusLabel(r.status), r.year, r.mode || "", r.testMode ? "Test" : ""]
+            .filter(Boolean)
+            .join(" · ");
+          const extra = r.error ? `<p class="section-hint">${esc(r.error)}</p>` : "";
+          return `<div class="api-inbox-item"><div><strong>${esc(r.submissionId)}</strong>
+            <span class="portal-item-meta">${esc(meta)}</span></div>${extra}</div>`;
+        }).join("");
+    } catch (e) {
+      host.innerHTML = `<p class="section-hint">${esc(e.message || uiT("portal.elsterSubmissionsFail", "ELSTER-Aufträge konnten nicht geladen werden."))}</p>`;
     }
   }
 
@@ -4306,7 +4367,7 @@
       try {
         const period = currentPayrollPeriod();
         const data = await apiFetch(`/v1/portal/elster-prep?period=${encodeURIComponent(period)}`);
-        const host = $("portalElsterList");
+        const host = $("portalElsterPrepList");
         if (host) {
           host.innerHTML = (data.steps || []).map((s) => `
             <div class="api-inbox-item">
@@ -4697,7 +4758,7 @@
         const period = currentPayrollPeriod();
         const ok = await humanConfirm({
           title: uiT("portal.elsterSubmit", "ELSTER jetzt senden"),
-          body: uiT("portal.elsterSubmitConfirm", "LStB-XML mit hinterlegtem Zertifikat an den ELSTER-Kanal übermitteln."),
+          body: uiT("portal.elsterSubmitConfirm", "LStB-XML mit hinterlegtem Zertifikat an den ELSTER-Kanal übermitteln. Ohne Sidecar bleibt der Auftrag lokal — nicht beim Finanzamt."),
           requireCheck: true,
         });
         if (!ok) return;
@@ -4706,12 +4767,7 @@
           body: JSON.stringify({ companyId, period, confirm: true }),
         });
         toast(data.message || data.error || "ELSTER", data.ok ? "ok" : "error");
-        const host = $("portalElsterList");
-        if (host && data.submissionId) {
-          host.innerHTML = `<div class="api-inbox-item"><div><strong>${esc(data.submissionId)}</strong>
-            <span class="portal-item-meta">${esc(data.status || "")} · ${esc(data.mode || "")}</span></div></div>
-            <p class="section-hint">${esc(data.hint || data.message || "")}</p>`;
-        }
+        await loadElsterSubmissions();
       } catch (e) {
         toast(e.message, "error");
       }
