@@ -105,33 +105,52 @@
     }
     .ds-table {
       width: 100%; border-collapse: collapse; table-layout: fixed;
-      height: auto;
+      height: auto; background: #fff;
     }
     .ds-table th, .ds-table td {
-      border: 0.25pt solid #9aa8b0; padding: 0.45mm 1.1mm; font-size: 6.7pt; vertical-align: middle;
+      border: 0.35pt solid #c3ced6;
+      padding: 0.7mm 1.4mm;
+      font-size: 7pt;
+      font-family: "IBM Plex Mono", "Courier New", Courier, monospace;
+      vertical-align: middle;
+      color: #151a22;
     }
     .ds-table th {
-      background: #1e3a5f; color: #fff; font-size: 5.4pt; text-transform: uppercase;
-      letter-spacing: 0.04em; font-weight: 700; height: 5.2mm;
+      background: #e8eef2;
+      color: #151a22;
+      font-size: 6.1pt;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 700;
+      text-align: center;
+      height: 6.2mm;
+      padding: 1.1mm 1.2mm;
     }
-    .ds-table col.ds-col-code { width: 14%; }
-    .ds-table col.ds-col-label { width: 38%; }
+    .ds-table col.ds-col-code { width: 13%; }
+    .ds-table col.ds-col-label { width: 39%; }
     .ds-table col.ds-col-qty { width: 16%; }
-    .ds-table col.ds-col-amount { width: 20%; }
-    .ds-table col.ds-col-flags { width: 12%; }
-    .ds-table td:nth-child(1) { font-weight: 600; white-space: nowrap; }
+    .ds-table col.ds-col-amount { width: 18%; }
+    .ds-table col.ds-col-flags { width: 14%; }
+    .ds-table td:nth-child(1) { text-align: left; white-space: nowrap; }
     .ds-table td:nth-child(2) {
+      text-align: left;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .ds-table tbody tr { height: 4.4mm; }
-    .ds-table tbody td { height: 4.4mm; }
+    .ds-table tbody tr { height: 5.1mm; }
+    .ds-table tbody td { height: 5.1mm; background: #fff; }
     .ds-table tbody tr.ds-pad td {
-      color: transparent; border-color: #cfd8de;
-      background: #fafbfc;
+      color: transparent; border-color: #c3ced6;
+      background: #fff;
     }
     .ds-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .ds-flags { text-align: center; font-size: 6.1pt; color: #333; }
-    .ds-sum-row td { font-weight: 700; background: #f1f5f7; border-top: 0.8pt solid #1a2a33; height: 4.2mm; }
+    .ds-flags { text-align: center; font-size: 7pt; color: #151a22; }
+    .ds-sum-row td {
+      font-weight: 700;
+      background: #e8eef2;
+      height: 6.2mm;
+      border-color: #c3ced6;
+    }
+    .ds-sum-row td:first-child { text-align: left; }
     .ds-two {
       display: grid; grid-template-columns: 1.2fr 0.9fr; gap: 1.5mm;
       margin: 0; align-items: stretch;
@@ -198,9 +217,8 @@
   }
 
   function wageRowsHtml(rows) {
-    // Ziel: 4–5 sichtbare Zeilen (Daten + Leerfelder) – Blatt wirkt gefüllt
     const MIN_ROWS = 5;
-    const MAX_ROWS = 8;
+    const MAX_ROWS = 5;
     const list = (Array.isArray(rows) ? rows : [])
       .filter((r) => r && (r.code || r.label || r.amount))
       .slice(0, MAX_ROWS);
@@ -223,8 +241,7 @@
   }
 
   /**
-   * Lohnarten: mind. 5 Zeilen (3–5 Leerfelder je nach Daten),
-   * bei Platz in der wachsenden Zone bis 7 – Blatt wirkt gefüllt und geordnet.
+   * Lohnarten: immer 5 Zeilen wie das Formular (Daten + Leerfelder).
    */
   function fillWageToPage(sheet) {
     if (!sheet) return;
@@ -232,7 +249,7 @@
     if (!tbody) return;
 
     const TARGET_MIN = 5;
-    const TARGET_MAX = 7;
+    const TARGET_MAX = 5;
     tbody.querySelectorAll("tr.ds-pad").forEach((tr) => tr.remove());
     const dataCount = tbody.querySelectorAll("tr").length;
 
@@ -347,8 +364,8 @@
                 <tr>
                   <th>Lohnart</th>
                   <th>Bezeichnung</th>
-                  <th class="ds-num">Anzahl</th>
-                  <th class="ds-num">Betrag</th>
+                  <th>Anzahl</th>
+                  <th>Betrag</th>
                   <th>St/SV</th>
                 </tr>
               </thead>
