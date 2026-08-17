@@ -128,6 +128,11 @@ import {
   listElsterSubmissions,
 } from "./elster/submit.mjs";
 import {
+  buildEmployeeLstbCertificate,
+  buildEmployeeVerdienstCertificate,
+  listCertificateSummary,
+} from "./certificates/employee-certificates.mjs";
+import {
   buildDeliveryTrust,
   detectPayrollAnomalies,
   simulatePayroll,
@@ -1654,6 +1659,35 @@ async function handler(req, res) {
       });
       if (!result.ok) return reply(422, result);
       return reply(200, result);
+    }
+
+    if (req.method === "GET" && path === "/v1/portal/certificates/summary") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const year = Number(url.searchParams.get("year")) || new Date().getFullYear();
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Bescheinigungen");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      return reply(200, listCertificateSummary(companyId, year));
+    }
+
+    if (req.method === "GET" && path === "/v1/portal/certificates/lstb") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const employeeId = url.searchParams.get("employeeId") || url.searchParams.get("badgeId") || "";
+      const year = Number(url.searchParams.get("year")) || new Date().getFullYear();
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "LStB");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const result = buildEmployeeLstbCertificate(companyId, employeeId, year);
+      return reply(result.ok ? 200 : (result.status || 422), result);
+    }
+
+    if (req.method === "GET" && path === "/v1/portal/certificates/verdienst") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const employeeId = url.searchParams.get("employeeId") || url.searchParams.get("badgeId") || "";
+      const year = Number(url.searchParams.get("year")) || new Date().getFullYear();
+      const period = url.searchParams.get("period") || undefined;
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Verdienstbescheinigung");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const result = buildEmployeeVerdienstCertificate(companyId, employeeId, year, period);
+      return reply(result.ok ? 200 : (result.status || 422), result);
     }
 
     if (req.method === "GET" && path === "/v1/portal/branding") {

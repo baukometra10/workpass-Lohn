@@ -373,6 +373,20 @@ Nach Freigabe: Delivery-Queue + optional Webhook.
 
 ---
 
+## Bescheinigungen (Portal)
+
+Aus **freigegebenen** Monatsabrechnungen, tenant-scoped:
+
+| API | Zweck |
+|-----|--------|
+| `GET /v1/portal/certificates/summary?year=` | Mitarbeiter mit freigegebenen Monaten |
+| `GET /v1/portal/certificates/lstb?employeeId=&year=` | Lohnsteuerbescheinigung (Jahreswerte) |
+| `GET /v1/portal/certificates/verdienst?employeeId=&year=&period=` | Verdienstbescheinigung (Monat + Jahressumme) |
+
+Im Firmenportal: Karte **Bescheinigungen pro Mitarbeiter**, Buttons LStB / VB in der Mitarbeiterliste, **Alle LStB drucken** am Jahresende. Rechtsinhalt bleibt Deutsch.
+
+---
+
 ## Checkliste für die Plattform-Seite
 
 - [ ] Shared API-Key setzen

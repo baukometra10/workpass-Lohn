@@ -1509,7 +1509,8 @@ body.company-portal #portalEmployeeList,
 body.company-portal #portalArchiveList,
 body.company-portal #portalDiagList,
 body.company-portal #platformCommsList,
-body.company-portal #platformSeenList {
+body.company-portal #platformSeenList,
+body.company-portal #portalCertList {
   max-height: min(48vh, 520px);
   overflow: auto;
 }
@@ -3056,5 +3057,113 @@ body.theme-light .portal-gobd-summary strong {
 body.theme-light .portal-gobd-op {
   background: #e7f1fb;
   color: #1f4f7a;
+}
+
+.portal-cert-print-host {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #fff;
+  overflow: auto;
+  padding: 12mm;
+  color: #000;
+}
+.portal-cert-print-host[hidden] {
+  display: none !important;
+}
+.portal-cert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.portal-cert-page {
+  background: #fff;
+  color: #000;
+}
+.portal-cert-print-host .lstb-document,
+.portal-cert-print-host .verdienst-document {
+  max-width: 210mm;
+  margin: 0 auto;
+  background: #fff;
+}
+.portal-cert-print-host .verdienst-document {
+  padding: 8mm;
+  border: 1px solid #000;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.portal-cert-print-host .vb-title {
+  margin: 0 0 4mm;
+  font-size: 14pt;
+}
+.portal-cert-print-host .vb-meta,
+.portal-cert-print-host .vb-sub {
+  margin: 0 0 2mm;
+  font-size: 9pt;
+}
+@media (max-width: 720px) {
+  body.company-portal .api-inbox-item {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  body.company-portal .api-inbox-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  body.company-portal .month-close-actions .portal-cta-primary,
+  body.company-portal .month-close-actions .portal-cta-secondary {
+    min-width: 0;
+  }
+}
+@media print {
+  body.portal-cert-printing > *:not(.portal-cert-print-host) {
+    display: none !important;
+  }
+  .portal-cert-print-host {
+    position: static;
+    padding: 0;
+    overflow: visible;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .portal-cert-actions {
+    display: none !important;
+  }
+  .portal-cert-page {
+    page-break-after: always;
+    break-after: page;
+  }
+  .portal-cert-page:last-of-type {
+    page-break-after: auto;
+    break-after: auto;
+  }
+  .portal-vb-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+  }
+  .portal-vb-table th,
+  .portal-vb-table td {
+    border: 1px solid #333;
+    padding: 4px 6px;
+  }
+}
+.portal-vb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9pt;
+}
+.portal-vb-table th,
+.portal-vb-table td {
+  border: 1px solid #333;
+  padding: 4px 6px;
+}
+.portal-vb-table th {
+  background: #f2f2f2;
+  text-align: left;
+}
+.portal-vb-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 

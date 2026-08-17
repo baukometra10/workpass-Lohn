@@ -125,7 +125,8 @@ Siehe `docs/BACKUP.md`. Periodische Backups, Integritätscheck, Restore nur mit 
 | GoBD-Paket | Digitale Betriebsprüfung / Nachvollziehbarkeit |
 | DATEV / LODAS | Übergabe an Kanzlei-Software |
 | SEPA | Zahlungsdatei (nach Confirm) |
-| ELSTER-Prep | Checkliste, **kein** automatischer Zertifikats-Submit |
+| ELSTER | LStB-XML; Versand mit hinterlegtem PKCS#12 möglich (`WORKPASS_ELSTER_*`) |
+| LStB / VB | Pro Mitarbeiter aus **freigegebenen** Monaten: Jahres-Lohnsteuerbescheinigung und druckbare Verdienstbescheinigung |
 
 ## 13. E-Rechnung / ISO 27001
 
@@ -143,5 +144,7 @@ Siehe `docs/BACKUP.md`. Periodische Backups, Integritätscheck, Restore nur mit 
 
 ## 15. Änderungshistorie dieser Doku
 
+- 2.51.1: Portal-Bescheinigungen pro Mitarbeiter (LStB Jahresende, Verdienstbescheinigung druckbar).  
+- 2.51.0: Steuer nur über BMF PAP; ELSTER mit Zertifikat; zwei Monate parallel.  
 - 2.50.0: Sync-Lifecycle (DEAD_LETTER), Portal GoBD/Korrektur-UI, XRechnung-Export, tenant-scoped GoBD-Dateien.  
 - 2.49.0: Erstfassung Verfahrensdokumentation + GoBD-Module (Revisionen, Business-Audit, Export, Auditor).

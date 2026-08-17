@@ -882,6 +882,8 @@
                 <span>${esc(uiT("kpi.netShort", "Netto"))} ${e.net != null ? PayrollCore.formatAmount(e.net) : "—"}</span>
               </div>
               <div class="api-inbox-actions">
+                <button type="button" class="api-cert-lstb" data-emp="${esc(e.id || e.badgeId || "")}" title="Lohnsteuerbescheinigung">LStB</button>
+                <button type="button" class="api-cert-vb" data-emp="${esc(e.id || e.badgeId || "")}" title="Verdienstbescheinigung">VB</button>
                 <button type="button" class="api-open-emp primary" data-id="${esc(e.lastJobId || "")}">${esc(uiT("lohn.open", "Öffnen"))}</button>
               </div>
             </div>`;
@@ -890,6 +892,12 @@
           : `<div class="company-empty-inbox"><strong>${esc(uiT("portal.noEmployees", "Noch keine Mitarbeiter"))}</strong><p>${esc(uiT("portal.noEmployeesHint", "Tippen Sie auf „Jetzt synchronisieren“. Sobald die Plattform Daten sendet, erscheinen Ihre Mitarbeiter hier."))}</p></div>`;
         empHost.querySelectorAll(".api-open-emp").forEach((btn) => {
           btn.addEventListener("click", () => openApiPayrollJob(btn.dataset.id));
+        });
+        empHost.querySelectorAll(".api-cert-lstb").forEach((btn) => {
+          btn.addEventListener("click", () => showLstbCertificate(btn.dataset.emp, certYearValue()));
+        });
+        empHost.querySelectorAll(".api-cert-vb").forEach((btn) => {
+          btn.addEventListener("click", () => showVerdienstCertificate(btn.dataset.emp, certYearValue(), currentPayrollPeriod()));
         });
       }
       const monthHost = $("portalMonthOverview");
@@ -971,7 +979,9 @@
         });
       }
       if (!silent) setStatus(`Portal · ${emps.count || 0} MA · Monat ${period}`, true);
+      ensureCertDefaults(period);
       refreshElsterCertStatus().catch(() => {});
+      loadCertificateSummary().catch(() => {});
     } catch (e) {
       if (!silent) setStatus(`Portal: ${e.message}`, false);
     }
@@ -1350,6 +1360,342 @@
       ).replace("{auto}", data.autoSubmit ? "an" : "aus").replace("{fp}", data.fingerprint || "—");
     } catch {
       host.textContent = "";
+    }
+  }
+
+  function certYearValue() {
+    const y = Number($("certYear")?.value);
+    return y || new Date().getFullYear();
+  }
+
+  function certEmployeeIdValue(fallback = "") {
+    return String($("certEmployeeId")?.value || fallback || "").trim();
+  }
+
+  function ensureCertDefaults(period) {
+    const certYear = $("certYear");
+    if (certYear && !certYear.value) {
+      certYear.value = String(String(period || "").slice(0, 4) || new Date().getFullYear());
+    }
+    const certPeriod = $("certPeriod");
+    if (certPeriod && !certPeriod.value) {
+      certPeriod.value = period || calendarPayrollPeriod();
+    }
+  }
+
+  function certSplitMoneyParts(value) {
+    const n = Math.abs(Number(value) || 0);
+    const fixed = n.toFixed(2);
+    const [euroPart, centPart] = fixed.split(".");
+    return { euro: Number(euroPart).toLocaleString("de-DE"), cent: centPart || "00" };
+  }
+
+  function certFormatDateDe(value) {
+    if (!value) return "-";
+    if (PayrollCore?.formatDateDE) return PayrollCore.formatDateDE(value, true);
+    const s = String(value).trim();
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[3]}.${m[2]}.${m[1]}`;
+    return s;
+  }
+
+  function certTaxClassDisplay(taxClass) {
+    return String(taxClass || "I").trim() || "I";
+  }
+
+  function renderLstbRowsHtml(rows) {
+    return (rows || []).map((row) => {
+      const isReserved = String(row.key || "").startsWith("empty");
+      if (row.money) {
+        const parts = certSplitMoneyParts(row.value);
+        return `<tr${isReserved ? ' class="lstb-reserved lstb-empty"' : ""}><td class="lstb-nr">${row.nr}</td><td class="lstb-desc">${esc(row.label)}</td><td class="lstb-euro">${parts.euro}</td><td class="lstb-cent">${parts.cent}</td></tr>`;
+      }
+      if (row.key === "certPeriod") {
+        return `<tr class="lstb-text"><td class="lstb-nr">${row.nr}</td><td class="lstb-desc">${esc(row.label)}</td><td class="lstb-euro" colspan="2">${esc(String(row.value || "-"))}</td></tr>`;
+      }
+      return `<tr${isReserved ? ' class="lstb-reserved lstb-empty"' : ""}><td class="lstb-nr">${row.nr}</td><td class="lstb-desc">${esc(row.label)}</td><td class="lstb-euro">${esc(String(row.value ?? ""))}</td><td class="lstb-cent"></td></tr>`;
+    }).join("");
+  }
+
+  function renderLstbPrintHtml(data) {
+    const year = data.year || new Date().getFullYear();
+    const kmId = `FD${year}${String(data.employeeId || "").replace(/\W/g, "").slice(0, 8)}`;
+    const certNr = `${year}-${String(data.employeeId || "0").padStart(5, "0")}`;
+    const finanzamt = data.taxNumber
+      ? `Finanzamt ${data.taxNumber}`
+      : "Finanzamt (Steuernummer im Mandantenprofil eintragen)";
+    const church = Number(data.churchTaxRate) > 0 ? `${data.churchTaxRate} %` : "keine";
+    const empBlock = [data.employeeName, data.employeeAddress].filter(Boolean).join("\n").trim() || data.employeeName || "-";
+    const monthsSummary = data.hasData
+      ? `Abgerechnete Monate ${year}: ${(data.totals?.months || []).join(", ")} (${data.totals?.monthsCount || 0} Monat(e))`
+      : `Keine freigegebenen Monate für ${year}.`;
+    const footerNote = `Bescheinigung nach § 39 Abs. 1 EStG für ${year} · Summe aus ${data.totals?.monthsCount || 0} Monatsabrechnung(en) · LSt BMF PAP · SV SGB IV`;
+    return `
+      <article class="lstb-document">
+        <header class="lstb-official-header">
+          <div class="lstb-header-left">
+            <p class="lstb-finanzamt">Finanzamt / Gemeinde</p>
+            <p class="lstb-finanzamt-val">${esc(finanzamt)}</p>
+          </div>
+          <div class="lstb-header-center">
+            <h2>Lohnsteuerbescheinigung</h2>
+            <p>für das Kalenderjahr <strong>${year}</strong></p>
+            <p class="lstb-sub">Ausdruck der elektronischen Lohnsteuerbescheinigung nach § 39 Abs. 1 EStG</p>
+          </div>
+          <div class="lstb-header-right">
+            <p>KmId</p>
+            <p class="lstb-kmid">${esc(kmId)}</p>
+            <p class="lstb-cert-nr">Certifikat-Nr. <span>${esc(certNr)}</span></p>
+          </div>
+        </header>
+        <header class="lstb-title-block lstb-title-block-secondary">
+          <p>WorkPass Lohn · BMF PAP / SGB IV · Jahr <strong>${year}</strong></p>
+        </header>
+        <div class="lstb-grid">
+          <div class="lstb-left">
+            <table class="lstb-meta-table">
+              <tbody>
+                <tr><td class="lstb-lbl">Personal-Nr.</td><td>${esc(data.personnelNumber || data.employeeId || "-")}</td></tr>
+                <tr><td class="lstb-lbl">Identifikationsnummer</td><td>${esc(data.employeeTaxId || "-")}</td></tr>
+                <tr><td class="lstb-lbl">SV-Nummer</td><td>${esc(data.employeeInsuranceNo || "-")}</td></tr>
+                <tr><td class="lstb-lbl">Geburtsdatum</td><td>${esc(certFormatDateDe(data.employeeBirthDate))}</td></tr>
+                <tr><td class="lstb-lbl">Steuerklasse</td><td>${esc(certTaxClassDisplay(data.taxClass))}</td></tr>
+                <tr><td class="lstb-lbl">Kinderfreibeträge (ZKF)</td><td>${esc(String(data.childAllowanceFactor ?? 0))}</td></tr>
+                <tr><td class="lstb-lbl">Kirchensteuer</td><td>${esc(church)}</td></tr>
+                <tr><td class="lstb-lbl">Zeitraum</td><td>${esc(data.certPeriod || "-")}</td></tr>
+              </tbody>
+            </table>
+            <div class="lstb-address-block">
+              <div class="lstb-block-h">Arbeitnehmer/in</div>
+              <pre>${esc(empBlock)}</pre>
+            </div>
+            <div class="lstb-address-block">
+              <div class="lstb-block-h">Arbeitgeber</div>
+              <pre>${esc(data.seller || "-")}</pre>
+            </div>
+            <p class="lstb-months-summary">${esc(monthsSummary)}</p>
+          </div>
+          <div class="lstb-right">
+            <table class="lstb-rows-table">
+              <thead>
+                <tr>
+                  <th class="lstb-nr">Nr.</th>
+                  <th class="lstb-desc">Bezeichnung</th>
+                  <th class="lstb-euro">Euro</th>
+                  <th class="lstb-cent">Cent</th>
+                </tr>
+              </thead>
+              <tbody>${renderLstbRowsHtml(data.rows)}</tbody>
+            </table>
+          </div>
+        </div>
+        <footer class="lstb-footer-note">
+          <p>${esc(footerNote)}</p>
+        </footer>
+      </article>`;
+  }
+
+  function renderVerdienstPrintHtml(data) {
+    const periodLabel = formatPeriodLabel(data.period) || data.period || "-";
+    const rows = (data.rows || []).map((row) => `
+      <tr>
+        <td>${esc(row.label)}</td>
+        <td class="num">${esc(PayrollCore.formatAmount(row.monthly || 0))}</td>
+        <td class="num">${esc(PayrollCore.formatAmount(row.yearly || 0))}</td>
+      </tr>`).join("");
+    return `
+      <article class="payroll-document verdienst-document">
+        <header class="vb-header">
+          <h2 class="vb-title">Verdienstbescheinigung</h2>
+          <p class="vb-meta">${esc(data.employeeName || "-")} · ${esc(data.personnelNumber || data.employeeId || "-")} · ${esc(periodLabel)}</p>
+          <p class="vb-sub">${esc(data.seller || "")}</p>
+        </header>
+        <table class="portal-vb-table ag-verdienst ag-verdienst-block">
+          <thead>
+            <tr><th>Bezeichnung</th><th class="num">mtl.</th><th class="num">Jahr</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <footer class="vb-footer">
+          <p>${esc(new Date().toLocaleString("de-DE"))}</p>
+          <p class="vb-legal">Ausdruck für den Arbeitnehmer · nicht Bestandteil der Monatsabrechnung</p>
+        </footer>
+      </article>`;
+  }
+
+  let certPrintTitleRestore = "";
+
+  function closeCertificatePrint() {
+    const host = $("portalCertPrintHost");
+    if (host) {
+      host.hidden = true;
+      host.innerHTML = "";
+      host.setAttribute("aria-hidden", "true");
+    }
+    document.body.classList.remove("portal-cert-printing");
+    if (certPrintTitleRestore) document.title = certPrintTitleRestore;
+    window.removeEventListener("afterprint", closeCertificatePrint);
+  }
+
+  function openCertificatePrint(contentHtml, title) {
+    const host = $("portalCertPrintHost");
+    if (!host) return;
+    certPrintTitleRestore = document.title;
+    host.innerHTML = `
+      <div class="portal-cert-actions">
+        <button type="button" class="portal-cta-primary" id="btnCertPrintNow">${esc(uiT("portal.certPrint", "Drucken"))}</button>
+        <button type="button" class="portal-cta-secondary" id="btnCertPrintClose">${esc(uiT("portal.certClose", "Schließen"))}</button>
+      </div>
+      ${contentHtml}`;
+    host.hidden = false;
+    host.removeAttribute("aria-hidden");
+    document.body.classList.add("portal-cert-printing");
+    if (title) document.title = title;
+    host.querySelector("#btnCertPrintClose")?.addEventListener("click", closeCertificatePrint);
+    host.querySelector("#btnCertPrintNow")?.addEventListener("click", () => {
+      window.addEventListener("afterprint", closeCertificatePrint, { once: true });
+      requestAnimationFrame(() => window.print());
+    });
+  }
+
+  async function fetchCertificateLstb(employeeId, year) {
+    const companyId = companyPortalId || apiConfig().companyId;
+    const params = new URLSearchParams({ companyId, employeeId, year: String(year) });
+    return apiFetch(`/v1/portal/certificates/lstb?${params}`);
+  }
+
+  async function fetchCertificateVerdienst(employeeId, year, period) {
+    const companyId = companyPortalId || apiConfig().companyId;
+    const params = new URLSearchParams({ companyId, employeeId, year: String(year) });
+    if (period) params.set("period", period);
+    return apiFetch(`/v1/portal/certificates/verdienst?${params}`);
+  }
+
+  async function showLstbCertificate(employeeId, year) {
+    const eid = String(employeeId || certEmployeeIdValue()).trim();
+    const y = Number(year) || certYearValue();
+    if (!eid) {
+      toast(uiT("portal.certNeedEmployee", "Bitte Mitarbeiter-ID eingeben."), "error");
+      return;
+    }
+    if ($("certEmployeeId")) $("certEmployeeId").value = eid;
+    if ($("certYear")) $("certYear").value = String(y);
+    try {
+      const data = await fetchCertificateLstb(eid, y);
+      if (!data.ok) throw new Error(data.error || uiT("portal.certLstbFail", "LStB konnte nicht erstellt werden."));
+      openCertificatePrint(
+        `<section class="portal-cert-page">${renderLstbPrintHtml(data)}</section>`,
+        `Lohnsteuerbescheinigung ${y} · ${eid}`
+      );
+      toast(uiT("portal.certLstbReady", "Lohnsteuerbescheinigung bereit – Drucken."), "ok");
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  }
+
+  async function showAllLstbCertificates(year) {
+    const y = Number(year) || certYearValue();
+    if ($("certYear")) $("certYear").value = String(y);
+    try {
+      const companyId = companyPortalId || apiConfig().companyId;
+      const summary = await apiFetch(`/v1/portal/certificates/summary?companyId=${encodeURIComponent(companyId)}&year=${y}`);
+      const employees = summary.employees || [];
+      if (!employees.length) {
+        toast(uiT("portal.certEmpty", "Keine freigegebenen Monate für dieses Jahr."), "error");
+        return;
+      }
+      const pages = [];
+      const failed = [];
+      for (const e of employees) {
+        try {
+          const data = await fetchCertificateLstb(e.employeeId, y);
+          if (!data.ok) {
+            failed.push(e.employeeId);
+            continue;
+          }
+          pages.push(`<section class="portal-cert-page">${renderLstbPrintHtml(data)}</section>`);
+        } catch {
+          failed.push(e.employeeId);
+        }
+      }
+      if (!pages.length) {
+        toast(uiT("portal.certLstbFail", "LStB konnte nicht erstellt werden."), "error");
+        return;
+      }
+      openCertificatePrint(pages.join(""), `Lohnsteuerbescheinigungen ${y}`);
+      const msg = failed.length
+        ? uiT("portal.certLstbAllPartial", "LStB bereit ({ok} von {n}) – Drucken.")
+          .replace("{ok}", String(pages.length))
+          .replace("{n}", String(employees.length))
+        : uiT("portal.certLstbAllReady", "Alle Lohnsteuerbescheinigungen bereit – Drucken.")
+          .replace("{n}", String(pages.length));
+      toast(msg, failed.length ? "info" : "ok");
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  }
+
+  async function showVerdienstCertificate(employeeId, year, period) {
+    const eid = String(employeeId || certEmployeeIdValue()).trim();
+    const y = Number(year) || certYearValue();
+    const p = String(period || $("certPeriod")?.value || currentPayrollPeriod() || "").trim();
+    if (!eid) {
+      toast(uiT("portal.certNeedEmployee", "Bitte Mitarbeiter-ID eingeben."), "error");
+      return;
+    }
+    if ($("certEmployeeId")) $("certEmployeeId").value = eid;
+    if ($("certYear")) $("certYear").value = String(y);
+    if ($("certPeriod") && p) $("certPeriod").value = p;
+    try {
+      const data = await fetchCertificateVerdienst(eid, y, p || undefined);
+      if (!data.ok) throw new Error(data.error || uiT("portal.certVerdienstFail", "Verdienstbescheinigung konnte nicht erstellt werden."));
+      openCertificatePrint(
+        `<section class="portal-cert-page">${renderVerdienstPrintHtml(data)}</section>`,
+        `Verdienstbescheinigung ${formatPeriodLabel(data.period) || p} · ${eid}`
+      );
+      toast(uiT("portal.certVerdienstReady", "Verdienstbescheinigung bereit – Drucken."), "ok");
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  }
+
+  function renderCertificateSummaryList(data) {
+    const host = $("portalCertList");
+    if (!host) return;
+    const year = data.year || certYearValue();
+    const employees = data.employees || [];
+    host.innerHTML = employees.length
+      ? employees.map((e) => `
+        <div class="api-inbox-item">
+          <div>
+            <strong>${esc(e.name)}</strong>
+            <span class="portal-item-meta">${esc(e.employeeId)} · ${esc((e.months || []).join(", "))} · ${e.months?.length || 0} ${esc(uiT("portal.certMonths", "Monate"))}</span>
+          </div>
+          <div class="api-inbox-actions">
+            <button type="button" class="api-cert-lstb" data-emp="${esc(e.employeeId)}" data-year="${year}">LStB</button>
+            <button type="button" class="api-cert-vb" data-emp="${esc(e.employeeId)}" data-year="${year}">VB</button>
+          </div>
+        </div>`).join("")
+      : `<p class="section-hint">${esc(uiT("portal.certEmpty", "Keine freigegebenen Monate für dieses Jahr."))}</p>`;
+    host.querySelectorAll(".api-cert-lstb").forEach((btn) => {
+      btn.addEventListener("click", () => showLstbCertificate(btn.dataset.emp, Number(btn.dataset.year)));
+    });
+    host.querySelectorAll(".api-cert-vb").forEach((btn) => {
+      btn.addEventListener("click", () => showVerdienstCertificate(btn.dataset.emp, Number(btn.dataset.year)));
+    });
+  }
+
+  async function loadCertificateSummary() {
+    if (!$("portalCertList")) return;
+    ensureCertDefaults(currentPayrollPeriod());
+    try {
+      const companyId = companyPortalId || apiConfig().companyId;
+      const year = certYearValue();
+      const data = await apiFetch(`/v1/portal/certificates/summary?companyId=${encodeURIComponent(companyId)}&year=${year}`);
+      if (data.ok) renderCertificateSummaryList(data);
+    } catch {
+      const host = $("portalCertList");
+      if (host) host.innerHTML = "";
     }
   }
 
@@ -4284,6 +4630,11 @@
         toast(e.message, "error");
       }
     });
+    $("btnCertLstb")?.addEventListener("click", () => showLstbCertificate());
+    $("btnCertVerdienst")?.addEventListener("click", () => showVerdienstCertificate());
+    $("btnCertLstbAll")?.addEventListener("click", () => showAllLstbCertificates());
+    $("btnCertSummary")?.addEventListener("click", () => loadCertificateSummary());
+    $("certYear")?.addEventListener("change", () => loadCertificateSummary());
     $("btnSimulatePayroll")?.addEventListener("click", async () => {
       try {
         const companyId = companyPortalId || apiConfig().companyId;
