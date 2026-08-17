@@ -519,6 +519,71 @@
     return calendarPayrollPeriod();
   }
 
+  function formatPeriodLabel(period) {
+    const p = String(period || "").trim();
+    if (!p) return "";
+    return window.WorkPassI18n?.formatMonthYear?.(p) || p;
+  }
+
+  function messagePeriod(msg) {
+    return String(msg?.period || msg?.payload?.period || "").trim();
+  }
+
+  function splitMessagesByPeriod(messages, period) {
+    const list = Array.isArray(messages) ? messages : [];
+    const p = String(period || "").trim();
+    if (!p) return { inPeriod: list, other: [] };
+    const inPeriod = [];
+    const other = [];
+    for (const m of list) {
+      const mp = messagePeriod(m);
+      if (!mp || mp === p) inPeriod.push(m);
+      else other.push(m);
+    }
+    return { inPeriod, other };
+  }
+
+  function goToCalendarWorkspace() {
+    const cal = calendarPayrollPeriod();
+    setManualPeriodOverride(false);
+    if ($("payrollMonth")) $("payrollMonth").value = cal;
+    if ($("portalPeriod")) $("portalPeriod").value = cal;
+    syncLocalizedMonthLabels();
+    loadPortalDashboard(true);
+    loadApiInbox(true);
+    loadPlatformMessages(true);
+  }
+
+  function renderPortalWorkspaceBar(period) {
+    const host = $("portalWorkspaceBar");
+    if (!host) return;
+    const working = String(period || currentPayrollPeriod()).trim();
+    const cal = calendarPayrollPeriod();
+    const manual = working !== cal || isManualPeriodOverride();
+    host.hidden = false;
+    host.dataset.mode = manual ? "manual" : "current";
+    const monthLabel = formatPeriodLabel(working);
+    const calLabel = formatPeriodLabel(cal);
+    if ($("portalWorkspaceTitle")) {
+      $("portalWorkspaceTitle").textContent = manual
+        ? uiT("portal.workspaceManualTitle", "Manuell geöffnet: {month}").replace("{month}", monthLabel)
+        : uiT("portal.workspaceAutoTitle", "Arbeitsmonat {month}").replace("{month}", monthLabel);
+    }
+    if ($("portalWorkspaceHint")) {
+      $("portalWorkspaceHint").textContent = manual
+        ? uiT(
+          "portal.workspaceManualHint",
+          "Automatik läuft nur für {current}. Dieser Monat ist Archiv – nichts wird automatisch berechnet."
+        ).replace("{current}", calLabel)
+        : uiT(
+          "portal.workspaceAutoHint",
+          "Nur dieser Monat wird automatisch berechnet. Frühere Monate öffnen Sie manuell."
+        );
+    }
+    const back = $("btnWorkspaceCurrent");
+    if (back) back.hidden = !manual;
+  }
+
   async function loadPortalDashboard(silent = false) {
     const dash = $("portalDashboard");
     if (!companyPortalId) {
@@ -577,7 +642,8 @@
           : "Keine Daten";
         $("portalKpiNet").classList.toggle("is-empty", !cur.total);
       }
-      if ($("portalKpiMessages")) $("portalKpiMessages").textContent = String((msgs.messages || []).length);
+      const msgSplit = splitMessagesByPeriod(msgs.messages || [], period);
+      if ($("portalKpiMessages")) $("portalKpiMessages").textContent = String(msgSplit.inPeriod.length);
       const pending = Number(sync?.pending?.messages || 0) + Number(sync?.pending?.deliveries || 0);
       const pendingDeliveries = Number(sync?.pending?.deliveries || 0);
       const wh = sync?.webhook?.last || null;
@@ -603,7 +669,8 @@
         $("portalSyncBadge").classList.toggle("is-ok", !platformBlocked && !pending && Boolean(Number(emps.count || 0) || cur.total));
       }
 
-      renderPortalReadiness(cur, emps);
+      renderPortalWorkspaceBar(period);
+      renderPortalReadiness(cur, emps, period);
       renderPortalCompleteness(completeness);
       renderPortalTrust(trust);
       renderPortalAnomalies(anomalies);
@@ -619,7 +686,7 @@
 
       const empN = Number(emps.count || 0);
       const relN = Number(cur.released || arch.count || 0);
-      const openN = Number((msgs.messages || []).length);
+      const openN = Number(msgSplit.inPeriod.length);
       const auto = automation?.ok ? automation : (sync?.automation?.ok ? sync.automation : null);
       renderPortalCommandStatus({
         period,
@@ -838,7 +905,7 @@
           } else if (m.status === "released") {
             line = `${uiT("audit.released", "Freigegeben")} · ${m.released}/${m.total}`;
           } else {
-            line = `${uiT("portal.monthManualOpen", "Manuell öffnen")} · ${m.released}/${m.total}`;
+            line = `${uiT("portal.monthArchive", "Archiv")} · ${uiT("portal.monthManualOpen", "Manuell öffnen")} · ${m.released}/${m.total}`;
           }
           const cls = [
             "month-chip",
@@ -1259,6 +1326,24 @@
         : "");
   }
 
+  async function refreshElsterCertStatus() {
+    const host = $("portalElsterCertStatus");
+    if (!host) return;
+    try {
+      const data = await apiFetch("/v1/portal/elster-cert");
+      if (!data.configured) {
+        host.textContent = uiT("portal.elsterCertMissing", "Noch kein Zertifikat hinterlegt.");
+        return;
+      }
+      host.textContent = uiT(
+        "portal.elsterCertOk",
+        "Zertifikat gespeichert · Auto-Versand {auto} · Fingerprint {fp}"
+      ).replace("{auto}", data.autoSubmit ? "an" : "aus").replace("{fp}", data.fingerprint || "—");
+    } catch {
+      host.textContent = "";
+    }
+  }
+
   async function downloadConfirmedExport(path, fileNameHint) {
     const companyId = companyPortalId || apiConfig().companyId;
     const period = currentPayrollPeriod();
@@ -1303,7 +1388,7 @@
     toast(data.message || data.error || "Export", data.ok ? "ok" : "error");
   }
 
-  function renderPortalReadiness(cur = {}, emps = {}) {
+  function renderPortalReadiness(cur = {}, emps = {}, period = "") {
     const card = $("portalReadinessCard");
     const grid = $("portalReadinessGrid");
     if (!card || !grid) return;
@@ -1339,6 +1424,14 @@
             : uiT("lohn.ready", "Bereit")));
       badge.classList.toggle("is-error", Boolean(waitingHours || missingSv || missingKk));
       badge.classList.toggle("is-ok", !waitingHours && !missingSv && !missingKk && total > 0);
+    }
+    const hint = $("portalReadinessHint");
+    if (hint) {
+      const monthLabel = formatPeriodLabel(period || currentPayrollPeriod());
+      hint.textContent = uiT(
+        "portal.readinessHintMonth",
+        "Bereitschaft nur für {month}: wer fertig ist, wer noch auf Stunden oder Stammdaten wartet."
+      ).replace("{month}", monthLabel);
     }
   }
 
@@ -1429,17 +1522,25 @@
       stopHoursWaitRefresh();
       return;
     }
+    const monthLabel = formatPeriodLabel(period || currentPayrollPeriod());
+    const isCurrent = (period || currentPayrollPeriod()) === calendarPayrollPeriod();
     if ($("portalWaitTitle")) {
-      $("portalWaitTitle").textContent = uiT("portal.waitHoursTitle", "Warte auf Monatsstunden")
+      $("portalWaitTitle").textContent = uiT("portal.waitHoursTitleMonth", "Warte auf Stunden · {month}")
+        .replace("{month}", monthLabel)
         + ` · ${waiting}`;
     }
     if ($("portalWaitHint")) {
-      $("portalWaitHint").textContent = uiT(
-        "portal.waitHoursHint",
-        "Stundenlohn ist da. Sobald die Plattform die Stunden sendet, berechnet WorkPass automatisch."
-      );
+      $("portalWaitHint").textContent = isCurrent
+        ? uiT(
+          "portal.waitHoursHint",
+          "Stundenlohn ist da. Sobald die Plattform die Stunden sendet, berechnet WorkPass automatisch."
+        )
+        : uiT(
+          "portal.waitHoursHintArchive",
+          "Archivmonat {month}: Stunden fehlen. Automatik rechnet nur den aktuellen Kalendermonat – hier nur nach manueller Prüfung."
+        ).replace("{month}", monthLabel);
     }
-    if (!hoursWaitTimer) {
+    if (!hoursWaitTimer && isCurrent) {
       hoursWaitTimer = setTimeout(async () => {
         hoursWaitTimer = null;
         try {
@@ -1448,7 +1549,7 @@
         await loadPortalDashboard(true);
       }, 20000);
     }
-    void period;
+    if (!isCurrent) stopHoursWaitRefresh();
   }
 
   function renderPortalPlatformAlert(platformBlocked, pending = 0, employees = 0, pendingDeliveries = 0) {
@@ -1521,9 +1622,9 @@
     } else if (autoOn && (autoWait || pending > 0 || openMessages > 0)) {
       title = uiT("portal.autoWaiting", "Monatsautomatik wartet auf die Plattform");
       hint = uiT(
-        "portal.autoWaitingHint",
-        "WorkPass fragt nach, berechnet alle Abrechnungen und sendet sie automatisch. Login bleibt zur Prüfung möglich."
-      );
+        "portal.autoWaitingHintMonth",
+        "Nur {period}: WorkPass fragt nach, berechnet und sendet automatisch. Andere Monate bleiben unangetastet."
+      ).replace("{period}", formatPeriodLabel(period || currentPayrollPeriod()));
       tone = "wait";
     } else if (autoOn && hasData) {
       title = uiT("portal.autoActive", "Monatsautomatik arbeitet");
@@ -1612,13 +1713,22 @@
     if (card) card.hidden = false;
     try {
       const data = await apiFetch("/v1/messages?status=open");
-      const messages = data.messages || [];
+      const period = currentPayrollPeriod();
+      const split = splitMessagesByPeriod(data.messages || [], period);
+      const messages = split.inPeriod;
+      const otherMonth = split.other;
       const seen = data.seenConfirmations || [];
       const grouped = groupSeenConfirmations(seen);
       if (badge) {
-        badge.textContent = uiT("portal.openSeenBadge", "{open} offen · {seen} gesehen")
-          .replace("{open}", String(messages.length))
-          .replace("{seen}", String(seen.length));
+        badge.textContent = otherMonth.length
+          ? uiT("portal.openSeenBadgeMonth", "{open} offen · {month} · {other} andere Monate · {seen} gesehen")
+            .replace("{open}", String(messages.length))
+            .replace("{month}", formatPeriodLabel(period))
+            .replace("{other}", String(otherMonth.length))
+            .replace("{seen}", String(seen.length))
+          : uiT("portal.openSeenBadge", "{open} offen · {seen} gesehen")
+            .replace("{open}", String(messages.length))
+            .replace("{seen}", String(seen.length));
       }
       if (seenHost) {
         if (!grouped.length) {
@@ -1641,14 +1751,24 @@
       }
       if (!host) return data;
       if (!messages.length) {
-        host.innerHTML = `<div class="company-empty-inbox"><strong>${esc(uiT("portal.noOpen", "Keine offenen Aufträge"))}</strong><p>${esc(uiT("portal.noOpenHint", "Fehlende Daten werden gebündelt pro Mitarbeiter gemeldet. Die Liste bleibt leer, wenn nichts offen ist."))}</p></div>`;
+        const otherNote = otherMonth.length
+          ? `<p class="section-hint">${esc(uiT("portal.openOtherMonths", "{n} offene Aufträge in anderen Monaten – Archiv, nicht dieser Arbeitsmonat.")
+            .replace("{n}", String(otherMonth.length)))}</p>`
+          : "";
+        host.innerHTML = `<div class="company-empty-inbox"><strong>${esc(uiT("portal.noOpen", "Keine offenen Aufträge"))}</strong><p>${esc(uiT("portal.noOpenHint", "Fehlende Daten werden gebündelt pro Mitarbeiter gemeldet. Die Liste bleibt leer, wenn nichts offen ist."))}</p>${otherNote}</div>`;
         return data;
       }
       const shownMsg = messages.slice(0, 40);
+      const otherNote = otherMonth.length
+        ? `<p class="portal-list-meta">${esc(uiT("portal.openOtherMonths", "{n} offene Aufträge in anderen Monaten – Archiv, nicht dieser Arbeitsmonat.")
+          .replace("{n}", String(otherMonth.length)))}</p>`
+        : "";
       host.innerHTML = `
-        <p class="portal-list-meta">${esc(uiT("portal.openDisplay", "{open} offen · Anzeige {shown}")
+        <p class="portal-list-meta">${esc(uiT("portal.openDisplayMonth", "{open} offen in {month} · Anzeige {shown}")
           .replace("{open}", String(messages.length))
+          .replace("{month}", formatPeriodLabel(period))
           .replace("{shown}", String(shownMsg.length)))}</p>
+        ${otherNote}
         ${shownMsg.map((m) => {
           const gapsText = (m.gaps || []).map((g) => localizeGapLabel(g)).filter(Boolean).join(" · ")
             || (m.type?.includes("invoice")
@@ -2948,7 +3068,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.44.1</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.50.5</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))
@@ -3662,6 +3782,7 @@
     $("btnPreviewDemo")?.addEventListener("click", () => {
       toast("Demo-Beispiele sind deaktiviert. Bitte echte Plattform-Daten verwenden.", "info");
     });
+    $("btnWorkspaceCurrent")?.addEventListener("click", () => goToCalendarWorkspace());
     $("btnPortalApplyPeriod")?.addEventListener("click", () => {
       if ($("portalPeriod")?.value && $("payrollMonth")) {
         $("payrollMonth").value = $("portalPeriod").value;
@@ -3778,7 +3899,8 @@
 
     function gobdOpLabel(op) {
       const map = {
-        "payroll.created": uiT("portal.opPayrollCreated", "Abrechnung erstellt"),
+        "payroll.engine_tax_applied": uiT("portal.opEngineTax", "Steuer mit BMF PAP gesetzt"),
+        "elster.submit": uiT("portal.opElsterSubmit", "ELSTER-Übermittlung"),
         "payroll.upsert": uiT("portal.opPayrollUpdated", "Abrechnung aktualisiert"),
         "payroll.corrected": uiT("portal.opPayrollCorrected", "Abrechnung korrigiert"),
         "payroll.revision_archived": uiT("portal.opRevisionArchived", "Original archiviert (vor Korrektur)"),
@@ -4053,7 +4175,120 @@
           body: JSON.stringify({ companyId, period }),
         });
         renderAssistantExplain(data);
-        toast(uiT("portal.assistantDone", "Erklärung bereit – keine automatische Ausführung."), "ok");
+        toast(uiT("portal.assistantDone", "Erklärung bereit – Steuer nur über BMF PAP."), "ok");
+      } catch (e) {
+        toast(e.message, "error");
+      }
+    });
+    $("btnAssistantApplyTax")?.addEventListener("click", async () => {
+      try {
+        const companyId = companyPortalId || apiConfig().companyId;
+        const period = currentPayrollPeriod();
+        const ok = await humanConfirm({
+          title: uiT("portal.assistantApplyTax", "Steuer mit BMF PAP setzen"),
+          body: uiT(
+            "portal.assistantApplyTaxConfirm",
+            "Lohnsteuer und SV werden mit der gesetzlichen Engine (BMF PAP / SV) neu berechnet. Keine geschätzten KI-Beträge."
+          ),
+          requireCheck: true,
+        });
+        if (!ok) return;
+        const data = await apiFetch("/v1/portal/assistant/apply-engine-tax", {
+          method: "POST",
+          body: JSON.stringify({ companyId, period, confirm: true, applyEngineTax: true }),
+        });
+        renderAssistantExplain({
+          explanations: [{
+            title: uiT("portal.assistantApplyTax", "Steuer mit BMF PAP setzen"),
+            body: data.message || "",
+          }],
+          suggestedHumanActions: [],
+        });
+        toast(data.message || uiT("portal.assistantApplyTaxDone", "Steuer über BMF PAP gesetzt."), data.ok ? "ok" : "error");
+        await loadPortalDashboard(true);
+      } catch (e) {
+        toast(e.message, "error");
+      }
+    });
+
+    async function fileToBase64(file) {
+      const buf = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+      return btoa(binary);
+    }
+
+    async function refreshElsterCertStatus() {
+      const host = $("portalElsterCertStatus");
+      if (!host) return;
+      try {
+        const data = await apiFetch("/v1/portal/elster-cert");
+        if (!data.configured) {
+          host.textContent = uiT("portal.elsterCertMissing", "Noch kein Zertifikat hinterlegt.");
+          return;
+        }
+        host.textContent = uiT(
+          "portal.elsterCertOk",
+          "Zertifikat gespeichert · Auto-Versand {auto} · Fingerprint {fp}"
+        ).replace("{auto}", data.autoSubmit ? "an" : "aus").replace("{fp}", data.fingerprint || "—");
+      } catch {
+        host.textContent = "";
+      }
+    }
+
+    $("btnElsterCertSave")?.addEventListener("click", async () => {
+      try {
+        const file = $("elsterP12")?.files?.[0];
+        const pin = String($("elsterPin")?.value || "");
+        if (!file) {
+          toast(uiT("portal.elsterCertNeedFile", "Bitte PKCS#12-Datei wählen."), "error");
+          return;
+        }
+        const ok = await humanConfirm({
+          title: uiT("portal.elsterCertSave", "Zertifikat speichern"),
+          body: uiT("portal.elsterCertConfirm", "Zertifikat und PIN werden verschlüsselt gespeichert."),
+          requireCheck: true,
+        });
+        if (!ok) return;
+        const p12Base64 = await fileToBase64(file);
+        const data = await apiFetch("/v1/portal/elster-cert", {
+          method: "POST",
+          body: JSON.stringify({
+            companyId: companyPortalId || apiConfig().companyId,
+            p12Base64,
+            pin,
+            autoSubmit: Boolean($("elsterAutoSubmit")?.checked),
+            confirm: true,
+          }),
+        });
+        toast(data.message || uiT("portal.elsterCertSaved", "Zertifikat gespeichert."), data.ok === false ? "error" : "ok");
+        await refreshElsterCertStatus();
+      } catch (e) {
+        toast(e.message, "error");
+      }
+    });
+    $("btnElsterSubmit")?.addEventListener("click", async () => {
+      try {
+        const companyId = companyPortalId || apiConfig().companyId;
+        const period = currentPayrollPeriod();
+        const ok = await humanConfirm({
+          title: uiT("portal.elsterSubmit", "ELSTER jetzt senden"),
+          body: uiT("portal.elsterSubmitConfirm", "LStB-XML mit hinterlegtem Zertifikat an den ELSTER-Kanal übermitteln."),
+          requireCheck: true,
+        });
+        if (!ok) return;
+        const data = await apiFetch("/v1/portal/elster-submit", {
+          method: "POST",
+          body: JSON.stringify({ companyId, period, confirm: true }),
+        });
+        toast(data.message || data.error || "ELSTER", data.ok ? "ok" : "error");
+        const host = $("portalElsterList");
+        if (host && data.submissionId) {
+          host.innerHTML = `<div class="api-inbox-item"><div><strong>${esc(data.submissionId)}</strong>
+            <span class="portal-item-meta">${esc(data.status || "")} · ${esc(data.mode || "")}</span></div></div>
+            <p class="section-hint">${esc(data.hint || data.message || "")}</p>`;
+        }
       } catch (e) {
         toast(e.message, "error");
       }

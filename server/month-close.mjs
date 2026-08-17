@@ -19,6 +19,11 @@ function currentPeriod(d = new Date()) {
   return `${y}-${m}`;
 }
 
+function previousPeriod(d = new Date()) {
+  const x = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function isMissingPlatformData(pull) {
   const status = Number(pull?.status) || 0;
   const raw = String(pull?.error || pull?.body?.error || pull?.body?.code || "").toLowerCase();
@@ -729,4 +734,4 @@ export async function runMonthClose(options = {}) {
   return result;
 }
 
-export { currentPeriod };
+export { currentPeriod, previousPeriod };

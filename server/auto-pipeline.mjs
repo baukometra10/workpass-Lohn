@@ -8,6 +8,7 @@
  *   WORKPASS_AUTO_PIPELINE=1          (default ON; set 0 to disable)
  *   WORKPASS_AUTO_PIPELINE_MINUTES=15 (poll / ask interval)
  *   WORKPASS_AUTO_RELEASE=1           (default ON: release on inbound batch)
+ *   WORKPASS_AUTO_PARALLEL_MONTHS=1   (opt-in: also auto previous month; default off)
  */
 import { listCompanies, listPayrollJobs, listInvoiceJobs, loadCompany } from "./db/repository.mjs";
 import {
@@ -20,6 +21,7 @@ import { listEmployees } from "./employee-registry.mjs";
 import {
   runMonthClose,
   currentPeriod,
+  previousPeriod,
   pullPlatformPayrollBatch,
   requestEmployeeDataFromPlatform,
   summarizePlatformPayrollSignal,
@@ -38,11 +40,24 @@ let lastResult = null;
 let lastSuccessAt = null;
 const companySyncState = new Map(); // companyId -> { period, askedAt, invoiceAskedAt, successAt, released }
 
+function autoParallelMonths() {
+  return process.env.WORKPASS_AUTO_PARALLEL_MONTHS === "1"
+    || process.env.WORKPASS_AUTO_PARALLEL_MONTHS === "true";
+}
+
 function periodIsAutoActive(period, options = {}) {
   if (options.allowPastPeriod === true) return true;
   const p = String(period || "").trim().slice(0, 7);
   if (!/^\d{4}-\d{2}$/.test(p)) return true;
-  return p === currentPeriod();
+  if (p === currentPeriod()) return true;
+  if (autoParallelMonths() && p === previousPeriod()) return true;
+  return false;
+}
+
+export function autoPipelinePeriods(now = new Date()) {
+  const cur = currentPeriod(now);
+  if (!autoParallelMonths()) return [cur];
+  return [...new Set([cur, previousPeriod(now)])];
 }
 
 export function autoPipelineConfig() {
@@ -53,6 +68,7 @@ export function autoPipelineConfig() {
     intervalMinutes: Math.max(2, Number(process.env.WORKPASS_AUTO_PIPELINE_MINUTES || 15)),
     autoRelease: process.env.WORKPASS_AUTO_RELEASE !== "0",
     pull: process.env.WORKPASS_AUTO_PIPELINE_PULL !== "0",
+    parallelMonths: autoParallelMonths(),
     /** Minutes before re-asking platform when still waiting (default 30) */
     reaskMinutes: Math.max(5, Number(process.env.WORKPASS_AUTO_REASK_MINUTES || 30)),
   };
@@ -884,28 +900,32 @@ export async function runAutoPipelineOnce(opts = {}) {
   if (!cfg.enabled && !opts.force) {
     return { ok: false, skipped: true, reason: "WORKPASS_AUTO_PIPELINE=0" };
   }
-  const period = opts.period || currentPeriod();
+  const periods = opts.period
+    ? [opts.period]
+    : (opts.periods || autoPipelinePeriods());
   const companies = listAutomationCompanies(opts.companies || listCompanies());
   const results = [];
-  for (const c of companies) {
-    try {
-      recordCompanyAutomation(c.id, period, {
-        phase: "ask",
-        source: "auto_pipeline",
-        message: `Automatik fragt Plattform für ${period}…`,
-      });
-      const r = await askPlatformAndSyncCompany({
-        companyId: c.id,
-        companyName: c.name,
-        period,
-        pull: opts.pull,
-        autoRelease: opts.autoRelease,
-        notify: opts.notify,
-        reason: "auto_pipeline_tick",
-      });
-      results.push(r);
-    } catch (e) {
-      results.push({ ok: false, companyId: c.id, error: e.message });
+  for (const period of periods) {
+    for (const c of companies) {
+      try {
+        recordCompanyAutomation(c.id, period, {
+          phase: "ask",
+          source: "auto_pipeline",
+          message: `Automatik fragt Plattform für ${period}…`,
+        });
+        const r = await askPlatformAndSyncCompany({
+          companyId: c.id,
+          companyName: c.name,
+          period,
+          pull: opts.pull,
+          autoRelease: opts.autoRelease,
+          notify: opts.notify,
+          reason: "auto_pipeline_tick",
+        });
+        results.push({ ...r, period });
+      } catch (e) {
+        results.push({ ok: false, companyId: c.id, period, error: e.message });
+      }
     }
   }
   lastTickAt = new Date().toISOString();
@@ -913,7 +933,8 @@ export async function runAutoPipelineOnce(opts = {}) {
   lastResult = {
     ok: results.some((r) => r.ok) || results.every((r) => r.waitingForPlatform),
     waitingForPlatform: Boolean(primary?.waitingForPlatform),
-    period,
+    period: periods[0],
+    periods,
     count: results.length,
     message: primary?.message || null,
     nextActions: Array.isArray(primary?.nextActions) ? primary.nextActions : [],
@@ -936,7 +957,7 @@ export function startAutoPipelineScheduler() {
   }
   if (timer) clearInterval(timer);
   const ms = cfg.intervalMinutes * 60_000;
-  console.log(`[auto-pipeline] on · every ${cfg.intervalMinutes} min · autoRelease=${cfg.autoRelease}`);
+  console.log(`[auto-pipeline] on · every ${cfg.intervalMinutes} min · autoRelease=${cfg.autoRelease} · parallel=${cfg.parallelMonths}`);
   // First tick shortly after boot (don't block listen)
   setTimeout(() => {
     runAutoPipelineOnce().catch((e) => console.error("[auto-pipeline] boot tick", e.message));

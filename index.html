@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="agenda-reference.css?v=6" />
     <link rel="stylesheet" href="app-ui.css?v=20" />
     <link rel="stylesheet" href="payroll-layouts.css?v=21" />
-    <link rel="stylesheet" href="datev-layout.css?v=10" />
+    <link rel="stylesheet" href="datev-layout.css?v=12" />
     <link rel="stylesheet" href="datev-ref-overlay.css?v=2" />
     <link rel="stylesheet" href="datev-sheet.css?v=2" />
     <link rel="stylesheet" href="print-datev.css?v=3" />
@@ -1574,11 +1574,12 @@
                   <div class="ag-datev-costs">
                     <table class="ag-datev-costs-table">
                       <tbody>
-                        <tr><td>SV-AG-Anteil</td><td class="ag-num" id="pvDatevEmployerShare">0,00</td></tr>
+                        <tr><td>SV-AG-Anteil <span class="ag-cost-sub">Arbeitgeber</span></td><td class="ag-num" id="pvDatevEmployerShare">0,00</td></tr>
                         <tr><td>Zus. AG-Kosten</td><td class="ag-num" id="pvDatevExtraCosts">0,00</td></tr>
-                        <tr><td>Gesamtkosten</td><td class="ag-num" id="pvDatevTotalCosts">0,00</td></tr>
+                        <tr><td>Gesamtkosten <span class="ag-cost-sub">für die Firma</span></td><td class="ag-num" id="pvDatevTotalCosts">0,00</td></tr>
                       </tbody>
                     </table>
+                    <p class="ag-cost-legend" id="pvCostLegend">Gesamtkosten = Brutto (Mitarbeiter) + SV-AG (Firma). Auszahlung = Netto an den Mitarbeiter.</p>
                   </div>
                 </div>
                 </div>
@@ -1590,11 +1591,11 @@
                     <div class="ag-dv-rail-amt-rows" id="pvDatevBetragRows"></div>
                   </div>
                   <div class="ag-dv-rail-totals">
-                  <div class="ag-dv-sum-box ag-dv-gross"><span>Gesamt-Brutto</span><strong id="pvDatevGrossTotal">0,00</strong></div>
+                  <div class="ag-dv-sum-box ag-dv-gross"><span>Gesamt-Brutto <em class="ag-cost-sub">Mitarbeiter</em></span><strong id="pvDatevGrossTotal">0,00</strong></div>
                   <div class="ag-dv-sum-box"><span>Steuerrechtliche Abzüge</span><strong id="pvDatevTaxTotal">0,00</strong></div>
                   <div class="ag-dv-sum-box"><span>SV-rechtliche Abzüge</span><strong id="pvDatevSvTotal">0,00</strong></div>
                   <div class="ag-dv-sum-box ag-dv-net"><span>Netto-Verdienst</span><strong id="pvDatevNetTotal">0,00</strong></div>
-                  <div class="ag-dv-sum-box ag-dv-payout"><span>Auszahlungsbetrag</span><strong id="pvDatevPayoutRail">0,00</strong></div>
+                  <div class="ag-dv-sum-box ag-dv-payout"><span>Auszahlungsbetrag <em class="ag-cost-sub">an den Mitarbeiter</em></span><strong id="pvDatevPayoutRail">0,00</strong></div>
                   </div>
                 </aside>
                 </div>
@@ -1610,7 +1611,7 @@
                     <p class="ag-legend layout-agenda-only">*) M = mehrjährig · St = Steuer · SV = sozialversicherungspflichtig · GB = Gesamt-Brutto · KKN = KV-Beitragssatz</p>
                     <p class="ag-legend ag-legend-datev layout-datev-only" id="pvDatevLegend">1 = Hinzurechnungsbetrag · 2 = Vortragswert · 3 = Anrechnungswert · 4 = Herausrechnungsbetrag · E = Einmalbezug · F = Frei · L = laufender Bezug · M = mehrjährig · N = Nachberechnung · P = pauschal · S = sonstiger Bezug · St = Steuer · SV = sozialversicherungspflichtig · Z = Zuschlag/Kürzung · GB = Gesamt-Brutto · KKN = KV-Beitragssatz</p>
                     <p class="ag-legend layout-datev-only" id="pvDatevFormNr">Form.-Nr. LOHN17</p>
-                    <p class="ag-legend" id="pvLegendCalc">* Berechnung Lohnsteuer: BMF PAP</p>
+                    <p class="ag-legend layout-datev-only ag-cost-explain" id="pvCostExplain">Gesamtkosten = Brutto + SV-AG-Anteil (Betriebskosten). Auszahlungsbetrag = Netto auf das Konto des Mitarbeiters – nicht die Gesamtkosten.</p>
                     <p class="ag-legend ag-legend-legal" id="pvFooterLegal">Abrechnung nach § 108 Abs. 3 GewO · Entgeltabrechnung nach SGB IV</p>
                     <pre class="ag-legend-company" id="pvFooterBlock"></pre>
                   </div>
@@ -1797,7 +1798,7 @@
     <script src="legal-config.js?v=3"></script>
     <script src="annual-certificate.js?v=2"></script>
     <script src="elster-export.js?v=1"></script>
-    <script src="datev-sheet.js?v=42"></script>
+    <script src="datev-sheet.js?v=44"></script>
     <script src="payroll-core.js?v=31"></script>
     <script src="workpass-i18n-packs.js?v=17"></script>
     <script src="workpass-i18n.js?v=6"></script>

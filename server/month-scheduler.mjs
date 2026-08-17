@@ -9,12 +9,13 @@
  *   WORKPASS_AUTO_MONTH_CLOSE_CONFIRM=1  (calculate only, no autoRelease)
  *   WORKPASS_AUTO_MONTH_CLOSE_PULL=0     (skip pull)
  *   WORKPASS_AUTO_MONTH_CLOSE_CATCHUP_DAYS=0
- *     (optional: 1–7 = nur Vormonat abschließen, nie parallel zum aktuellen Monat)
+ *   WORKPASS_AUTO_PARALLEL_MONTHS=1  (opt-in: current + previous in one tick; default off)
  */
 import { listCompanies } from "./db/repository.mjs";
-import { runMonthClose, currentPeriod } from "./month-close.mjs";
+import { runMonthClose, currentPeriod, previousPeriod } from "./month-close.mjs";
 import { listAutomationCompanies } from "./automation-eligibility.mjs";
 import { liveMonthJobs, recordCompanyAutomation } from "./automation-status.mjs";
+import { maybeAutoSubmitElster } from "./elster/submit.mjs";
 
 let timer = null;
 let lastTickAt = null;
@@ -25,31 +26,29 @@ function isLastDayOfMonth(d = new Date()) {
   return next.getDate() === 1;
 }
 
-function previousPeriod(d = new Date()) {
-  const x = new Date(d.getFullYear(), d.getMonth() - 1, 1);
-  const y = x.getFullYear();
-  const m = String(x.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
-}
-
 export function autoMonthCloseConfig() {
   const disabled = process.env.WORKPASS_AUTO_MONTH_CLOSE === "0"
     || process.env.WORKPASS_AUTO_MONTH_CLOSE === "false";
+  const parallelMonths = process.env.WORKPASS_AUTO_PARALLEL_MONTHS === "1"
+    || process.env.WORKPASS_AUTO_PARALLEL_MONTHS === "true";
   return {
     enabled: !disabled,
     hour: Number(process.env.WORKPASS_AUTO_MONTH_CLOSE_HOUR || 6),
     autoRelease: process.env.WORKPASS_AUTO_MONTH_CLOSE_CONFIRM !== "1",
     pull: process.env.WORKPASS_AUTO_MONTH_CLOSE_PULL !== "0",
+    parallelMonths,
     catchUpDays: Math.max(0, Number(process.env.WORKPASS_AUTO_MONTH_CLOSE_CATCHUP_DAYS || 0)),
   };
 }
 
 /**
- * Auto never closes two months at once.
- * Default: current calendar month near month-end only.
- * Optional catch-up (days 1–N) finishes the previous month instead of the current one.
+ * Default: only the current calendar month (never two months at once).
+ * Opt in to previous+current with WORKPASS_AUTO_PARALLEL_MONTHS=1.
  */
 export function periodsForAutoMonthClose(now = new Date(), cfg = autoMonthCloseConfig()) {
+  if (cfg.parallelMonths) {
+    return [...new Set([currentPeriod(now), previousPeriod(now)])];
+  }
   const day = now.getDate();
   if (cfg.catchUpDays > 0 && day <= cfg.catchUpDays) {
     return [previousPeriod(now)];
@@ -120,6 +119,14 @@ export async function runAutoMonthCloseOnce(opts = {}) {
           waitingForPlatform: Boolean(r.waitingForPlatform),
           message: r.message || null,
         });
+        let elster = null;
+        if (after.complete || (after.released > 0 && after.error === 0)) {
+          try {
+            elster = await maybeAutoSubmitElster(c.id, period);
+          } catch (e) {
+            elster = { ok: false, error: e.message };
+          }
+        }
         results.push({
           companyId: c.id,
           period,
@@ -127,6 +134,7 @@ export async function runAutoMonthCloseOnce(opts = {}) {
           waitingForPlatform: r.waitingForPlatform,
           message: r.message,
           jobs: after,
+          elster: elster && !elster.skipped ? { ok: elster.ok, status: elster.status, mode: elster.mode } : undefined,
         });
       } catch (e) {
         recordCompanyAutomation(c.id, period, {
@@ -159,7 +167,7 @@ export function startMonthCloseScheduler() {
   }
   if (timer) clearInterval(timer);
   console.log(
-    `[month-close] scheduler on · hour≥${cfg.hour} · catchUpDays=${cfg.catchUpDays} · autoRelease=${cfg.autoRelease}`
+    `[month-close] scheduler on · hour≥${cfg.hour} · parallel=${cfg.parallelMonths} · catchUpDays=${cfg.catchUpDays} · autoRelease=${cfg.autoRelease}`
   );
   // Boot tick: catch up previous month if we are in days 1–N
   setTimeout(() => {

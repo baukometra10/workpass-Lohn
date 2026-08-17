@@ -54,9 +54,12 @@ assert(isPayrollAutomationEnabled({ id: "x", meta: {} }) === false, "missing acc
 assert(isPayrollAutomationEnabled({ id: "y", meta: { accountingEnabled: false } }) === false, "false flag not eligible");
 
 console.log("\n=== period window ===");
+assert(autoMonthCloseConfig().parallelMonths === false, "parallel months default off");
+assert(autoMonthCloseConfig().catchUpDays === 0, "catch-up default 0");
 const lastDay = new Date(2026, 7, 31); // Aug 31 2026
 const periodsLast = periodsForAutoMonthClose(lastDay);
 assert(periodsLast.includes("2026-08"), `last day includes current (${periodsLast})`);
+assert(periodsLast.length === 1, "last day only one month");
 const early = new Date(2026, 8, 2); // Sep 2
 const periodsEarly = periodsForAutoMonthClose(early);
 assert(periodsEarly.includes("2026-09") || periodsEarly.length === 0, `default catch-up off (${periodsEarly})`);

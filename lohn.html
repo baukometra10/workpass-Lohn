@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=26" />
-    <link rel="stylesheet" href="lohn.css?v=81" />
+    <link rel="stylesheet" href="lohn.css?v=82" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0b1220" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -195,7 +195,13 @@
                   </div>
                   <div class="portal-command-pulse" id="portalCommandPulse" aria-hidden="true"></div>
                 </section>
-                <div id="portalPlatformAlert" class="portal-platform-alert" hidden role="alert"></div>
+                <div id="portalWorkspaceBar" class="portal-workspace-bar" hidden>
+                  <div class="portal-workspace-copy">
+                    <strong id="portalWorkspaceTitle">—</strong>
+                    <p id="portalWorkspaceHint" class="section-hint"></p>
+                  </div>
+                  <button type="button" class="portal-cta-secondary" id="btnWorkspaceCurrent" hidden data-i18n="portal.workspaceBack">Zum aktuellen Monat</button>
+                </div>
                 <div class="portal-kpi-row" id="portalKpiRow" hidden>
                   <div class="kpi"><span data-i18n="lohn.employees">Mitarbeiter</span><strong id="portalKpiEmployees">0</strong></div>
                   <div class="kpi"><span data-i18n="audit.released">Freigegeben</span><strong id="portalKpiReleased">0</strong></div>
@@ -247,13 +253,14 @@
                 </section>
                 <section class="month-close-card portal-dash-card" id="portalAssistantCard" hidden style="margin-bottom:12px">
                   <div class="portal-card-head">
-                    <strong data-i18n="portal.assistantTitle">Assistent · nur erklären</strong>
-                    <span class="portal-card-badge" id="portalAssistantBadge" data-i18n="portal.assistantBadge">Mensch entscheidet</span>
+                    <strong data-i18n="portal.assistantTitle">Assistent · BMF PAP</strong>
+                    <span class="portal-card-badge" id="portalAssistantBadge" data-i18n="portal.assistantBadge">Engine setzt Steuer</span>
                   </div>
-                  <p id="portalAssistantHint" class="section-hint" data-i18n="portal.assistantHint">Erklärt Lücken. Setzt keine Steuerwerte. Aktionen nur nach Ihrer Bestätigung.</p>
+                  <p id="portalAssistantHint" class="section-hint" data-i18n="portal.assistantHint">Erklärt Lücken. Steuer nur über BMF PAP / SV gesetzlich – nach Ihrer Bestätigung. Keine erfundenen Beträge.</p>
                   <div id="portalAssistantList" class="api-inbox-list"></div>
                   <div class="month-close-actions" style="margin-top:8px">
                     <button type="button" id="btnAssistantExplain" data-i18n="portal.assistantRun">Lücken erklären</button>
+                    <button type="button" class="portal-cta-primary" id="btnAssistantApplyTax" data-i18n="portal.assistantApplyTax">Steuer mit BMF PAP setzen</button>
                   </div>
                 </section>
                 <section class="month-close-card portal-dash-card" id="portalExportCard" style="margin-bottom:12px">
@@ -261,7 +268,7 @@
                     <strong data-i18n="portal.exportTitle">Exporte (Mensch bestätigt)</strong>
                     <span class="portal-card-badge" data-i18n="portal.humanFinalBadge">Human final</span>
                   </div>
-                  <p class="section-hint" data-i18n="portal.exportHint">SEPA / DATEV / LODAS / ELSTER-Vorbereitung – Upload bleibt beim Menschen.</p>
+                  <p class="section-hint" data-i18n="portal.exportHint">SEPA / DATEV / LODAS / ELSTER – Versand mit hinterlegtem Zertifikat möglich.</p>
                   <div class="month-close-actions portal-primary-actions" style="margin-top:8px">
                     <button type="button" class="portal-cta-secondary" id="btnSepaExport" data-i18n="portal.sepaExport">SEPA XML</button>
                     <button type="button" class="portal-cta-secondary" id="btnDatevExportConfirm" data-i18n="portal.datevExport">DATEV</button>
@@ -269,6 +276,25 @@
                     <button type="button" class="portal-cta-secondary" id="btnElsterPrep" data-i18n="portal.elsterPrep">ELSTER-Checkliste</button>
                     <button type="button" class="portal-cta-primary" id="btnGobdExport" data-i18n="portal.gobdExport">GoBD Export</button>
                   </div>
+                  <div class="field-grid" style="margin-top:10px">
+                    <div>
+                      <label for="elsterP12" data-i18n="portal.elsterCert">ELSTER-Zertifikat (PKCS#12)</label>
+                      <input id="elsterP12" type="file" accept=".p12,.pfx" />
+                    </div>
+                    <div>
+                      <label for="elsterPin" data-i18n="portal.elsterPin">Zertifikat-PIN</label>
+                      <input id="elsterPin" type="password" autocomplete="off" />
+                    </div>
+                  </div>
+                  <label class="portal-check" style="display:flex;gap:8px;align-items:center;margin-top:8px">
+                    <input type="checkbox" id="elsterAutoSubmit" />
+                    <span data-i18n="portal.elsterAuto">Automatisch senden, sobald der Monat fertig ist</span>
+                  </label>
+                  <div class="month-close-actions" style="margin-top:8px">
+                    <button type="button" class="portal-cta-secondary" id="btnElsterCertSave" data-i18n="portal.elsterCertSave">Zertifikat speichern</button>
+                    <button type="button" class="portal-cta-primary" id="btnElsterSubmit" data-i18n="portal.elsterSubmit">ELSTER jetzt senden</button>
+                  </div>
+                  <p id="portalElsterCertStatus" class="section-hint"></p>
                   <div id="portalElsterList" class="api-inbox-list" style="margin-top:8px"></div>
                 </section>
                 <section class="month-close-card portal-dash-card" id="portalGobdCard" style="margin-bottom:12px">
@@ -383,7 +409,7 @@
                   </section>
                   <section class="month-close-card portal-dash-card">
                     <strong data-i18n="lohn.monthOverview">Monatsübersicht</strong>
-                    <p data-i18n="portal.monthHint">Automatik rechnet nur den aktuellen Kalendermonat. Frühere Monate öffnen Sie manuell.</p>
+                    <p data-i18n="portal.monthHint">Automatik rechnet aktuellen Monat und Vormonat parallel. Ältere Monate öffnen Sie manuell.</p>
                     <div id="portalMonthOverview" class="month-overview"></div>
                   </section>
                 </div>
@@ -802,15 +828,15 @@
     <script src="catalogs.js?v=1"></script>
     <script src="datev-import.js?v=2"></script>
     <script src="templates.js?v=1"></script>
-    <script src="datev-sheet.js?v=43"></script>
+    <script src="datev-sheet.js?v=44"></script>
     <script src="payroll-core.js?v=31"></script>
-    <script src="workpass-i18n-packs.js?v=27"></script>
+    <script src="workpass-i18n-packs.js?v=29"></script>
     <script src="workpass-i18n.js?v=8"></script>
     <script src="auth-gate.js?v=18"></script>
     <script src="mandant-checklist.js?v=4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="workpass-pwa.js?v=4"></script>
-    <script src="lohn-app.js?v=96"></script>
+    <script src="lohn-app.js?v=97"></script>
   </body>
 </html>

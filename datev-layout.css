@@ -549,6 +549,40 @@
   font-variant-numeric: tabular-nums;
 }
 
+.ag-cost-sub {
+  display: block;
+  font-size: 4.4pt;
+  font-weight: 400;
+  font-style: normal;
+  opacity: 0.78;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.15;
+}
+
+.ag-cost-legend {
+  margin: 4px 0 0;
+  font-size: 7pt;
+  line-height: 1.25;
+  opacity: 0.85;
+  max-width: 22em;
+}
+
+.payroll-sheet.layout-datev .ag-datev-rail .ag-cost-sub {
+  font-size: 4.2pt;
+  font-weight: 500;
+  margin-top: 0.2mm;
+}
+
+.ag-cost-explain {
+  font-size: 5.2pt;
+  line-height: 1.35;
+}
+
+.payroll-sheet.layout-datev .ag-cost-explain {
+  font-size: 4.8pt;
+}
+
 /* Fußzeile */
 .payroll-sheet.layout-datev .ag-footer-anchor {
   border: var(--ag-border);
@@ -663,6 +697,8 @@
 .payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-lbl,
 .payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-datev-rail .ag-dv-sum-box span,
 .payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-legend-block,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-cost-sub,
+.payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-cost-explain,
 .payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-dv-rail-h,
 .payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden .ag-datev-sender,
 .payroll-sheet.layout-datev-pdf-bg.layout-datev-bg-chrome-hidden thead th {

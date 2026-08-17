@@ -7,6 +7,7 @@ import {
   processInboundInvoiceBatch,
   askPlatformAndSyncCompany,
   autoPipelineConfig,
+  autoPipelinePeriods,
 } from "../server/auto-pipeline.mjs";
 import { listPayrollJobs, listInvoiceJobs } from "../server/db/repository.mjs";
 import { listInvoiceArchive } from "../server/portal-service.mjs";
@@ -31,6 +32,8 @@ activateCompany({
 console.log("\n=== config default on ===");
 assert(autoPipelineConfig().enabled === true, "auto pipeline enabled");
 assert(autoPipelineConfig().autoRelease === true, "auto release on");
+assert(autoPipelineConfig().parallelMonths === false, "parallel months default off");
+assert(autoPipelinePeriods(new Date(2026, 7, 17)).join(",") === "2026-08", "auto pipeline only current month");
 
 console.log("\n=== inbound batch auto release ===");
 const batch = await processInboundPayrollBatch({
