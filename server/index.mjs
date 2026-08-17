@@ -844,13 +844,11 @@ async function handler(req, res) {
         // Bootstrap Mandant branding asynchronously – login stays for review only
         const cid = result.company.id;
         setTimeout(() => {
-          // Pull branding/logo automatically – do not ask; logos already exist on platform
+          // Pull logo from platform; if missing, send a clear logo question
           pullAndSyncCompanyBranding(cid, {
-            ask: false,
             reason: "activate_bootstrap",
             source: "company-activate",
           }).catch(() => {});
-          hydrateCompanyLogoFromUrl(cid).catch(() => {});
           askPlatformAndSyncCompany({
             companyId: cid,
             companyName: result.company.name,
@@ -965,7 +963,6 @@ async function handler(req, res) {
       if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
       if (!id) return reply(422, { ok: false, error: "companyId fehlt" });
       const result = await pullAndSyncCompanyBranding(id, {
-        ask: false,
         reason: "manual_pull_branding",
         source: "api",
       });

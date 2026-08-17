@@ -6,7 +6,7 @@ import { notifyPlatform } from "./notify.mjs";
 import { upsertPlatformMessage } from "./platform-messages.mjs";
 import { loadCompany, saveCompany } from "./db/repository.mjs";
 import { normalizeCompanyId } from "./tenant.mjs";
-import { pullCompanyProfile } from "./platform-pull.mjs";
+import { pullCompanyProfile, pullCompanyLogoBinary, pickLogoFields, companyLogoPullPaths } from "./platform-pull.mjs";
 
 function pickString(...vals) {
   for (const v of vals) {
@@ -48,25 +48,23 @@ export function extractHubProfileFromPayload(payload = {}, companyBody = {}) {
     || (branding.bank && typeof branding.bank === "object" ? branding.bank : null)
     || {};
 
-  const logoDataUrl = pickString(
+  const logos = pickLogoFields(
     hub.logoDataUrl,
     branding.logoDataUrl,
     payload.logoDataUrl,
     companyBody.logoDataUrl,
-    branding.logo?.dataUrl,
-    hub.logo?.dataUrl
-  );
-  const logoUrl = pickString(
+    branding.logo,
+    hub.logo,
+    payload.logo,
+    companyBody.logo,
     hub.logoUrl,
     branding.logoUrl,
     payload.logoUrl,
     companyBody.logoUrl,
-    branding.logo,
-    hub.logo,
     branding.logoURL
   );
-  // Avoid storing non-URL objects as logoUrl
-  const logoUrlSafe = /^https?:\/\//i.test(logoUrl) ? logoUrl : "";
+  const logoDataUrl = logos.logoDataUrl;
+  const logoUrlSafe = logos.logoUrl;
 
   const seller = buildSellerBlock(companyBody, hub, branding);
   const out = {
@@ -92,6 +90,11 @@ export function extractHubProfileFromPayload(payload = {}, companyBody = {}) {
     if (v === undefined || v === "") delete out[k];
   }
   return Object.keys(out).length ? out : null;
+}
+
+export function companyHasLogo(company) {
+  const hub = company?.meta?.hubProfile || {};
+  return Boolean(hub.logoDataUrl || hub.logoUrl || company?.logoDataUrl || company?.logoUrl);
 }
 
 export function hubProfileNeedsEnrichment(hubProfile) {
@@ -137,6 +140,8 @@ export function applyPulledCompanyProfile(companyId, pulled = {}) {
     hubProfile: Object.keys(nextHub).length ? nextHub : (company.meta?.hubProfile || null),
     brandingPulledAt: new Date().toISOString(),
   };
+  if (nextHub.logoDataUrl) company.logoDataUrl = nextHub.logoDataUrl;
+  if (nextHub.logoUrl) company.logoUrl = nextHub.logoUrl;
   company.updatedAt = new Date().toISOString();
   saveCompany(company);
   return {
@@ -148,8 +153,8 @@ export function applyPulledCompanyProfile(companyId, pulled = {}) {
 }
 
 /**
- * Pull branding/logo from platform and store it. Does NOT ask by default –
- * logos already exist on the platform and must be fetched automatically.
+ * Pull branding/logo from platform and store it.
+ * If the logo is still missing, send a clear question to the platform.
  */
 export async function pullAndSyncCompanyBranding(companyOrId, opts = {}) {
   const id = normalizeCompanyId(
@@ -161,40 +166,112 @@ export async function pullAndSyncCompanyBranding(companyOrId, opts = {}) {
   let applied = null;
   if (pull.ok) {
     applied = applyPulledCompanyProfile(id, pull);
-    if (applied.ok) {
-      await hydrateCompanyLogoFromUrl(id).catch(() => {});
-    }
   }
+
+  const binary = await pullCompanyLogoBinary(id).catch(() => ({ ok: false }));
+  if (binary?.ok && (binary.logoDataUrl || binary.logoUrl)) {
+    applied = applyPulledCompanyProfile(id, {
+      company: { id },
+      hubProfile: {
+        logoDataUrl: binary.logoDataUrl,
+        logoUrl: binary.logoUrl,
+        source: "platform-logo-get",
+      },
+    });
+  }
+
+  await hydrateCompanyLogoFromUrl(id).catch(() => {});
 
   const fresh = loadCompany(id);
   const stillNeeds = hubProfileNeedsEnrichment(fresh?.meta?.hubProfile);
-  // Only ask when explicitly allowed AND pull failed / still incomplete
+  const missingLogo = !companyHasLogo(fresh);
+  const askLogo = opts.ask !== false && missingLogo;
   let ask = null;
-  if (stillNeeds && opts.ask === true) {
-    ask = await requestCompanyBrandingFromPlatform(fresh || { id }, {
-      reason: opts.reason || "branding_pull_miss",
+  if (askLogo) {
+    ask = await requestCompanyLogoFromPlatform(fresh || { id }, {
+      reason: opts.reason || "logo_pull_miss",
       source: opts.source || "branding-pull",
       notify: opts.notify !== false,
     });
   }
 
   return {
-    ok: Boolean(applied?.ok || (fresh && !stillNeeds)),
-    pulled: pull.ok,
+    ok: Boolean(applied?.ok || (fresh && !stillNeeds) || !missingLogo),
+    pulled: pull.ok || Boolean(binary?.ok),
     pull,
+    binary: binary?.ok ? { bytes: binary.bytes, logoUrl: binary.logoUrl } : binary,
     applied,
     company: fresh,
     stillNeeds,
+    missingLogo,
     asked: Boolean(ask),
     ask,
-    message: applied?.ok
-      ? (applied.hasLogo
-        ? "Branding/Logo von Plattform geholt."
-        : "Firmenprofil geholt – Logo-URL ggf. nachgeladen.")
-      : (stillNeeds
-        ? "Branding noch unvollständig – Plattform-GET ohne Logo/Adresse."
-        : "Branding bereits vorhanden."),
+    message: !missingLogo
+      ? "Firmenlogo von der Plattform geholt."
+      : (ask
+        ? "Logo nicht gefunden – klare Anfrage an die Plattform gesendet."
+        : "Branding noch unvollständig – Plattform-GET ohne Logo."),
   };
+}
+
+/**
+ * Clear question to the platform: please send this company's logo now.
+ */
+export async function requestCompanyLogoFromPlatform(company, opts = {}) {
+  const id = normalizeCompanyId(company?.id || "");
+  if (!id) return { ok: false, error: "companyId fehlt" };
+  const name = String(company?.name || id);
+  const publicUrl = String(process.env.WORKPASS_PUBLIC_URL || "https://workpass-lohn.up.railway.app").replace(/\/$/, "");
+  const paths = companyLogoPullPaths(id).slice(0, 4).join("\n   ");
+  const question = `Bitte das Firmenlogo für Mandant ${name} (${id}) an WorkPass Lohn senden.`;
+  const payload = {
+    type: "company.logo.requested",
+    severity: "action_needed",
+    company: { id, name },
+    code: "company_logo_requested",
+    dedupeKey: `company.logo.requested::${id}`,
+    title: `Firmenlogo fehlt · ${name}`,
+    body:
+      `WorkPass Lohn (Steuerprogramm) braucht das Firmenlogo für Mandant ${name} (${id}).\n\n`
+      + `${question}\n\n`
+      + "Bitte eines tun:\n"
+      + `1) Logo per GET bereitstellen, z. B.\n   ${paths}\n`
+      + "   (PNG/JPG/SVG oder JSON mit logoUrl / logoDataUrl)\n"
+      + `2) Oder an Accounting senden:\n   POST ${publicUrl}/v1/company/activate\n`
+      + "   mit hubProfile.logoUrl oder hubProfile.logoDataUrl\n\n"
+      + "Ohne Logo bleibt der Briefkopf auf Abrechnungen und Bescheinigungen leer.",
+    gaps: [{
+      code: "company_logo_requested",
+      field: "hubProfile.logo",
+      label: "Firmenlogo fehlt",
+      severity: "action_needed",
+    }],
+    source: opts.source || "logo-pull",
+  };
+
+  let message = null;
+  try {
+    const msg = await upsertPlatformMessage(payload, { notify: false });
+    message = msg.message;
+  } catch { /* ignore */ }
+
+  const notify = opts.notify === false
+    ? { skipped: true }
+    : await notifyPlatform({
+      event: "company.logo.requested",
+      company: { id, name },
+      message,
+      meta: {
+        question,
+        need: "logo",
+        reason: opts.reason || "logo_missing",
+        replyPath: "/v1/company/activate",
+        hint: "Bitte Firmenlogo (logoUrl oder logoDataUrl) an WorkPass Lohn senden",
+      },
+      idempotencyKey: `company-logo:${id}:${Math.floor(Date.now() / 3_600_000)}`,
+    });
+
+  return { ok: true, message, notify, question };
 }
 
 /**
@@ -289,6 +366,8 @@ export async function hydrateCompanyLogoFromUrl(companyId, opts = {}) {
         updatedAt: new Date().toISOString(),
       },
     };
+    company.logoDataUrl = logoDataUrl;
+    company.logoUrl = url;
     company.updatedAt = new Date().toISOString();
     saveCompany(company);
     return { ok: true, hydrated: true, bytes: buf.length };

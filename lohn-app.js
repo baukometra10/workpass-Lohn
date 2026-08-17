@@ -1820,6 +1820,9 @@
         ? uiT("portal.brandingHasTax", "Steuer-Nr. vorhanden")
         : uiT("portal.brandingNoTax", "Steuer-Nr. fehlt"));
       hint.textContent = parts.join(" · ");
+      if (!branding.hasLogo) {
+        hint.textContent += ` · ${uiT("portal.brandingLogoHint", "WorkPass holt das Logo direkt von der Plattform. Fehlt es dort, geht eine klare Anfrage raus.")}`;
+      }
     }
   }
 
@@ -3994,10 +3997,12 @@
         body: JSON.stringify({ companyId }),
       });
       toast(
-        data.hasLogo || data.applied?.hasLogo || data.pulled
-          ? uiT("portal.brandingPulled", "Firmenauftritt aktualisiert.")
-          : (data.message || uiT("portal.brandingPullPartial", "Branding geprüft – Logo ggf. noch nicht auf der Plattform.")),
-        data.ok || data.pulled ? "ok" : "info"
+        data.asked
+          ? uiT("portal.brandingLogoAsked", "Logo nicht gefunden – klare Anfrage an die Plattform gesendet.")
+          : (data.hasLogo || data.applied?.hasLogo || !data.missingLogo
+            ? uiT("portal.brandingPulled", "Firmenauftritt aktualisiert.")
+            : (data.message || uiT("portal.brandingPullPartial", "Branding geprüft – Logo ggf. noch nicht auf der Plattform."))),
+        data.asked ? "info" : (data.ok || data.pulled ? "ok" : "info")
       );
       await loadPortalDashboard(true);
     } catch (e) {

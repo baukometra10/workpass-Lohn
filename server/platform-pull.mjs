@@ -26,12 +26,81 @@ function pick(...vals) {
   return "";
 }
 
+function looksLikeImageBytes(buf) {
+  if (!buf || buf.length < 8) return false;
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return true;
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return true;
+  if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) return true;
+  if (buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46) return true;
+  const head = buf.slice(0, 64).toString("utf8");
+  return /<svg[\s>]/i.test(head);
+}
+
+function resolveMaybeUrl(value) {
+  const s = String(value ?? "").trim();
+  if (!s || s === "[object Object]") return "";
+  if (/^data:image\//i.test(s)) return s;
+  if (/^https?:\/\//i.test(s)) return s;
+  if (s.startsWith("/") && s.length > 2 && !s.startsWith("//")) {
+    return `${platformBaseUrl()}${s}`;
+  }
+  return "";
+}
+
+/** Nested logo objects: { url }, { href }, { src }, { dataUrl } */
+export function pickLogoFields(...vals) {
+  let logoUrl = "";
+  let logoDataUrl = "";
+  const walk = (v) => {
+    if (logoUrl && logoDataUrl) return;
+    if (v == null || v === false) return;
+    if (typeof v === "string") {
+      const s = v.trim();
+      if (/^data:image\//i.test(s)) {
+        if (!logoDataUrl) logoDataUrl = s;
+        return;
+      }
+      const resolved = resolveMaybeUrl(s);
+      if (/^https?:\/\//i.test(resolved) && !logoUrl) logoUrl = resolved;
+      return;
+    }
+    if (typeof v === "object") {
+      walk(v.url || v.href || v.src || v.logoUrl || v.logoURL || v.imageUrl || v.path);
+      walk(v.dataUrl || v.dataURL || v.base64 || v.logoDataUrl);
+      if (v.logo && typeof v.logo === "object") walk(v.logo);
+    }
+  };
+  for (const v of vals) walk(v);
+  return { logoUrl, logoDataUrl };
+}
+
+export function companyLogoPullPaths(companyId) {
+  const cid = encodeURIComponent(String(companyId || "").trim());
+  return [
+    `/api/v1/company/${cid}/logo`,
+    `/api/v1/companies/${cid}/logo`,
+    `/api/companies/${cid}/logo`,
+    `/api/company/${cid}/logo`,
+    `/api/companies/${cid}/branding/logo`,
+    `/api/v1/branding/logo`,
+    `/api/v1/company/logo`,
+    `/api/company/logo`,
+    `/api/workpass/companies/${cid}/logo`,
+  ];
+}
+
 function lightHubFromPayload(data = {}, company = {}) {
   const branding = data.branding || company.branding || {};
   const hub = data.hubProfile || company.hubProfile || company.meta?.hubProfile || data.profile || {};
   const bank = data.bank || company.bank || hub.bank || branding.bank || {};
-  const logoUrl = pick(hub.logoUrl, branding.logoUrl, data.logoUrl, company.logoUrl, branding.logo, hub.logo);
-  const logoDataUrl = pick(hub.logoDataUrl, branding.logoDataUrl, data.logoDataUrl, company.logoDataUrl);
+  const logos = pickLogoFields(
+    hub.logoDataUrl, branding.logoDataUrl, data.logoDataUrl, company.logoDataUrl,
+    hub.logoUrl, branding.logoUrl, data.logoUrl, company.logoUrl,
+    hub.logo, branding.logo, data.logo, company.logo,
+    branding.image, data.assets
+  );
+  const logoUrl = logos.logoUrl;
+  const logoDataUrl = logos.logoDataUrl;
   const seller = pick(
     hub.seller,
     branding.seller,
@@ -124,6 +193,43 @@ async function fetchOnce(url, { method = "GET", headers = {}, body, timeoutMs })
       status: 0,
       error: e.name === "AbortError" ? "timeout" : (e.message || String(e)),
       json: null,
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchImageOnce(url, { headers = {}, timeoutMs }) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { ...headers, Accept: "image/*,application/octet-stream,application/json" },
+      signal: ctrl.signal,
+    });
+    const ctype = String(res.headers.get("content-type") || "");
+    if (!res.ok) {
+      return { ok: false, status: res.status, error: `HTTP ${res.status}` };
+    }
+    if (/json/i.test(ctype)) {
+      const json = await res.json().catch(() => null);
+      return { ok: Boolean(json), status: res.status, json };
+    }
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > 280_000) return { ok: false, status: res.status, error: "logo zu groß" };
+    if (!/^image\//i.test(ctype) && !/svg/i.test(ctype) && !looksLikeImageBytes(buf)) {
+      return { ok: false, status: res.status, error: "kein Bild" };
+    }
+    const mime = (/^image\//i.test(ctype) || /svg/i.test(ctype))
+      ? ctype.split(";")[0].trim()
+      : (looksLikeImageBytes(buf) && buf[0] === 0x89 ? "image/png" : "image/jpeg");
+    return { ok: true, status: res.status, buffer: buf, contentType: mime || "image/png" };
+  } catch (e) {
+    return {
+      ok: false,
+      status: 0,
+      error: e.name === "AbortError" ? "timeout" : (e.message || String(e)),
     };
   } finally {
     clearTimeout(timer);
@@ -378,8 +484,11 @@ export async function pullCompanyProfile(companyId) {
     "/api/company",
     `/api/company/${encodeURIComponent(cid)}`,
     "/api/v1/branding",
+    `/api/v1/company/${encodeURIComponent(cid)}/branding`,
     `/api/companies/${encodeURIComponent(cid)}/branding`,
+    `/api/company/${encodeURIComponent(cid)}/branding`,
     `/api/companies/${encodeURIComponent(cid)}/logo`,
+    `/api/v1/company/${encodeURIComponent(cid)}/logo`,
   ];
 
   const attempts = [];
@@ -397,7 +506,7 @@ export async function pullCompanyProfile(companyId) {
       || data.profile
       || data.data?.company
       || (data.id || data.name ? data : null);
-    if (!company && !data.hubProfile && !data.branding && !data.logoUrl) continue;
+    if (!company && !data.hubProfile && !data.branding && !data.logoUrl && !pickLogoFields(data).logoUrl && !pickLogoFields(data).logoDataUrl) continue;
     const hub = lightHubFromPayload(data, company || {});
     return {
       ok: true,
@@ -411,6 +520,51 @@ export async function pullCompanyProfile(companyId) {
   }
 
   return { ok: false, error: "Firmenprofil/Branding nicht per GET erreichbar", attempts };
+}
+
+/**
+ * Pull the company logo as an image (PNG/JPG/SVG) from platform logo endpoints.
+ */
+export async function pullCompanyLogoBinary(companyId) {
+  const cid = normalizeCompanyId(companyId);
+  if (!cid) return { ok: false, error: "companyId fehlt" };
+  const keys = resolvePlatformApiKeys();
+  if (!keys.length) {
+    return { ok: false, error: "Kein Plattform-API-Key (WORKPASS_PLATFORM_API_KEY / WORKPASS_API_KEY)" };
+  }
+  const timeoutMs = Number(process.env.WORKPASS_PLATFORM_PULL_TIMEOUT_MS || 8000);
+  const attempts = [];
+  let count = 0;
+  outer: for (const path of companyLogoPullPaths(cid)) {
+    const absolute = `${platformBaseUrl()}${path}`;
+    for (const { key, source } of keys) {
+      for (const headers of authHeaderVariants(key)) {
+        if (count >= 10) break outer;
+        count += 1;
+        const u = new URL(absolute);
+        u.searchParams.set("companyId", cid);
+        u.searchParams.set("id", cid);
+        const result = await fetchImageOnce(u.toString(), {
+          headers: { ...headers, "X-WorkPass-Company-Id": cid },
+          timeoutMs,
+        });
+        attempts.push({ path, status: result.status, error: result.error || null, keySource: source });
+        if (result.ok && result.buffer) {
+          const mime = result.contentType || "image/png";
+          const logoDataUrl = `data:${mime};base64,${result.buffer.toString("base64")}`;
+          return { ok: true, logoDataUrl, logoUrl: u.toString(), bytes: result.buffer.length, attempts };
+        }
+        if (result.ok && result.json) {
+          const logos = pickLogoFields(result.json, result.json.logo, result.json.branding);
+          if (logos.logoDataUrl || logos.logoUrl) {
+            return { ok: true, logoDataUrl: logos.logoDataUrl || undefined, logoUrl: logos.logoUrl || undefined, attempts };
+          }
+        }
+        if (result.status === 404) break;
+      }
+    }
+  }
+  return { ok: false, error: "Logo nicht per GET erreichbar", attempts };
 }
 
 /**

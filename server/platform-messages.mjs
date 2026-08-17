@@ -46,7 +46,7 @@ const GAP_MAP = [
   { re: /steuerklasse/i, code: "tax_class_missing", field: "employee.taxClass", label: "Steuerklasse fehlt" },
   { re: /mitarbeitername/i, code: "employee_name_missing", field: "employee.name", label: "Mitarbeitername fehlt" },
   { re: /brutto/i, code: "gross_missing", field: "wageItems", label: "Brutto / Lohnarten fehlen" },
-  { re: /arbeitgeber|firma fehlt/i, code: "company_name_missing", field: "company.name", label: "Firma fehlt" },
+  { re: /logo|firmenlogo/i, code: "company_logo_missing", field: "hubProfile.logo", label: "Firmenlogo fehlt" },
   { re: /abrechnungsmonat|period/i, code: "period_missing", field: "period", label: "Abrechnungsmonat fehlt" },
 ];
 

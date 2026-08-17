@@ -13,7 +13,6 @@
 import { listCompanies, listPayrollJobs, listInvoiceJobs, loadCompany } from "./db/repository.mjs";
 import {
   hubProfileNeedsEnrichment,
-  hydrateCompanyLogoFromUrl,
   pullAndSyncCompanyBranding,
 } from "./company-branding.mjs";
 import { notifyPlatform, getLastWebhookStatus, probePlatformWebhook } from "./notify.mjs";
@@ -596,16 +595,15 @@ export async function askPlatformAndSyncCompany(options = {}) {
   const reaskMs = cfg.reaskMinutes * 60_000;
   const recentlyAsked = prev?.askedAt && (Date.now() - new Date(prev.askedAt).getTime()) < reaskMs;
 
-  // Branding / Mandant: PULL logo+profile automatically (never ask – already on platform)
+  // Branding / Mandant: Logo direkt von der Plattform ziehen, sonst klar anfragen
   try {
     const firm = loadCompany(companyId);
-    if (firm && hubProfileNeedsEnrichment(firm.meta?.hubProfile)) {
+    if (firm && (hubProfileNeedsEnrichment(firm.meta?.hubProfile) || !firm.meta?.hubProfile?.logoDataUrl)) {
       await pullAndSyncCompanyBranding(companyId, {
-        ask: false,
         reason: options.reason || "auto_pipeline",
         source: "auto-pipeline",
+        notify: options.notify !== false,
       });
-      await hydrateCompanyLogoFromUrl(companyId);
     }
   } catch { /* ignore branding bootstrap */ }
 

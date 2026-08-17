@@ -58,6 +58,7 @@ Sync overview for the platform: `GET {ACCOUNTING}/v1/platform/status`
 | Employees import | `POST /v1/employees/import` + `examples/platform-employees.import.v1.json` | Name + **badgeId** (badge never printed on payslip; optional `personnelNumber` may print) |
 | `employee.data.requested` | — | Firm asked for missing fields of **one** employee; platform should fill gaps and resend (incomplete OK) |
 | `employees.list.requested` | — | Accounting asks platform to send employees (POST /v1/employees/import) |
+| `company.logo.requested` | — | Accounting pulled logo endpoints; still missing. Platform should expose GET `…/logo` or POST `/v1/company/activate` with `hubProfile.logoUrl` / `logoDataUrl`. `meta.question` is the human-readable ask. |
 | `payroll.month.requested` | — | Accounting asks platform to push/export the month now |
 | `invoices.export.requested` | — | Accounting asks platform to push invoices (POST /v1/invoice/batch or /v1/invoice/ingest) |
 | `payroll.batch.received` / `month.auto.processed` | — | Inbound batch processed; payslips auto-released when complete |
@@ -118,6 +119,8 @@ app.post("/api/workpass/webhooks/accounting", async (req, res) => {
       break;
     case "accounting.message":
     case "payroll.waiting":
+    case "company.logo.requested":
+    case "employees.list.requested":
       await saveAccountingInbox(envelope.message || envelope);
       break;
     case "month.closed":

@@ -144,6 +144,7 @@ Siehe `docs/BACKUP.md`. Periodische Backups, Integritätscheck, Restore nur mit 
 
 ## 15. Änderungshistorie dieser Doku
 
+- 2.51.2: Firmenlogo per GET von der Plattform; sonst klare Anfrage `company.logo.requested`.  
 - 2.51.1: Portal-Bescheinigungen pro Mitarbeiter (LStB Jahresende, Verdienstbescheinigung druckbar).  
 - 2.51.0: Steuer nur über BMF PAP; ELSTER mit Zertifikat; zwei Monate parallel.  
 - 2.50.0: Sync-Lifecycle (DEAD_LETTER), Portal GoBD/Korrektur-UI, XRechnung-Export, tenant-scoped GoBD-Dateien.  

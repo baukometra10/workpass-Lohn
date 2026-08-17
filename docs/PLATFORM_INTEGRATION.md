@@ -387,6 +387,20 @@ Im Firmenportal: Karte **Bescheinigungen pro Mitarbeiter**, Buttons LStB / VB in
 
 ---
 
+## Firmenlogo
+
+WorkPass Lohn **zieht das Logo zuerst** von der Plattform (GET), z. B.:
+
+- `/api/v1/company/{id}/logo`
+- `/api/companies/{id}/logo`
+- `/api/v1/branding` / `…/branding` (JSON mit `logoUrl` oder `logoDataUrl`)
+
+Wenn das Logo danach fehlt, geht Event **`company.logo.requested`** an die Plattform – mit klarer Frage in `meta.question` und Inbox-Text. Antwort: Logo per GET bereitstellen **oder** `POST /v1/company/activate` mit `hubProfile.logoUrl` / `logoDataUrl`.
+
+Manuell im Portal: **Logo & Absender holen**.
+
+---
+
 ## Checkliste für die Plattform-Seite
 
 - [ ] Shared API-Key setzen

@@ -390,16 +390,17 @@ export async function enrichPayrollJob(jobId, options = {}) {
   const period = String(options.period || state.payrollMonth || job.period || "").trim();
   const filled = [];
 
-  // 0) Always try to pull company branding/logo (never ask here)
+  // 0) Pull company branding/logo; if still missing, send a clear logo question
   let branding = null;
   if (options.pullBrand !== false && companyId) {
     try {
       branding = await pullAndSyncCompanyBranding(companyId, {
-        ask: false,
         reason: "payroll_enrich",
         source: "employee-enrich",
+        notify: options.notify !== false,
       });
       if (branding?.pulled) filled.push("branding.pulled");
+      if (branding?.asked) filled.push("branding.logo_asked");
     } catch { /* ignore */ }
   }
 
@@ -504,7 +505,7 @@ export async function enrichPayrollJob(jobId, options = {}) {
   const nextJob = rebuildJob(job, state);
   persistRegistryFromState(state, companyId, "enrich");
 
-  // 4) Ask platform only for remaining employee gaps (never for branding/logo)
+  // 4) Ask platform only for remaining employee gaps (logo already pulled/asked above)
   let platformAsk = null;
   const shouldAsk = options.ask !== false && (hard.length > 0 || soft.length > 0);
   if (shouldAsk) {
