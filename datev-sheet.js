@@ -34,8 +34,7 @@
       display: block; min-height: 2mm;
       border-bottom: 0.35pt dotted #c5ced4;
     }
-    .datev-sheet-a4.is-empty .ds-pay,
-    .datev-sheet-a4.is-empty .ds-cost { opacity: 0.55; }
+    .datev-sheet-a4.is-empty .ds-pay { opacity: 0.55; }
 
     /* Zonen: Lohnarten-Zone wächst und füllt die Seite */
     .ds-zone {
@@ -202,32 +201,39 @@
     .ds-ag td:last-child { text-align: right; width: 22mm; font-variant-numeric: tabular-nums; }
     .ds-sub { display: block; font-size: 4.8pt; font-weight: 400; font-style: normal; opacity: 0.78; letter-spacing: 0; text-transform: none; }
     .ag-cost-legend { margin: 0.6mm 0 0; font-size: 4.7pt; line-height: 1.25; color: #475569; }
-    .ds-pay,
-    .ds-cost {
+    .ds-pay {
       min-height: 13.5mm;
       padding: 1.8mm 1.9mm;
       display: flex;
       flex-direction: column;
       justify-content: center;
       gap: 0.5mm;
-    }
-    .ds-pay {
       border: 1pt solid #1d4ed8;
       background: linear-gradient(165deg, #1e3a5f 0%, #152a45 100%);
       color: #fff;
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
     }
+    .ds-pay span { font-size: 5.3pt; text-transform: uppercase; letter-spacing: 0.07em; opacity: 0.88; }
+    .ds-pay .ds-sub { font-size: 4.6pt; text-transform: none; letter-spacing: 0; opacity: 0.82; margin-top: 0.15mm; }
+    .ds-pay strong { font-size: 11.5pt; text-align: right; min-height: 4.2mm; letter-spacing: 0.01em; }
     .ds-cost {
-      border: 0.7pt solid #94a3b8;
-      background: #e8eef2;
+      min-height: 13.5mm;
+      padding: 1.4mm 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 2.5mm;
+      border-top: 0.7pt solid #1a2a33;
       color: #151a22;
     }
-    .ds-pay span,
-    .ds-cost span { font-size: 5.3pt; text-transform: uppercase; letter-spacing: 0.07em; opacity: 0.88; }
-    .ds-pay .ds-sub,
-    .ds-cost .ds-sub { font-size: 4.6pt; text-transform: none; letter-spacing: 0; opacity: 0.82; margin-top: 0.15mm; }
-    .ds-pay strong { font-size: 11.5pt; text-align: right; min-height: 4.2mm; letter-spacing: 0.01em; }
-    .ds-cost strong { font-size: 11.5pt; text-align: right; min-height: 4.2mm; letter-spacing: 0.01em; color: #0f172a; }
+    .ds-cost span { font-size: 6.55pt; line-height: 1.2; }
+    .ds-cost .ds-sub { font-size: 4.8pt; opacity: 0.78; margin-top: 0.15mm; }
+    .ds-cost strong {
+      font-size: 9pt;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
     .ds-legal {
       margin: 0; padding-top: 0.7mm;
       display: flex; justify-content: space-between; align-items: end;
@@ -496,7 +502,7 @@
                 <p class="ag-cost-legend">Gesamtkosten = Brutto (Mitarbeiter) + SV-AG (Firma). Auszahlung = Netto.</p>
               </div>
               <div class="ds-cost">
-                <span>Gesamtkosten <em class="ds-sub">für die Firma</em></span>
+                <span>Gesamtkosten<em class="ds-sub">für die Firma</em></span>
                 <strong id="dsv_agTotal">${esc(data.agTotal || "")}</strong>
               </div>
             </div>
