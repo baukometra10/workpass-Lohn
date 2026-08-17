@@ -101,28 +101,30 @@
     .ds-addr { white-space: pre-wrap; font-size: 6.65pt; line-height: 1.22; min-height: 0; }
     .ds-hints { white-space: pre-wrap; font-size: 6.45pt; line-height: 1.22; min-height: 0; }
     .ds-wage-wrap {
-      margin: 0; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; width: 100%;
+      margin: 0; display: block; flex: 0 0 auto; width: 100%;
     }
     .ds-table {
       width: 100%; border-collapse: collapse; table-layout: fixed;
-      flex: 1 1 auto; height: 100%;
+      height: auto;
     }
     .ds-table th, .ds-table td {
-      border: 0.25pt solid #9aa8b0; padding: 0.35mm 0.85mm; font-size: 6.55pt; vertical-align: middle;
+      border: 0.25pt solid #9aa8b0; padding: 0.45mm 1.1mm; font-size: 6.7pt; vertical-align: middle;
     }
     .ds-table th {
-      background: #eef3f5; font-size: 5pt; text-transform: uppercase;
-      letter-spacing: 0.04em; font-weight: 700; color: #1e3a5f;
+      background: #1e3a5f; color: #fff; font-size: 5.4pt; text-transform: uppercase;
+      letter-spacing: 0.04em; font-weight: 700; height: 5.2mm;
     }
-    .ds-table col.ds-col-code { width: 10%; }
-    .ds-table col.ds-col-label { width: 40%; }
+    .ds-table col.ds-col-code { width: 14%; }
+    .ds-table col.ds-col-label { width: 38%; }
     .ds-table col.ds-col-qty { width: 16%; }
-    .ds-table col.ds-col-amount { width: 22%; }
+    .ds-table col.ds-col-amount { width: 20%; }
     .ds-table col.ds-col-flags { width: 12%; }
+    .ds-table td:nth-child(1) { font-weight: 600; white-space: nowrap; }
     .ds-table td:nth-child(2) {
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .ds-table tbody tr { height: 3.9mm; }
+    .ds-table tbody tr { height: 4.4mm; }
+    .ds-table tbody td { height: 4.4mm; }
     .ds-table tbody tr.ds-pad td {
       color: transparent; border-color: #cfd8de;
       background: #fafbfc;
@@ -207,9 +209,11 @@
       .map((r) => {
         const empty = !(r.code || r.label || r.amount);
         const flags = empty ? "" : `${r.taxFlag || "L"}/${r.svFlag || "L"}`;
+        const label = String(r.label || "").trim()
+          || (window.PayrollCore?.resolveWageLabel?.(r) || "");
         return `<tr class="${empty ? "ds-pad" : ""}">
         <td>${esc(r.code || "")}${empty ? "&nbsp;" : ""}</td>
-        <td>${esc(r.label || "")}</td>
+        <td>${esc(label)}</td>
         <td class="ds-num">${esc(r.qty || "")}</td>
         <td class="ds-num">${esc(r.amount || "")}</td>
         <td class="ds-flags">${esc(flags)}</td>

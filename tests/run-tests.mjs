@@ -80,6 +80,21 @@ assert(sheetData.wageRows?.length >= 2, "Lohnarten-Zeilen");
 assert(sheetData.wageRows?.[0]?.amount === "120,00", "Lohnart 840 Betrag");
 assert(sheetData.wageRows?.[1]?.amount === "3.500,00", "Lohnart 2000 Betrag");
 
+console.log("\n=== Test 2c: STD ohne Bezeichnung → Stundenlohn ===");
+const stdState = PC.normalizeDraft({
+  ...PC.defaultState(),
+  seller: "Test GmbH",
+  employeeName: "Test Person",
+  payrollMonth: "2026-08",
+  taxClass: "I",
+  wageItems: [{ code: "STD", amount: 447.3, quantity: 24.85, taxFlag: "L", svFlag: "L" }],
+});
+const stdSheet = PC.buildSheetData(stdState, PC.calculate(stdState), {});
+assert(stdSheet.wageRows?.[0]?.code === "STD", "STD-Code bleibt");
+assert(stdSheet.wageRows?.[0]?.label === "Stundenlohn", `Bezeichnung = Stundenlohn (got ${stdSheet.wageRows?.[0]?.label})`);
+assert(stdSheet.wageRows?.[0]?.qty.includes("24"), `Anzahl Stunden (got ${stdSheet.wageRows?.[0]?.qty})`);
+assert(PC.resolveWageLabel({ code: "STD" }) === "Stundenlohn", "resolveWageLabel STD");
+
 console.log("\n=== Test 2b: Legal rates from Tax Rules Engine ===");
 const r25 = sb.window.getLegalEmployeeRates({ payrollMonth: "2025-07" });
 const r26 = sb.window.getLegalEmployeeRates({ payrollMonth: "2026-07" });

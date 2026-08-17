@@ -146,13 +146,40 @@
 
   function isNetOnlyDeduction(w) {
     const code = String(w?.code || "");
-    const label = String(w?.label || "");
+    const label = String(w?.label || w?.bezeichnung || "");
     const tax = String(w?.taxFlag || "L");
     const sv = String(w?.svFlag || "L");
     if (tax === "F" && (sv === "N" || sv === "F")) {
       if (/^99/.test(code) || /abzug|einbehalt|netto.?abzug|vwl.?an/i.test(label)) return true;
     }
     return false;
+  }
+
+  /** DATEV-Bezeichnung, auch wenn die Plattform nur den Code (z. B. STD) sendet. */
+  function resolveWageLabel(w = {}) {
+    const existing = String(w.label || w.bezeichnung || "").trim();
+    if (existing) return existing;
+    const code = String(w.code || w.lohnart || "").trim().toUpperCase();
+    const qty = num(w.quantity ?? w.hours ?? w.anzahl ?? w.stunden);
+    const factor = num(w.factor ?? w.hourlyRate ?? w.rate);
+    const map = {
+      STD: "Stundenlohn",
+      STUND: "Stundenlohn",
+      STUNDE: "Stundenlohn",
+      HOUR: "Stundenlohn",
+      HRLY: "Stundenlohn",
+      "1000": "Stundenlohn",
+      "2100": "Stundenlohn",
+      "0001": "Stundenlohn",
+      "2000": "Gehalt",
+      GEHALT: "Gehalt",
+      SALARY: "Gehalt",
+      "840": "Sachbezug",
+    };
+    if (map[code]) return map[code];
+    if (qty > 0 && (factor > 0 || num(w.amount) > 0)) return "Stundenlohn";
+    if (num(w.amount) > 0) return "Gehalt";
+    return "";
   }
 
   function summarizeWageRows(wages) {
@@ -410,7 +437,7 @@
         }
         return {
           code: String(w.code || ""),
-          label: String(w.label || ""),
+          label: resolveWageLabel(w),
           qty,
           amount: num(w.amount) > 0 ? formatAmount(w.amount) : "",
           taxFlag: String(w.taxFlag || "L"),
@@ -750,7 +777,7 @@
 
     const wageItems = (Array.isArray(data.wageItems) ? data.wageItems : []).map((w) => ({
       code: String(w.code || w.lohnart || ""),
-      label: String(w.label || w.bezeichnung || ""),
+      label: resolveWageLabel(w),
       amount: num(w.amount ?? w.betrag),
       taxFlag: String(w.taxFlag || w.st || "L"),
       svFlag: String(w.svFlag || w.sv || "L"),
@@ -1073,5 +1100,6 @@
     completeness,
     formatMonthLabel,
     getPayrollMonthEndDate,
+    resolveWageLabel,
   };
 })();

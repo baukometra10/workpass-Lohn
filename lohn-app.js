@@ -2641,8 +2641,8 @@
     const baseW = Math.abs(sw / sh - a4Ratio) > 0.02 ? Math.round(sh * a4Ratio) : sw;
     const baseH = sh;
 
-    // Nach Breite der Sektion skalieren – füllt die Vorschau, bleibt A4 (Höhe scrollbar)
-    const scale = availW / baseW;
+    // Nach Breite der Sektion skalieren – A4 nie über 100 % aufblasen (große Monitore)
+    const scale = Math.min(1, availW / baseW);
     const outW = Math.round(baseW * scale);
     const outH = Math.round(baseH * scale);
 
