@@ -177,63 +177,42 @@
     .ds-verdienst .ds-two { margin: 0; gap: 3mm; }
     .ds-foot {
       display: grid;
-      grid-template-columns: 1.15fr 1fr;
-      gap: 2.4mm;
+      grid-template-columns: 1.2fr 0.85fr 0.95fr;
+      gap: 1.6mm;
       align-items: stretch;
       border-top: 0.7pt solid #1a2a33;
       padding-top: 1.5mm;
       margin: 0;
     }
-    .ds-foot-left,
-    .ds-foot-right {
+    .ds-bank { font-size: 6.45pt; line-height: 1.28; }
+    .ds-bank .ds-meta-line { margin-top: 0.5mm; color: #334155; }
+    .ds-bank .ds-meta-line strong { color: #1e3a5f; }
+    .ds-foot-mid {
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      gap: 1.3mm;
       min-width: 0;
     }
-    .ds-bank { font-size: 6.45pt; line-height: 1.28; margin-bottom: auto; }
-    .ds-bank .ds-meta-line { margin-top: 0.5mm; color: #334155; }
-    .ds-bank .ds-meta-line strong { color: #1e3a5f; }
-    .ds-ag-block { margin-bottom: auto; }
     .ds-ag { width: 100%; border-collapse: collapse; margin: 0; }
-    .ds-ag td { padding: 0.45mm 0; font-size: 6.55pt; }
-    .ds-ag td:last-child { text-align: right; width: 22mm; font-variant-numeric: tabular-nums; }
+    .ds-ag td { padding: 0.5mm 0; font-size: 6.55pt; }
+    .ds-ag td:last-child { text-align: right; width: 20mm; font-variant-numeric: tabular-nums; }
     .ds-sub { display: block; font-size: 4.8pt; font-weight: 400; font-style: normal; opacity: 0.78; letter-spacing: 0; text-transform: none; }
-    .ag-cost-legend { margin: 0.6mm 0 0; font-size: 4.7pt; line-height: 1.25; color: #475569; }
+    .ag-cost-legend { margin: 0 0 0.8mm; font-size: 4.8pt; line-height: 1.25; color: #475569; max-width: 42mm; }
     .ds-pay {
-      min-height: 13.5mm;
+      border: 1pt solid #1d4ed8;
       padding: 1.8mm 1.9mm;
+      background: linear-gradient(165deg, #1e3a5f 0%, #152a45 100%);
+      color: #fff;
       display: flex;
       flex-direction: column;
       justify-content: center;
-      gap: 0.5mm;
-      border: 1pt solid #1d4ed8;
-      background: linear-gradient(165deg, #1e3a5f 0%, #152a45 100%);
-      color: #fff;
+      gap: 0.7mm;
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+      align-self: end;
     }
     .ds-pay span { font-size: 5.3pt; text-transform: uppercase; letter-spacing: 0.07em; opacity: 0.88; }
-    .ds-pay .ds-sub { font-size: 4.6pt; text-transform: none; letter-spacing: 0; opacity: 0.82; margin-top: 0.15mm; }
+    .ds-pay .ds-sub { font-size: 4.6pt; text-transform: none; letter-spacing: 0; opacity: 0.82; margin-top: 0.2mm; }
     .ds-pay strong { font-size: 11.5pt; text-align: right; min-height: 4.2mm; letter-spacing: 0.01em; }
-    .ds-cost {
-      min-height: 13.5mm;
-      padding: 1.4mm 0 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 2.5mm;
-      border-top: 0.7pt solid #1a2a33;
-      color: #151a22;
-    }
-    .ds-cost span { font-size: 6.55pt; line-height: 1.2; }
-    .ds-cost .ds-sub { font-size: 4.8pt; opacity: 0.78; margin-top: 0.15mm; }
-    .ds-cost strong {
-      font-size: 9pt;
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-      white-space: nowrap;
-    }
     .ds-legal {
       margin: 0; padding-top: 0.7mm;
       display: flex; justify-content: space-between; align-items: end;
@@ -481,30 +460,23 @@
 
         <div class="ds-zone ds-zone-pay">
           <div class="ds-foot">
-            <div class="ds-foot-left">
-              <div class="ds-bank">
-                <div id="dsv_bank">${esc(data.bank || "")}</div>
-                <div id="dsv_konto">${esc(data.konto || "")}</div>
-                <div class="ds-meta-line"><strong>Zahlungsweg:</strong> <span id="dsv_payHint">${esc(payHint)}</span></div>
-                ${footerNote ? `<div class="ds-meta-line"><strong>Bemerkung:</strong> <span id="dsv_footerNote">${esc(footerNote)}</span></div>` : `<span id="dsv_footerNote" hidden></span>`}
-              </div>
-              <div class="ds-pay">
-                <span>Auszahlungsbetrag <em class="ds-sub">an den Mitarbeiter</em></span>
-                <strong id="dsv_payout">${esc(data.payout || "")}</strong>
-              </div>
+            <div class="ds-bank">
+              <div id="dsv_bank">${esc(data.bank || "")}</div>
+              <div id="dsv_konto">${esc(data.konto || "")}</div>
+              <div class="ds-meta-line"><strong>Zahlungsweg:</strong> <span id="dsv_payHint">${esc(payHint)}</span></div>
+              ${footerNote ? `<div class="ds-meta-line"><strong>Bemerkung:</strong> <span id="dsv_footerNote">${esc(footerNote)}</span></div>` : `<span id="dsv_footerNote" hidden></span>`}
             </div>
-            <div class="ds-foot-right">
-              <div class="ds-ag-block">
-                <table class="ds-ag">
-                  <tr><td>SV-AG-Anteil <span class="ds-sub">Arbeitgeber</span></td><td id="dsv_agSv">${esc(data.agSv || "")}</td></tr>
-                  <tr><td>Zus. AG-Kosten</td><td id="dsv_agExtra">${esc(data.agExtra || "")}</td></tr>
-                </table>
-                <p class="ag-cost-legend">Gesamtkosten = Brutto (Mitarbeiter) + SV-AG (Firma). Auszahlung = Netto.</p>
-              </div>
-              <div class="ds-cost">
-                <span>Gesamtkosten<em class="ds-sub">für die Firma</em></span>
-                <strong id="dsv_agTotal">${esc(data.agTotal || "")}</strong>
-              </div>
+            <div class="ds-foot-mid">
+              <p class="ag-cost-legend">Gesamtkosten = Brutto (Mitarbeiter) + SV-AG (Firma). Auszahlung = Netto.</p>
+              <table class="ds-ag">
+                <tr><td>SV-AG-Anteil <span class="ds-sub">Arbeitgeber</span></td><td id="dsv_agSv">${esc(data.agSv || "")}</td></tr>
+                <tr><td>Zus. AG-Kosten</td><td id="dsv_agExtra">${esc(data.agExtra || "")}</td></tr>
+                <tr><td>Gesamtkosten <span class="ds-sub">für die Firma</span></td><td id="dsv_agTotal">${esc(data.agTotal || "")}</td></tr>
+              </table>
+            </div>
+            <div class="ds-pay">
+              <span>Auszahlungsbetrag <em class="ds-sub">an den Mitarbeiter</em></span>
+              <strong id="dsv_payout">${esc(data.payout || "")}</strong>
             </div>
           </div>
           <div class="ds-legal">
