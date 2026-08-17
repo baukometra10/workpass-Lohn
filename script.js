@@ -2353,7 +2353,9 @@ function buildDatevSheetData(payroll) {
     avBeitrag: formatAmount(num("unemployment", payroll.unemployment)),
     pvBeitrag: formatAmount(num("care", payroll.care)),
     bank: `Bank ${bankNameInput.value.trim() || ""}`,
-    konto: `Konto ${useDatevReferenceDisplay ? DATEV_REFERENCE_DISPLAY.bankIbanDisplay : (bankIbanInput.value.trim() || "")}`,
+    konto: window.PayrollCore?.formatPayslipKonto
+      ? window.PayrollCore.formatPayslipKonto(useDatevReferenceDisplay ? DATEV_REFERENCE_DISPLAY.bankIbanDisplay : (bankIbanInput.value.trim() || ""))
+      : `Konto ${useDatevReferenceDisplay ? DATEV_REFERENCE_DISPLAY.bankIbanDisplay : (bankIbanInput.value.trim() || "")}`,
     agSv: formatAmount(num("employerShare", payroll.employerShare)),
     agExtra: formatAmount(useDatevReferenceDisplay ? DATEV_REFERENCE_DISPLAY.extraCosts : 0),
     agTotal: formatAmount(useDatevReferenceDisplay ? DATEV_REFERENCE_DISPLAY.totalCosts : (payroll.employerShare + gross)),
@@ -5104,7 +5106,10 @@ function updatePayrollPreview() {
   const ibanDisplay = useDatevReferenceDisplay && employeeIdInput.value.trim() === "02006"
     ? DATEV_REFERENCE_DISPLAY.bankIbanDisplay
     : ibanRaw;
-  setNodeText(document.getElementById("pvDatevKonto"), ibanDisplay || "-");
+  const ibanMasked = window.PayrollCore?.maskIbanForPayslip
+    ? (window.PayrollCore.maskIbanForPayslip(ibanDisplay) || "")
+    : ibanDisplay;
+  setNodeText(document.getElementById("pvDatevKonto"), ibanMasked || "-");
   const extraCosts = useDatevReferenceDisplay && employeeIdInput.value.trim() === "02006"
     ? DATEV_REFERENCE_DISPLAY.extraCosts
     : Math.max(0, (payroll.wageItems || []).filter((w) => w.taxFlag === "P").reduce((s, w) => s + (Number(w.amount) || 0), 0));
@@ -5129,7 +5134,12 @@ function updatePayrollPreview() {
   }
   if (pvBank) pvBank.textContent = bankNameInput.value.trim() || "-";
   if (pvBic) pvBic.textContent = bankBicInput.value.trim() || "-";
-  if (pvIban) pvIban.textContent = bankIbanInput.value.trim() || "-";
+  if (pvIban) {
+    const raw = bankIbanInput.value.trim();
+    pvIban.textContent = raw
+      ? (window.PayrollCore?.maskIbanForPayslip?.(raw) || raw)
+      : "-";
+  }
   if (pvPayout) pvPayout.textContent = formatAmount(payroll.net);
   if (pvTaxDeductionBox) pvTaxDeductionBox.textContent = formatAmount(payroll.payrollTax + payroll.solidarity + payroll.churchTax);
   if (pvSvDeductionBox) pvSvDeductionBox.textContent = formatAmount(payroll.svTotal);

@@ -56,6 +56,24 @@
     return formatNumber(value);
   }
 
+  /** Last 4 IBAN digits as XXXX on the payslip. Full IBAN stays in Stammdaten and SEPA. */
+  function compactIban(value) {
+    return String(value || "").replace(/^konto\s+/i, "").replace(/[\s.-]/g, "").toUpperCase();
+  }
+
+  function maskIbanForPayslip(value) {
+    const compact = compactIban(value);
+    if (!compact) return "";
+    const tail = 4;
+    if (compact.length <= tail) return "X".repeat(Math.max(compact.length, 4));
+    return compact.slice(0, -tail) + "XXXX";
+  }
+
+  function formatPayslipKonto(iban) {
+    const masked = maskIbanForPayslip(iban);
+    return masked ? `Konto ${masked}` : "";
+  }
+
   function normalizeEmploymentType(raw) {
     const v = String(raw || "regular").trim().toLowerCase();
     if (v === "mini" || v === "minijob" || v === "geringfuegig" || v === "geringfügig" || v === "450" || v === "520" || v === "603") {
@@ -538,9 +556,7 @@
       vbAv: formatDeductionLine(pick("unemployment", payroll.unemployment), hasSheetContent),
       vbPv: formatDeductionLine(pick("care", payroll.care), hasSheetContent),
       bank: String(state.bankName || "").trim(),
-      konto: ref?.bankIbanDisplay
-        ? `Konto ${ref.bankIbanDisplay}`
-        : (state.bankIban ? `Konto ${String(state.bankIban).trim()}` : ""),
+      konto: formatPayslipKonto(ref?.bankIbanDisplay || state.bankIban || ""),
       agSv: formatAmountOrEmpty(pick("employerShare", payroll.employerShare)),
       agExtra: formatAmountOrEmpty(ref ? ref.extraCosts : extraCosts),
       agTotal: formatAmountOrEmpty(ref ? ref.totalCosts : (payroll.employerShare + gross + extraCosts) || 0),
@@ -1094,6 +1110,8 @@
     saveState,
     loadState,
     formatAmount,
+    maskIbanForPayslip,
+    formatPayslipKonto,
     formatDateShortDatev,
     formatDateDE,
     parseIsoDateParts,

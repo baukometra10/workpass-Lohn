@@ -239,6 +239,24 @@
       .replace(/"/g, "&quot;");
   }
 
+  function maskKontoLine(text) {
+    const raw = String(text || "").trim();
+    if (!raw) return "";
+    const mask = window.PayrollCore?.maskIbanForPayslip;
+    const masked = typeof mask === "function"
+      ? mask(raw)
+      : (() => {
+          const compact = raw.replace(/^konto\s+/i, "").replace(/[\s.-]/g, "").toUpperCase();
+          if (!compact) return "";
+          if (compact.length <= 4) return "XXXX";
+          return compact.slice(0, -4) + "XXXX";
+        })();
+    if (!masked) return "";
+    return /^konto\s+/i.test(raw) || /^[A-Z]{2}\d/i.test(raw.replace(/\s/g, ""))
+      ? (masked.startsWith("Konto ") ? masked : `Konto ${masked}`)
+      : masked;
+  }
+
   function publicFooterNote(text) {
     const s = String(text || "").trim();
     if (!s) return "";
@@ -470,7 +488,7 @@
           <div class="ds-foot">
             <div class="ds-bank">
               <div id="dsv_bank">${esc(data.bank || "")}</div>
-              <div id="dsv_konto">${esc(data.konto || "")}</div>
+              <div id="dsv_konto">${esc(maskKontoLine(data.konto || ""))}</div>
               <div class="ds-meta-line"><strong>Zahlungsweg:</strong> <span id="dsv_payHint">${esc(payHint)}</span></div>
               ${footerNote ? `<div class="ds-meta-line"><strong>Bemerkung:</strong> <span id="dsv_footerNote">${esc(footerNote)}</span></div>` : `<span id="dsv_footerNote" hidden></span>`}
             </div>
