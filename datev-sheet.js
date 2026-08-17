@@ -34,7 +34,8 @@
       display: block; min-height: 2mm;
       border-bottom: 0.35pt dotted #c5ced4;
     }
-    .datev-sheet-a4.is-empty .ds-pay { opacity: 0.55; }
+    .datev-sheet-a4.is-empty .ds-pay,
+    .datev-sheet-a4.is-empty .ds-cost { opacity: 0.55; }
 
     /* Zonen: Lohnarten-Zone wächst und füllt die Seite */
     .ds-zone {
@@ -176,29 +177,57 @@
     .ds-verdienst { margin: 0; }
     .ds-verdienst .ds-two { margin: 0; gap: 3mm; }
     .ds-foot {
-      display: grid; grid-template-columns: 1.2fr 0.85fr 0.95fr;
-      gap: 1.6mm; align-items: stretch;
-      border-top: 0.7pt solid #1a2a33; padding-top: 1.5mm;
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 2.4mm;
+      align-items: stretch;
+      border-top: 0.7pt solid #1a2a33;
+      padding-top: 1.5mm;
       margin: 0;
     }
-    .ds-bank { font-size: 6.45pt; line-height: 1.28; }
+    .ds-foot-left,
+    .ds-foot-right {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 1.3mm;
+      min-width: 0;
+    }
+    .ds-bank { font-size: 6.45pt; line-height: 1.28; margin-bottom: auto; }
     .ds-bank .ds-meta-line { margin-top: 0.5mm; color: #334155; }
     .ds-bank .ds-meta-line strong { color: #1e3a5f; }
-    .ds-ag { width: 100%; border-collapse: collapse; align-self: center; }
-    .ds-ag td { padding: 0.5mm 0; font-size: 6.55pt; }
-    .ds-ag td:last-child { text-align: right; width: 20mm; }
+    .ds-ag-block { margin-bottom: auto; }
+    .ds-ag { width: 100%; border-collapse: collapse; margin: 0; }
+    .ds-ag td { padding: 0.45mm 0; font-size: 6.55pt; }
+    .ds-ag td:last-child { text-align: right; width: 22mm; font-variant-numeric: tabular-nums; }
     .ds-sub { display: block; font-size: 4.8pt; font-weight: 400; font-style: normal; opacity: 0.78; letter-spacing: 0; text-transform: none; }
-    .ag-cost-legend { margin: 0.6mm 0 0; font-size: 4.8pt; line-height: 1.25; color: #475569; max-width: 42mm; }
+    .ag-cost-legend { margin: 0.6mm 0 0; font-size: 4.7pt; line-height: 1.25; color: #475569; }
+    .ds-pay,
+    .ds-cost {
+      min-height: 13.5mm;
+      padding: 1.8mm 1.9mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.5mm;
+    }
     .ds-pay {
-      border: 1pt solid #1d4ed8; padding: 1.8mm 1.9mm;
+      border: 1pt solid #1d4ed8;
       background: linear-gradient(165deg, #1e3a5f 0%, #152a45 100%);
       color: #fff;
-      display: flex; flex-direction: column; justify-content: center; gap: 0.7mm;
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
     }
-    .ds-pay span { font-size: 5.3pt; text-transform: uppercase; letter-spacing: 0.07em; opacity: 0.88; }
-    .ds-pay .ds-sub { font-size: 4.6pt; text-transform: none; letter-spacing: 0; opacity: 0.82; margin-top: 0.2mm; }
+    .ds-cost {
+      border: 0.7pt solid #94a3b8;
+      background: #e8eef2;
+      color: #151a22;
+    }
+    .ds-pay span,
+    .ds-cost span { font-size: 5.3pt; text-transform: uppercase; letter-spacing: 0.07em; opacity: 0.88; }
+    .ds-pay .ds-sub,
+    .ds-cost .ds-sub { font-size: 4.6pt; text-transform: none; letter-spacing: 0; opacity: 0.82; margin-top: 0.15mm; }
     .ds-pay strong { font-size: 11.5pt; text-align: right; min-height: 4.2mm; letter-spacing: 0.01em; }
+    .ds-cost strong { font-size: 11.5pt; text-align: right; min-height: 4.2mm; letter-spacing: 0.01em; color: #0f172a; }
     .ds-legal {
       margin: 0; padding-top: 0.7mm;
       display: flex; justify-content: space-between; align-items: end;
@@ -215,6 +244,14 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  function publicFooterNote(text) {
+    const s = String(text || "").trim();
+    if (!s) return "";
+    if (/grossEstimate|platform hint|hourlyrate when hourly|WorkPass Lohn computes/i.test(s)) return "";
+    if (/^Keine weiteren Bemerkungen$/i.test(s)) return "";
+    return s;
   }
 
   function wagePadRowHtml() {
@@ -293,7 +330,7 @@
       ? (data.payHint || "Überweisung auf das angegebene Konto")
       : "";
     const footerNote = filled
-      ? (data.footerNote || data.hints || "")
+      ? publicFooterNote(data.footerNote || data.hints || "")
       : "";
     const logoSrc = String(data.logoDataUrl || data.logoUrl || "").trim();
     const brandCompany = String(data.companyName || "").trim();
@@ -438,21 +475,30 @@
 
         <div class="ds-zone ds-zone-pay">
           <div class="ds-foot">
-            <div class="ds-bank">
-              <div id="dsv_bank">${esc(data.bank || "")}</div>
-              <div id="dsv_konto">${esc(data.konto || "")}</div>
-              <div class="ds-meta-line"><strong>Zahlungsweg:</strong> <span id="dsv_payHint">${esc(payHint)}</span></div>
-              ${footerNote ? `<div class="ds-meta-line"><strong>Bemerkung:</strong> <span id="dsv_footerNote">${esc(footerNote)}</span></div>` : `<span id="dsv_footerNote" hidden></span>`}
+            <div class="ds-foot-left">
+              <div class="ds-bank">
+                <div id="dsv_bank">${esc(data.bank || "")}</div>
+                <div id="dsv_konto">${esc(data.konto || "")}</div>
+                <div class="ds-meta-line"><strong>Zahlungsweg:</strong> <span id="dsv_payHint">${esc(payHint)}</span></div>
+                ${footerNote ? `<div class="ds-meta-line"><strong>Bemerkung:</strong> <span id="dsv_footerNote">${esc(footerNote)}</span></div>` : `<span id="dsv_footerNote" hidden></span>`}
+              </div>
+              <div class="ds-pay">
+                <span>Auszahlungsbetrag <em class="ds-sub">an den Mitarbeiter</em></span>
+                <strong id="dsv_payout">${esc(data.payout || "")}</strong>
+              </div>
             </div>
-            <table class="ds-ag">
-              <tr><td>SV-AG-Anteil <span class="ds-sub">Arbeitgeber</span></td><td id="dsv_agSv">${esc(data.agSv || "")}</td></tr>
-              <tr><td>Zus. AG-Kosten</td><td id="dsv_agExtra">${esc(data.agExtra || "")}</td></tr>
-              <tr><td>Gesamtkosten <span class="ds-sub">für die Firma</span></td><td id="dsv_agTotal">${esc(data.agTotal || "")}</td></tr>
-            </table>
-            <p class="ag-cost-legend">Gesamtkosten = Brutto (Mitarbeiter) + SV-AG (Firma). Auszahlung = Netto.</p>
-            <div class="ds-pay">
-              <span>Auszahlungsbetrag <em class="ds-sub">an den Mitarbeiter</em></span>
-              <strong id="dsv_payout">${esc(data.payout || "")}</strong>
+            <div class="ds-foot-right">
+              <div class="ds-ag-block">
+                <table class="ds-ag">
+                  <tr><td>SV-AG-Anteil <span class="ds-sub">Arbeitgeber</span></td><td id="dsv_agSv">${esc(data.agSv || "")}</td></tr>
+                  <tr><td>Zus. AG-Kosten</td><td id="dsv_agExtra">${esc(data.agExtra || "")}</td></tr>
+                </table>
+                <p class="ag-cost-legend">Gesamtkosten = Brutto (Mitarbeiter) + SV-AG (Firma). Auszahlung = Netto.</p>
+              </div>
+              <div class="ds-cost">
+                <span>Gesamtkosten <em class="ds-sub">für die Firma</em></span>
+                <strong id="dsv_agTotal">${esc(data.agTotal || "")}</strong>
+              </div>
             </div>
           </div>
           <div class="ds-legal">
