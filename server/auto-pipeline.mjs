@@ -38,6 +38,13 @@ let lastResult = null;
 let lastSuccessAt = null;
 const companySyncState = new Map(); // companyId -> { period, askedAt, invoiceAskedAt, successAt, released }
 
+function periodIsAutoActive(period, options = {}) {
+  if (options.allowPastPeriod === true) return true;
+  const p = String(period || "").trim().slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(p)) return true;
+  return p === currentPeriod();
+}
+
 export function autoPipelineConfig() {
   const disabled = process.env.WORKPASS_AUTO_PIPELINE === "0"
     || process.env.WORKPASS_AUTO_PIPELINE === "false";
@@ -358,7 +365,7 @@ export async function processInboundPayroll(payload, options = {}) {
   });
 
   let release = null;
-  if (autoRelease && ingest.ok && ingest.job?.jobId) {
+  if (autoRelease && ingest.ok && ingest.job?.jobId && periodIsAutoActive(ingest.job.period, options)) {
     release = await releasePayrollJob(ingest.job.jobId, {
       tenantScope: options.tenantScope || ingest.job.company?.id,
     });
@@ -419,6 +426,7 @@ export async function processInboundPayrollBatch(batch, options = {}) {
   if (autoRelease && ingest.count > 0) {
     for (const row of ingest.results || []) {
       if (!row.ok || !row.jobId) continue;
+      if (!periodIsAutoActive(row.period || ingest.period, options)) continue;
       try {
         const r = await releasePayrollJob(row.jobId, {
           tenantScope: options.tenantScope || ingest.company?.id,

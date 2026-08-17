@@ -8,7 +8,8 @@
  *   WORKPASS_AUTO_MONTH_CLOSE_HOUR=6     (local server hour, default 6)
  *   WORKPASS_AUTO_MONTH_CLOSE_CONFIRM=1  (calculate only, no autoRelease)
  *   WORKPASS_AUTO_MONTH_CLOSE_PULL=0     (skip pull)
- *   WORKPASS_AUTO_MONTH_CLOSE_CATCHUP_DAYS=7
+ *   WORKPASS_AUTO_MONTH_CLOSE_CATCHUP_DAYS=0
+ *     (optional: 1–7 = nur Vormonat abschließen, nie parallel zum aktuellen Monat)
  */
 import { listCompanies } from "./db/repository.mjs";
 import { runMonthClose, currentPeriod } from "./month-close.mjs";
@@ -39,21 +40,24 @@ export function autoMonthCloseConfig() {
     hour: Number(process.env.WORKPASS_AUTO_MONTH_CLOSE_HOUR || 6),
     autoRelease: process.env.WORKPASS_AUTO_MONTH_CLOSE_CONFIRM !== "1",
     pull: process.env.WORKPASS_AUTO_MONTH_CLOSE_PULL !== "0",
-    catchUpDays: Math.max(1, Number(process.env.WORKPASS_AUTO_MONTH_CLOSE_CATCHUP_DAYS || 7)),
+    catchUpDays: Math.max(0, Number(process.env.WORKPASS_AUTO_MONTH_CLOSE_CATCHUP_DAYS || 0)),
   };
 }
 
-/** Periods the scheduler should try to finish right now. */
+/**
+ * Auto never closes two months at once.
+ * Default: current calendar month near month-end only.
+ * Optional catch-up (days 1–N) finishes the previous month instead of the current one.
+ */
 export function periodsForAutoMonthClose(now = new Date(), cfg = autoMonthCloseConfig()) {
-  const periods = [];
   const day = now.getDate();
+  if (cfg.catchUpDays > 0 && day <= cfg.catchUpDays) {
+    return [previousPeriod(now)];
+  }
   if (isLastDayOfMonth(now) || day >= 25) {
-    periods.push(currentPeriod(now));
+    return [currentPeriod(now)];
   }
-  if (day <= cfg.catchUpDays) {
-    periods.push(previousPeriod(now));
-  }
-  return [...new Set(periods)];
+  return [];
 }
 
 export function autoMonthCloseStatus() {

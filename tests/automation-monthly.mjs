@@ -59,9 +59,13 @@ const periodsLast = periodsForAutoMonthClose(lastDay);
 assert(periodsLast.includes("2026-08"), `last day includes current (${periodsLast})`);
 const early = new Date(2026, 8, 2); // Sep 2
 const periodsEarly = periodsForAutoMonthClose(early);
-assert(periodsEarly.includes("2026-08"), `catch-up includes previous (${periodsEarly})`);
+assert(periodsEarly.includes("2026-09") || periodsEarly.length === 0, `default catch-up off (${periodsEarly})`);
+assert(!periodsEarly.includes("2026-08"), "auto never closes previous+current together");
 const mid = new Date(2026, 8, 15);
 assert(periodsForAutoMonthClose(mid).length === 0, "mid-month outside close window");
+const catchCfg = { ...autoMonthCloseConfig(), catchUpDays: 7 };
+assert(periodsForAutoMonthClose(early, catchCfg).includes("2026-08"), "optional catch-up previous only");
+assert(!periodsForAutoMonthClose(early, catchCfg).includes("2026-09"), "catch-up does not add current month");
 
 console.log("\n=== config default on ===");
 delete process.env.WORKPASS_AUTO_MONTH_CLOSE;

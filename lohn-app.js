@@ -493,11 +493,30 @@
     return hasEmployee || hasWage || hasGross || Boolean(state?.meta?.jobId);
   }
 
-  function currentPayrollPeriod() {
-    const fromInput = String($("payrollMonth")?.value || "").trim();
-    if (/^\d{4}-\d{2}$/.test(fromInput)) return fromInput;
+  function calendarPayrollPeriod() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  function isManualPeriodOverride() {
+    try {
+      return sessionStorage.getItem("wpManualPeriod") === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  function setManualPeriodOverride(on) {
+    try {
+      if (on) sessionStorage.setItem("wpManualPeriod", "1");
+      else sessionStorage.removeItem("wpManualPeriod");
+    } catch { /* ignore */ }
+  }
+
+  function currentPayrollPeriod() {
+    const fromInput = String($("payrollMonth")?.value || $("portalPeriod")?.value || "").trim();
+    if (/^\d{4}-\d{2}$/.test(fromInput) && isManualPeriodOverride()) return fromInput;
+    return calendarPayrollPeriod();
   }
 
   async function loadPortalDashboard(silent = false) {
@@ -512,12 +531,17 @@
       await purgeDemoData({ silent: true, skipReload: true });
     }
     const periodInput = $("portalPeriod");
-    if (periodInput && !periodInput.value) periodInput.value = currentPayrollPeriod();
-    const period = (periodInput?.value && /^\d{4}-\d{2}$/.test(periodInput.value))
+    const calendarNow = calendarPayrollPeriod();
+    if (periodInput && (!periodInput.value || !isManualPeriodOverride())) {
+      periodInput.value = calendarNow;
+    }
+    const period = (isManualPeriodOverride() && periodInput?.value && /^\d{4}-\d{2}$/.test(periodInput.value))
       ? periodInput.value
-      : currentPayrollPeriod();
-    if ($("payrollMonth")) $("payrollMonth").value = period;
-    if ($("portalPeriod") && !$("portalPeriod").value) $("portalPeriod").value = period;
+      : calendarNow;
+    if ($("payrollMonth") && (!isManualPeriodOverride() || !$("payrollMonth").value)) {
+      $("payrollMonth").value = period;
+    }
+    if ($("portalPeriod")) $("portalPeriod").value = period;
     syncLocalizedMonthLabels();
     try {
       const [emps, month, arch, msgs, sync, automation, branding, completeness, trust, anomalies, calendar] = await Promise.all([
@@ -797,22 +821,44 @@
       }
       const monthHost = $("portalMonthOverview");
       if (monthHost) {
+        const calendarNow = month.calendarPeriod || calendarPayrollPeriod();
         monthHost.innerHTML = (month.months || []).map((m) => {
+          const isCal = m.period === calendarNow || m.isCalendarCurrent;
+          const isSel = m.period === period;
           const readyN = Number(m.ready || 0);
           const waitH = Number(m.waitingHours || 0);
-          const extra = waitH
-            ? ` · ${waitH} ${uiT("sync.waitingHoursShort", "warten auf Stunden")}`
-            : (readyN ? ` · ${readyN} ${uiT("sync.readyShort", "bereit")}` : "");
+          let line;
+          if (isCal) {
+            const extra = waitH
+              ? ` · ${waitH} ${uiT("sync.waitingHoursShort", "warten auf Stunden")}`
+              : (readyN ? ` · ${readyN} ${uiT("sync.readyShort", "bereit")}` : "");
+            line = `${uiT("portal.monthCurrent", "Aktueller Monat")} · ${firmStatusLabel(m.status)} · ${m.released}/${m.total}${extra}`;
+          } else if (!m.total) {
+            line = uiT("audit.dataNo", "Keine Daten");
+          } else if (m.status === "released") {
+            line = `${uiT("audit.released", "Freigegeben")} · ${m.released}/${m.total}`;
+          } else {
+            line = `${uiT("portal.monthManualOpen", "Manuell öffnen")} · ${m.released}/${m.total}`;
+          }
+          const cls = [
+            "month-chip",
+            `status-${m.status}`,
+            isSel ? "active" : "",
+            isCal ? "is-calendar" : "is-archive",
+          ].filter(Boolean).join(" ");
           return `
-          <button type="button" class="month-chip status-${esc(m.status)}${m.period === period ? " active" : ""}" data-period="${esc(m.period)}">
+          <button type="button" class="${cls}" data-period="${esc(m.period)}">
             <strong>${esc(m.period)}</strong>
-            <span>${esc(firmStatusLabel(m.status))} · ${m.released}/${m.total}${esc(extra)}</span>
+            <span>${esc(line)}</span>
           </button>`;
         }).join("") || `<p class='section-hint'>${esc(uiT("portal.noMonths", "Keine Monate"))}</p>`;
         monthHost.querySelectorAll(".month-chip").forEach((btn) => {
           btn.addEventListener("click", () => {
-            if ($("payrollMonth")) $("payrollMonth").value = btn.dataset.period;
-            if ($("portalPeriod")) $("portalPeriod").value = btn.dataset.period;
+            const picked = btn.dataset.period;
+            const cal = calendarPayrollPeriod();
+            setManualPeriodOverride(picked !== cal);
+            if ($("payrollMonth")) $("payrollMonth").value = picked;
+            if ($("portalPeriod")) $("portalPeriod").value = picked;
             syncLocalizedMonthLabels();
             loadPortalDashboard(true);
             loadApiInbox(true);
@@ -3640,6 +3686,7 @@
       if ($("portalPeriod") && $("payrollMonth").value) {
         $("portalPeriod").value = $("payrollMonth").value;
       }
+      setManualPeriodOverride($("payrollMonth").value !== calendarPayrollPeriod());
       applyRulesetDefaultsForMonth($("payrollMonth").value);
       // keep labels in sync without rebuilding options mid-interaction
       const bannerMonth = document.querySelector("#companyPortalBanner .portal-brand-block small");
@@ -3657,6 +3704,7 @@
       if ($("payrollMonth") && $("portalPeriod").value) {
         $("payrollMonth").value = $("portalPeriod").value;
       }
+      setManualPeriodOverride($("portalPeriod").value !== calendarPayrollPeriod());
       applyRulesetDefaultsForMonth($("portalPeriod").value);
     });
     // remove obsolete input listeners for native month overlay

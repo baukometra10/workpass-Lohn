@@ -54,6 +54,8 @@ assert(emps.employees[0].name === "Portal Real MA", "real name only");
 
 const month = monthOverview(id, { period, months: 3 });
 assert(month.ok && month.current?.total >= 1, "month overview");
+assert(typeof month.calendarPeriod === "string", "calendarPeriod present");
+assert(month.months.every((m) => typeof m.isCalendarCurrent === "boolean"), "month flags");
 
 const close = await runMonthClose({
   companyId: id,

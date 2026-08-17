@@ -367,6 +367,7 @@ export async function ingestPayrollBatch(batch, options = {}) {
       errors: r.errors,
       printHints: r.printHints,
       jobId: r.job?.jobId,
+      period: r.job?.period || period,
       payslip: r.payslip,
       messages: r.platformMessages?.messages?.map((m) => m.messageId) || [],
     })),

@@ -184,7 +184,8 @@ export function listCompanyEmployees(companyId, opts = {}) {
 export function monthOverview(companyId, opts = {}) {
   const cid = normalizeCompanyId(companyId);
   if (!cid) return { ok: false, error: "companyId fehlt", months: [] };
-  const focus = String(opts.period || currentPeriod()).trim();
+  const calendarPeriod = currentPeriod();
+  const focus = String(opts.period || calendarPeriod).trim();
   const months = periodsAround(focus, Number(opts.months) || 6).map((period) => {
     const jobs = realJobs(listPayrollJobs({ companyId: cid, period }), opts.includeDemo);
     const released = jobs.filter((j) => j.status === "released").length;
@@ -213,6 +214,8 @@ export function monthOverview(companyId, opts = {}) {
     return {
       period,
       status,
+      isCalendarCurrent: period === calendarPeriod,
+      isFocus: period === focus,
       total: jobs.length,
       released,
       calculated,
@@ -237,6 +240,7 @@ export function monthOverview(companyId, opts = {}) {
     ok: true,
     companyId: cid,
     focus,
+    calendarPeriod,
     months,
     current: months.find((m) => m.period === focus) || null,
   };

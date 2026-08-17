@@ -2151,7 +2151,20 @@ body.company-portal .portal-comms-pane .api-inbox-list {
 .month-chip.status-released { border-color: rgba(125, 222, 162, 0.45); }
 .month-chip.status-partial { border-color: rgba(251, 191, 36, 0.4); }
 .month-chip.status-error { border-color: rgba(248, 113, 113, 0.45); }
-.month-chip.status-empty { opacity: 0.75; }
+.month-chip.is-calendar {
+  border-color: rgba(93, 180, 255, 0.55);
+  background: linear-gradient(180deg, rgba(26, 79, 138, 0.55) 0%, rgba(8, 18, 34, 0.7) 100%);
+}
+.month-chip.is-archive {
+  opacity: 0.82;
+}
+.month-chip.is-archive:not(.active) {
+  box-shadow: none;
+}
+.month-chip.is-calendar.active {
+  border-color: #7ec8ff;
+  box-shadow: 0 0 0 1px rgba(126, 200, 255, 0.35), inset 0 0 0 1px rgba(93, 180, 255, 0.2);
+}
 
 body.theme-light {
   --bg: #eef3fb;
