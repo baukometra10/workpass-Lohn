@@ -101,7 +101,12 @@
     .ds-addr { white-space: pre-wrap; font-size: 6.65pt; line-height: 1.22; min-height: 0; }
     .ds-hints { white-space: pre-wrap; font-size: 6.45pt; line-height: 1.22; min-height: 0; }
     .ds-wage-wrap {
-      margin: 0; display: block; flex: 0 0 auto; width: 100%;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
     }
     .ds-table {
       width: 100%; border-collapse: collapse; table-layout: fixed;
@@ -241,31 +246,36 @@
   }
 
   /**
-   * Lohnarten: immer 5 Zeilen wie das Formular (Daten + Leerfelder).
+   * Leere Rasterzeilen füllen die Lohnarten-Zone bis Gesamt-Brutto – ohne Zeilen zu strecken.
    */
   function fillWageToPage(sheet) {
     if (!sheet) return;
     const tbody = sheet.querySelector("#datevWageRows");
-    if (!tbody) return;
-
-    const TARGET_MIN = 5;
-    const TARGET_MAX = 5;
-    tbody.querySelectorAll("tr.ds-pad").forEach((tr) => tr.remove());
-    const dataCount = tbody.querySelectorAll("tr").length;
-
-    let target = Math.max(TARGET_MIN, dataCount);
     const zone = sheet.querySelector(".ds-zone-wage");
     const table = zone?.querySelector(".ds-table");
-    if (zone && table) {
-      // Nach Flex-Layout: restliche Höhe der Zone mit Leerzeilen füllen
-      const sparePx = Math.max(0, zone.clientHeight - table.offsetHeight);
-      const extra = Math.floor(sparePx / 15);
-      target = Math.min(TARGET_MAX, Math.max(target, dataCount + extra));
+    if (!tbody || !zone || !table) return;
+
+    tbody.querySelectorAll("tr.ds-pad").forEach((tr) => tr.remove());
+    const dataCount = tbody.querySelectorAll("tr").length;
+    const minRows = Math.max(5, dataCount);
+    while (tbody.querySelectorAll("tr").length < minRows) {
+      tbody.insertAdjacentHTML("beforeend", wagePadRowHtml());
     }
 
-    const pads = Math.max(0, target - dataCount);
-    for (let i = 0; i < pads; i += 1) {
+    const sample = tbody.querySelector("tr");
+    const rowH = Math.max(14, Math.round(sample?.getBoundingClientRect().height || 19));
+    let guard = 0;
+    while (guard < 28) {
+      const spare = zone.clientHeight - table.offsetHeight;
+      if (spare < rowH - 0.5) break;
       tbody.insertAdjacentHTML("beforeend", wagePadRowHtml());
+      guard += 1;
+    }
+    while (
+      table.offsetHeight > zone.clientHeight + 1
+      && tbody.querySelectorAll("tr.ds-pad").length > Math.max(1, 5 - dataCount)
+    ) {
+      tbody.querySelector("tr.ds-pad:last-child")?.remove();
     }
   }
 
@@ -487,7 +497,10 @@
     const sheet = host.querySelector("#datevSheetA4");
     // Zweimal: zuerst Basis-Zeilen, dann nach Layout freier Raum in der Zone
     fillWageToPage(sheet);
-    requestAnimationFrame(() => fillWageToPage(sheet));
+    requestAnimationFrame(() => {
+      fillWageToPage(sheet);
+      requestAnimationFrame(() => fillWageToPage(sheet));
+    });
     initialized = true;
   }
 
@@ -563,6 +576,7 @@
     printSheet,
     buildPrintHtml,
     getSheetElement,
+    fillWageToPage,
     setBackground,
     BG_BLANK: "assets/datev-lohn17-blank.png",
     BG_REFERENCE: "assets/referenz-datev-mustermann.png",

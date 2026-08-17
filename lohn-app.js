@@ -2832,7 +2832,10 @@
     setPrintHints(state, errors);
     setLiveCheck(state, payroll, errors);
     setPreviewEmptyState(state, payroll);
-    requestAnimationFrame(() => fitSheetPreview());
+    requestAnimationFrame(() => {
+      fitSheetPreview();
+      window.DatevSheet?.fillWageToPage?.(window.DatevSheet.getSheetElement?.());
+    });
     const company = PayrollCore.companyDisplayName(state);
     if (errors.length) {
       setStatus(`${company} · ${errors.join(" · ")}`, false);
