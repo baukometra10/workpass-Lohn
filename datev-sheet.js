@@ -193,6 +193,14 @@
       justify-content: flex-end;
       min-width: 0;
     }
+    .ds-firm-kicker {
+      margin: 0 0 0.7mm;
+      font-size: 4.6pt;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #64748b;
+      font-weight: 700;
+    }
     .ds-ag { width: 100%; border-collapse: collapse; margin: 0; }
     .ds-ag td { padding: 0.5mm 0; font-size: 6.55pt; }
     .ds-ag td:last-child { text-align: right; width: 20mm; font-variant-numeric: tabular-nums; }
@@ -467,11 +475,11 @@
               ${footerNote ? `<div class="ds-meta-line"><strong>Bemerkung:</strong> <span id="dsv_footerNote">${esc(footerNote)}</span></div>` : `<span id="dsv_footerNote" hidden></span>`}
             </div>
             <div class="ds-foot-mid">
-              <p class="ag-cost-legend">Gesamtkosten = Brutto (Mitarbeiter) + SV-AG (Firma). Auszahlung = Netto.</p>
+              <p class="ds-firm-kicker">Nur Firma · kein Abzug vom Lohn</p>
               <table class="ds-ag">
-                <tr><td>SV-AG-Anteil <span class="ds-sub">Arbeitgeber</span></td><td id="dsv_agSv">${esc(data.agSv || "")}</td></tr>
-                <tr><td>Zus. AG-Kosten</td><td id="dsv_agExtra">${esc(data.agExtra || "")}</td></tr>
-                <tr><td>Gesamtkosten <span class="ds-sub">für die Firma</span></td><td id="dsv_agTotal">${esc(data.agTotal || "")}</td></tr>
+                <tr><td>SV-AG-Anteil <span class="ds-sub">zahlt die Firma</span></td><td id="dsv_agSv">${esc(data.agSv || "")}</td></tr>
+                <tr><td>Zus. AG-Kosten <span class="ds-sub">zahlt die Firma</span></td><td id="dsv_agExtra">${esc(data.agExtra || "")}</td></tr>
+                <tr><td>Personalkosten <span class="ds-sub">Firma, nicht der Mitarbeiter</span></td><td id="dsv_agTotal">${esc(data.agTotal || "")}</td></tr>
               </table>
             </div>
             <div class="ds-pay">

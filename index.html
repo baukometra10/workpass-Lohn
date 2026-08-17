@@ -1574,12 +1574,12 @@
                   <div class="ag-datev-costs">
                     <table class="ag-datev-costs-table">
                       <tbody>
-                        <tr><td>SV-AG-Anteil <span class="ag-cost-sub">Arbeitgeber</span></td><td class="ag-num" id="pvDatevEmployerShare">0,00</td></tr>
-                        <tr><td>Zus. AG-Kosten</td><td class="ag-num" id="pvDatevExtraCosts">0,00</td></tr>
-                        <tr><td>Gesamtkosten <span class="ag-cost-sub">für die Firma</span></td><td class="ag-num" id="pvDatevTotalCosts">0,00</td></tr>
+                        <tr><td>SV-AG-Anteil <span class="ag-cost-sub">zahlt die Firma</span></td><td class="ag-num" id="pvDatevEmployerShare">0,00</td></tr>
+                        <tr><td>Zus. AG-Kosten <span class="ag-cost-sub">zahlt die Firma</span></td><td class="ag-num" id="pvDatevExtraCosts">0,00</td></tr>
+                        <tr><td>Personalkosten <span class="ag-cost-sub">Firma, nicht der Mitarbeiter</span></td><td class="ag-num" id="pvDatevTotalCosts">0,00</td></tr>
                       </tbody>
                     </table>
-                    <p class="ag-cost-legend" id="pvCostLegend">Gesamtkosten = Brutto (Mitarbeiter) + SV-AG (Firma). Auszahlung = Netto an den Mitarbeiter.</p>
+                    <p class="ag-cost-legend" id="pvCostLegend">Personalkosten zahlt die Firma (Brutto + SV-AG). Der Mitarbeiter erhält nur den Auszahlungsbetrag.</p>
                   </div>
                 </div>
                 </div>
@@ -1611,7 +1611,7 @@
                     <p class="ag-legend layout-agenda-only">*) M = mehrjährig · St = Steuer · SV = sozialversicherungspflichtig · GB = Gesamt-Brutto · KKN = KV-Beitragssatz</p>
                     <p class="ag-legend ag-legend-datev layout-datev-only" id="pvDatevLegend">1 = Hinzurechnungsbetrag · 2 = Vortragswert · 3 = Anrechnungswert · 4 = Herausrechnungsbetrag · E = Einmalbezug · F = Frei · L = laufender Bezug · M = mehrjährig · N = Nachberechnung · P = pauschal · S = sonstiger Bezug · St = Steuer · SV = sozialversicherungspflichtig · Z = Zuschlag/Kürzung · GB = Gesamt-Brutto · KKN = KV-Beitragssatz</p>
                     <p class="ag-legend layout-datev-only" id="pvDatevFormNr">Form.-Nr. LOHN17</p>
-                    <p class="ag-legend layout-datev-only ag-cost-explain" id="pvCostExplain">Gesamtkosten = Brutto + SV-AG-Anteil (Betriebskosten). Auszahlungsbetrag = Netto auf das Konto des Mitarbeiters – nicht die Gesamtkosten.</p>
+                    <p class="ag-legend layout-datev-only ag-cost-explain" id="pvCostExplain">Personalkosten zahlt die Firma (Brutto + SV-AG). Auszahlungsbetrag = Netto auf das Konto des Mitarbeiters – kein Abzug dieser Kosten vom Lohn.</p>
                     <p class="ag-legend ag-legend-legal" id="pvFooterLegal">Abrechnung nach § 108 Abs. 3 GewO · Entgeltabrechnung nach SGB IV</p>
                     <pre class="ag-legend-company" id="pvFooterBlock"></pre>
                   </div>
@@ -1798,7 +1798,7 @@
     <script src="legal-config.js?v=3"></script>
     <script src="annual-certificate.js?v=2"></script>
     <script src="elster-export.js?v=1"></script>
-    <script src="datev-sheet.js?v=50"></script>
+    <script src="datev-sheet.js?v=51"></script>
     <script src="payroll-core.js?v=33"></script>
     <script src="workpass-i18n-packs.js?v=17"></script>
     <script src="workpass-i18n.js?v=6"></script>
