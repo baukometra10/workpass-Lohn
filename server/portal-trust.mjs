@@ -581,6 +581,11 @@ export function buildElsterPrepChecklist(companyId, opts = {}) {
         : "ELSTER-Zertifikat (PKCS#12) hinterlegen",
     },
     {
+      id: "lsta_month",
+      ok: jobs.filter((j) => j.status === "released").length > 0,
+      label: `LStA ${period}: Anmeldung der Firma (LSt / SolZ / KiSt) aus freigegebenen Monaten`,
+    },
+    {
       id: "human_review",
       ok: false,
       label: "Mensch hat Jahressummen gegen LStB geprüft (manuell)",

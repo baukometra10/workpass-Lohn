@@ -42,8 +42,8 @@ export function handleElsterSubmit(body, { key = "" } = {}) {
   const xml = String(body.xml || "");
   const p12 = String(body.p12 || "");
   const pin = String(body.pin || "");
-  if (xml.length < 40 || !xml.includes("<Elster") || !xml.includes("LStB")) {
-    return { status: 422, body: { ok: false, accepted: false, error: "LStB-XML unvollständig" } };
+  if (xml.length < 40 || !xml.includes("<Elster") || !(xml.includes("LStB") || xml.includes("LStA"))) {
+    return { status: 422, body: { ok: false, accepted: false, error: "ELSTER-XML unvollständig (LStB oder LStA)" } };
   }
   if (p12.length < 40) {
     return { status: 422, body: { ok: false, accepted: false, error: "PKCS#12 fehlt" } };

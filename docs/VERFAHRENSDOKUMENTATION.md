@@ -125,7 +125,7 @@ Siehe `docs/BACKUP.md`. Periodische Backups, Integritätscheck, Restore nur mit 
 | GoBD-Paket | Digitale Betriebsprüfung / Nachvollziehbarkeit |
 | DATEV / LODAS | Übergabe an Kanzlei-Software |
 | SEPA | Zahlungsdatei (nach Confirm) |
-| ELSTER | LStB-XML aus Jahresbescheinigungen; Sidecar `WORKPASS_ELSTER_SUBMIT_URL` / ERiC. Ohne Kanal: `PENDING` lokal, nicht Finanzamt. Sidecar angenommen: `SENT`. Testmerker 700000004 bis `WORKPASS_ELSTER_TEST=0`. |
+| ELSTER | **LStA** (Firma, Monat, § 41a) und **LStB** (Mitarbeiter, Jahr, § 41b). Sidecar `WORKPASS_ELSTER_*`. Ohne Kanal: `PENDING` lokal. Auto-Versand nach Monatsabschluss = LStA. |
 | LStB / VB | Pro Mitarbeiter aus **freigegebenen** Monaten: Jahres-Lohnsteuerbescheinigung und druckbare Verdienstbescheinigung |
 
 ## 13. E-Rechnung / ISO 27001
@@ -144,6 +144,7 @@ Siehe `docs/BACKUP.md`. Periodische Backups, Integritätscheck, Restore nur mit 
 
 ## 15. Änderungshistorie dieser Doku
 
+- 2.51.5: Lohnsteueranmeldung (LStA) der Firma aus freigegebenen Monaten; LStB bleibt je Mitarbeiter. Auto-ELSTER nach Monatsende sendet LStA.  
 - 2.51.4: ELSTER-Kanal (Sidecar/Mock): LStB-XML aus Jahresbescheinigungen, PENDING lokal vs SENT an Kanal, Portal-Status auf Deutsch; kein Fake-Finanzamt.  
 - 2.51.3: Lohnarten-Tabelle A4-stabil (keine Dehnung auf großen Bildschirmen); leere Bezeichnung STD → Stundenlohn.  
 - 2.51.2: Firmenlogo per GET von der Plattform; sonst klare Anfrage `company.logo.requested`.  

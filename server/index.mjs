@@ -126,7 +126,9 @@ import {
   elsterChannelStatus,
   saveElsterCert,
   submitElsterYear,
+  submitElsterLsta,
   listElsterSubmissions,
+  buildMonthLsta,
 } from "./elster/submit.mjs";
 import {
   buildEmployeeLstbCertificate,
@@ -1891,6 +1893,39 @@ async function handler(req, res) {
         channel: elsterChannelStatus(),
         submissions: listElsterSubmissions(companyId),
       });
+    }
+
+    if (req.method === "GET" && path === "/v1/portal/lsta") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const period = url.searchParams.get("period") || currentPeriod();
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "LStA");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const draft = buildMonthLsta(companyId, period);
+      if (!draft.ok) return reply(draft.status || 422, draft);
+      return reply(200, { ...draft, xml: undefined, channel: elsterChannelStatus() });
+    }
+
+    if (req.method === "POST" && path === "/v1/portal/lsta-submit") {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(body.companyId || tenantScope || "");
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "LStA");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const gate = requireHumanConfirm(body, "lsta_submit");
+      if (!gate.ok) return reply(gate.status || 422, gate);
+      const result = await submitElsterLsta({
+        companyId,
+        period: body.period || currentPeriod(),
+        actor: "user",
+      });
+      audit({
+        type: "elster.lsta",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { period: result.period, status: result.status, mode: result.mode },
+      });
+      return reply(result.ok ? 200 : (result.status || 422), result);
     }
 
     if (req.method === "POST" && path === "/v1/portal/elster-submit") {

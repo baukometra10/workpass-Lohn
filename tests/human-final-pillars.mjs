@@ -105,6 +105,7 @@ assert(buildDeliveryTrust(id, { period: "2026-08" }).ok, "trust");
 const trust = buildDeliveryTrust(id, { period: "2026-08" });
 assert(typeof trust.score === "number", "trust score");
 assert(buildElsterPrepChecklist(id, { period: "2026-08" }).humanFinal === true, "elster prep");
+assert(!requireHumanConfirm({}, "lsta_submit").ok, "lsta confirm");
 
 console.log("\n=== IBAN mod97 ===");
 const { ibanMod97Ok } = await import("../server/sepa-export.mjs");

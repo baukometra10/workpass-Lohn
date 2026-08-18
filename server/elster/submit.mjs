@@ -10,6 +10,7 @@ import { encryptString, decryptString, sha256Hex } from "../security/crypto.mjs"
 import { normalizeCompanyId } from "../tenant.mjs";
 import { appendBusinessAudit } from "../gobd/business-audit.mjs";
 import { buildYearLstbXml, elsterTestMode } from "./lstb-xml.mjs";
+import { buildMonthLsta } from "./lsta-xml.mjs";
 
 function now() {
   return new Date().toISOString();
@@ -47,13 +48,15 @@ function ensureTables() {
       mode TEXT,
       remote_id TEXT,
       test_mode INTEGER NOT NULL DEFAULT 1,
-      employee_count INTEGER NOT NULL DEFAULT 0
+      employee_count INTEGER NOT NULL DEFAULT 0,
+      kind TEXT NOT NULL DEFAULT 'lstb'
     )
   `);
   ensureColumn("elster_submissions", "mode", "TEXT");
   ensureColumn("elster_submissions", "remote_id", "TEXT");
   ensureColumn("elster_submissions", "test_mode", "INTEGER NOT NULL DEFAULT 1");
   ensureColumn("elster_submissions", "employee_count", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn("elster_submissions", "kind", "TEXT NOT NULL DEFAULT 'lstb'");
 }
 
 export function elsterChannelStatus() {
@@ -138,6 +141,7 @@ async function deliverToElsterChannel({ xml, cert, submissionId }) {
       },
       body: JSON.stringify({
         kind: "workpass.elster.submit.v1",
+        datenArt: xml.includes("LStA") ? "LStA" : "LStB",
         submissionId,
         xml,
         p12: cert.p12,
@@ -202,9 +206,9 @@ export async function submitElsterYear({ companyId, period, year, actor = "user"
   const createdAt = now();
   const testMode = built.testMode ? 1 : 0;
   sqliteExec(
-    `INSERT INTO elster_submissions(submission_id, company_id, period, year, status, xml, created_at, test_mode, employee_count)
-     VALUES(?,?,?,?,?,?,?,?,?)`,
-    [submissionId, id, period || "", y, "PROCESSING", xml, createdAt, testMode, built.employeeCount]
+    `INSERT INTO elster_submissions(submission_id, company_id, period, year, status, xml, created_at, test_mode, employee_count, kind)
+     VALUES(?,?,?,?,?,?,?,?,?,?)`,
+    [submissionId, id, period || "", y, "PROCESSING", xml, createdAt, testMode, built.employeeCount, "lstb"]
   );
   try {
     const delivered = await deliverToElsterChannel({ xml, cert, submissionId });
@@ -267,11 +271,12 @@ export function listElsterSubmissions(companyId, limit = 20) {
   ensureTables();
   const id = normalizeCompanyId(companyId);
   return sqliteAll(
-    `SELECT submission_id, period, year, status, error, created_at, submitted_at, mode, remote_id, test_mode, employee_count
+    `SELECT submission_id, period, year, status, error, created_at, submitted_at, mode, remote_id, test_mode, employee_count, kind
      FROM elster_submissions WHERE company_id = ? ORDER BY created_at DESC LIMIT ?`,
     [id, Math.max(1, Math.min(100, Number(limit) || 20))]
   ).map((r) => ({
     submissionId: r.submission_id,
+    kind: r.kind || "lstb",
     period: r.period,
     year: r.year,
     status: r.status,
@@ -294,7 +299,8 @@ export async function maybeAutoSubmitElster(companyId, period) {
   const y = String(period || "").slice(0, 4) || String(new Date().getFullYear());
   const existing = sqliteGet(
     `SELECT submission_id, status FROM elster_submissions
-     WHERE company_id = ? AND year = ? AND status IN ('PENDING','PROCESSING','COMPLETED','SENT')
+     WHERE company_id = ? AND year = ? AND IFNULL(kind,'lstb') = 'lstb'
+       AND status IN ('PENDING','PROCESSING','COMPLETED','SENT')
      ORDER BY created_at DESC LIMIT 1`,
     [id, y]
   );
@@ -308,3 +314,131 @@ export async function maybeAutoSubmitElster(companyId, period) {
   }
   return submitElsterYear({ companyId, period, year: y, actor: "job" });
 }
+
+function lstaUserMessage({ period, delivered, testMode, payable }) {
+  const pay = Number(payable || 0).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (delivered.accepted) {
+    if (delivered.finanzamtReached) {
+      return `LStA ${period} (${pay} €) vom Sidecar als beim Finanzamt angenommen gemeldet.`;
+    }
+    if (testMode) {
+      return `LStA ${period} (${pay} €) an den Testkanal übergeben. Das ist nicht das Finanzamt.`;
+    }
+    return `LStA ${period} (${pay} €) an den ELSTER-Kanal übergeben. Die Annahme beim Finanzamt bestätigt nur ERiC/Sidecar.`;
+  }
+  return `LStA ${period} (${pay} €) liegt lokal bereit. Noch nicht beim Finanzamt. ${delivered.hint || ""}`.trim();
+}
+
+export { buildMonthLsta };
+
+export async function submitElsterLsta({ companyId, period, actor = "user" }) {
+  ensureTables();
+  const id = normalizeCompanyId(companyId);
+  const cert = loadCertSecrets(id);
+  if (!cert) {
+    return { ok: false, status: 422, error: "Kein ELSTER-Zertifikat hinterlegt" };
+  }
+  const built = buildMonthLsta(id, period);
+  if (!built.ok) return built;
+  if (built.empty) {
+    return { ok: false, status: 422, error: `Keine freigegebenen Abrechnungen für ${built.period}` };
+  }
+  const xml = built.xml;
+  const submissionId = `lsta:${id}:${built.period}:${crypto.randomUUID().slice(0, 8)}`;
+  const createdAt = now();
+  const testMode = built.testMode ? 1 : 0;
+  sqliteExec(
+    `INSERT INTO elster_submissions(submission_id, company_id, period, year, status, xml, created_at, test_mode, employee_count, kind)
+     VALUES(?,?,?,?,?,?,?,?,?,?)`,
+    [submissionId, id, built.period, built.year, "PROCESSING", xml, createdAt, testMode, built.employeeCount, "lsta"]
+  );
+  try {
+    const delivered = await deliverToElsterChannel({ xml, cert, submissionId });
+    const status = delivered.accepted ? "SENT" : "PENDING";
+    sqliteExec(
+      `UPDATE elster_submissions SET status = ?, submitted_at = ?, error = ?, mode = ?, remote_id = ?, test_mode = ?, employee_count = ? WHERE submission_id = ?`,
+      [
+        status,
+        now(),
+        delivered.hint || null,
+        delivered.mode || null,
+        delivered.remoteId || null,
+        testMode,
+        built.employeeCount,
+        submissionId,
+      ]
+    );
+    appendBusinessAudit({
+      companyId: id,
+      actor,
+      source: actor === "job" ? "job" : "user",
+      op: "elster.lsta",
+      entityType: "lsta",
+      entityId: submissionId,
+      status,
+      detail: {
+        period: built.period,
+        mode: delivered.mode,
+        testMode: Boolean(testMode),
+        accepted: delivered.accepted,
+        finanzamtReached: Boolean(delivered.finanzamtReached),
+        payable: built.totals.payable,
+        employeeCount: built.employeeCount,
+      },
+    });
+    return {
+      ok: true,
+      submissionId,
+      status,
+      kind: "lsta",
+      period: built.period,
+      year: built.year,
+      totals: built.totals,
+      employeeCount: built.employeeCount,
+      mode: delivered.mode,
+      remoteId: delivered.remoteId || null,
+      testMode: Boolean(testMode),
+      finanzamtReached: Boolean(delivered.finanzamtReached),
+      hint: delivered.hint || null,
+      channel: elsterChannelStatus(),
+      message: lstaUserMessage({
+        period: built.period,
+        delivered,
+        testMode: Boolean(testMode),
+        payable: built.totals.payable,
+      }),
+    };
+  } catch (e) {
+    sqliteExec(
+      `UPDATE elster_submissions SET status = ?, error = ?, mode = ? WHERE submission_id = ?`,
+      ["FAILED", e.message || String(e), elsterChannelStatus().mode, submissionId]
+    );
+    return { ok: false, status: 502, error: e.message || String(e), submissionId };
+  }
+}
+
+export async function maybeAutoSubmitLsta(companyId, period) {
+  const st = elsterCertStatus(companyId);
+  if (!st.configured || !st.autoSubmit) return { skipped: true };
+  if (process.env.WORKPASS_ELSTER_AUTO_SUBMIT === "0") return { skipped: true, reason: "disabled" };
+  ensureTables();
+  const id = normalizeCompanyId(companyId);
+  const p = String(period || "").trim();
+  const existing = sqliteGet(
+    `SELECT submission_id, status FROM elster_submissions
+     WHERE company_id = ? AND period = ? AND kind = 'lsta'
+       AND status IN ('PENDING','PROCESSING','COMPLETED','SENT')
+     ORDER BY created_at DESC LIMIT 1`,
+    [id, p]
+  );
+  if (existing) {
+    return {
+      skipped: true,
+      reason: "already_queued",
+      submissionId: existing.submission_id,
+      status: existing.status,
+    };
+  }
+  return submitElsterLsta({ companyId, period: p, actor: "job" });
+}
+

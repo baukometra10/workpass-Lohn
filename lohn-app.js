@@ -982,6 +982,7 @@
       ensureCertDefaults(period);
       refreshElsterCertStatus().catch(() => {});
       loadElsterSubmissions().catch(() => {});
+      loadLstaDraft().catch(() => {});
       loadCertificateSummary().catch(() => {});
     } catch (e) {
       if (!silent) setStatus(`Portal: ${e.message}`, false);
@@ -1412,7 +1413,10 @@
       }
       host.innerHTML = `<p class="section-hint">${esc(uiT("portal.elsterSubmissionsHead", "ELSTER-Aufträge"))}</p>`
         + rows.map((r) => {
-          const meta = [elsterStatusLabel(r.status), r.year, r.mode || "", r.testMode ? "Test" : ""]
+          const kindLabel = r.kind === "lsta"
+            ? uiT("portal.lstaKind", "LStA")
+            : uiT("portal.lstbKind", "LStB");
+          const meta = [kindLabel, elsterStatusLabel(r.status), r.period || r.year, r.mode || "", r.testMode ? "Test" : ""]
             .filter(Boolean)
             .join(" · ");
           const extra = r.error ? `<p class="section-hint">${esc(r.error)}</p>` : "";
@@ -1421,6 +1425,40 @@
         }).join("");
     } catch (e) {
       host.innerHTML = `<p class="section-hint">${esc(e.message || uiT("portal.elsterSubmissionsFail", "ELSTER-Aufträge konnten nicht geladen werden."))}</p>`;
+    }
+  }
+
+  async function loadLstaDraft() {
+    const host = $("portalLstaStatus");
+    if (!host) return;
+    try {
+      const period = currentPayrollPeriod();
+      const data = await apiFetch(`/v1/portal/lsta?period=${encodeURIComponent(period)}`);
+      if (!data.ok) {
+        host.textContent = data.error || uiT("portal.lstaFail", "LStA konnte nicht geladen werden.");
+        return;
+      }
+      if (data.empty) {
+        host.textContent = uiT(
+          "portal.lstaEmpty",
+          "LStA {period}: noch keine freigegebenen Abrechnungen."
+        ).replace("{period}", data.period || period);
+        return;
+      }
+      const t = data.totals || {};
+      const euro = (n) => Number(n || 0).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+      host.textContent = uiT(
+        "portal.lstaDraft",
+        "LStA {period} (Firma): {n} MA · LSt {lst} · SolZ {solz} · KiSt {kist} · Anmelden {sum}"
+      )
+        .replace("{period}", data.period || period)
+        .replace("{n}", String(data.employeeCount || 0))
+        .replace("{lst}", euro(t.payrollTax))
+        .replace("{solz}", euro(t.solidarity))
+        .replace("{kist}", euro(t.churchTax))
+        .replace("{sum}", euro(t.payable));
+    } catch (e) {
+      host.textContent = e.message || uiT("portal.lstaFail", "LStA konnte nicht geladen werden.");
     }
   }
 
@@ -4752,13 +4790,37 @@
         toast(e.message, "error");
       }
     });
+    $("btnLstaSubmit")?.addEventListener("click", async () => {
+      try {
+        const companyId = companyPortalId || apiConfig().companyId;
+        const period = currentPayrollPeriod();
+        const ok = await humanConfirm({
+          title: uiT("portal.lstaSubmit", "LStA senden (dieser Monat)"),
+          body: uiT(
+            "portal.lstaSubmitConfirm",
+            "Lohnsteueranmeldung der Firma (LSt, SolZ, KiSt) für diesen Monat an den ELSTER-Kanal. Das ist nicht die LStB der Mitarbeiter. Ohne Sidecar bleibt der Auftrag lokal — nicht beim Finanzamt."
+          ),
+          requireCheck: true,
+        });
+        if (!ok) return;
+        const data = await apiFetch("/v1/portal/lsta-submit", {
+          method: "POST",
+          body: JSON.stringify({ companyId, period, confirm: true }),
+        });
+        toast(data.message || data.error || "LStA", data.ok ? "ok" : "error");
+        await loadElsterSubmissions();
+        await loadLstaDraft();
+      } catch (e) {
+        toast(e.message, "error");
+      }
+    });
     $("btnElsterSubmit")?.addEventListener("click", async () => {
       try {
         const companyId = companyPortalId || apiConfig().companyId;
         const period = currentPayrollPeriod();
         const ok = await humanConfirm({
-          title: uiT("portal.elsterSubmit", "ELSTER jetzt senden"),
-          body: uiT("portal.elsterSubmitConfirm", "LStB-XML mit hinterlegtem Zertifikat an den ELSTER-Kanal übermitteln. Ohne Sidecar bleibt der Auftrag lokal — nicht beim Finanzamt."),
+          title: uiT("portal.elsterSubmit", "LStB (Jahr) senden"),
+          body: uiT("portal.elsterSubmitConfirm", "Jahres-LStB der Mitarbeiter mit hinterlegtem Zertifikat an den ELSTER-Kanal. Ohne Sidecar bleibt der Auftrag lokal — nicht beim Finanzamt."),
           requireCheck: true,
         });
         if (!ok) return;
@@ -4768,6 +4830,7 @@
         });
         toast(data.message || data.error || "ELSTER", data.ok ? "ok" : "error");
         await loadElsterSubmissions();
+        await loadLstaDraft();
       } catch (e) {
         toast(e.message, "error");
       }

@@ -15,7 +15,7 @@ import { listCompanies } from "./db/repository.mjs";
 import { runMonthClose, currentPeriod, previousPeriod } from "./month-close.mjs";
 import { listAutomationCompanies } from "./automation-eligibility.mjs";
 import { liveMonthJobs, recordCompanyAutomation } from "./automation-status.mjs";
-import { maybeAutoSubmitElster } from "./elster/submit.mjs";
+import { maybeAutoSubmitElster, maybeAutoSubmitLsta } from "./elster/submit.mjs";
 
 let timer = null;
 let lastTickAt = null;
@@ -120,11 +120,19 @@ export async function runAutoMonthCloseOnce(opts = {}) {
           message: r.message || null,
         });
         let elster = null;
+        let lsta = null;
         if (after.complete || (after.released > 0 && after.error === 0)) {
           try {
-            elster = await maybeAutoSubmitElster(c.id, period);
+            lsta = await maybeAutoSubmitLsta(c.id, period);
           } catch (e) {
-            elster = { ok: false, error: e.message };
+            lsta = { ok: false, error: e.message };
+          }
+          if (String(period || "").endsWith("-12")) {
+            try {
+              elster = await maybeAutoSubmitElster(c.id, period);
+            } catch (e) {
+              elster = { ok: false, error: e.message };
+            }
           }
         }
         results.push({
@@ -134,6 +142,7 @@ export async function runAutoMonthCloseOnce(opts = {}) {
           waitingForPlatform: r.waitingForPlatform,
           message: r.message,
           jobs: after,
+          lsta: lsta && !lsta.skipped ? { ok: lsta.ok, status: lsta.status, mode: lsta.mode } : undefined,
           elster: elster && !elster.skipped ? { ok: elster.ok, status: elster.status, mode: elster.mode } : undefined,
         });
       } catch (e) {

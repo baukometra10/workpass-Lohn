@@ -17,7 +17,7 @@ Stand: Version siehe `package.json`. Keine steuerliche Beratung – zur Abstimmu
 2. SV-Sätze (Zusatzbeitrag KK, PV-Zuschlag kinderlos) gegen Firmenstammdaten.
 3. Kirchensteuer-Hebesatz (8/9) je Bundesland.
 4. Freigegebene Abrechnungen: GoBD-Unveränderbarkeit + Korrekturpfad mit Grund.
-5. ELSTER: LStB-XML gegen Jahressummen; Zertifikat/PIN-Prozess.
+5. ELSTER: LStA (Firma, Monat) und LStB-XML (Mitarbeiter, Jahr) gegen Summen; Zertifikat/PIN.
 6. Portal: Lohnsteuerbescheinigung und Verdienstbescheinigung je Mitarbeiter aus freigegebenen Monaten (Druck).
 7. DATEV/LODAS-Export vs. Blatt.
 
@@ -27,6 +27,7 @@ Stand: Version siehe `package.json`. Keine steuerliche Beratung – zur Abstimmu
 - `POST /v1/gobd/export` `{ confirm: true }` – GoBD-Paket
 - `GET /v1/policy/human-final` – Policy-Version
 - `POST /v1/portal/assistant/apply-engine-tax` – nur Engine, keine LLM-Beträge
+- `GET /v1/portal/lsta` / `POST /v1/portal/lsta-submit` – Lohnsteueranmeldung der Firma (Monat)
 - `GET /v1/portal/certificates/lstb` / `verdienst` – Jahres-LStB und VB pro Mitarbeiter
 
 ## Verfahrensdokumentation

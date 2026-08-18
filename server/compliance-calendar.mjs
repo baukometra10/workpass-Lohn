@@ -217,8 +217,8 @@ export function buildComplianceCalendar(period, opts = {}) {
       severity: "action",
       hint: dauerfrist
         ? "Dauerfrist hinterlegt – Termin +1 Monat. Mensch prüft Finanzamt/ELSTER."
-        : "Regelfrist 10. des Folgemonats (Banktag). Mensch meldet / zahlt.",
-      humanAction: "elster_prep",
+        : "Regelfrist 10. des Folgemonats (Banktag). Im Portal LStA senden – Mensch bestätigt.",
+      humanAction: "lsta_submit",
       dauerfrist,
     },
     {

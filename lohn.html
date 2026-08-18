@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=26" />
     <link rel="stylesheet" href="lohn.css?v=88" />
-    <link rel="stylesheet" href="annual-certificate.css?v=7" />
+    <link rel="stylesheet" href="annual-certificate.css?v=9" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0b1220" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -270,7 +270,7 @@
                     <span class="portal-card-badge" data-i18n="portal.humanFinalBadge">Human final</span>
                     <span class="portal-card-badge" id="portalElsterChannelBadge" hidden></span>
                   </div>
-                  <p class="section-hint" data-i18n="portal.exportHint">SEPA / DATEV / LODAS / ELSTER – LStB über Sidecar; ohne Kanal nur lokal bereit, nicht beim Finanzamt.</p>
+                  <p class="section-hint" data-i18n="portal.exportHint">SEPA / DATEV / LODAS / ELSTER – LStA monatlich (Firma), LStB jährlich (Mitarbeiter). Ohne Kanal nur lokal, nicht beim Finanzamt.</p>
                   <div class="month-close-actions portal-primary-actions" style="margin-top:8px">
                     <button type="button" class="portal-cta-secondary" id="btnSepaExport" data-i18n="portal.sepaExport">SEPA XML</button>
                     <button type="button" class="portal-cta-secondary" id="btnDatevExportConfirm" data-i18n="portal.datevExport">DATEV</button>
@@ -290,14 +290,16 @@
                   </div>
                   <label class="portal-check" style="display:flex;gap:8px;align-items:center;margin-top:8px">
                     <input type="checkbox" id="elsterAutoSubmit" />
-                    <span data-i18n="portal.elsterAuto">Automatisch an den ELSTER-Kanal senden, sobald der Monat fertig ist (nicht das Finanzamt)</span>
+                    <span data-i18n="portal.elsterAuto">LStA automatisch an den ELSTER-Kanal, sobald der Monat fertig ist (nicht das Finanzamt)</span>
                   </label>
                   <div class="month-close-actions" style="margin-top:8px">
                     <button type="button" class="portal-cta-secondary" id="btnElsterCertSave" data-i18n="portal.elsterCertSave">Zertifikat speichern</button>
-                    <button type="button" class="portal-cta-primary" id="btnElsterSubmit" data-i18n="portal.elsterSubmit">ELSTER jetzt senden</button>
+                    <button type="button" class="portal-cta-primary" id="btnLstaSubmit" data-i18n="portal.lstaSubmit">LStA senden (dieser Monat)</button>
+                    <button type="button" class="portal-cta-secondary" id="btnElsterSubmit" data-i18n="portal.elsterSubmit">LStB (Jahr) senden</button>
                   </div>
                   <p id="portalElsterCertStatus" class="section-hint"></p>
                   <p id="portalElsterChannelStatus" class="section-hint"></p>
+                  <p id="portalLstaStatus" class="section-hint"></p>
                   <div id="portalElsterPrepList" class="api-inbox-list" style="margin-top:8px"></div>
                   <div id="portalElsterList" class="api-inbox-list" style="margin-top:8px"></div>
                 </section>
@@ -863,13 +865,13 @@
     <script src="datev-sheet.js?v=52"></script>
     <script src="payroll-core.js?v=34"></script>
     <div id="portalCertPrintHost" class="portal-cert-print-host" hidden aria-hidden="true"></div>
-    <script src="workpass-i18n-packs.js?v=36"></script>
+    <script src="workpass-i18n-packs.js?v=38"></script>
     <script src="workpass-i18n.js?v=8"></script>
     <script src="auth-gate.js?v=18"></script>
     <script src="mandant-checklist.js?v=4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="workpass-pwa.js?v=4"></script>
-    <script src="lohn-app.js?v=109"></script>
+    <script src="lohn-app.js?v=112"></script>
   </body>
 </html>

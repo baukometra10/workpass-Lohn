@@ -19,6 +19,7 @@ export const AI_MAY_NEVER = Object.freeze([
 export const AI_MAY_WITH_ENGINE = Object.freeze([
   "apply_engine_tax",
   "elster_submit_with_cert",
+  "elster_lsta_with_cert",
 ]);
 
 /** Sensitive APIs that require body.confirm === true (human gate). */
@@ -31,6 +32,7 @@ export const CONFIRM_REQUIRED_ACTIONS = Object.freeze([
   "elster_prep_download",
   "elster_cert_save",
   "elster_submit",
+  "lsta_submit",
   "apply_engine_tax",
   "backup_restore",
   "tax_ruleset_publish",
