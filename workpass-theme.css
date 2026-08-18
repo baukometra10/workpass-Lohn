@@ -188,6 +188,7 @@ body.workpass-hub .sidebar-nav-btn {
   border-radius: var(--wp-radius-sm) !important;
   border: 1px solid transparent !important;
   background: transparent !important;
+  text-decoration: none;
 }
 body.workpass-hub .sidebar-nav-btn:hover {
   background: rgba(59, 158, 255, 0.08) !important;

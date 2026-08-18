@@ -355,6 +355,11 @@ body.lexware-app {
 
 }
 
+a.sidebar-nav-link {
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
 
 
 .sidebar-nav-svg {

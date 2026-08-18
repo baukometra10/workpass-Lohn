@@ -513,7 +513,7 @@ select option:checked,
 
 .form-jump {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 4px;
   margin-top: 8px;
 }
@@ -534,6 +534,15 @@ select option:checked,
   color: #fff;
   border-color: var(--border-hot);
   box-shadow: var(--shine);
+}
+
+.portal-export-kicker {
+  margin: 14px 0 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent-hot, #5db4ff);
 }
 
 .form-section {

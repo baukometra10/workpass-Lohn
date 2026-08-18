@@ -238,7 +238,7 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2.51.7";
+const APP_VERSION = "2.51.8";
 const APP_VERSION_BUILD = "2026.45";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
@@ -552,7 +552,7 @@ function initLexShell() {
     ],
     view: [
       { key: "menu.overview", fb: "Übersicht", action: () => document.querySelector('.form-tab[data-tab="dashboard"]')?.click() },
-      { key: "menu.createDoc", fb: "Beleg erfassen", action: () => document.querySelector('.form-tab[data-tab="document"]')?.click() },
+      { key: "menu.createDoc", fb: "Rechnung", action: () => document.querySelector('.form-tab[data-tab="document"]')?.click() },
       { key: "menu.zoom100", fb: "Vorschau 100 %", action: () => { if (previewZoomInput) { previewZoomInput.value = "100"; applyPreviewZoom(); } } },
     ],
     export: [
@@ -1834,8 +1834,8 @@ function updateLexShellUI() {
     : fb;
   const tabLabels = {
     dashboard: tt("nav.overview", "Übersicht"),
-    document: tt("nav.document", "Beleg erfassen"),
-    company: tt("nav.company", "Mandantenverwaltung"),
+    document: tt("nav.document", "Rechnung"),
+    company: tt("nav.company", "Firma"),
     payroll: tt("nav.payrollFull", "Lohnabrechnung"),
     help: tt("nav.help", "Hilfe"),
   };
@@ -1864,8 +1864,8 @@ function updateTopbarForMode() {
     : fb;
   const tabTitles = {
     dashboard: tt("nav.overview", "Übersicht"),
-    document: tt("nav.document", "Beleg erfassen"),
-    company: tt("nav.company", "Mandantenverwaltung"),
+    document: tt("nav.document", "Rechnung"),
+    company: tt("nav.company", "Firma"),
     payroll: tt("menu.payrollGroup", "Lohn & Gehalt"),
     help: tt("nav.help", "Hilfe"),
   };
