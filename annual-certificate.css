@@ -134,9 +134,10 @@
 .lstb-document {
   width: 210mm;
   min-height: 297mm;
+  height: 297mm;
   max-width: 210mm;
   box-sizing: border-box;
-  padding: 6mm 8mm 8mm;
+  padding: 6mm 8mm 7mm;
   border: 1px solid #000;
   box-shadow: inset 0 0 0 0.5px #000;
   background: #fff;
@@ -144,8 +145,18 @@
   flex-direction: column;
 }
 
+.lstb-document .lstb-official-header,
+.lstb-document .lstb-title-block,
+.lstb-document .lstb-title-block-secondary,
+.lstb-document .lstb-footer-note {
+  flex: 0 0 auto;
+}
+
 .lstb-document .lstb-grid {
   flex: 1 1 auto;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
 }
 
 .annual-tax-sheet {
@@ -175,23 +186,33 @@
 .lstb-grid {
   display: grid;
   grid-template-columns: 48% 52%;
+  grid-template-rows: minmax(0, 1fr);
   gap: 0;
   border: 0.5px solid #000;
+  min-height: 0;
+  align-items: stretch;
 }
 
 .lstb-left {
   border-right: 0.5px solid #000;
   padding: 3mm;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .lstb-right {
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .lstb-meta-table {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 3mm;
+  flex: 0 0 auto;
 }
 
 .lstb-meta-table td {
@@ -209,8 +230,15 @@
 
 .lstb-address-block {
   border: 0.5px solid #000;
-  min-height: 28mm;
+  min-height: 16mm;
   margin-bottom: 3mm;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+}
+
+.lstb-address-block:last-of-type {
+  margin-bottom: 2mm;
 }
 
 .lstb-address-block .lstb-block-h {
@@ -227,19 +255,31 @@
   font-family: inherit;
   font-size: 7pt;
   white-space: pre-wrap;
+  flex: 1 1 auto;
 }
 
 .lstb-rows-table {
   width: 100%;
+  height: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
+  flex: 1 1 auto;
+}
+
+.lstb-rows-table thead {
+  height: 6.2mm;
+}
+
+.lstb-rows-table tbody tr {
+  height: calc((100% - 6.2mm) / 27);
 }
 
 .lstb-rows-table th,
 .lstb-rows-table td {
   border: 0.5px solid #000;
-  padding: 1px 3px;
+  padding: 1.2px 3px;
   font-size: 6.2pt;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .lstb-rows-table th {
@@ -271,16 +311,22 @@
 }
 
 .lstb-footer-note {
-  margin-top: 3mm;
-  padding-top: 2mm;
+  margin-top: 2.2mm;
+  padding-top: 1.6mm;
   border-top: 0.5px solid #000;
   font-size: 5.8pt;
   color: #000;
 }
 
+.lstb-footer-note p {
+  margin: 0;
+}
+
 .lstb-months-summary {
-  margin-top: 2mm;
+  margin-top: auto;
+  margin-bottom: 0;
   font-size: 6pt;
+  flex: 0 0 auto;
 }
 
 .lstb-warning {
@@ -290,6 +336,7 @@
   background: #fffbeb;
   color: #92400e;
   font-size: 6.5pt;
+  flex: 0 0 auto;
 }
 
 body.annual-mode .preview-panel #payrollSheet,
@@ -333,6 +380,7 @@ body.payroll-mode:not(.annual-mode) #annualTaxSheet {
   .lstb-document {
     width: 210mm !important;
     min-height: 297mm !important;
+    height: 297mm !important;
     max-width: 210mm !important;
     box-shadow: none !important;
   }

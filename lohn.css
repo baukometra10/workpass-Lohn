@@ -3094,6 +3094,11 @@ body.theme-light .portal-gobd-op {
   background: #fff;
   box-sizing: border-box;
 }
+.portal-cert-print-host .lstb-document {
+  height: 297mm;
+  display: flex;
+  flex-direction: column;
+}
 .portal-cert-print-host .verdienst-document {
   padding: 8mm 9mm;
   border: 1px solid #000;
@@ -3288,6 +3293,9 @@ body.theme-light .portal-gobd-op {
     min-height: 297mm !important;
     max-width: 210mm !important;
     box-shadow: none !important;
+  }
+  .portal-cert-print-host .lstb-document {
+    height: 297mm !important;
   }
   .portal-vb-table {
     width: 100%;
