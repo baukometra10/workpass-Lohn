@@ -139,7 +139,7 @@ const server = http.createServer(async (req, res) => {
         accepted: true,
         deliveryId: item.deliveryId,
         employeeAppStatus: "visible",
-        kind: event === "invoice.released" ? "invoice" : (delivery.type || "payslip"),
+        kind: delivery.type || (event === "invoice.released" ? "invoice" : "payslip"),
       });
     } catch (e) {
       return send(res, 400, { ok: false, error: e.message });

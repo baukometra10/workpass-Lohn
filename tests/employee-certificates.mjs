@@ -15,6 +15,7 @@ process.env.WORKPASS_SESSION_SECRET = "cert-session";
 process.env.WORKPASS_API_KEY = "cert-api-key";
 delete process.env.WORKPASS_DATABASE_URL;
 delete process.env.DATABASE_URL;
+delete process.env.WORKPASS_PLATFORM_WEBHOOK_URL;
 
 const { resetDataKeyCache } = await import("../server/security/crypto.mjs");
 resetDataKeyCache();
@@ -26,6 +27,12 @@ const {
   buildEmployeeLstbCertificate,
   buildEmployeeVerdienstCertificate,
 } = await import("../server/certificates/employee-certificates.mjs");
+const {
+  deliverEmployeeLstb,
+  deliverEmployeeVerdienst,
+  deliverYearLstb,
+} = await import("../server/certificates/deliver.mjs");
+const { getDelivery } = await import("../server/delivery-queue.mjs");
 
 let passed = 0;
 let failed = 0;
@@ -84,6 +91,22 @@ assert(vb.ok && vb.kind === "portal.certificate.verdienst.v1", "vb built");
 assert(vb.period === "2026-02", `vb period ${vb.period}`);
 assert(vb.rows.length >= 10, `vb rows ${vb.rows.length}`);
 assert(vb.ytd.gross > vb.monthly.gross, "ytd gross > monthly gross");
+
+const lstbPush = await deliverEmployeeLstb(companyId, "EMP-CERT-1", 2026);
+assert(lstbPush.ok, `lstb deliver ${lstbPush.error || "ok"}`);
+assert(lstbPush.delivery?.type === "lstb", "lstb delivery type");
+assert(lstbPush.delivery?.deliveryId === `lstb:${companyId}:emp-cert-1:2026` || lstbPush.delivery?.deliveryId.includes("EMP-CERT-1") || lstbPush.delivery?.deliveryId.includes("emp-cert-1"), `lstb id ${lstbPush.delivery?.deliveryId}`);
+assert(getDelivery(lstbPush.delivery.deliveryId)?.deliveryId, "lstb queued");
+
+const lstbAgain = await deliverEmployeeLstb(companyId, "EMP-CERT-1", 2026);
+assert(lstbAgain.ok && lstbAgain.alreadyDelivered, "lstb second send is idempotent");
+
+const vbPush = await deliverEmployeeVerdienst(companyId, "EMP-CERT-1", 2026, "2026-02");
+assert(vbPush.ok && vbPush.delivery?.type === "verdienst", `vb deliver ${vbPush.error || "ok"}`);
+assert(String(vbPush.delivery?.title || "").includes("Verdienstbescheinigung"), "vb title");
+
+const yearPush = await deliverYearLstb(companyId, 2026);
+assert(yearPush.ok && yearPush.okCount >= 1, `year lstb ${yearPush.okCount}`);
 
 closeSqlite();
 if (existsSync(testDb)) unlinkSync(testDb);

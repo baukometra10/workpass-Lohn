@@ -1,0 +1,32 @@
+{
+  "kind": "platform.accounting.event.v1",
+  "event": "lstb.released",
+  "occurredAt": "2026-08-18T14:00:00.000Z",
+  "source": "workpass-accounting-bridge",
+  "delivery": {
+    "kind": "platform.employee.delivery.v1",
+    "type": "lstb",
+    "deliveryId": "lstb:muster-gmbh:02006:2026",
+    "status": "ready_for_employee",
+    "releasedAt": "2026-08-18T14:00:00.000Z",
+    "employee": {
+      "id": "02006",
+      "name": "Mustermann Max"
+    },
+    "company": {
+      "id": "muster-gmbh",
+      "name": "Muster GmbH"
+    },
+    "period": "2026",
+    "year": 2026,
+    "legal": "§ 41b EStG",
+    "summary": {
+      "gross": 33600,
+      "net": 22150,
+      "payrollTax": 4200,
+      "currency": "EUR"
+    },
+    "appRoute": "/employee/certificates/lstb/2026/02006",
+    "title": "Lohnsteuerbescheinigung 2026"
+  }
+}

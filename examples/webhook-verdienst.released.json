@@ -1,0 +1,32 @@
+{
+  "kind": "platform.accounting.event.v1",
+  "event": "verdienst.released",
+  "occurredAt": "2026-08-18T14:05:00.000Z",
+  "source": "workpass-accounting-bridge",
+  "delivery": {
+    "kind": "platform.employee.delivery.v1",
+    "type": "verdienst",
+    "deliveryId": "vb:muster-gmbh:02006:2026-08",
+    "status": "ready_for_employee",
+    "releasedAt": "2026-08-18T14:05:00.000Z",
+    "employee": {
+      "id": "02006",
+      "name": "Mustermann Max"
+    },
+    "company": {
+      "id": "muster-gmbh",
+      "name": "Muster GmbH"
+    },
+    "period": "2026-08",
+    "year": 2026,
+    "summary": {
+      "gross": 2800,
+      "net": 1845,
+      "ytdGross": 22400,
+      "ytdNet": 14760,
+      "currency": "EUR"
+    },
+    "appRoute": "/employee/certificates/verdienst/2026-08/02006",
+    "title": "Verdienstbescheinigung 2026-08"
+  }
+}

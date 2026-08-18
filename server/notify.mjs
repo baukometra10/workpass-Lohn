@@ -128,6 +128,77 @@ export function buildEmployeeDelivery(type, job) {
     };
   }
 
+  if (type === "lstb") {
+    const cert = job.certificate || job;
+    const companyId = cert.companyId || job.company?.id || "";
+    const employeeId = cert.employeeId || "";
+    const year = cert.year || "";
+    return {
+      kind: "platform.employee.delivery.v1",
+      type: "lstb",
+      deliveryId: `lstb:${companyId}:${employeeId}:${year}`,
+      status: "ready_for_employee",
+      releasedAt: new Date().toISOString(),
+      employee: {
+        id: employeeId,
+        name: cert.employeeName || "",
+      },
+      company: {
+        id: companyId,
+        name: job.company?.name || "",
+      },
+      period: String(year),
+      year,
+      legal: "§ 41b EStG",
+      summary: {
+        gross: cert.totals?.gross ?? null,
+        net: cert.totals?.net ?? null,
+        payrollTax: cert.totals?.payrollTax ?? null,
+        solidarity: cert.totals?.solidarity ?? null,
+        churchTax: cert.totals?.churchTax ?? null,
+        currency: "EUR",
+      },
+      document: cert,
+      appRoute: `/employee/certificates/lstb/${encodeURIComponent(String(year))}/${encodeURIComponent(employeeId)}`,
+      title: `Lohnsteuerbescheinigung ${year}`.trim(),
+    };
+  }
+
+  if (type === "verdienst") {
+    const cert = job.certificate || job;
+    const companyId = cert.companyId || job.company?.id || "";
+    const employeeId = cert.employeeId || "";
+    const period = cert.period || "";
+    const year = cert.year || "";
+    return {
+      kind: "platform.employee.delivery.v1",
+      type: "verdienst",
+      deliveryId: `vb:${companyId}:${employeeId}:${period || year}`,
+      status: "ready_for_employee",
+      releasedAt: new Date().toISOString(),
+      employee: {
+        id: employeeId,
+        name: cert.employeeName || "",
+      },
+      company: {
+        id: companyId,
+        name: job.company?.name || "",
+      },
+      period,
+      year,
+      summary: {
+        gross: cert.monthly?.gross ?? cert.ytd?.gross ?? null,
+        net: cert.monthly?.net ?? cert.ytd?.net ?? null,
+        ytdGross: cert.ytd?.gross ?? null,
+        ytdNet: cert.ytd?.net ?? null,
+        currency: "EUR",
+      },
+      document: cert,
+      appRoute: `/employee/certificates/verdienst/${encodeURIComponent(period || String(year))}/${encodeURIComponent(employeeId)}`,
+      title: `Verdienstbescheinigung ${period || year}`.trim(),
+    };
+  }
+
   if (type === "invoice") {
     const d = job.draft || {};
     const companyId = job.company?.id || d.company?.id || "";

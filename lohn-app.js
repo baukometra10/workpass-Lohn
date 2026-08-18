@@ -1690,6 +1690,7 @@
   }
 
   let certPrintTitleRestore = "";
+  let certPrintCtx = null;
 
   function closeCertificatePrint() {
     const host = $("portalCertPrintHost");
@@ -1700,16 +1701,66 @@
     }
     document.body.classList.remove("portal-cert-printing");
     if (certPrintTitleRestore) document.title = certPrintTitleRestore;
+    certPrintCtx = null;
     window.removeEventListener("afterprint", closeCertificatePrint);
   }
 
-  function openCertificatePrint(contentHtml, title) {
+  function certConfirmBody(kind) {
+    if (kind === "lstb-all") {
+      return uiT(
+        "portal.certSendConfirmAll",
+        "Alle Lohnsteuerbescheinigungen dieses Jahres an die Plattform, damit jeder Mitarbeiter sie in der App sieht – wie die Lohnabrechnung. Nicht an das Finanzamt (das ist ELSTER)."
+      );
+    }
+    if (kind === "verdienst") {
+      return uiT(
+        "portal.certSendConfirmVb",
+        "Verdienstbescheinigung an die Plattform, damit der Mitarbeiter sie in der App sieht – wie die Lohnabrechnung."
+      );
+    }
+    return uiT(
+      "portal.certSendConfirmLstb",
+      "Lohnsteuerbescheinigung (LStB, § 41b EStG) an die Plattform, damit der Mitarbeiter sie in der App sieht – wie die Lohnabrechnung. Nicht an das Finanzamt."
+    );
+  }
+
+  async function deliverCertificateToPlatform(ctx, extra = {}) {
+    if (!ctx?.kind) return { ok: false, error: "Kein Dokument" };
+    const companyId = companyPortalId || apiConfig().companyId;
+    const printed = extra.printed === true;
+    const payload = {
+      companyId,
+      employeeId: ctx.employeeId,
+      year: ctx.year,
+      period: ctx.period,
+      printed,
+      confirm: true,
+    };
+    const path = ctx.kind === "lstb-all"
+      ? "/v1/portal/certificates/lstb/deliver-year"
+      : ctx.kind === "verdienst"
+        ? "/v1/portal/certificates/verdienst/deliver"
+        : "/v1/portal/certificates/lstb/deliver";
+    const data = await apiFetch(path, { method: "POST", body: JSON.stringify(payload) });
+    toast(
+      data.message || data.error || uiT("portal.certSent", "An die Plattform übergeben."),
+      data.ok === false ? "error" : "ok"
+    );
+    return data;
+  }
+
+  function openCertificatePrint(contentHtml, title, ctx = null) {
     const host = $("portalCertPrintHost");
     if (!host) return;
     certPrintTitleRestore = document.title;
+    certPrintCtx = ctx;
+    const sendBtn = ctx
+      ? `<button type="button" class="portal-cta-secondary" id="btnCertSendNow">${esc(uiT("portal.certSend", "An Mitarbeiter senden"))}</button>`
+      : "";
     host.innerHTML = `
       <div class="portal-cert-actions">
         <button type="button" class="portal-cta-primary" id="btnCertPrintNow">${esc(uiT("portal.certPrint", "Drucken"))}</button>
+        ${sendBtn}
         <button type="button" class="portal-cta-secondary" id="btnCertPrintClose">${esc(uiT("portal.certClose", "Schließen"))}</button>
       </div>
       ${contentHtml}`;
@@ -1718,9 +1769,40 @@
     document.body.classList.add("portal-cert-printing");
     if (title) document.title = title;
     host.querySelector("#btnCertPrintClose")?.addEventListener("click", closeCertificatePrint);
-    host.querySelector("#btnCertPrintNow")?.addEventListener("click", () => {
+    host.querySelector("#btnCertPrintNow")?.addEventListener("click", async () => {
+      if (certPrintCtx) {
+        const ok = await humanConfirm({
+          title: uiT("portal.certPrintAndSend", "Drucken und an Mitarbeiter"),
+          body: uiT(
+            "portal.certPrintAndSendBody",
+            "Zuerst an die Plattform (Mitarbeiter-App), dann drucken. Ohne Webhook bleibt die Zustellung in der Warteschlange."
+          ),
+          requireCheck: true,
+        });
+        if (ok) {
+          try {
+            await deliverCertificateToPlatform(certPrintCtx, { printed: true });
+          } catch (e) {
+            toast(e.message, "error");
+          }
+        }
+      }
       window.addEventListener("afterprint", closeCertificatePrint, { once: true });
       requestAnimationFrame(() => window.print());
+    });
+    host.querySelector("#btnCertSendNow")?.addEventListener("click", async () => {
+      if (!certPrintCtx) return;
+      const ok = await humanConfirm({
+        title: uiT("portal.certSend", "An Mitarbeiter senden"),
+        body: certConfirmBody(certPrintCtx.kind),
+        requireCheck: true,
+      });
+      if (!ok) return;
+      try {
+        await deliverCertificateToPlatform(certPrintCtx, { printed: false });
+      } catch (e) {
+        toast(e.message, "error");
+      }
     });
   }
 
@@ -1751,7 +1833,8 @@
       if (!data.ok) throw new Error(data.error || uiT("portal.certLstbFail", "LStB konnte nicht erstellt werden."));
       openCertificatePrint(
         `<section class="portal-cert-page">${renderLstbPrintHtml(data)}</section>`,
-        `Lohnsteuerbescheinigung ${y} · ${eid}`
+        `Lohnsteuerbescheinigung ${y} · ${eid}`,
+        { kind: "lstb", employeeId: eid, year: y }
       );
       toast(uiT("portal.certLstbReady", "Lohnsteuerbescheinigung bereit – Drucken."), "ok");
     } catch (e) {
@@ -1788,7 +1871,7 @@
         toast(uiT("portal.certLstbFail", "LStB konnte nicht erstellt werden."), "error");
         return;
       }
-      openCertificatePrint(pages.join(""), `Lohnsteuerbescheinigungen ${y}`);
+      openCertificatePrint(pages.join(""), `Lohnsteuerbescheinigungen ${y}`, { kind: "lstb-all", year: y });
       const msg = failed.length
         ? uiT("portal.certLstbAllPartial", "LStB bereit ({ok} von {n}) – Drucken.")
           .replace("{ok}", String(pages.length))
@@ -1817,9 +1900,66 @@
       if (!data.ok) throw new Error(data.error || uiT("portal.certVerdienstFail", "Verdienstbescheinigung konnte nicht erstellt werden."));
       openCertificatePrint(
         `<section class="portal-cert-page">${renderVerdienstPrintHtml(data)}</section>`,
-        `Verdienstbescheinigung ${formatPeriodLabel(data.period) || p} · ${eid}`
+        `Verdienstbescheinigung ${formatPeriodLabel(data.period) || p} · ${eid}`,
+        { kind: "verdienst", employeeId: eid, year: y, period: data.period || p }
       );
       toast(uiT("portal.certVerdienstReady", "Verdienstbescheinigung bereit – Drucken."), "ok");
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  }
+
+  async function sendLstbToPlatform(employeeId, year) {
+    const eid = String(employeeId || certEmployeeIdValue()).trim();
+    const y = Number(year) || certYearValue();
+    if (!eid) {
+      toast(uiT("portal.certNeedEmployee", "Bitte Mitarbeiter-ID eingeben."), "error");
+      return;
+    }
+    const ok = await humanConfirm({
+      title: uiT("portal.certSendLstb", "LStB an Mitarbeiter"),
+      body: certConfirmBody("lstb"),
+      requireCheck: true,
+    });
+    if (!ok) return;
+    try {
+      await deliverCertificateToPlatform({ kind: "lstb", employeeId: eid, year: y });
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  }
+
+  async function sendVerdienstToPlatform(employeeId, year, period) {
+    const eid = String(employeeId || certEmployeeIdValue()).trim();
+    const y = Number(year) || certYearValue();
+    const p = String(period || $("certPeriod")?.value || currentPayrollPeriod() || "").trim();
+    if (!eid) {
+      toast(uiT("portal.certNeedEmployee", "Bitte Mitarbeiter-ID eingeben."), "error");
+      return;
+    }
+    const ok = await humanConfirm({
+      title: uiT("portal.certSendVb", "VB an Mitarbeiter"),
+      body: certConfirmBody("verdienst"),
+      requireCheck: true,
+    });
+    if (!ok) return;
+    try {
+      await deliverCertificateToPlatform({ kind: "verdienst", employeeId: eid, year: y, period: p });
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  }
+
+  async function sendAllLstbToPlatform(year) {
+    const y = Number(year) || certYearValue();
+    const ok = await humanConfirm({
+      title: uiT("portal.certSendLstbAll", "Alle LStB an Mitarbeiter"),
+      body: certConfirmBody("lstb-all"),
+      requireCheck: true,
+    });
+    if (!ok) return;
+    try {
+      await deliverCertificateToPlatform({ kind: "lstb-all", year: y });
     } catch (e) {
       toast(e.message, "error");
     }
@@ -1841,6 +1981,7 @@
           <div class="api-inbox-actions">
             <button type="button" class="api-cert-lstb" data-emp="${esc(e.employeeId)}" data-year="${year}">LStB</button>
             <button type="button" class="api-cert-vb" data-emp="${esc(e.employeeId)}" data-year="${year}">VB</button>
+            <button type="button" class="api-cert-send-lstb" data-emp="${esc(e.employeeId)}" data-year="${year}">${esc(uiT("portal.certSendShort", "Senden"))}</button>
           </div>
         </div>`).join("")
       : `<p class="section-hint">${esc(uiT("portal.certEmpty", "Keine freigegebenen Monate für dieses Jahr."))}</p>`;
@@ -1849,6 +1990,9 @@
     });
     host.querySelectorAll(".api-cert-vb").forEach((btn) => {
       btn.addEventListener("click", () => showVerdienstCertificate(btn.dataset.emp, Number(btn.dataset.year)));
+    });
+    host.querySelectorAll(".api-cert-send-lstb").forEach((btn) => {
+      btn.addEventListener("click", () => sendLstbToPlatform(btn.dataset.emp, Number(btn.dataset.year)));
     });
     host.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
@@ -3620,7 +3764,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.51.9</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.52.0</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))
@@ -4853,6 +4997,9 @@
     $("btnCertLstb")?.addEventListener("click", () => showLstbCertificate());
     $("btnCertVerdienst")?.addEventListener("click", () => showVerdienstCertificate());
     $("btnCertLstbAll")?.addEventListener("click", () => showAllLstbCertificates());
+    $("btnCertLstbSend")?.addEventListener("click", () => sendLstbToPlatform());
+    $("btnCertVbSend")?.addEventListener("click", () => sendVerdienstToPlatform());
+    $("btnCertLstbSendAll")?.addEventListener("click", () => sendAllLstbToPlatform());
     $("btnCertSummary")?.addEventListener("click", () => loadCertificateSummary());
     $("certYear")?.addEventListener("change", () => loadCertificateSummary());
     $("btnSimulatePayroll")?.addEventListener("click", async () => {

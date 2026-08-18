@@ -136,6 +136,11 @@ import {
   listCertificateSummary,
 } from "./certificates/employee-certificates.mjs";
 import {
+  deliverEmployeeLstb,
+  deliverEmployeeVerdienst,
+  deliverYearLstb,
+} from "./certificates/deliver.mjs";
+import {
   buildDeliveryTrust,
   detectPayrollAnomalies,
   simulatePayroll,
@@ -1687,6 +1692,81 @@ async function handler(req, res) {
       const scopeCheck = assertSameTenant(tenantScope, companyId, "Verdienstbescheinigung");
       if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
       const result = buildEmployeeVerdienstCertificate(companyId, employeeId, year, period);
+      return reply(result.ok ? 200 : (result.status || 422), result);
+    }
+
+    if (req.method === "POST" && path === "/v1/portal/certificates/lstb/deliver") {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(body.companyId || tenantScope || "");
+      const employeeId = body.employeeId || body.badgeId || "";
+      const year = Number(body.year) || new Date().getFullYear();
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "LStB-Zustellung");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const gate = requireHumanConfirm(body, "certificate_deliver");
+      if (!gate.ok) return reply(gate.status || 422, gate);
+      const result = await deliverEmployeeLstb(companyId, employeeId, year, {
+        printed: body.printed === true,
+        forceRedeliver: body.forceRedeliver === true,
+        reason: body.reason || (body.printed ? "print" : "send"),
+      });
+      audit({
+        type: "portal.lstb_deliver",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { employeeId, year, printed: body.printed === true, humanConfirm: true },
+      });
+      return reply(result.ok ? 200 : (result.status || 422), result);
+    }
+
+    if (req.method === "POST" && path === "/v1/portal/certificates/verdienst/deliver") {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(body.companyId || tenantScope || "");
+      const employeeId = body.employeeId || body.badgeId || "";
+      const year = Number(body.year) || new Date().getFullYear();
+      const period = body.period || undefined;
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "VB-Zustellung");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const gate = requireHumanConfirm(body, "certificate_deliver");
+      if (!gate.ok) return reply(gate.status || 422, gate);
+      const result = await deliverEmployeeVerdienst(companyId, employeeId, year, period, {
+        printed: body.printed === true,
+        forceRedeliver: body.forceRedeliver === true,
+        reason: body.reason || (body.printed ? "print" : "send"),
+      });
+      audit({
+        type: "portal.verdienst_deliver",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { employeeId, year, period: period || null, printed: body.printed === true, humanConfirm: true },
+      });
+      return reply(result.ok ? 200 : (result.status || 422), result);
+    }
+
+    if (req.method === "POST" && (path === "/v1/portal/certificates/lstb/deliver-year" || path === "/v1/portal/certificates/lstb/deliver-all")) {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(body.companyId || tenantScope || "");
+      const year = Number(body.year) || new Date().getFullYear();
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "LStB-Jahr-Zustellung");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const gate = requireHumanConfirm(body, "certificate_deliver");
+      if (!gate.ok) return reply(gate.status || 422, gate);
+      const result = await deliverYearLstb(companyId, year, {
+        printed: body.printed === true,
+        forceRedeliver: body.forceRedeliver === true,
+        reason: body.reason || (body.printed ? "print" : "send"),
+      });
+      audit({
+        type: "portal.lstb_deliver_year",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { year, okCount: result.okCount, count: result.count, humanConfirm: true },
+      });
       return reply(result.ok ? 200 : (result.status || 422), result);
     }
 
