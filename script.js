@@ -238,7 +238,7 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2.51.6";
+const APP_VERSION = "2.51.7";
 const APP_VERSION_BUILD = "2026.45";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
@@ -1056,8 +1056,8 @@ function initDashboardActions() {
     btn.addEventListener("click", () => {
       const tab = btn.dataset.dashGo;
       const mode = btn.dataset.dashMode;
-      if (mode === "payroll") {
-        window.location.href = "lohn.html";
+      if (mode === "payroll" || mode === "payroll-annual") {
+        window.location.href = mode === "payroll-annual" ? "lohn.html#portalExportCard" : "lohn.html";
         return;
       }
       if (mode && documentTypeInput) {
@@ -1807,8 +1807,8 @@ function initDocTypeCards() {
     card.addEventListener("click", () => {
       const type = card.dataset.docType;
       if (!type || !documentTypeInput) return;
-      if (type === "payroll") {
-        window.location.href = "lohn.html";
+      if (type === "payroll" || type === "payroll-annual") {
+        window.location.href = type === "payroll-annual" ? "lohn.html#portalExportCard" : "lohn.html";
         return;
       }
       documentTypeInput.value = type;
@@ -7278,7 +7278,7 @@ try {
   const parsedDraft = rawDraft ? JSON.parse(rawDraft) : null;
   if (parsedDraft && !isDraftMeaningless(parsedDraft)) {
     loadDraft(false);
-    if (getCurrentMode() === "payroll") {
+    if (getCurrentMode() === "payroll" || getCurrentMode() === "payroll-annual") {
       documentTypeInput.value = "invoice";
       toggleModeUI();
     }
