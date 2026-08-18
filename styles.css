@@ -1130,6 +1130,38 @@ body.annual-mode #invoicePreview > :not(#annualTaxSheet) {
   display: none !important;
 }
 
+/* Mandantenverwaltung: Firmenbriefkopf, nicht Mitarbeiter-LStB */
+body.letterhead-preview.annual-mode #invoicePreview > :not(#annualTaxSheet):not(#datevSheetHost):not(#payrollSheet):not(#verdienstSheet),
+body.letterhead-preview.payroll-mode:not(.annual-mode) #invoicePreview > :not(#datevSheetHost):not(#payrollSheet):not(#annualTaxSheet):not(#verdienstSheet) {
+  display: revert !important;
+}
+
+body.letterhead-preview #annualTaxSheet,
+body.letterhead-preview #datevSheetHost,
+body.letterhead-preview #payrollSheet,
+body.letterhead-preview #verdienstSheet {
+  display: none !important;
+}
+
+body.letterhead-preview #invoicePreview > .preview-tools,
+body.letterhead-preview #invoicePreview > .invoice-top,
+body.letterhead-preview #invoicePreview > .invoice-meta,
+body.letterhead-preview #invoicePreview > .addresses,
+body.letterhead-preview #invoicePreview > .preview-items,
+body.letterhead-preview #invoicePreview > .totals,
+body.letterhead-preview #invoicePreview > .invoice-bank,
+body.letterhead-preview #invoicePreview > .note-box {
+  display: revert !important;
+}
+
+body.letterhead-preview.payroll-mode .preview-panel,
+body.letterhead-preview.annual-mode .workspace .preview-panel {
+  width: auto;
+  max-width: 100%;
+  background: #e8e8e8 !important;
+  padding: 12px 16px 20px;
+}
+
 body.payroll-mode #payrollSheet {
   display: none !important;
 }

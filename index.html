@@ -10,16 +10,16 @@
       href="https://fonts.googleapis.com/css2?family=Allura&family=Barlow:wght@400;500;600;700&family=Dancing+Script:wght@500;600&family=Great+Vibes&family=IBM+Plex+Mono:wght@400;500&family=Pacifico&family=Pinyon+Script&family=Satisfy&family=Space+Grotesk:wght@500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=43" />
+    <link rel="stylesheet" href="styles.css?v=44" />
     <link rel="stylesheet" href="agenda-reference.css?v=6" />
-    <link rel="stylesheet" href="app-ui.css?v=20" />
+    <link rel="stylesheet" href="app-ui.css?v=21" />
     <link rel="stylesheet" href="payroll-layouts.css?v=21" />
     <link rel="stylesheet" href="datev-layout.css?v=12" />
     <link rel="stylesheet" href="datev-ref-overlay.css?v=2" />
     <link rel="stylesheet" href="datev-sheet.css?v=2" />
     <link rel="stylesheet" href="print-datev.css?v=3" />
     <link rel="stylesheet" href="verdienst-sheet.css?v=1" />
-    <link rel="stylesheet" href="annual-certificate.css?v=9" />
+    <link rel="stylesheet" href="annual-certificate.css?v=10" />
     <link rel="stylesheet" href="documents-bw.css?v=1" />
     <link rel="stylesheet" href="workpass-theme.css?v=26" />
     <link rel="manifest" href="manifest.webmanifest" />
@@ -623,8 +623,8 @@
           <div class="tab-panel" data-tab-panel="company">
             <h2 data-i18n="nav.company">Mandantenverwaltung</h2>
             <p class="muted" data-i18n="hub.companyIntro" data-i18n-html>
-              Lokales Profil für Rechnung &amp; PDF. Bei Firmen-Login zeigt der Status die Plattform-Buchhaltung;
-              Lohn-Stammdaten (DATEV-Nr.) liegen im <a href="lohn.html">Lohn-Portal</a>.
+              Rechts: Firmenbriefkopf für Rechnung und PDF. Die Lohnsteuerbescheinigung (LStB) gilt für den Mitarbeiter
+              und liegt im <a href="lohn.html">Lohn-Portal</a> — nicht auf dieser Seite.
             </p>
             <p class="wp-hub-banner" id="mandantAccountingStatus" hidden role="status"></p>
 
@@ -1093,7 +1093,7 @@
           </div>
         </section>
 
-        <section class="panel preview-panel" id="invoicePreview">
+        <section class="panel preview-panel" id="invoicePreview" data-preview-label="Vorschau · Drucklayout Schwarz/Weiß">
           <div class="preview-tools">
             <p class="preview-sheet-hint mode-payroll-only">DATEV-Vorschau (leeres Formular). Für Plattform-Import und saubere Bearbeitung bitte <a href="lohn.html">Zur Lohnabrechnung</a> nutzen. Druck/PDF = nur A4.</p>
             <label for="previewZoom" class="preview-zoom-label">Vorschau</label>
@@ -1663,9 +1663,9 @@
                 <div class="lstb-header-center">
                   <h2>Lohnsteuerbescheinigung</h2>
                   <p>für das Kalenderjahr <strong id="lstbYearTitle">2026</strong></p>
-                  <p class="lstb-period-banner" id="lstbPeriodBanner">-</p>
-                  <p class="lstb-period-dates" id="lstbPeriodDates">-</p>
-                  <p class="lstb-sub">Ausdruck der elektronischen Lohnsteuerbescheinigung nach § 39 Abs. 1 EStG</p>
+                  <p class="lstb-recipient">für den Arbeitnehmer</p>
+                  <p class="lstb-emp-name" id="lstbHeaderEmployee">—</p>
+                  <p class="lstb-sub">Elektronische Lohnsteuerbescheinigung nach § 41b EStG · nicht die LStA der Firma (§ 41a EStG)</p>
                 </div>
                 <div class="lstb-header-right">
                   <p>KmId</p>
@@ -1673,14 +1673,14 @@
                 </div>
               </header>
               <header class="lstb-title-block lstb-title-block-secondary">
-                <p>FinanzDokument Pro · BMF PAP / SGB IV · Jahr <strong id="lstbYear">2026</strong></p>
+                <p>WorkPass Lohn · BMF PAP / SGB IV · Jahr <strong id="lstbYear">2026</strong></p>
               </header>
               <div class="lstb-grid">
                 <div class="lstb-left">
                   <table class="lstb-meta-table">
                     <tbody>
                       <tr><td class="lstb-lbl">Personal-Nr.</td><td id="lstbPersNr">-</td></tr>
-                      <tr><td class="lstb-lbl">Identifikationsnummer</td><td id="lstbTaxId">-</td></tr>
+                      <tr><td class="lstb-lbl">Steuer-ID (Mitarbeiter)</td><td id="lstbTaxId">—</td></tr>
                       <tr><td class="lstb-lbl">SV-Nummer</td><td id="lstbInsuranceNo">-</td></tr>
                       <tr><td class="lstb-lbl">Geburtsdatum</td><td id="lstbBirthDate">-</td></tr>
                       <tr><td class="lstb-lbl">Steuerklasse</td><td id="lstbTaxClass">-</td></tr>
@@ -1715,7 +1715,7 @@
                 </div>
               </div>
               <footer class="lstb-footer-note">
-                <p id="lstbFooterNote">Bescheinigung nach § 39 Abs. 1 EStG · Berechnung aus gespeicherten Monatsabrechnungen · Lohnsteuer BMF-Programmablaufplan</p>
+                <p id="lstbFooterNote">Bescheinigung nach § 41b EStG für den Arbeitnehmer · nicht LStA der Firma (§ 41a EStG) · Summe aus Monatsabrechnungen · LSt BMF-Programmablaufplan</p>
               </footer>
             </article>
           </section>
@@ -1798,11 +1798,11 @@
     <script src="tax-rules.js?v=4"></script>
     <script src="payroll-bridge.js?v=4"></script>
     <script src="legal-config.js?v=3"></script>
-    <script src="annual-certificate.js?v=3"></script>
+    <script src="annual-certificate.js?v=4"></script>
     <script src="elster-export.js?v=2"></script>
     <script src="datev-sheet.js?v=52"></script>
     <script src="payroll-core.js?v=34"></script>
-    <script src="workpass-i18n-packs.js?v=37"></script>
+    <script src="workpass-i18n-packs.js?v=39"></script>
     <script src="workpass-i18n.js?v=6"></script>
     <script src="workpass-pwa.js?v=4"></script>
     <script src="auth-gate.js?v=18"></script>
@@ -1810,6 +1810,6 @@
     <script src="workpass-hub.js?v=11"></script>
     <script src="templates.js?v=1" defer></script>
     <script src="signature-engine.js?v=4"></script>
-    <script src="script.js?v=105" defer></script>
+    <script src="script.js?v=106" defer></script>
   </body>
 </html>

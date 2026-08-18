@@ -1535,7 +1535,17 @@
     const monthsSummary = data.hasData
       ? `Abgerechnete Monate ${year}: ${(data.totals?.months || []).join(", ")} (${data.totals?.monthsCount || 0} Monat(e))`
       : `Keine freigegebenen Monate für ${year}.`;
-    const footerNote = `Bescheinigung nach § 39 Abs. 1 EStG für ${year} · Summe aus ${data.totals?.monthsCount || 0} Monatsabrechnung(en) · LSt BMF PAP · SV SGB IV`;
+    const taxIdDisplay = (window.AnnualCertificate?.displayEmployeeTaxId
+      ? window.AnnualCertificate.displayEmployeeTaxId(data.employeeTaxId)
+      : (String(data.employeeTaxId || "").replace(/\D/g, "").length === 11
+        ? String(data.employeeTaxId).replace(/\D/g, "")
+        : "—"));
+    const headerEmp = window.AnnualCertificate?.displayEmployeeName
+      ? window.AnnualCertificate.displayEmployeeName(data.employeeName)
+      : (String(data.employeeName || "").trim() || "—");
+    const legalSub = window.AnnualCertificate?.LSTB_LEGAL_SUB
+      || "Elektronische Lohnsteuerbescheinigung nach § 41b EStG · für den Arbeitnehmer · nicht die LStA der Firma (§ 41a EStG)";
+    const footerNote = `Bescheinigung nach § 41b EStG für den Arbeitnehmer · nicht LStA der Firma (§ 41a EStG) · ${year} · ${data.totals?.monthsCount || 0} Monat(e) · LSt BMF PAP · SV SGB IV`;
     return `
       <article class="lstb-document">
         <header class="lstb-official-header">
@@ -1547,9 +1557,9 @@
           <div class="lstb-header-center">
             <h2>Lohnsteuerbescheinigung</h2>
             <p>für das Kalenderjahr <strong>${year}</strong></p>
-            <p class="lstb-period-banner">${esc(periodVonBis)}</p>
-            <p class="lstb-period-dates">${esc(periodDates)}</p>
-            <p class="lstb-sub">Ausdruck der elektronischen Lohnsteuerbescheinigung nach § 39 Abs. 1 EStG</p>
+            <p class="lstb-recipient">für den Arbeitnehmer</p>
+            <p class="lstb-emp-name">${esc(headerEmp)}</p>
+            <p class="lstb-sub">${esc(legalSub)}</p>
           </div>
           <div class="lstb-header-right">
             <p>KmId</p>
@@ -1563,8 +1573,8 @@
           <div class="lstb-left">
             <table class="lstb-meta-table">
               <tbody>
-                <tr><td class="lstb-lbl">Personal-Nr.</td><td>${esc(data.personnelNumber || data.employeeId || "-")}</td></tr>
-                <tr><td class="lstb-lbl">Identifikationsnummer</td><td>${esc(data.employeeTaxId || "-")}</td></tr>
+                <tr><td class="lstb-lbl">Personal-Nr.</td><td>${esc(data.personnelNumber || data.employeeId || "—")}</td></tr>
+                <tr><td class="lstb-lbl">Steuer-ID (Mitarbeiter)</td><td>${esc(taxIdDisplay)}</td></tr>
                 <tr><td class="lstb-lbl">SV-Nummer</td><td>${esc(data.employeeInsuranceNo || "-")}</td></tr>
                 <tr><td class="lstb-lbl">Geburtsdatum</td><td>${esc(certFormatDateDe(data.employeeBirthDate))}</td></tr>
                 <tr><td class="lstb-lbl">Steuerklasse</td><td>${esc(certTaxClassDisplay(data.taxClass))}</td></tr>

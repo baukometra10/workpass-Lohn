@@ -238,7 +238,7 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2.44.1";
+const APP_VERSION = "2.51.6";
 const APP_VERSION_BUILD = "2026.45";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
@@ -1782,13 +1782,16 @@ function initTabs() {
       });
       document.body.classList.toggle("dashboard-tab", target === "dashboard");
       document.body.classList.toggle("help-tab", target === "help");
+      document.body.classList.toggle("company-tab", target === "company");
       updateTopbarForMode();
       updateDashboard();
+      updatePreview();
     });
   });
   const initialTab = document.querySelector(".form-tab.active")?.dataset.tab || "dashboard";
   document.body.classList.toggle("dashboard-tab", initialTab === "dashboard");
   document.body.classList.toggle("help-tab", initialTab === "help");
+  document.body.classList.toggle("company-tab", initialTab === "company");
 }
 
 function syncDocTypeCards(mode) {
@@ -1871,7 +1874,7 @@ function updateTopbarForMode() {
     document: mode === "payroll-annual"
       ? tt("hub.sub.annual", "Jahres-Lohnsteuerbescheinigung · ELSTER-kompatibel")
       : (mode === "payroll" ? tt("hub.sub.payroll", "Monatsabrechnung · DATEV LOHN17 (1:1 Referenz)") : tt("hub.sub.invoice", "Ausgangsrechnungen nach § 14 UStG")),
-    company: tt("hub.sub.company", "Stammdaten, Bankverbindung, Layout-Vorlagen"),
+    company: tt("hub.sub.company", "Firmenprofil · Briefkopf, Steuer-Nr., IBAN — nicht die LStB der Mitarbeiter"),
     payroll: tt("hub.sub.payrollMenu", "Monatsabrechnung · DATEV LOHN17 · Referenz Mustermann"),
     help: tt("hub.sub.help", "Schnellstart, Pflichtfelder, Export & Recht"),
   };
@@ -5211,10 +5214,15 @@ function updateAnnualPreview() {
   const periodVonBis = data?.certPeriodLabel
     || window.AnnualCertificate?.formatCertPeriodVonBis?.(data?.periodStart, data?.periodEnd)
     || "";
-  setNodeText(document.getElementById("lstbPeriodBanner"), periodVonBis || "-");
-  setNodeText(document.getElementById("lstbPeriodDates"), periodDates);
-  setNodeText(document.getElementById("lstbPersNr"), data?.personnelNumber || data?.employeeId || "-");
-  setNodeText(document.getElementById("lstbTaxId"), data?.employeeTaxId || "-");
+  setNodeText(document.getElementById("lstbPersNr"), data?.personnelNumber || data?.employeeId || "—");
+  const taxIdDisplay = window.AnnualCertificate?.displayEmployeeTaxId
+    ? window.AnnualCertificate.displayEmployeeTaxId(data?.employeeTaxId)
+    : (String(data?.employeeTaxId || "").replace(/\D/g, "").length === 11 ? String(data.employeeTaxId).replace(/\D/g, "") : "—");
+  setNodeText(document.getElementById("lstbTaxId"), taxIdDisplay);
+  const headerEmp = window.AnnualCertificate?.displayEmployeeName
+    ? window.AnnualCertificate.displayEmployeeName(employeeName)
+    : (employeeName && employeeName !== "-" ? employeeName : "—");
+  setNodeText(document.getElementById("lstbHeaderEmployee"), headerEmp);
   setNodeText(document.getElementById("lstbInsuranceNo"), data?.employeeInsuranceNo || "-");
   setNodeText(document.getElementById("lstbBirthDate"), formatDateForView(data?.employeeBirthDate));
   setNodeText(document.getElementById("lstbTaxClass"), taxClassToDisplay(data?.taxClass || "I"));
@@ -5261,24 +5269,69 @@ function updateAnnualPreview() {
 
   const footerNote = document.getElementById("lstbFooterNote");
   if (footerNote) {
-    footerNote.textContent = `Bescheinigung nach § 39 Abs. 1 EStG für ${year} · Summe aus ${data?.totals?.monthsCount || 0} Monatsabrechnung(en) · LSt BMF-PAP ${LEGAL_CONFIG.year} · SV SGB IV`;
+    footerNote.textContent = `Bescheinigung nach § 41b EStG für den Arbeitnehmer · nicht LStA der Firma (§ 41a EStG) · ${year} · ${data?.totals?.monthsCount || 0} Monat(e) · LSt BMF-PAP ${LEGAL_CONFIG.year} · SV SGB IV`;
   }
+}
+
+function isCompanyTabActive() {
+  return document.querySelector(".form-tab.active")?.dataset.tab === "company";
+}
+
+function uiText(key, fallback) {
+  const val = window.WorkPassI18n?.t?.(key);
+  return val && val !== key ? val : fallback;
+}
+
+function syncPreviewChrome() {
+  const preview = document.getElementById("invoicePreview");
+  if (!preview) return;
+  if (isCompanyTabActive()) {
+    preview.dataset.previewLabel = uiText(
+      "preview.companyLetterhead",
+      "Vorschau · Firmenbriefkopf (nicht Mitarbeiter-LStB)"
+    );
+    return;
+  }
+  if (getCurrentMode() === "payroll-annual") {
+    preview.dataset.previewLabel = uiText(
+      "preview.lstbEmployee",
+      "Vorschau · LStB für den Arbeitnehmer (nicht Firmen-LStA)"
+    );
+    return;
+  }
+  preview.dataset.previewLabel = uiText("preview.printBw", "Vorschau · Drucklayout Schwarz/Weiß");
 }
 
 function updatePreview() {
   toggleModeUI();
   updateDocumentLogos();
+  const companyTab = isCompanyTabActive();
+  document.body.classList.toggle("company-tab", companyTab);
+  document.body.classList.toggle("letterhead-preview", companyTab);
+  if (companyTab) {
+    annualTaxSheet?.classList.add("hidden");
+    invoiceOnlyElements.forEach((el) => el.classList.remove("hidden"));
+    payrollOnlyElements.forEach((el) => el.classList.add("hidden"));
+    annualOnlyElements.forEach((el) => el.classList.add("hidden"));
+    updateInvoicePreview();
+    updateDashboard();
+    syncPreviewChrome();
+    return;
+  }
   if (getCurrentMode() === "payroll-annual") {
     updateAnnualPreview();
     updateDashboard();
+    syncPreviewChrome();
     return;
   }
   if (getCurrentMode() === "payroll") {
     updatePayrollPreview();
+    syncPreviewChrome();
     return;
   }
   updateInvoicePreview();
   updateDashboard();
+  syncPreviewChrome();
 }
 
 function buildPdfFilename() {

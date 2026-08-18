@@ -72,17 +72,21 @@
   font-size: 7pt;
 }
 
-.lstb-period-banner {
-  margin: 1.2mm 0 0.4mm !important;
-  font-size: 8.2pt !important;
+.lstb-recipient {
+  margin: 1.2mm 0 0.3mm !important;
+  font-size: 6.4pt !important;
   font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: #0f172a;
 }
 
-.lstb-period-dates {
-  margin: 0 0 1mm !important;
-  font-size: 6.5pt !important;
-  color: #334155;
+.lstb-emp-name {
+  margin: 0 0 1.4mm !important;
+  font-size: 9.5pt !important;
+  font-weight: 700;
+  color: #000;
+  line-height: 1.2;
 }
 
 .lstb-sub {
@@ -381,6 +385,11 @@ body.annual-mode .preview-panel .invoice-legal {
 
 body.annual-mode #annualTaxSheet {
   display: flex !important;
+}
+
+body.letterhead-preview #annualTaxSheet,
+body.letterhead-preview.annual-mode #annualTaxSheet {
+  display: none !important;
 }
 
 body.payroll-mode:not(.annual-mode) #annualTaxSheet {

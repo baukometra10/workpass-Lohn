@@ -278,11 +278,30 @@ function buildAnnualCertificateData(options = {}) {
   };
 }
 
+/** Printed LStB copy stays German (legal document). */
+const LSTB_LEGAL_SUB =
+  "Elektronische Lohnsteuerbescheinigung nach § 41b EStG · für den Arbeitnehmer · nicht die LStA der Firma (§ 41a EStG)";
+
+function displayEmployeeTaxId(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length !== 11) return "—";
+  return digits;
+}
+
+function displayEmployeeName(value) {
+  const name = String(value || "").trim();
+  if (!name || name === "-") return "—";
+  return name;
+}
+
 if (typeof window !== "undefined") {
   window.AnnualCertificate = {
     LSTB_ROWS,
+    LSTB_LEGAL_SUB,
     buildAnnualCertificateData,
     formatCertPeriod,
     formatCertPeriodVonBis,
+    displayEmployeeTaxId,
+    displayEmployeeName,
   };
 }
