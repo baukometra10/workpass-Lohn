@@ -513,9 +513,12 @@ select option:checked,
 
 .form-jump {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 4px;
   margin-top: 8px;
+}
+.form-jump-standalone {
+  grid-template-columns: repeat(5, 1fr);
 }
 .form-jump a {
   text-align: center;
@@ -2310,9 +2313,35 @@ body.company-portal .company-portal-banner-inner {
   padding: 8px 12px;
 }
 
-/* Firm portal: keep full Lohn section navigation (Empfang / Firma / Lohnarten / Auszahlung / Archiv) */
-body.company-portal .form-jump {
+body.company-portal .form-jump-standalone {
+  display: none !important;
+}
+body:not(.company-portal) .form-jump-portal {
+  display: none !important;
+}
+body.company-portal .form-jump-portal {
   display: grid !important;
+  grid-template-columns: repeat(3, 1fr);
+}
+body.company-portal:not([data-portal-ws]) [data-ws]:not([data-ws="monat"]):not(.form-jump-portal a),
+body.company-portal[data-portal-ws="monat"] [data-ws]:not([data-ws="monat"]):not(.form-jump-portal a) {
+  display: none !important;
+}
+body.company-portal[data-portal-ws="steuer"] [data-ws]:not([data-ws="steuer"]):not(.form-jump-portal a) {
+  display: none !important;
+}
+body.company-portal[data-portal-ws="dateien"] [data-ws]:not([data-ws="dateien"]):not(.form-jump-portal a) {
+  display: none !important;
+}
+body.company-portal .portal-api-tech,
+body.company-portal #apiCompanyList,
+body.company-portal #apiInboxList,
+body.company-portal .recv-modes,
+body.company-portal #panelFile,
+body.company-portal #panelPaste,
+body.company-portal #dropTarget,
+body.company-portal #apiBridgeHint {
+  display: none !important;
 }
 body.company-portal #secFirma,
 body.company-portal #secLohnarten,

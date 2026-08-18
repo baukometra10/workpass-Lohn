@@ -262,7 +262,7 @@
             <section id="onboardingBanner" class="onboarding-banner dash-onboarding">
               <div>
                 <strong data-i18n="hub.welcomeTitle">Willkommen bei WorkPass Steuerprogramm</strong>
-                <p class="small muted" data-i18n="hub.onboardingSub">Rechnung · Lohn · Mandant · Plattform – Loslegen oder Lohn-Portal öffnen</p>
+                <p class="small muted" data-i18n="hub.onboardingSub">Rechnung · Firma · Lohn – Loslegen oder Lohn-Portal öffnen</p>
               </div>
               <div class="dash-onboarding-actions">
                 <a href="lohn.html" class="secondary-btn" style="text-decoration:none" data-i18n="hub.lohnPortal">Lohn-Portal</a>
@@ -284,7 +284,7 @@
             </section>
 
             <p class="wp-hub-banner" id="dashHubBanner" data-i18n="hub.banner" data-i18n-html>
-              <strong>Hub:</strong> Belege &amp; Sync auf einen Blick ·
+              <strong>Hub:</strong> Rechnung · Firma · Lohn (Monat, Steuer, Dateien) ·
               <a href="lohn.html">Zum Lohn-Portal</a>
             </p>
             <p class="wp-hub-banner dash-sync-status" id="dashSyncStatus" hidden role="status"></p>
@@ -311,10 +311,6 @@
               <article class="dash-kpi">
                 <span class="dash-kpi-label" data-i18n="hub.kpi.invoicesLocal">Rechnungen (Archiv)</span>
                 <strong class="dash-kpi-value" id="dashKpiInvoicesLocal">0</strong>
-              </article>
-              <article class="dash-kpi">
-                <span class="dash-kpi-label" data-i18n="hub.kpi.mode">Aktueller Modus</span>
-                <strong class="dash-kpi-value dash-kpi-mode" id="dashKpiMode">Rechnung</strong>
               </article>
             </div>
 
@@ -350,40 +346,29 @@
                 </button>
                 <a href="lohn.html" class="dash-action-btn" style="text-decoration:none;color:inherit">
                   <strong data-i18n="hub.lohnPortal">Lohn-Portal</strong>
-                  <span data-i18n="hub.lohnPortalSub">Empfang · Freigabe · A4</span>
+                  <span data-i18n="hub.lohnPortalSub">Monat · Steuer · Dateien</span>
                 </a>
                 <button type="button" class="dash-action-btn" data-dash-go="company">
-                  <strong data-i18n="hub.manageClient">Mandant verwalten</strong>
-                  <span data-i18n="hub.manageClientSub">Stammdaten, Bank, Logo</span>
-                </button>
-                <button type="button" class="dash-action-btn" id="dashSyncCheckBtn" data-dash-sync>
-                  <strong data-i18n="hub.syncCheck">Sync prüfen</strong>
-                  <span data-i18n="hub.syncCheckSub">Plattform · Webhook · Pending</span>
+                  <strong data-i18n="hub.manageClient">Firma</strong>
+                  <span data-i18n="hub.manageClientSub">Briefkopf, Steuer-Nr., IBAN</span>
                 </button>
               </div>
-              <p class="muted small dash-secondary-actions">
-                <a href="lohn.html#portalExportCard" class="linkish-btn" data-i18n="hub.annualBtn">Lohnsteuerbescheinigung (ELSTER)</a>
-              </p>
             </section>
 
             <section class="form-section dash-actions-section" id="dashActionsFirm" hidden>
               <h2 class="form-section-title" data-i18n="hub.firmQuickAccess">Was wollen Sie jetzt tun?</h2>
               <div class="dash-quick-actions">
                 <a href="lohn.html" class="dash-action-btn dash-action-primary" style="text-decoration:none;color:inherit">
-                  <strong data-i18n="hub.openPayroll">Zur Lohnabrechnung</strong>
-                  <span data-i18n="hub.openPayrollSub">Mitarbeiter · Sync · Freigabe · A4</span>
+                  <strong data-i18n="hub.lohnPortal">Lohn-Portal</strong>
+                  <span data-i18n="hub.lohnPortalSub">Monat · Steuer · Dateien</span>
                 </a>
-                <a href="lohn.html#sync" class="dash-action-btn" style="text-decoration:none;color:inherit">
-                  <strong data-i18n="sync.now">Jetzt synchronisieren</strong>
-                  <span data-i18n="hub.firmSyncSub">Plattform holen · automatisch berechnen</span>
-                </a>
-                <button type="button" class="dash-action-btn" data-dash-go="company">
-                  <strong data-i18n="hub.firmProfile">Firmenprofil</strong>
-                  <span data-i18n="hub.firmProfileSub">Adresse, Bank, Logo</span>
-                </button>
                 <button type="button" class="dash-action-btn" data-dash-go="document" data-dash-mode="invoice">
                   <strong data-i18n="hub.newInvoice">Neue Rechnung</strong>
                   <span data-i18n="hub.newInvoiceSub">§ 14 UStG · PDF &amp; CSV</span>
+                </button>
+                <button type="button" class="dash-action-btn" data-dash-go="company">
+                  <strong data-i18n="hub.manageClient">Firma</strong>
+                  <span data-i18n="hub.manageClientSub">Briefkopf, Steuer-Nr., IBAN</span>
                 </button>
               </div>
             </section>
@@ -394,12 +379,12 @@
               <div id="invoiceArchiveList" class="invoice-archive-list"></div>
             </section>
 
-            <section class="form-section">
+            <section class="form-section" hidden>
               <h2 class="form-section-title" data-i18n="hub.syncHistory">Sync-Historie</h2>
               <div id="hubSyncLogList"></div>
             </section>
 
-            <section class="form-section">
+            <section class="form-section" hidden>
               <h2 class="form-section-title" data-i18n="hub.empHistory">Mitarbeiter-Historie</h2>
               <p class="muted small" data-i18n="hub.empHistoryHint">Gespeicherte Monatsabrechnungen (lokal). Für Jahresbescheinigung werden diese summiert.</p>
               <div class="dash-table-wrap">
@@ -419,7 +404,7 @@
               </div>
             </section>
 
-            <section class="form-section dash-checklist">
+            <section class="form-section dash-checklist" hidden>
               <h2 class="form-section-title" data-i18n="hub.checklist">Checkliste Mandant</h2>
               <p class="muted small" id="dashChecklistSummary" role="status"></p>
               <ul class="dash-checklist-items" id="dashChecklist">
@@ -1046,11 +1031,11 @@
             <section class="help-card">
               <h3 data-i18n="help.quickstart">Schnellstart (5 Schritte)</h3>
               <ol class="help-steps">
-                <li data-i18n="help.step1" data-i18n-html><strong>Übersicht</strong> – Mandant prüfen, Schnellzugriff nutzen</li>
-                <li data-i18n="help.step2" data-i18n-html><strong>Mandantenverwaltung</strong> – Firma, Logo, Bank, Lohn-Vorlage (Agenda empfohlen)</li>
-                <li data-i18n="help.step3" data-i18n-html><strong>Beleg erfassen</strong> – Rechnung, Lohnabrechnung oder Jahresbescheinigung wählen</li>
-                <li data-i18n="help.step4" data-i18n-html><strong>Lohn</strong> – Mitarbeiterdaten, „Gesetzliche Sätze übernehmen“, Monat speichern</li>
-                <li data-i18n="help.step5" data-i18n-html><strong>PDF / Druck</strong> – Vorschau prüfen, exportieren (Strg+S speichern, Strg+P drucken)</li>
+                <li data-i18n="help.step1" data-i18n-html><strong>Übersicht</strong> – Rechnung, Firma oder Lohn wählen</li>
+                <li data-i18n="help.step2" data-i18n-html><strong>Firma</strong> – Briefkopf, Steuer-Nr., IBAN, Logo</li>
+                <li data-i18n="help.step3" data-i18n-html><strong>Rechnung</strong> – Ausgangsrechnung nach § 14 UStG</li>
+                <li data-i18n="help.step4" data-i18n-html><strong>Lohn</strong> – Monat (Abrechnung), Steuer (LStA / LStB), Dateien</li>
+                <li data-i18n="help.step5" data-i18n-html><strong>PDF / Druck</strong> – Vorschau prüfen, exportieren</li>
               </ol>
             </section>
             <section class="help-card">
@@ -1077,7 +1062,7 @@
                 <li data-i18n="help.exportCsv" data-i18n-html><strong>Rechnung CSV</strong> – Buchhaltungsimport</li>
                 <li data-i18n="help.exportDatev" data-i18n-html><strong>DATEV CSV / LODAS</strong> – Lohn Bewegungsdaten (Lohnmodus)</li>
                 <li data-i18n="help.exportElster" data-i18n-html><strong>ELSTER-XML</strong> – Vorbereitungsdatei Lohnsteuerbescheinigung (kein direkter ELSTER-Versand)</li>
-                <li data-i18n="help.exportBackup" data-i18n-html><strong>Datensicherung</strong> – JSON unter Mandantenverwaltung</li>
+                <li data-i18n="help.exportBackup" data-i18n-html><strong>Datensicherung</strong> – JSON unter Firma</li>
               </ul>
             </section>
             <section class="help-card help-legal">
@@ -1796,7 +1781,7 @@
     <script src="elster-export.js?v=2"></script>
     <script src="datev-sheet.js?v=52"></script>
     <script src="payroll-core.js?v=34"></script>
-    <script src="workpass-i18n-packs.js?v=41"></script>
+    <script src="workpass-i18n-packs.js?v=42"></script>
     <script src="workpass-i18n.js?v=6"></script>
     <script src="workpass-pwa.js?v=4"></script>
     <script src="auth-gate.js?v=18"></script>
@@ -1804,6 +1789,6 @@
     <script src="workpass-hub.js?v=11"></script>
     <script src="templates.js?v=1" defer></script>
     <script src="signature-engine.js?v=4"></script>
-    <script src="script.js?v=108" defer></script>
+    <script src="script.js?v=109" defer></script>
   </body>
 </html>

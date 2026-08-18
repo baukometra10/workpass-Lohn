@@ -1143,8 +1143,11 @@
     }
     const title = document.querySelector("#secEmpfang .step-head h2");
     if (title) {
-      title.setAttribute("data-i18n", "nav.overview");
-      title.textContent = uiT("nav.overview", "Übersicht");
+      const ws = document.body.dataset.portalWs || "monat";
+      const key = ws === "steuer" ? "jump.steuer" : ws === "dateien" ? "jump.dateien" : "jump.monat";
+      const fallback = ws === "steuer" ? "Steuer" : ws === "dateien" ? "Dateien" : "Monat";
+      title.setAttribute("data-i18n", key);
+      title.textContent = uiT(key, fallback);
     }
     const flowHint = document.querySelector("#companyFlow .section-hint");
     if (flowHint) flowHint.textContent = uiT("portal.onlyFirm", "Nur Ihre Firma und Ihre Mitarbeiter.");
@@ -3538,6 +3541,7 @@
 
     const banner = $("companyPortalBanner");
     if (!companyPortalId) {
+      initPortalWorkspaces();
       if (banner) banner.hidden = true;
       if (inboxPollTimer) {
         clearInterval(inboxPollTimer);
@@ -3600,7 +3604,7 @@
     }
 
     const empfangTitle = document.querySelector("#secEmpfang .step-head h2");
-    if (empfangTitle) empfangTitle.textContent = uiT("nav.overview", "Übersicht");
+    if (empfangTitle) empfangTitle.textContent = uiT("jump.monat", "Monat");
 
     persistApiConfig();
     applyPortalUiCopy();
@@ -3616,7 +3620,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.50.5</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.51.9</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))
@@ -3741,6 +3745,7 @@
       }
     }, 45000);
 
+    initPortalWorkspaces();
     toast(uiT("toast.welcome", "Willkommen · {name}").replace("{name}", companyName || companyPortalId), "ok");
   }
 
@@ -4943,7 +4948,7 @@
   }
 
   function initSectionNav() {
-    const links = [...document.querySelectorAll(".form-jump a[href^='#']")];
+    const links = [...document.querySelectorAll(".form-jump-standalone a[href^='#']")];
     if (!links.length) return;
     const sections = links
       .map((a) => document.querySelector(a.getAttribute("href")))
@@ -4972,6 +4977,53 @@
       sections.forEach((sec) => io.observe(sec));
     }
     setActive(sections[0]?.id || "secEmpfang");
+  }
+
+  function portalWorkspaceFromHash() {
+    const hash = String(location.hash || "").replace("#", "");
+    if (hash === "portalExportCard" || hash === "portalCertificatesCard" || hash === "steuer") return "steuer";
+    if (hash === "portalFilesCard" || hash === "dateien") return "dateien";
+    return "monat";
+  }
+
+  function setPortalWorkspace(ws, opts = {}) {
+    const name = ws === "steuer" || ws === "dateien" ? ws : "monat";
+    document.body.dataset.portalWs = name;
+    document.querySelectorAll(".form-jump-portal a[data-portal-tab]").forEach((a) => {
+      a.classList.toggle("is-active", a.dataset.portalTab === name);
+    });
+    applyPortalUiCopy();
+    if (opts.scroll) {
+      const id = name === "steuer" ? "portalExportCard" : name === "dateien" ? "portalFilesCard" : "portalSyncCard";
+      $(id)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }
+
+  function initPortalWorkspaces() {
+    const nav = document.querySelector(".form-jump-portal");
+    const standalone = document.querySelector(".form-jump-standalone");
+    const portal = Boolean(companyPortalId);
+    if (nav) nav.hidden = !portal;
+    if (standalone) standalone.hidden = portal;
+    if (!portal) {
+      delete document.body.dataset.portalWs;
+      return;
+    }
+    setPortalWorkspace(portalWorkspaceFromHash());
+    if (nav && !nav.dataset.boundWs) {
+      nav.dataset.boundWs = "1";
+      nav.querySelectorAll("a[data-portal-tab]").forEach((a) => {
+        a.addEventListener("click", (event) => {
+          event.preventDefault();
+          setPortalWorkspace(a.dataset.portalTab, { scroll: true });
+          const href = a.getAttribute("href") || "#portalSyncCard";
+          history.replaceState(null, "", href);
+        });
+      });
+      window.addEventListener("hashchange", () => {
+        if (companyPortalId) setPortalWorkspace(portalWorkspaceFromHash());
+      });
+    }
   }
 
   function startApp() {
