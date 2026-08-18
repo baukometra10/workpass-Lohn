@@ -13,3 +13,6 @@ playwright-report/
 .cursor/
 .vscode/
 scripts/patch-sig-stage.mjs
+# Operator runbooks (keep local; not for GitHub)
+docs/ELSTER_ERIC_WINDOWS.md
+docs/internal/
