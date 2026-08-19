@@ -1883,18 +1883,18 @@
     if (kind === "lstb-all") {
       return uiT(
         "portal.certSendConfirmAll",
-        "Alle Lohnsteuerbescheinigungen dieses Jahres an die Plattform, damit jeder Mitarbeiter sie in der App sieht – wie die Lohnabrechnung. Nicht an das Finanzamt (das ist ELSTER)."
+        "Alle Lohnsteuerbescheinigungen dieses Jahres gehen wie die Lohnabrechnung an die Plattform (Mitarbeiter-App). Das Steuerprogramm meldet Erfolg erst nach Plattform-Bestätigung (accepted/ack) – nicht an das Finanzamt (ELSTER)."
       );
     }
     if (kind === "verdienst") {
       return uiT(
         "portal.certSendConfirmVb",
-        "Verdienstbescheinigung an die Plattform, damit der Mitarbeiter sie in der App sieht – wie die Lohnabrechnung."
+        "Verdienstbescheinigung geht wie die Lohnabrechnung an die Plattform. Erfolg erst nach Bestätigung (accepted/ack) – dann sieht der Mitarbeiter sie in der App."
       );
     }
     return uiT(
       "portal.certSendConfirmLstb",
-      "Lohnsteuerbescheinigung (LStB, § 41b EStG) an die Plattform, damit der Mitarbeiter sie in der App sieht – wie die Lohnabrechnung. Nicht an das Finanzamt."
+      "Lohnsteuerbescheinigung (LStB, § 41b EStG) geht wie die Lohnabrechnung an die Plattform. Erfolg erst nach Bestätigung (accepted/ack) – nicht an das Finanzamt."
     );
   }
 
@@ -1909,8 +1909,8 @@
       period: ctx.period,
       printed,
       confirm: true,
-      // Explicit firm action: always re-push so unconfirmed/stuck LStB+VB reach the platform again.
       forceRedeliver: extra.forceRedeliver !== false,
+      requireConfirm: true,
     };
     const path = ctx.kind === "lstb-all"
       ? "/v1/portal/certificates/lstb/deliver-year"
@@ -1918,17 +1918,51 @@
         ? "/v1/portal/certificates/verdienst/deliver"
         : "/v1/portal/certificates/lstb/deliver";
     const data = await apiFetch(path, { method: "POST", body: JSON.stringify(payload) });
-    const pending = data.pendingPull === true || data.deliveredViaWebhook === false;
-    const toastKind = data.ok === false ? "error" : (pending ? "info" : "ok");
+    const confirmed = data.confirmed === true
+      || (ctx.kind === "lstb-all"
+        && Number(data.count) > 0
+        && Number(data.confirmedCount) === Number(data.count));
+    const localOnly = data.platformDelivery?.mode === "local-log-only"
+      || data.platformNotify?.mode === "local-log-only"
+      || (Array.isArray(data.results) && data.results.length && Number(data.confirmedCount || 0) === 0 && data.ok);
+    const pending = !confirmed && (data.pendingPull === true || data.trust === "pushed" || data.trust === "queued" || Number(data.pendingCount || 0) > 0);
     let msg = data.message || data.error || uiT("portal.certSent", "An die Plattform übergeben.");
-    if (data.ok !== false && pending) {
+    let toastKind = "ok";
+    if (confirmed) {
+      toastKind = "ok";
+      msg = data.message
+        || uiT("portal.certConfirmed", "Zugestellt und von der Plattform bestätigt – wie die Lohnabrechnung.");
+    } else if (data.ok === false && !localOnly) {
+      toastKind = "error";
+      msg = data.error || data.message
+        || uiT("portal.certNotConfirmed", "Nicht zugestellt: Plattform hat nicht bestätigt. Bitte Zustellungen · Vertrauen prüfen und erneut senden.");
+    } else if (pending && !localOnly) {
+      toastKind = "error";
       msg = data.message
         || uiT(
-          "portal.certPendingPull",
-          "An die Plattform gesendet – noch nicht bestätigt. Mitarbeiter sieht es erst, wenn die Plattform speichert (Zustellungen · Vertrauen prüfen)."
+          "portal.certPendingAck",
+          "An die Plattform gesendet, aber noch nicht bestätigt. Das Steuerprogramm wartet auf Ack – Mitarbeiter sieht es erst danach."
         );
+    } else if (localOnly) {
+      toastKind = "info";
+      msg = data.message
+        || uiT("portal.certLocalQueued", "Lokal in der Warteschlange (kein Webhook) – Plattform muss pollen und bestätigen.");
     }
     toast(msg, toastKind);
+    const deliveryId = data.delivery?.deliveryId || data.platformDelivery?.deliveryId;
+    if (deliveryId && !confirmed) {
+      try {
+        const status = await apiFetch(
+          `/v1/portal/certificates/delivery-status?deliveryId=${encodeURIComponent(deliveryId)}`
+        );
+        if (status.confirmed) {
+          toast(
+            uiT("portal.certConfirmedLate", "Nachprüfung: Plattform hat die Zustellung jetzt bestätigt."),
+            "ok"
+          );
+        }
+      } catch { /* ignore */ }
+    }
     try {
       loadDeliveryReconciliation().catch(() => {});
     } catch { /* ignore */ }
@@ -3998,7 +4032,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.53.2</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.53.3</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))

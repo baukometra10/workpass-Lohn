@@ -140,6 +140,7 @@ import {
   deliverEmployeeLstb,
   deliverEmployeeVerdienst,
   deliverYearLstb,
+  verifyCertificateDelivery,
 } from "./certificates/deliver.mjs";
 import {
   buildDeliveryTrust,
@@ -1729,16 +1730,27 @@ async function handler(req, res) {
         printed: body.printed === true,
         forceRedeliver: body.forceRedeliver === true,
         reason: body.reason || (body.printed ? "print" : "send"),
+        requireConfirm: body.requireConfirm !== false,
       });
       audit({
         type: "portal.lstb_deliver",
-        outcome: result.ok ? "ok" : "error",
+        outcome: result.confirmed ? "ok" : (result.ok ? "pending" : "error"),
         ip,
         path,
         companyId,
-        detail: { employeeId, year, printed: body.printed === true, humanConfirm: true },
+        detail: {
+          employeeId,
+          year,
+          printed: body.printed === true,
+          humanConfirm: true,
+          confirmed: Boolean(result.confirmed),
+          trust: result.trust || null,
+          deliveryId: result.delivery?.deliveryId || null,
+        },
       });
-      return reply(result.ok ? 200 : (result.status || 422), result);
+      // 200 when queued (like payslip) so UI receives full payload; ok/confirmed tell the truth.
+      const httpStatus = result.delivery || result.ok ? 200 : (result.status || 422);
+      return reply(httpStatus, result);
     }
 
     if (req.method === "POST" && path === "/v1/portal/certificates/verdienst/deliver") {
@@ -1755,16 +1767,27 @@ async function handler(req, res) {
         printed: body.printed === true,
         forceRedeliver: body.forceRedeliver === true,
         reason: body.reason || (body.printed ? "print" : "send"),
+        requireConfirm: body.requireConfirm !== false,
       });
       audit({
         type: "portal.verdienst_deliver",
-        outcome: result.ok ? "ok" : "error",
+        outcome: result.confirmed ? "ok" : (result.ok ? "pending" : "error"),
         ip,
         path,
         companyId,
-        detail: { employeeId, year, period: period || null, printed: body.printed === true, humanConfirm: true },
+        detail: {
+          employeeId,
+          year,
+          period: period || null,
+          printed: body.printed === true,
+          humanConfirm: true,
+          confirmed: Boolean(result.confirmed),
+          trust: result.trust || null,
+          deliveryId: result.delivery?.deliveryId || null,
+        },
       });
-      return reply(result.ok ? 200 : (result.status || 422), result);
+      const httpStatus = result.delivery || result.ok ? 200 : (result.status || 422);
+      return reply(httpStatus, result);
     }
 
     if (req.method === "POST" && (path === "/v1/portal/certificates/lstb/deliver-year" || path === "/v1/portal/certificates/lstb/deliver-all")) {
@@ -1779,16 +1802,29 @@ async function handler(req, res) {
         printed: body.printed === true,
         forceRedeliver: body.forceRedeliver === true,
         reason: body.reason || (body.printed ? "print" : "send"),
+        requireConfirm: body.requireConfirm !== false,
       });
       audit({
         type: "portal.lstb_deliver_year",
-        outcome: result.ok ? "ok" : "error",
+        outcome: result.confirmed ? "ok" : (result.ok ? "pending" : "error"),
         ip,
         path,
         companyId,
-        detail: { year, okCount: result.okCount, count: result.count, humanConfirm: true },
+        detail: {
+          year,
+          okCount: result.okCount,
+          confirmedCount: result.confirmedCount,
+          count: result.count,
+          humanConfirm: true,
+        },
       });
-      return reply(result.ok ? 200 : (result.status || 422), result);
+      return reply(200, result);
+    }
+
+    if (req.method === "GET" && path === "/v1/portal/certificates/delivery-status") {
+      const deliveryId = url.searchParams.get("deliveryId") || "";
+      const result = verifyCertificateDelivery(deliveryId);
+      return reply(result.ok ? 200 : 404, result);
     }
 
     if (req.method === "GET" && path === "/v1/portal/branding") {

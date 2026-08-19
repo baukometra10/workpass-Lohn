@@ -13,6 +13,7 @@ process.env.WORKPASS_SQLITE_PATH = testDb;
 process.env.WORKPASS_DATA_KEY = "cert-test-key-material-not-prod";
 process.env.WORKPASS_SESSION_SECRET = "cert-session";
 process.env.WORKPASS_API_KEY = "cert-api-key";
+process.env.WORKPASS_CERT_ACK_WAIT_MS = "0";
 delete process.env.WORKPASS_DATABASE_URL;
 delete process.env.DATABASE_URL;
 delete process.env.WORKPASS_PLATFORM_WEBHOOK_URL;
@@ -94,6 +95,7 @@ assert(vb.ytd.gross > vb.monthly.gross, "ytd gross > monthly gross");
 
 const lstbPush = await deliverEmployeeLstb(companyId, "EMP-CERT-1", 2026);
 assert(lstbPush.ok, `lstb deliver ${lstbPush.error || "ok"}`);
+assert(lstbPush.sameAsPayslip === true, "lstb same channel as payslip");
 assert(lstbPush.delivery?.type === "lstb", "lstb delivery type");
 assert(lstbPush.delivery?.deliveryId === `lstb:${companyId}:emp-cert-1:2026` || lstbPush.delivery?.deliveryId.includes("EMP-CERT-1") || lstbPush.delivery?.deliveryId.includes("emp-cert-1"), `lstb id ${lstbPush.delivery?.deliveryId}`);
 assert(getDelivery(lstbPush.delivery.deliveryId)?.deliveryId, "lstb queued");
@@ -103,6 +105,7 @@ const lstbAgain = await deliverEmployeeLstb(companyId, "EMP-CERT-1", 2026);
 assert(lstbAgain.ok && !lstbAgain.alreadyDelivered, "lstb retries while not accepted");
 
 const { markDeliveryWebhook, ackDelivery } = await import("../server/delivery-queue.mjs");
+const { verifyCertificateDelivery } = await import("../server/certificates/deliver.mjs");
 markDeliveryWebhook(lstbId, {
   at: new Date().toISOString(),
   status: 200,
@@ -111,19 +114,22 @@ markDeliveryWebhook(lstbId, {
   idempotencyKey: lstbId,
 });
 ackDelivery(lstbId, { via: "test", at: new Date().toISOString() });
+assert(verifyCertificateDelivery(lstbId).confirmed === true, "verify confirms ack");
 
 const lstbAcked = await deliverEmployeeLstb(companyId, "EMP-CERT-1", 2026);
-assert(lstbAcked.ok && lstbAcked.alreadyDelivered, "lstb skips after platform accepted");
+assert(lstbAcked.ok && lstbAcked.alreadyDelivered && lstbAcked.confirmed, "lstb skips after platform accepted");
 
 const lstbForce = await deliverEmployeeLstb(companyId, "EMP-CERT-1", 2026, { forceRedeliver: true });
 assert(lstbForce.ok && !lstbForce.alreadyDelivered, "forceRedeliver pushes again");
 
 const vbPush = await deliverEmployeeVerdienst(companyId, "EMP-CERT-1", 2026, "2026-02");
 assert(vbPush.ok && vbPush.delivery?.type === "verdienst", `vb deliver ${vbPush.error || "ok"}`);
+assert(vbPush.sameAsPayslip === true, "vb same channel as payslip");
 assert(String(vbPush.delivery?.title || "").includes("Verdienstbescheinigung"), "vb title");
 
 const yearPush = await deliverYearLstb(companyId, 2026);
 assert(yearPush.ok && yearPush.okCount >= 1, `year lstb ${yearPush.okCount}`);
+assert(typeof yearPush.confirmedCount === "number", "year confirmedCount");
 
 closeSqlite();
 if (existsSync(testDb)) unlinkSync(testDb);

@@ -1,6 +1,7 @@
 /**
- * Deliver LStB / Verdienstbescheinigung to the employee app (same queue as payslips).
- * Not ELSTER / Finanzamt — platform webhook + /v1/delivery/pending.
+ * Deliver LStB / Verdienstbescheinigung to the employee app — same channel as payslips:
+ * enqueue → platform webhook (lstb.released / verdienst.released) → require accepted/ack.
+ * Not ELSTER / Finanzamt.
  */
 import { loadCompany } from "../db/repository.mjs";
 import { normalizeCompanyId, normalizeEmployeeId } from "../tenant.mjs";
@@ -18,17 +19,52 @@ function companyRef(companyId) {
   return { id: cid, name: company.name || "" };
 }
 
+function isDeliveryConfirmed(d) {
+  return Boolean(
+    d
+    && (d.webhookAccepted
+      || d.queueStatus === "delivered"
+      || d.ackedAt
+      || d.ackAt)
+  );
+}
+
+function deliveryTrust(d) {
+  if (isDeliveryConfirmed(d)) return "acked";
+  if (d?.webhookLastError) return "push_failed";
+  if (d?.webhookPushedAt || d?.webhookReached) return "pushed";
+  if (d) return "queued";
+  return "unknown";
+}
+
+async function waitForPlatformAck(deliveryId, timeoutMs) {
+  const ms = Math.max(0, Number(timeoutMs) || 0);
+  if (!ms || !deliveryId) return getDelivery(deliveryId);
+  const step = 250;
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    const d = getDelivery(deliveryId);
+    if (isDeliveryConfirmed(d)) return d;
+    await new Promise((r) => setTimeout(r, step));
+  }
+  return getDelivery(deliveryId);
+}
+
+/**
+ * Push certificate exactly like a payslip release:
+ * buildEmployeeDelivery → enqueue → notifyPlatform → mark → ack when accepted.
+ */
 async function pushCertificateDelivery({ type, event, certificate, company, options = {} }) {
+  const requireConfirm = options.requireConfirm !== false;
   const delivery = buildEmployeeDelivery(type, { certificate, company });
   if (!delivery) {
-    return { ok: false, status: 422, error: "Delivery konnte nicht gebaut werden" };
+    return { ok: false, status: 422, confirmed: false, error: "Delivery konnte nicht gebaut werden" };
   }
 
   const prev = getDelivery(delivery.deliveryId);
-  const prevAccepted = Boolean(prev?.webhookAccepted || prev?.queueStatus === "delivered");
-  // Human send / force: always re-push. Auto path: skip only when platform confirmed.
-  const mustPush = Boolean(options.forceRedeliver) || !prevAccepted;
-  if (options.forceRedeliver || (prev?.webhookPushedAt && !prevAccepted)) {
+  const prevConfirmed = isDeliveryConfirmed(prev);
+
+  if (options.forceRedeliver || (prev?.webhookPushedAt && !prevConfirmed)) {
     delivery.webhookPushedAt = null;
     delivery.webhookReached = false;
     delivery.webhookAccepted = false;
@@ -38,22 +74,35 @@ async function pushCertificateDelivery({ type, event, certificate, company, opti
     delivery.webhookReached = prev.webhookReached;
     delivery.webhookPushCount = prev.webhookPushCount;
     delivery.webhookAccepted = prev.webhookAccepted;
+    if (prev.ackedAt) delivery.ackedAt = prev.ackedAt;
   }
 
-  delivery.queueStatus = "pending";
+  delivery.queueStatus = prevConfirmed && !options.forceRedeliver ? (prev.queueStatus || "delivered") : "pending";
   delivery.enqueuedAt = delivery.enqueuedAt || prev?.enqueuedAt || new Date().toISOString();
   enqueueDelivery(delivery);
 
-  if (delivery.webhookPushedAt && prevAccepted && !mustPush) {
+  if (prevConfirmed && !options.forceRedeliver) {
+    const current = getDelivery(delivery.deliveryId) || delivery;
     return {
       ok: true,
       alreadyDelivered: true,
       skippedNotify: true,
-      delivery,
+      confirmed: true,
       deliveredViaWebhook: true,
       webhookReached: true,
       pendingPull: false,
-      message: "Bereits bestätigt – der Mitarbeiter sollte das Dokument in der App sehen.",
+      trust: "acked",
+      sameAsPayslip: true,
+      certificate,
+      delivery: current,
+      platformDelivery: {
+        deliveryId: current.deliveryId,
+        type: current.type,
+        event,
+        trust: "acked",
+        confirmed: true,
+      },
+      message: "Bereits von der Plattform bestätigt – wie die Lohnabrechnung zugestellt.",
     };
   }
 
@@ -66,13 +115,18 @@ async function pushCertificateDelivery({ type, event, certificate, company, opti
       reason: options.reason || (options.printed ? "print" : "send"),
       printed: Boolean(options.printed),
       forceRedeliver: Boolean(options.forceRedeliver),
+      requireAck: true,
+      channel: "employee_app",
+      parity: "payslip",
       legal: type === "lstb" ? "§ 41b EStG" : "Verdienstbescheinigung",
     },
   });
 
   const localOnly = platformNotify?.mode === "local-log-only";
   const webhookReached = Boolean(platformNotify?.ok && (platformNotify.mode === "webhook" || localOnly));
-  const deliveredConfirmed = Boolean(platformNotify?.ok && platformNotify.mode === "webhook" && platformNotify.accepted === true);
+  let deliveredConfirmed = Boolean(
+    platformNotify?.ok && platformNotify.mode === "webhook" && platformNotify.accepted === true
+  );
 
   try {
     markDeliveryWebhook(delivery.deliveryId, {
@@ -94,32 +148,108 @@ async function pushCertificateDelivery({ type, event, certificate, company, opti
         body: platformNotify.body || null,
       });
     } catch { /* keep pending for pull */ }
+  } else if (webhookReached && !localOnly) {
+    // Same as payslip: stay in /v1/delivery/pending for platform pull + ack.
+    // Brief wait in case the platform acks asynchronously right after the webhook.
+    const waitMs = Number(
+      options.ackWaitMs != null
+        ? options.ackWaitMs
+        : (process.env.WORKPASS_CERT_ACK_WAIT_MS || 2500)
+    );
+    const afterWait = await waitForPlatformAck(delivery.deliveryId, waitMs);
+    if (isDeliveryConfirmed(afterWait)) {
+      deliveredConfirmed = true;
+    }
+  }
+
+  const current = getDelivery(delivery.deliveryId) || delivery;
+  const trust = deliveryTrust(current);
+  const confirmed = deliveredConfirmed || isDeliveryConfirmed(current);
+
+  // Local (no webhook URL): queued for pull — cannot prove platform receipt.
+  if (localOnly) {
+    return {
+      ok: true,
+      confirmed: false,
+      deliveredViaWebhook: false,
+      webhookReached: true,
+      pendingPull: true,
+      trust: "queued",
+      sameAsPayslip: true,
+      certificate,
+      delivery: current,
+      platformNotify,
+      platformDelivery: {
+        deliveryId: current.deliveryId,
+        type: current.type,
+        event,
+        trust: "queued",
+        confirmed: false,
+        mode: "local-log-only",
+      },
+      message: "Lokal bereitgestellt (wie Lohnabrechnung ohne Webhook). Plattform muss /v1/delivery/pending pollen und ack'en.",
+    };
+  }
+
+  if (!confirmed && requireConfirm) {
+    return {
+      ok: false,
+      status: 422,
+      confirmed: false,
+      deliveredViaWebhook: false,
+      webhookReached,
+      pendingPull: webhookReached,
+      trust,
+      sameAsPayslip: true,
+      certificate,
+      delivery: current,
+      platformNotify,
+      platformDelivery: {
+        deliveryId: current.deliveryId,
+        type: current.type,
+        event,
+        trust,
+        confirmed: false,
+      },
+      error: webhookReached
+        ? "Plattform hat LStB/VB nicht bestätigt (kein accepted/ack). Lieferung liegt in der Warteschlange – wie bei der Lohnabrechnung."
+        : (platformNotify?.error || "Webhook zur Plattform fehlgeschlagen."),
+      message: webhookReached
+        ? "Nicht zugestellt: Webhook erreicht, aber keine Plattform-Bestätigung. Dokument wartet in /v1/delivery/pending. Erneut senden oder Zustellungen · Vertrauen prüfen."
+        : `Nicht zugestellt: ${platformNotify?.error || platformNotify?.status || "Webhook fehlgeschlagen"}.`,
+    };
   }
 
   return {
     ok: true,
+    confirmed: true,
+    deliveredViaWebhook: true,
+    webhookReached: true,
+    pendingPull: false,
+    trust: "acked",
+    sameAsPayslip: true,
     certificate,
-    delivery,
+    delivery: current,
     platformNotify,
-    deliveredViaWebhook: deliveredConfirmed,
-    webhookReached,
-    pendingPull: !deliveredConfirmed,
-    message: deliveredConfirmed
-      ? "An die Plattform gesendet – der Mitarbeiter sieht das Dokument in der App."
-      : localOnly
-        ? "Lokal bereitgestellt. Ohne Webhook holt die Plattform /v1/delivery/pending."
-        : webhookReached
-          ? "Webhook erreicht, aber Plattform hat noch nicht bestätigt (accepted). Dokument liegt in /v1/delivery/pending – Mitarbeiter-App zeigt es erst nach Speicherung auf der Plattform."
-          : "Zustellung fehlgeschlagen oder Webhook nicht erreichbar. Bitte erneut senden oder Zustellungen · Vertrauen prüfen.",
+    platformDelivery: {
+      deliveryId: current.deliveryId,
+      type: current.type,
+      event,
+      trust: "acked",
+      confirmed: true,
+    },
+    message: type === "lstb"
+      ? "LStB an die Plattform gesendet und bestätigt – wie die Lohnabrechnung."
+      : "Verdienstbescheinigung an die Plattform gesendet und bestätigt – wie die Lohnabrechnung.",
   };
 }
 
 export async function deliverEmployeeLstb(companyId, employeeId, year, options = {}) {
   const cid = normalizeCompanyId(companyId);
   const eid = normalizeEmployeeId(employeeId);
-  if (!cid || !eid) return { ok: false, status: 422, error: "companyId und employeeId fehlen" };
+  if (!cid || !eid) return { ok: false, status: 422, confirmed: false, error: "companyId und employeeId fehlen" };
   const certificate = buildEmployeeLstbCertificate(cid, eid, year);
-  if (!certificate.ok) return certificate;
+  if (!certificate.ok) return { ...certificate, confirmed: false };
   const company = companyRef(cid);
   return pushCertificateDelivery({
     type: "lstb",
@@ -133,9 +263,9 @@ export async function deliverEmployeeLstb(companyId, employeeId, year, options =
 export async function deliverEmployeeVerdienst(companyId, employeeId, year, period, options = {}) {
   const cid = normalizeCompanyId(companyId);
   const eid = normalizeEmployeeId(employeeId);
-  if (!cid || !eid) return { ok: false, status: 422, error: "companyId und employeeId fehlen" };
+  if (!cid || !eid) return { ok: false, status: 422, confirmed: false, error: "companyId und employeeId fehlen" };
   const certificate = buildEmployeeVerdienstCertificate(cid, eid, year, period);
-  if (!certificate.ok) return certificate;
+  if (!certificate.ok) return { ...certificate, confirmed: false };
   const company = companyRef(cid);
   return pushCertificateDelivery({
     type: "verdienst",
@@ -148,12 +278,12 @@ export async function deliverEmployeeVerdienst(companyId, employeeId, year, peri
 
 export async function deliverYearLstb(companyId, year, options = {}) {
   const cid = normalizeCompanyId(companyId);
-  if (!cid) return { ok: false, status: 422, error: "companyId fehlt" };
+  if (!cid) return { ok: false, status: 422, confirmed: false, error: "companyId fehlt" };
   const summary = listCertificateSummary(cid, year);
-  if (!summary.ok) return summary;
+  if (!summary.ok) return { ...summary, confirmed: false };
   const employees = summary.employees || [];
   if (!employees.length) {
-    return { ok: false, status: 422, error: `Keine freigegebenen Monate für ${year}` };
+    return { ok: false, status: 422, confirmed: false, error: `Keine freigegebenen Monate für ${year}` };
   }
   const results = [];
   for (const row of employees) {
@@ -162,22 +292,51 @@ export async function deliverYearLstb(companyId, year, options = {}) {
       employeeId: row.employeeId,
       name: row.name,
       ok: Boolean(one.ok),
-      error: one.ok ? null : (one.error || null),
+      confirmed: Boolean(one.confirmed),
+      error: one.ok ? null : (one.error || one.message || null),
       deliveryId: one.delivery?.deliveryId || null,
+      trust: one.trust || one.platformDelivery?.trust || null,
       alreadyDelivered: Boolean(one.alreadyDelivered),
     });
   }
   const okCount = results.filter((r) => r.ok).length;
+  const confirmedCount = results.filter((r) => r.confirmed).length;
+  const allConfirmed = confirmedCount === results.length;
   return {
-    ok: okCount > 0,
+    ok: allConfirmed || (okCount > 0 && results.every((r) => r.ok && (r.confirmed || r.trust === "queued"))),
+    confirmed: allConfirmed,
     kind: "portal.certificate.lstb.year.delivery.v1",
     companyId: cid,
     year: Number(year) || new Date().getFullYear(),
     count: results.length,
     okCount,
+    confirmedCount,
+    pendingCount: results.length - confirmedCount,
     results,
-    message: okCount === results.length
-      ? `${okCount} Lohnsteuerbescheinigungen an die Plattform übergeben.`
-      : `${okCount} von ${results.length} LStB übergeben.`,
+    sameAsPayslip: true,
+    message: allConfirmed
+      ? `${confirmedCount} Lohnsteuerbescheinigungen von der Plattform bestätigt (wie Lohnabrechnung).`
+      : `${confirmedCount} von ${results.length} LStB bestätigt – ${results.length - confirmedCount} warten noch auf Plattform-Ack.`,
+  };
+}
+
+/** Read-only check: has the platform confirmed this certificate delivery? */
+export function verifyCertificateDelivery(deliveryId) {
+  const d = getDelivery(String(deliveryId || "").trim());
+  if (!d) {
+    return { ok: false, confirmed: false, error: "Delivery nicht gefunden", trust: "unknown" };
+  }
+  const confirmed = isDeliveryConfirmed(d);
+  return {
+    ok: true,
+    confirmed,
+    trust: deliveryTrust(d),
+    delivery: d,
+    deliveryId: d.deliveryId,
+    type: d.type,
+    pendingPull: !confirmed,
+    message: confirmed
+      ? "Plattform hat die Zustellung bestätigt."
+      : "Noch nicht bestätigt – wartend auf Ack oder Pull.",
   };
 }
