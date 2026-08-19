@@ -141,6 +141,7 @@ export function buildEmployeeDelivery(type, job) {
       releasedAt: new Date().toISOString(),
       employee: {
         id: employeeId,
+        badgeId: employeeId,
         name: cert.employeeName || "",
       },
       company: {
@@ -178,6 +179,7 @@ export function buildEmployeeDelivery(type, job) {
       releasedAt: new Date().toISOString(),
       employee: {
         id: employeeId,
+        badgeId: employeeId,
         name: cert.employeeName || "",
       },
       company: {

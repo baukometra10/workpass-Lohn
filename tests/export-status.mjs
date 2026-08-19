@@ -47,6 +47,13 @@ console.log("\n=== Delivery reconciliation ===");
 const recon = buildDeliveryReconciliation("cmp-exp", { period: "2026-08" });
 assert(recon.ok && recon.kind === "portal.delivery_reconciliation.v1", "reconciliation shape");
 
+console.log("\n=== Certificate webhook events ===");
+const { eventForDelivery } = await import("../server/delivery-replay.mjs");
+assert(eventForDelivery({ type: "lstb" }) === "lstb.released", "lstb event");
+assert(eventForDelivery({ type: "verdienst" }) === "verdienst.released", "verdienst event");
+assert(eventForDelivery({ type: "payslip" }) === "payslip.released", "payslip event");
+assert(eventForDelivery({ type: "invoice" }) === "invoice.released", "invoice event");
+
 closeSqlite();
 try {
   unlinkSync(testDb);

@@ -25,7 +25,10 @@ async function pushCertificateDelivery({ type, event, certificate, company, opti
   }
 
   const prev = getDelivery(delivery.deliveryId);
-  if (options.forceRedeliver) {
+  const prevAccepted = Boolean(prev?.webhookAccepted || prev?.queueStatus === "delivered");
+  // Human send / force: always re-push. Auto path: skip only when platform confirmed.
+  const mustPush = Boolean(options.forceRedeliver) || !prevAccepted;
+  if (options.forceRedeliver || (prev?.webhookPushedAt && !prevAccepted)) {
     delivery.webhookPushedAt = null;
     delivery.webhookReached = false;
     delivery.webhookAccepted = false;
@@ -41,16 +44,16 @@ async function pushCertificateDelivery({ type, event, certificate, company, opti
   delivery.enqueuedAt = delivery.enqueuedAt || prev?.enqueuedAt || new Date().toISOString();
   enqueueDelivery(delivery);
 
-  if (delivery.webhookPushedAt && !options.forceRedeliver) {
+  if (delivery.webhookPushedAt && prevAccepted && !mustPush) {
     return {
       ok: true,
       alreadyDelivered: true,
       skippedNotify: true,
       delivery,
-      deliveredViaWebhook: Boolean(delivery.webhookAccepted),
+      deliveredViaWebhook: true,
       webhookReached: true,
-      pendingPull: !delivery.webhookAccepted,
-      message: "Bereits an die Plattform gesendet – Mitarbeiter kann das Dokument in der App sehen (kein erneuter Webhook).",
+      pendingPull: false,
+      message: "Bereits bestätigt – der Mitarbeiter sollte das Dokument in der App sehen.",
     };
   }
 
@@ -105,7 +108,9 @@ async function pushCertificateDelivery({ type, event, certificate, company, opti
       ? "An die Plattform gesendet – der Mitarbeiter sieht das Dokument in der App."
       : localOnly
         ? "Lokal bereitgestellt. Ohne Webhook holt die Plattform /v1/delivery/pending."
-        : "An die Plattform übergeben. Bestätigung oder Pull über /v1/delivery/pending.",
+        : webhookReached
+          ? "Webhook erreicht, aber Plattform hat noch nicht bestätigt (accepted). Dokument liegt in /v1/delivery/pending – Mitarbeiter-App zeigt es erst nach Speicherung auf der Plattform."
+          : "Zustellung fehlgeschlagen oder Webhook nicht erreichbar. Bitte erneut senden oder Zustellungen · Vertrauen prüfen.",
   };
 }
 

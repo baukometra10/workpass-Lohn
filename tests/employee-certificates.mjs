@@ -98,8 +98,25 @@ assert(lstbPush.delivery?.type === "lstb", "lstb delivery type");
 assert(lstbPush.delivery?.deliveryId === `lstb:${companyId}:emp-cert-1:2026` || lstbPush.delivery?.deliveryId.includes("EMP-CERT-1") || lstbPush.delivery?.deliveryId.includes("emp-cert-1"), `lstb id ${lstbPush.delivery?.deliveryId}`);
 assert(getDelivery(lstbPush.delivery.deliveryId)?.deliveryId, "lstb queued");
 
+const lstbId = lstbPush.delivery.deliveryId;
 const lstbAgain = await deliverEmployeeLstb(companyId, "EMP-CERT-1", 2026);
-assert(lstbAgain.ok && lstbAgain.alreadyDelivered, "lstb second send is idempotent");
+assert(lstbAgain.ok && !lstbAgain.alreadyDelivered, "lstb retries while not accepted");
+
+const { markDeliveryWebhook, ackDelivery } = await import("../server/delivery-queue.mjs");
+markDeliveryWebhook(lstbId, {
+  at: new Date().toISOString(),
+  status: 200,
+  accepted: true,
+  reached: true,
+  idempotencyKey: lstbId,
+});
+ackDelivery(lstbId, { via: "test", at: new Date().toISOString() });
+
+const lstbAcked = await deliverEmployeeLstb(companyId, "EMP-CERT-1", 2026);
+assert(lstbAcked.ok && lstbAcked.alreadyDelivered, "lstb skips after platform accepted");
+
+const lstbForce = await deliverEmployeeLstb(companyId, "EMP-CERT-1", 2026, { forceRedeliver: true });
+assert(lstbForce.ok && !lstbForce.alreadyDelivered, "forceRedeliver pushes again");
 
 const vbPush = await deliverEmployeeVerdienst(companyId, "EMP-CERT-1", 2026, "2026-02");
 assert(vbPush.ok && vbPush.delivery?.type === "verdienst", `vb deliver ${vbPush.error || "ok"}`);

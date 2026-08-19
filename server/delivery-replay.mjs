@@ -22,8 +22,13 @@ import {
 } from "./delivery-queue.mjs";
 import { notifyPlatform } from "./notify.mjs";
 
-function eventForDelivery(delivery) {
-  if (delivery?.type === "invoice") return "invoice.released";
+/** Map queue delivery.type → platform webhook event (must stay in sync with notify.mjs). */
+export function eventForDelivery(delivery) {
+  const t = String(delivery?.type || "").toLowerCase();
+  if (t === "invoice") return "invoice.released";
+  if (t === "lstb") return "lstb.released";
+  if (t === "verdienst" || t === "vb") return "verdienst.released";
+  if (t === "payslip" || t === "payroll") return "payslip.released";
   return "payslip.released";
 }
 

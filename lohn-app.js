@@ -1909,6 +1909,8 @@
       period: ctx.period,
       printed,
       confirm: true,
+      // Explicit firm action: always re-push so unconfirmed/stuck LStB+VB reach the platform again.
+      forceRedeliver: extra.forceRedeliver !== false,
     };
     const path = ctx.kind === "lstb-all"
       ? "/v1/portal/certificates/lstb/deliver-year"
@@ -1916,10 +1918,20 @@
         ? "/v1/portal/certificates/verdienst/deliver"
         : "/v1/portal/certificates/lstb/deliver";
     const data = await apiFetch(path, { method: "POST", body: JSON.stringify(payload) });
-    toast(
-      data.message || data.error || uiT("portal.certSent", "An die Plattform übergeben."),
-      data.ok === false ? "error" : "ok"
-    );
+    const pending = data.pendingPull === true || data.deliveredViaWebhook === false;
+    const toastKind = data.ok === false ? "error" : (pending ? "info" : "ok");
+    let msg = data.message || data.error || uiT("portal.certSent", "An die Plattform übergeben.");
+    if (data.ok !== false && pending) {
+      msg = data.message
+        || uiT(
+          "portal.certPendingPull",
+          "An die Plattform gesendet – noch nicht bestätigt. Mitarbeiter sieht es erst, wenn die Plattform speichert (Zustellungen · Vertrauen prüfen)."
+        );
+    }
+    toast(msg, toastKind);
+    try {
+      loadDeliveryReconciliation().catch(() => {});
+    } catch { /* ignore */ }
     return data;
   }
 
@@ -3986,7 +3998,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.53.0</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.53.1</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))
