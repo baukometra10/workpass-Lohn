@@ -12,6 +12,10 @@
 import { appendFileSync, mkdirSync, existsSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { ensureCompleteDeliveryDocument, assessDocumentCompleteness } from "./document-complete.mjs";
+
+export { assessDocumentCompleteness, ensureCompleteDeliveryDocument } from "./document-complete.mjs";
+export { documentChecksum } from "./document-complete.mjs";
 
 const logDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "data", "delivery-log");
 
@@ -169,11 +173,13 @@ function hintForWebhookFailure(status, keySource) {
 
 /**
  * Build the package the platform needs to show in the employee app.
+ * Always includes the full document body (no summary-only payload).
  */
 export function buildEmployeeDelivery(type, job) {
+  let built = null;
   if (type === "payroll") {
     const p = job.payslip || {};
-    return {
+    built = {
       kind: "platform.employee.delivery.v1",
       type: "payslip",
       documentType: "payslip",
@@ -202,14 +208,12 @@ export function buildEmployeeDelivery(type, job) {
       documentTitle: documentTitleForType("payslip"),
       title: buildDocumentDisplayTitle("payslip", p.period || job.period || ""),
     };
-  }
-
-  if (type === "lstb") {
+  } else if (type === "lstb") {
     const cert = job.certificate || job;
     const companyId = cert.companyId || job.company?.id || "";
     const employeeId = cert.employeeId || "";
     const year = cert.year || "";
-    return {
+    built = {
       kind: "platform.employee.delivery.v1",
       type: "lstb",
       documentType: "lstb",
@@ -241,15 +245,13 @@ export function buildEmployeeDelivery(type, job) {
       documentTitle: documentTitleForType("lstb"),
       title: buildDocumentDisplayTitle("lstb", year),
     };
-  }
-
-  if (type === "verdienst") {
+  } else if (type === "verdienst") {
     const cert = job.certificate || job;
     const companyId = cert.companyId || job.company?.id || "";
     const employeeId = cert.employeeId || "";
     const period = cert.period || "";
     const year = cert.year || "";
-    return {
+    built = {
       kind: "platform.employee.delivery.v1",
       type: "verdienst",
       documentType: "verdienst",
@@ -279,12 +281,10 @@ export function buildEmployeeDelivery(type, job) {
       documentTitle: documentTitleForType("verdienst"),
       title: buildDocumentDisplayTitle("verdienst", period || year),
     };
-  }
-
-  if (type === "invoice") {
+  } else if (type === "invoice") {
     const d = job.draft || {};
     const companyId = job.company?.id || d.company?.id || "";
-    return {
+    built = {
       kind: "platform.employee.delivery.v1",
       type: "invoice",
       documentType: "invoice",
@@ -311,7 +311,13 @@ export function buildEmployeeDelivery(type, job) {
     };
   }
 
-  return null;
+  if (!built) return null;
+  const { delivery, assessment } = ensureCompleteDeliveryDocument(built);
+  if (!assessment.complete) {
+    delivery.contentComplete = false;
+    delivery.documentGaps = assessment.gaps;
+  }
+  return delivery;
 }
 
 function resolveCompany(event) {
@@ -348,6 +354,7 @@ export async function notifyPlatform(event) {
   const release = resolveDocumentRelease(event);
 
   let delivery = event.delivery || null;
+  let contentAssessment = null;
   if (delivery && release.isDocumentRelease) {
     const documentTitle = delivery.documentTitle || documentTitleForType(release.documentType);
     const title = delivery.title
@@ -355,13 +362,41 @@ export async function notifyPlatform(event) {
         release.documentType,
         delivery.period || delivery.year || delivery.number || delivery.invoiceId || ""
       );
-    delivery = {
+    const ensured = ensureCompleteDeliveryDocument({
       ...delivery,
       type: release.documentType || delivery.type,
       documentType: release.documentType,
       documentTitle,
       title,
-    };
+    });
+    delivery = ensured.delivery;
+    contentAssessment = ensured.assessment;
+    if (!ensured.assessment.complete && event.requireCompleteDocument !== false) {
+      const result = {
+        ok: false,
+        mode: "incomplete-document",
+        error: ensured.assessment.label,
+        gaps: ensured.assessment.gaps,
+        delivery,
+        idempotencyKey,
+        event: release.eventName,
+        documentType: release.documentType,
+        accepted: false,
+      };
+      lastWebhookStatus = {
+        ok: false,
+        at: new Date().toISOString(),
+        event: release.eventName,
+        documentType: release.documentType,
+        status: null,
+        error: result.error,
+        mode: "incomplete-document",
+        hint: "Dokument unvollständig – Webhook nicht gesendet. Fehlende Felder prüfen.",
+        keySource,
+        accepted: false,
+      };
+      return result;
+    }
   }
 
   const documentTitle = release.isDocumentRelease
@@ -394,6 +429,9 @@ export async function notifyPlatform(event) {
           documentType: release.documentType,
           documentTitle,
           title,
+          contentComplete: Boolean(contentAssessment?.complete ?? delivery?.contentComplete),
+          documentChecksum: delivery?.documentChecksum || null,
+          documentBytes: delivery?.documentBytes || null,
         }
         : {}),
     },

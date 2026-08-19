@@ -63,6 +63,7 @@ export function platformCapabilities() {
       "Employee documents are sent as event=document.released with documentType=payslip|lstb|verdienst|invoice (legacy *.released kept in meta.legacyEvent).",
       "Show delivery.title / documentTitle in the employee inbox (Entgeltabrechnung, Lohnsteuerbescheinigung, Verdienstbescheinigung, Rechnung) — never raw codes.",
       "Full delivery/message confirm = received + opened + seen (POST .../received|/open|/ack or webhook body with those flags).",
+      "Document webhooks include the full delivery.document (not summary-only); incomplete payloads are refused. Pull: GET /v1/delivery/:deliveryId.",
       "LStB/VB require strictAck for received; complete only after opened+seen (bare {ok:true} is not enough).",
     ],
   };

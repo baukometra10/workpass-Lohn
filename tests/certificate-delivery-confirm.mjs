@@ -181,6 +181,8 @@ assert(last.body?.delivery?.type === "lstb", "delivery.type lstb");
 assert(last.body?.delivery?.documentType === "lstb", "delivery.documentType lstb");
 assert(last.body?.delivery?.documentTitle === "Lohnsteuerbescheinigung", "delivery.documentTitle");
 assert(last.body?.delivery?.title?.startsWith("Lohnsteuerbescheinigung"), "delivery.title LStB");
+assert(last.body?.delivery?.document?.rows?.length >= 27, `full lstb document rows (${last.body?.delivery?.document?.rows?.length})`);
+assert(last.body?.delivery?.contentComplete === true || last.body?.meta?.contentComplete === true, "contentComplete on envelope");
 assert(last.body?.delivery?.kind === "platform.employee.delivery.v1", "envelope delivery kind");
 assert(last.body?.meta?.requireAck === true, "meta.requireAck");
 assert(last.body?.meta?.parity === "payslip", "meta.parity payslip");

@@ -2548,12 +2548,40 @@ async function handler(req, res) {
     if (req.method === "GET" && path === "/v1/delivery/pending") {
       const companyId = tenantScope || url.searchParams.get("companyId") || undefined;
       const pending = listPendingDeliveries({ companyId });
-      return reply( 200, {
+      return reply(200, {
         ok: true,
         kind: "platform.delivery.pending.v1",
         companyId: companyId || null,
         count: pending.length,
         deliveries: pending,
+        hint: "Jedes delivery.document ist vollständig. Einzelabruf: GET /v1/delivery/:deliveryId",
+      });
+    }
+
+    if (
+      req.method === "GET"
+      && path.startsWith("/v1/delivery/")
+      && path !== "/v1/delivery/pending"
+      && path !== "/v1/delivery/replay"
+      && !path.endsWith("/ack")
+      && !path.endsWith("/open")
+      && !path.endsWith("/received")
+    ) {
+      const deliveryId = decodeURIComponent(path.slice("/v1/delivery/".length));
+      const queued = listAllDeliveries().find((d) => d.deliveryId === deliveryId) || null;
+      if (!queued) return reply(404, { ok: false, error: "Delivery nicht gefunden" });
+      const scopeCheck = assertSameTenant(tenantScope, queued.company?.id, "Delivery");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const { assessDocumentCompleteness, ensureCompleteDeliveryDocument } = await import("./document-complete.mjs");
+      const ensured = ensureCompleteDeliveryDocument(queued);
+      return reply(200, {
+        ok: true,
+        kind: "platform.delivery.full.v1",
+        delivery: ensured.delivery,
+        contentComplete: ensured.assessment.complete,
+        documentIntegrity: ensured.delivery?.documentIntegrity || null,
+        assessment: ensured.assessment,
+        hint: "Vollständiges Dokument – nichts gekürzt. Speichern und dem Mitarbeiter anzeigen.",
       });
     }
 

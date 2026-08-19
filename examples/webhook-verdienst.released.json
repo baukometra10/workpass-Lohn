@@ -33,6 +33,22 @@
       "ytdNet": 14760,
       "currency": "EUR"
     },
+    "document": {
+      "ok": true,
+      "kind": "portal.certificate.verdienst.v1",
+      "companyId": "muster-gmbh",
+      "year": 2026,
+      "period": "2026-08",
+      "employeeId": "02006",
+      "employeeName": "Mustermann Max",
+      "monthly": { "gross": 2800, "net": 1845 },
+      "ytd": { "gross": 22400, "net": 14760 },
+      "rows": [
+        { "label": "Abrechnungs-Brutto", "monthly": 2800, "yearly": 22400 }
+      ]
+    },
+    "contentComplete": true,
+    "pullUrl": "/v1/delivery/vb%3Amuster-gmbh%3A02006%3A2026-08",
     "appRoute": "/employee/certificates/verdienst/2026-08/02006",
     "documentTitle": "Verdienstbescheinigung",
     "title": "Verdienstbescheinigung 2026-08"
@@ -42,6 +58,7 @@
     "documentType": "verdienst",
     "documentTitle": "Verdienstbescheinigung",
     "title": "Verdienstbescheinigung 2026-08",
+    "contentComplete": true,
     "requireAck": true,
     "parity": "payslip"
   }

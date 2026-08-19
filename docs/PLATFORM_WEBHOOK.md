@@ -41,9 +41,10 @@ Employee documents (Lohnabrechnung, LStB, VB, Rechnung) use:
   - `lstb` → **Lohnsteuerbescheinigung** · title e.g. `Lohnsteuerbescheinigung 2026`
   - `verdienst` → **Verdienstbescheinigung** · title e.g. `Verdienstbescheinigung 2026-08`
   - `invoice` → **Rechnung** · title e.g. `Rechnung RE-2026-0042`
-- Header `X-WorkPass-Event: document.released`
-- Header `X-WorkPass-Document-Type: payslip` (etc.)
-- `meta.legacyEvent` keeps the old name (`payslip.released`, …) for debugging
+- `document` must be the **full** certificate/payslip/invoice body (rows, totals, monthDetails, wageItems) — never summary-only
+- `contentComplete: true` + `documentChecksum` prove integrity; incomplete payloads are **not** webhooked
+- Fallback pull of one full item: `GET /v1/delivery/{deliveryId}`
+
 
 ```json
 {

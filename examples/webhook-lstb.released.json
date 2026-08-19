@@ -33,6 +33,24 @@
       "payrollTax": 4200,
       "currency": "EUR"
     },
+    "document": {
+      "ok": true,
+      "kind": "portal.certificate.lstb.v1",
+      "companyId": "muster-gmbh",
+      "year": 2026,
+      "employeeId": "02006",
+      "employeeName": "Mustermann Max",
+      "seller": "Muster GmbH",
+      "taxNumber": "12/345/67890",
+      "totals": { "gross": 33600, "net": 22150, "payrollTax": 4200 },
+      "monthDetails": [{ "period": "2026-01" }, { "period": "2026-02" }],
+      "rows": [
+        { "nr": 1, "key": "certPeriod", "label": "Bescheinigungszeitraum", "value": "01.01.2026 – 31.12.2026" },
+        { "nr": 3, "key": "grossWages", "label": "Bruttoarbeitslohn", "money": true, "value": 33600 }
+      ]
+    },
+    "contentComplete": true,
+    "pullUrl": "/v1/delivery/lstb%3Amuster-gmbh%3A02006%3A2026",
     "appRoute": "/employee/certificates/lstb/2026/02006",
     "documentTitle": "Lohnsteuerbescheinigung",
     "title": "Lohnsteuerbescheinigung 2026"
@@ -42,6 +60,7 @@
     "documentType": "lstb",
     "documentTitle": "Lohnsteuerbescheinigung",
     "title": "Lohnsteuerbescheinigung 2026",
+    "contentComplete": true,
     "requireAck": true,
     "parity": "payslip"
   }
