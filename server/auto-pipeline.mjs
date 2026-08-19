@@ -9,6 +9,8 @@
  *   WORKPASS_AUTO_PIPELINE_MINUTES=15 (poll / ask interval)
  *   WORKPASS_AUTO_RELEASE=1           (default ON: release on inbound batch)
  *   WORKPASS_AUTO_PARALLEL_MONTHS=1   (default ON: also auto previous month; set 0 to disable)
+ *   WORKPASS_MONTHLY_ONCE=1           (default ON: one employee pull + calc per month)
+ *   WORKPASS_MONTHLY_PAYROLL_DAYS=28,29
  */
 import { listCompanies, listPayrollJobs, listInvoiceJobs, loadCompany } from "./db/repository.mjs";
 import {
@@ -32,6 +34,14 @@ import { isDemoPayrollJob } from "./demo-detect.mjs";
 import { normalizeCompanyId } from "./tenant.mjs";
 import { listAutomationCompanies } from "./automation-eligibility.mjs";
 import { recordCompanyAutomation } from "./automation-status.mjs";
+import {
+  shouldRunMonthlyAutoCycle,
+  markMonthlyPulled,
+  markMonthlyCycleComplete,
+  monthlyCycleConfig,
+  preferredPayrollDays,
+  getMonthlyCycle,
+} from "./monthly-cycle.mjs";
 
 let timer = null;
 let lastTickAt = null;
@@ -62,6 +72,7 @@ export function autoPipelinePeriods(now = new Date()) {
 export function autoPipelineConfig() {
   const disabled = process.env.WORKPASS_AUTO_PIPELINE === "0"
     || process.env.WORKPASS_AUTO_PIPELINE === "false";
+  const monthly = monthlyCycleConfig();
   return {
     enabled: !disabled,
     intervalMinutes: Math.max(2, Number(process.env.WORKPASS_AUTO_PIPELINE_MINUTES || 15)),
@@ -70,6 +81,8 @@ export function autoPipelineConfig() {
     parallelMonths: autoParallelMonths(),
     /** Minutes before re-asking platform when still waiting (default 30) */
     reaskMinutes: Math.max(5, Number(process.env.WORKPASS_AUTO_REASK_MINUTES || 30)),
+    monthlyOnce: monthly.oncePerMonth,
+    monthlyPayrollDays: monthly.preferredDays,
   };
 }
 
@@ -523,9 +536,11 @@ export async function askPlatformAndSyncCompany(options = {}) {
   const cfg = autoPipelineConfig();
   const progress = monthProgress(companyId, period);
   const forceAsk = options.forceAsk === true;
+  const source = options.reason || "auto_pipeline";
 
   // Smart skip: month already fully released → don't spam payroll asks (invoices still sync)
   if (!forceAsk && progress.complete) {
+    markMonthlyCycleComplete(companyId, period);
     ackOpenRequests({
       companyId,
       period,
@@ -580,6 +595,79 @@ export async function askPlatformAndSyncCompany(options = {}) {
     };
   }
 
+  // Once-per-month gate: preferred days 28/29 — no duplicate employee pull / calc
+  const monthlyGate = shouldRunMonthlyAutoCycle({
+    companyId,
+    period,
+    force: forceAsk,
+    source,
+    allowPull: options.pull !== false && cfg.pull,
+  });
+  if (!monthlyGate.ok && !forceAsk) {
+    recordCompanyAutomation(companyId, period, {
+      phase: monthlyGate.reason === "before_payroll_day" ? "idle" : "done",
+      source: "auto_pipeline",
+      ok: true,
+      waitingForPlatform: false,
+      message: monthlyGate.label,
+    });
+    return {
+      ok: true,
+      skipped: true,
+      reason: monthlyGate.reason,
+      monthlyCycle: monthlyGate,
+      waitingForPlatform: false,
+      companyId,
+      period,
+      jobs: progress,
+      message: monthlyGate.label,
+      nextActions: monthlyGate.reason === "before_payroll_day"
+        ? [`Monats-Lauf am Tag ${(monthlyGate.preferredDays || preferredPayrollDays()).join("/")} – kein früher Abruf`]
+        : [],
+    };
+  }
+
+  // Already pulled once: never re-pull employees/hours; only finish calculated leftovers
+  if (monthlyGate.reason === "already_pulled_once" && !forceAsk) {
+    if (progress.calculated > 0 && (options.autoRelease !== false && cfg.autoRelease)) {
+      const calcJobs = listPayrollJobs({ companyId, period })
+        .filter((j) => !isDemoPayrollJob(j) && j.status === "calculated");
+      for (const job of calcJobs) {
+        try {
+          await releasePayrollJob(job.jobId, { tenantScope: companyId });
+        } catch { /* continue */ }
+      }
+    }
+    const after = monthProgress(companyId, period);
+    if (after.complete) markMonthlyCycleComplete(companyId, period);
+    recordCompanyAutomation(companyId, period, {
+      phase: after.complete ? "done" : "waiting",
+      source: "auto_pipeline",
+      ok: true,
+      waitingForPlatform: !after.complete && !after.hasWork,
+      message: monthlyGate.label,
+    });
+    return {
+      ok: true,
+      skipped: true,
+      reason: "already_pulled_once",
+      monthlyCycle: monthlyGate,
+      waitingForPlatform: !after.complete && !after.hasWork,
+      companyId,
+      period,
+      jobs: after,
+      message: after.complete
+        ? `Monat ${period} fertig – kein erneuter Abruf.`
+        : monthlyGate.label,
+      nextActions: [],
+    };
+  }
+
+  // Respect monthly gate for pull flag downstream
+  if (!monthlyGate.pull && !forceAsk) {
+    options = { ...options, pull: false };
+  }
+
   // Release any leftover calculated jobs without re-asking
   if (progress.calculated > 0 && (options.autoRelease !== false && cfg.autoRelease)) {
     const calcJobs = listPayrollJobs({ companyId, period })
@@ -611,6 +699,10 @@ export async function askPlatformAndSyncCompany(options = {}) {
   let pull = { skipped: true };
   if (options.pull !== false && cfg.pull) {
     pull = await pullPlatformPayrollBatch({ companyId, period });
+    // Count as the one monthly employee/hours fetch (anti-duplicate)
+    if (!forceAsk || !getMonthlyCycle(companyId, period)?.pulledAt) {
+      markMonthlyPulled(companyId, period, { source: source.startsWith("portal") ? "manual" : "auto" });
+    }
   }
   const platformSignal = summarizePlatformPayrollSignal(pull);
   const localEmployees = listEmployees(companyId);
@@ -781,6 +873,9 @@ export async function askPlatformAndSyncCompany(options = {}) {
   }
 
   const after = monthProgress(companyId, period);
+  if (after.complete) {
+    markMonthlyCycleComplete(companyId, period);
+  }
   if (after.complete || (close?.newlyReleased?.length > 0)) {
     lastSuccessAt = new Date().toISOString();
     companySyncState.set(companyId, {

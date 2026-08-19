@@ -182,6 +182,16 @@ WORKPASS_PLATFORM_WEBHOOK_AUTH=both
 
 `WORKPASS_PLATFORM_WEBHOOK_AUTH`: `header` (nur `X-WorkPass-Webhook-Key`), `bearer` (nur `Authorization: Bearer`), oder `both` (Standard).
 
+### Monthly cadence (no duplicate pulls)
+
+```
+WORKPASS_MONTHLY_ONCE=1
+WORKPASS_MONTHLY_PAYROLL_DAYS=28,29
+WORKPASS_MONTHLY_CATCHUP=1
+```
+
+Accounting pulls employees/hours **once per month** (preferred on day 28/29), then calculates and releases payslips to the platform. Before day 28 the auto pipeline skips current-month pulls. Manual firm-portal sync remains allowed anytime.
+
 ### Platform
 
 ```

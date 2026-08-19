@@ -16,6 +16,13 @@ import { runMonthClose, currentPeriod, previousPeriod } from "./month-close.mjs"
 import { listAutomationCompanies } from "./automation-eligibility.mjs";
 import { liveMonthJobs, recordCompanyAutomation } from "./automation-status.mjs";
 import { maybeAutoSubmitElster, maybeAutoSubmitLsta } from "./elster/submit.mjs";
+import {
+  shouldRunMonthlyAutoCycle,
+  markMonthlyPulled,
+  markMonthlyCycleComplete,
+  preferredPayrollDays,
+  monthlyCycleConfig,
+} from "./monthly-cycle.mjs";
 
 let timer = null;
 let lastTickAt = null;
@@ -31,6 +38,7 @@ export function autoMonthCloseConfig() {
     || process.env.WORKPASS_AUTO_MONTH_CLOSE === "false";
   const parallelMonths = process.env.WORKPASS_AUTO_PARALLEL_MONTHS !== "0"
     && process.env.WORKPASS_AUTO_PARALLEL_MONTHS !== "false";
+  const monthly = monthlyCycleConfig();
   return {
     enabled: !disabled,
     hour: Number(process.env.WORKPASS_AUTO_MONTH_CLOSE_HOUR || 6),
@@ -38,25 +46,38 @@ export function autoMonthCloseConfig() {
     pull: process.env.WORKPASS_AUTO_MONTH_CLOSE_PULL !== "0",
     parallelMonths,
     catchUpDays: Math.max(0, Number(process.env.WORKPASS_AUTO_MONTH_CLOSE_CATCHUP_DAYS || 7)),
+    monthlyOnce: monthly.oncePerMonth,
+    monthlyPayrollDays: monthly.preferredDays,
   };
 }
 
 /**
- * Default: current and previous month in parallel.
- * Opt out with WORKPASS_AUTO_PARALLEL_MONTHS=0 (then month-end + catch-up window).
+ * Prefer days 28/29 (monthly cycle). Parallel months still allowed for previous month catch-up.
  */
 export function periodsForAutoMonthClose(now = new Date(), cfg = autoMonthCloseConfig()) {
+  const day = now.getDate();
+  const preferred = preferredPayrollDays(now, monthlyCycleConfig());
+  const inPreferred = preferred.includes(day) || (cfg.monthlyOnce && day >= preferred[0]);
+
   if (cfg.parallelMonths) {
+    // Only run inside monthly window (or catch-up after day 28)
+    if (!inPreferred && !optsForceWindow(cfg, day)) {
+      // Early month: only finish previous month if still open (once)
+      if (day < preferred[0]) return [previousPeriod(now)];
+    }
     return [...new Set([currentPeriod(now), previousPeriod(now)])];
   }
-  const day = now.getDate();
   if (cfg.catchUpDays > 0 && day <= cfg.catchUpDays) {
     return [previousPeriod(now)];
   }
-  if (isLastDayOfMonth(now) || day >= 25) {
+  if (inPreferred || isLastDayOfMonth(now) || day >= preferred[0]) {
     return [currentPeriod(now)];
   }
   return [];
+}
+
+function optsForceWindow(cfg, day) {
+  return !cfg.monthlyOnce;
 }
 
 export function autoMonthCloseStatus() {
@@ -88,6 +109,7 @@ export async function runAutoMonthCloseOnce(opts = {}) {
     for (const c of companies) {
       const before = liveMonthJobs(c.id, period);
       if (before.complete && !opts.forceIncomplete) {
+        markMonthlyCycleComplete(c.id, period);
         results.push({
           companyId: c.id,
           period,
@@ -98,20 +120,59 @@ export async function runAutoMonthCloseOnce(opts = {}) {
         });
         continue;
       }
+
+      const gate = shouldRunMonthlyAutoCycle({
+        companyId: c.id,
+        period,
+        force: Boolean(opts.force),
+        source: opts.force ? "api_force" : "month_scheduler",
+        now,
+        allowPull: opts.pull !== undefined ? opts.pull !== false : cfg.pull,
+      });
+      if (!gate.ok && !opts.force) {
+        results.push({
+          companyId: c.id,
+          period,
+          ok: true,
+          skipped: true,
+          reason: gate.reason,
+          message: gate.label,
+          jobs: before,
+        });
+        continue;
+      }
+      if (gate.reason === "already_pulled_once" && !opts.force && !before.calculated) {
+        results.push({
+          companyId: c.id,
+          period,
+          ok: true,
+          skipped: true,
+          reason: "already_pulled_once",
+          message: gate.label,
+          jobs: before,
+        });
+        continue;
+      }
+
       try {
         recordCompanyAutomation(c.id, period, {
           phase: "pull",
           source: "month_scheduler",
-          message: `Monatsautomatik startet für ${period}…`,
+          message: `Monatsautomatik (Tag ${preferredPayrollDays(now).join("/")}) für ${period}…`,
         });
+        const doPull = gate.pull && (opts.pull !== undefined ? opts.pull : cfg.pull);
+        if (doPull) {
+          markMonthlyPulled(c.id, period, { source: "month_scheduler" });
+        }
         const r = await runMonthClose({
           companyId: c.id,
           period,
-          pull: opts.pull !== undefined ? opts.pull : cfg.pull,
+          pull: doPull,
           autoRelease: opts.autoRelease !== undefined ? opts.autoRelease : cfg.autoRelease,
           tenantScope: c.id,
         });
         const after = liveMonthJobs(c.id, period);
+        if (after.complete) markMonthlyCycleComplete(c.id, period);
         recordCompanyAutomation(c.id, period, {
           phase: after.complete ? "done" : (r.waitingForPlatform ? "waiting" : (after.hasWork ? "release" : "ask")),
           source: "month_scheduler",
@@ -142,6 +203,7 @@ export async function runAutoMonthCloseOnce(opts = {}) {
           waitingForPlatform: r.waitingForPlatform,
           message: r.message,
           jobs: after,
+          monthlyCycle: { reason: gate.reason, pull: doPull },
           lsta: lsta && !lsta.skipped ? { ok: lsta.ok, status: lsta.status, mode: lsta.mode } : undefined,
           elster: elster && !elster.skipped ? { ok: elster.ok, status: elster.status, mode: elster.mode } : undefined,
         });

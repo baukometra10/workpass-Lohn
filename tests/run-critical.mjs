@@ -15,6 +15,7 @@ const suites = [
   "tests/employee-certificates.mjs",
   "tests/certificate-delivery-confirm.mjs",
   "tests/document-complete.mjs",
+  "tests/monthly-cycle.mjs",
   "tests/human-final-pillars.mjs",
   "tests/tenant-isolation.mjs",
   "tests/export-status.mjs",

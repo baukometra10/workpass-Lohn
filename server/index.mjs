@@ -1669,9 +1669,11 @@ async function handler(req, res) {
       if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
       const result = getCompanyAutomationStatus(companyId, period);
       if (!result.ok) return reply(422, result);
+      const { monthlyCycleStatusSnapshot } = await import("./monthly-cycle.mjs");
       return reply(200, {
         ...result,
         kind: "portal.automation.status.v1",
+        monthlyCycle: monthlyCycleStatusSnapshot(companyId, period),
         monthClose: autoMonthCloseStatus(),
         autoPipeline: autoPipelineStatus(),
       });
