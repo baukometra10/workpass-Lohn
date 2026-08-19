@@ -1123,11 +1123,10 @@ async function handler(req, res) {
           : (probe.hint || probe.error || "Webhook nicht erreichbar"),
         platformShould: {
           receiveEvents: [
-            "employees.list.requested",
-            "payroll.month.requested",
-            "invoices.export.requested",
-            "employee.data.requested",
+            "document.released",
             "payslip.released",
+            "lstb.released",
+            "verdienst.released",
             "invoice.released",
             "platform.ping",
           ],
@@ -2351,7 +2350,7 @@ async function handler(req, res) {
         if (!nextActions.length) {
           nextActions = delN > 0
             ? [
-              "Plattform muss Event payslip.released speichern und dem Mitarbeiter anzeigen",
+              "Plattform muss Event document.released (documentType=payslip|lstb|verdienst) speichern und dem Mitarbeiter anzeigen",
               "Antwort JSON: { ok:true, accepted:true }",
               "Oder pollen: GET /v1/delivery/pending und danach POST /v1/delivery/:id/ack",
             ]
