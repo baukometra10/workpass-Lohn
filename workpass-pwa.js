@@ -95,7 +95,20 @@
 
   function registerSw() {
     if (!("serviceWorker" in navigator)) return;
-    const swUrl = new URL("sw.js?v=227", window.location.href).href;
+    // Lohn layout must never stick behind an old shell cache.
+    const path = String(location.pathname || "");
+    if (/lohn\.html$/i.test(path)) {
+      navigator.serviceWorker.getRegistrations()
+        .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+        .catch(() => {});
+      if ("caches" in window) {
+        caches.keys()
+          .then((keys) => Promise.all(keys.filter((k) => String(k).startsWith("workpass-shell-")).map((k) => caches.delete(k))))
+          .catch(() => {});
+      }
+      return;
+    }
+    const swUrl = new URL("sw.js?v=228", window.location.href).href;
     navigator.serviceWorker.register(swUrl).then((reg) => {
       try { reg.update(); } catch { /* ignore */ }
     }).catch(() => {});

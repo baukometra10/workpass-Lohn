@@ -3122,7 +3122,7 @@
 
   /** Clear stale PWA shell once so restored layout CSS is not stuck behind cache-first SW. */
   async function bustStaleShellCacheOnce() {
-    const FLAG = "workpass.shell.bust.v227-split";
+    const FLAG = "workpass.shell.bust.v228-hard-split";
     try {
       if (sessionStorage.getItem(FLAG) === "1") return false;
       let touched = false;

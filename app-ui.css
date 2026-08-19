@@ -1364,9 +1364,9 @@ body.payroll-mode .workspace .preview-panel {
 
   .workspace {
 
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
 
-    overflow-y: auto;
+    overflow: hidden;
 
   }
 
@@ -1374,9 +1374,11 @@ body.payroll-mode .workspace .preview-panel {
 
   .workspace .form-panel {
 
-    border-right: none;
+    border-right: 1px solid var(--lex-border);
 
-    max-height: none;
+    max-height: 100%;
+
+    min-height: 0;
 
   }
 
@@ -1384,11 +1386,11 @@ body.payroll-mode .workspace .preview-panel {
 
   .workspace .preview-panel {
 
-    min-height: 600px;
+    min-height: 0;
 
     border-left: none;
 
-    border-top: 1px solid var(--lex-border);
+    border-top: none;
 
   }
 
@@ -1497,13 +1499,19 @@ body.payroll-mode .workspace .preview-panel {
   }
 }
 
-/* ── Dashboard ── */
-body.dashboard-tab .workspace {
-  grid-template-columns: 1fr;
+/* ── Dashboard: keep live preview visible (Hub index.html) ── */
+body.dashboard-tab .preview-panel {
+  display: block;
 }
 
-body.dashboard-tab .preview-panel {
-  display: none;
+body.dashboard-tab .preview-panel::before {
+  content: attr(data-preview-label);
+}
+
+@media (max-width: 1200px) {
+  body.dashboard-tab .workspace {
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  }
 }
 
 body.dashboard-tab .app-topbar.lex-page-header .topbar-heading {
@@ -1893,5 +1901,34 @@ body.workpass-hub.dashboard-tab .dash-hero h2 {
   margin: 4px 0;
   border: none;
   border-top: 1px solid var(--lex-border-light);
+}
+
+/* —— Canonical Hub workspace: form left · preview right —— */
+.workspace {
+  display: grid !important;
+  grid-template-columns: minmax(320px, 400px) minmax(0, 1fr) !important;
+  align-items: stretch !important;
+  overflow: hidden !important;
+  min-height: 0 !important;
+}
+.workspace .form-panel {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: 100% !important;
+  overflow-y: auto !important;
+}
+.workspace .preview-panel {
+  display: block !important;
+  visibility: visible !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  overflow: auto !important;
+}
+@media (max-width: 720px) {
+  .workspace {
+    grid-template-columns: minmax(200px, 42vw) minmax(0, 1fr) !important;
+  }
 }
 

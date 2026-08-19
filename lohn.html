@@ -8,8 +8,78 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=26" />
-    <link rel="stylesheet" href="lohn.css?v=92" />
+    <link rel="stylesheet" href="datev-sheet.css?v=3" />
+    <link rel="stylesheet" href="lohn.css?v=93" />
     <link rel="stylesheet" href="annual-certificate.css?v=10" />
+    <style id="lohnSplitHard">
+      /* HARD LOCK: form left · A4 right — ignore every later stacking rule */
+      html, body.lohn-desktop {
+        height: 100% !important;
+        overflow: hidden !important;
+      }
+      body.lohn-desktop #lohnApp.lohn-shell {
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        overflow: hidden !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        position: relative !important;
+        inset: auto !important;
+      }
+      body.lohn-desktop:not(.auth-locked) #lohnApp[aria-hidden="true"] {
+        visibility: visible !important;
+        pointer-events: auto !important;
+        position: relative !important;
+        inset: auto !important;
+      }
+      #lohnApp .lohn-layout {
+        display: grid !important;
+        grid-template-columns: 360px minmax(0, 1fr) !important;
+        grid-template-rows: minmax(0, 1fr) !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        width: 100% !important;
+        overflow: hidden !important;
+      }
+      #lohnApp .lohn-form {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+        width: 360px !important;
+        max-width: 360px !important;
+        min-width: 0 !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        border-right: 1px solid rgba(90, 140, 200, 0.28) !important;
+      }
+      #lohnApp .lohn-preview {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        width: auto !important;
+        min-width: 280px !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: hidden !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+      }
+      #lohnApp .preview-stage {
+        flex: 1 1 auto !important;
+        min-height: 200px !important;
+        overflow: auto !important;
+      }
+      #lohnApp #datevSheetHost {
+        display: block !important;
+        visibility: visible !important;
+        min-height: 120px !important;
+      }
+    </style>
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0b1220" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -887,8 +957,8 @@
     <script src="mandant-checklist.js?v=4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="workpass-pwa.js?v=6"></script>
+    <script src="workpass-pwa.js?v=7"></script>
     <script src="annual-certificate.js?v=4"></script>
-    <script src="lohn-app.js?v=117"></script>
+    <script src="lohn-app.js?v=118"></script>
   </body>
 </html>
