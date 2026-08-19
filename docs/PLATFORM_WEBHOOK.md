@@ -32,19 +32,28 @@ Sync overview for the platform: `GET {ACCOUNTING}/v1/platform/status`
 
 ## 2) Envelope (`schemaVersion: 2`)
 
+Employee documents (Lohnabrechnung, LStB, VB, Rechnung) use:
+
+- `event`: **`document.released`**
+- `documentType`: **`payslip` | `lstb` | `verdienst` | `invoice`**
+- Header `X-WorkPass-Event: document.released`
+- Header `X-WorkPass-Document-Type: payslip` (etc.)
+- `meta.legacyEvent` keeps the old name (`payslip.released`, …) for debugging
+
 ```json
 {
   "kind": "platform.accounting.event.v1",
   "schemaVersion": 2,
-  "event": "payslip.released",
+  "event": "document.released",
+  "documentType": "payslip",
   "occurredAt": "2026-07-28T10:00:00.000Z",
   "source": "workpass-accounting-bridge",
   "idempotencyKey": "pay:…",
   "company": { "id": "luf", "name": "…" },
-  "delivery": { },
+  "delivery": { "type": "payslip", "documentType": "payslip" },
   "message": null,
   "monthClose": null,
-  "meta": null
+  "meta": { "legacyEvent": "payslip.released", "documentType": "payslip" }
 }
 ```
 

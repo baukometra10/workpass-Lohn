@@ -1,11 +1,16 @@
 {
   "kind": "platform.accounting.event.v1",
-  "event": "lstb.released",
+  "schemaVersion": 2,
+  "event": "document.released",
+  "documentType": "lstb",
   "occurredAt": "2026-08-18T14:00:00.000Z",
   "source": "workpass-accounting-bridge",
+  "idempotencyKey": "lstb:muster-gmbh:02006:2026",
+  "company": { "id": "muster-gmbh", "name": "Muster GmbH" },
   "delivery": {
     "kind": "platform.employee.delivery.v1",
     "type": "lstb",
+    "documentType": "lstb",
     "deliveryId": "lstb:muster-gmbh:02006:2026",
     "status": "ready_for_employee",
     "releasedAt": "2026-08-18T14:00:00.000Z",
@@ -28,5 +33,11 @@
     },
     "appRoute": "/employee/certificates/lstb/2026/02006",
     "title": "Lohnsteuerbescheinigung 2026"
+  },
+  "meta": {
+    "legacyEvent": "lstb.released",
+    "documentType": "lstb",
+    "requireAck": true,
+    "parity": "payslip"
   }
 }

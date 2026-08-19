@@ -140,8 +140,8 @@ const lstbShape = buildEmployeeDelivery("lstb", {
 assert(payShape.kind === lstbShape.kind, "same delivery kind as payslip");
 assert(payShape.status === lstbShape.status, "same ready_for_employee status");
 assert(typeof lstbShape.appRoute === "string" && lstbShape.appRoute.includes("/employee/certificates/lstb/"), "lstb appRoute");
-assert(eventForDelivery({ type: "lstb" }) === "lstb.released", "replay event lstb");
-assert(eventForDelivery({ type: "verdienst" }) === "verdienst.released", "replay event verdienst");
+assert(eventForDelivery({ type: "lstb" }) === "document.released", "replay event lstb");
+assert(eventForDelivery({ type: "verdienst" }) === "document.released", "replay event verdienst");
 
 mode = "bare-ok";
 inbox.length = 0;
@@ -155,11 +155,14 @@ assert(bare.confirmed === false, "confirmed false on bare ok");
 assert(bare.pendingPull === true, `stays pending for pull (pendingPull=${bare.pendingPull})`);
 assert(inbox.length >= 1, `webhook was called (inbox=${inbox.length})`);
 const last = inbox[inbox.length - 1] || {};
-assert(last.body?.event === "lstb.released", `event lstb.released (got ${last.body?.event})`);
+assert(last.body?.event === "document.released", `event document.released (got ${last.body?.event})`);
+assert(last.body?.documentType === "lstb", `documentType lstb (got ${last.body?.documentType})`);
 assert(last.body?.delivery?.type === "lstb", "delivery.type lstb");
+assert(last.body?.delivery?.documentType === "lstb", "delivery.documentType lstb");
 assert(last.body?.delivery?.kind === "platform.employee.delivery.v1", "envelope delivery kind");
 assert(last.body?.meta?.requireAck === true, "meta.requireAck");
 assert(last.body?.meta?.parity === "payslip", "meta.parity payslip");
+assert(last.body?.meta?.legacyEvent === "lstb.released", "meta.legacyEvent");
 assert(verifyCertificateDelivery(bare.delivery.deliveryId).confirmed === false, "verify still unconfirmed");
 
 mode = "accepted";
@@ -171,7 +174,8 @@ const okLstb = await deliverEmployeeLstb(companyId, "EMP-CONF-1", 2026, {
 });
 assert(okLstb.ok === true && okLstb.confirmed === true, "accepted:true confirms lstb");
 assert(okLstb.trust === "acked", "trust acked");
-assert(inbox[inbox.length - 1]?.body?.event === "lstb.released", "accepted path event");
+assert(inbox[inbox.length - 1]?.body?.event === "document.released", "accepted path event");
+assert(inbox[inbox.length - 1]?.body?.documentType === "lstb", "accepted path documentType");
 assert(verifyCertificateDelivery(okLstb.delivery.deliveryId).confirmed === true, "verify after accept");
 
 mode = "accepted";
@@ -182,7 +186,8 @@ const okVb = await deliverEmployeeVerdienst(companyId, "EMP-CONF-1", 2026, "2026
   ackWaitMs: 0,
 });
 assert(okVb.ok === true && okVb.confirmed === true, "accepted:true confirms vb");
-assert(inbox[inbox.length - 1]?.body?.event === "verdienst.released", `vb event (got ${inbox[inbox.length - 1]?.body?.event})`);
+assert(inbox[inbox.length - 1]?.body?.event === "document.released", `vb event (got ${inbox[inbox.length - 1]?.body?.event})`);
+assert(inbox[inbox.length - 1]?.body?.documentType === "verdienst", "vb documentType");
 assert(inbox[inbox.length - 1]?.body?.delivery?.type === "verdienst", "vb delivery type");
 
 mode = "fail";

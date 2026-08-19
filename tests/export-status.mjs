@@ -48,11 +48,16 @@ const recon = buildDeliveryReconciliation("cmp-exp", { period: "2026-08" });
 assert(recon.ok && recon.kind === "portal.delivery_reconciliation.v1", "reconciliation shape");
 
 console.log("\n=== Certificate webhook events ===");
-const { eventForDelivery } = await import("../server/delivery-replay.mjs");
-assert(eventForDelivery({ type: "lstb" }) === "lstb.released", "lstb event");
-assert(eventForDelivery({ type: "verdienst" }) === "verdienst.released", "verdienst event");
-assert(eventForDelivery({ type: "payslip" }) === "payslip.released", "payslip event");
-assert(eventForDelivery({ type: "invoice" }) === "invoice.released", "invoice event");
+const { eventForDelivery, documentTypeForDelivery } = await import("../server/delivery-replay.mjs");
+const { resolveDocumentRelease } = await import("../server/notify.mjs");
+assert(eventForDelivery({ type: "lstb" }) === "document.released", "lstb event");
+assert(eventForDelivery({ type: "verdienst" }) === "document.released", "verdienst event");
+assert(eventForDelivery({ type: "payslip" }) === "document.released", "payslip event");
+assert(eventForDelivery({ type: "invoice" }) === "document.released", "invoice event");
+assert(documentTypeForDelivery({ type: "lstb" }) === "lstb", "lstb documentType");
+assert(resolveDocumentRelease({ event: "payslip.released" }).eventName === "document.released", "normalize payslip");
+assert(resolveDocumentRelease({ event: "lstb.released" }).documentType === "lstb", "normalize lstb type");
+assert(resolveDocumentRelease({ event: "document.released", documentType: "verdienst" }).documentType === "verdienst", "pass-through verdienst");
 
 closeSqlite();
 try {

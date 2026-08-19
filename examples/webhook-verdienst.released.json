@@ -1,11 +1,16 @@
 {
   "kind": "platform.accounting.event.v1",
-  "event": "verdienst.released",
+  "schemaVersion": 2,
+  "event": "document.released",
+  "documentType": "verdienst",
   "occurredAt": "2026-08-18T14:05:00.000Z",
   "source": "workpass-accounting-bridge",
+  "idempotencyKey": "vb:muster-gmbh:02006:2026-08",
+  "company": { "id": "muster-gmbh", "name": "Muster GmbH" },
   "delivery": {
     "kind": "platform.employee.delivery.v1",
     "type": "verdienst",
+    "documentType": "verdienst",
     "deliveryId": "vb:muster-gmbh:02006:2026-08",
     "status": "ready_for_employee",
     "releasedAt": "2026-08-18T14:05:00.000Z",
@@ -28,5 +33,11 @@
     },
     "appRoute": "/employee/certificates/verdienst/2026-08/02006",
     "title": "Verdienstbescheinigung 2026-08"
+  },
+  "meta": {
+    "legacyEvent": "verdienst.released",
+    "documentType": "verdienst",
+    "requireAck": true,
+    "parity": "payslip"
   }
 }

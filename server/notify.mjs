@@ -55,13 +55,14 @@ export function webhookKeyConfigured() {
   return Boolean(process.env.WORKPASS_PLATFORM_WEBHOOK_KEY);
 }
 
-function buildWebhookHeaders({ event, idempotencyKey, attempt, companyId, webhookKey }) {
+function buildWebhookHeaders({ event, idempotencyKey, attempt, companyId, webhookKey, documentType }) {
   const mode = String(process.env.WORKPASS_PLATFORM_WEBHOOK_AUTH || "both").toLowerCase();
   const headers = {
     "Content-Type": "application/json",
     "X-WorkPass-Event": String(event || ""),
     "X-WorkPass-Idempotency-Key": String(idempotencyKey || ""),
   };
+  if (documentType) headers["X-WorkPass-Document-Type"] = String(documentType);
   if (attempt != null) headers["X-WorkPass-Attempt"] = String(attempt);
   if (companyId) headers["X-WorkPass-Company-Id"] = String(companyId);
   if (webhookKey) {
@@ -75,6 +76,59 @@ function buildWebhookHeaders({ event, idempotencyKey, attempt, companyId, webhoo
     }
   }
   return headers;
+}
+
+/**
+ * Platform expects document.released + documentType (payslip|lstb|verdienst|invoice).
+ * Legacy event names (payslip.released, …) are normalized here and kept as meta.legacyEvent.
+ */
+export function resolveDocumentRelease(event = {}) {
+  const rawEvent = String(event.event || "").trim();
+  const rawType = String(
+    event.documentType
+    || event.delivery?.documentType
+    || event.delivery?.type
+    || ""
+  ).trim().toLowerCase();
+
+  let documentType = rawType;
+  let legacyEvent = rawEvent;
+
+  if (rawEvent === "payslip.released" || rawEvent === "payroll.released") {
+    documentType = documentType || "payslip";
+    legacyEvent = "payslip.released";
+  } else if (rawEvent === "lstb.released") {
+    documentType = "lstb";
+    legacyEvent = "lstb.released";
+  } else if (rawEvent === "verdienst.released") {
+    documentType = "verdienst";
+    legacyEvent = "verdienst.released";
+  } else if (rawEvent === "invoice.released") {
+    documentType = "invoice";
+    legacyEvent = "invoice.released";
+  } else if (rawEvent === "document.released") {
+    documentType = documentType || "payslip";
+    legacyEvent = event.meta?.legacyEvent || legacyEventForDocumentType(documentType);
+  }
+
+  if (documentType === "payroll") documentType = "payslip";
+  if (documentType === "vb") documentType = "verdienst";
+
+  const isDocumentRelease = ["payslip", "lstb", "verdienst", "invoice"].includes(documentType);
+  return {
+    isDocumentRelease,
+    documentType: isDocumentRelease ? documentType : (documentType || null),
+    legacyEvent: isDocumentRelease ? (legacyEvent || legacyEventForDocumentType(documentType)) : rawEvent,
+    eventName: isDocumentRelease ? "document.released" : rawEvent,
+  };
+}
+
+export function legacyEventForDocumentType(documentType) {
+  const t = String(documentType || "").toLowerCase();
+  if (t === "lstb") return "lstb.released";
+  if (t === "verdienst" || t === "vb") return "verdienst.released";
+  if (t === "invoice") return "invoice.released";
+  return "payslip.released";
 }
 
 function hintForWebhookFailure(status, keySource) {
@@ -102,6 +156,7 @@ export function buildEmployeeDelivery(type, job) {
     return {
       kind: "platform.employee.delivery.v1",
       type: "payslip",
+      documentType: "payslip",
       deliveryId: `pay:${job.jobId}`,
       jobId: job.jobId,
       status: "ready_for_employee",
@@ -136,6 +191,7 @@ export function buildEmployeeDelivery(type, job) {
     return {
       kind: "platform.employee.delivery.v1",
       type: "lstb",
+      documentType: "lstb",
       deliveryId: `lstb:${companyId}:${employeeId}:${year}`,
       status: "ready_for_employee",
       releasedAt: new Date().toISOString(),
@@ -174,6 +230,7 @@ export function buildEmployeeDelivery(type, job) {
     return {
       kind: "platform.employee.delivery.v1",
       type: "verdienst",
+      documentType: "verdienst",
       deliveryId: `vb:${companyId}:${employeeId}:${period || year}`,
       status: "ready_for_employee",
       releasedAt: new Date().toISOString(),
@@ -207,6 +264,7 @@ export function buildEmployeeDelivery(type, job) {
     return {
       kind: "platform.employee.delivery.v1",
       type: "invoice",
+      documentType: "invoice",
       deliveryId: `inv:${job.id}`,
       invoiceId: job.id,
       status: "ready_for_employee",
@@ -263,20 +321,39 @@ export async function notifyPlatform(event) {
   const timeoutMs = Number(process.env.WORKPASS_WEBHOOK_TIMEOUT_MS || 8000);
   const idempotencyKey = resolveIdempotencyKey(event);
   const company = resolveCompany(event);
+  const release = resolveDocumentRelease(event);
+
+  let delivery = event.delivery || null;
+  if (delivery && release.isDocumentRelease) {
+    delivery = {
+      ...delivery,
+      type: release.documentType || delivery.type,
+      documentType: release.documentType,
+    };
+  }
 
   const envelope = {
     kind: "platform.accounting.event.v1",
     schemaVersion: 2,
-    event: event.event,
+    event: release.eventName,
+    documentType: release.isDocumentRelease ? release.documentType : (event.documentType || null),
     occurredAt: new Date().toISOString(),
     source: "workpass-accounting-bridge",
     idempotencyKey,
     preferInlineReply: true,
     company: company ? { id: company.id || "", name: company.name || "" } : null,
-    delivery: event.delivery || null,
+    delivery,
     message: event.message || null,
     monthClose: event.monthClose || null,
-    meta: event.meta || null,
+    meta: {
+      ...(event.meta || {}),
+      ...(release.isDocumentRelease
+        ? {
+          legacyEvent: release.legacyEvent,
+          documentType: release.documentType,
+        }
+        : {}),
+    },
   };
 
   logDelivery({ direction: "out", webhook: webhook || null, envelope, keySource });
@@ -286,13 +363,16 @@ export async function notifyPlatform(event) {
       ok: true,
       mode: "local-log-only",
       message: "Kein WORKPASS_PLATFORM_WEBHOOK_URL – Event lokal protokolliert. Plattform kann /v1/delivery/pending und /v1/messages/pending pollen.",
-      delivery: event.delivery || null,
+      delivery,
       idempotencyKey,
+      event: envelope.event,
+      documentType: envelope.documentType,
     };
     lastWebhookStatus = {
       ok: true,
       at: envelope.occurredAt,
-      event: event.event,
+      event: envelope.event,
+      documentType: envelope.documentType,
       status: null,
       error: null,
       mode: "local-log-only",
@@ -313,7 +393,8 @@ export async function notifyPlatform(event) {
       const res = await fetch(webhook, {
         method: "POST",
         headers: buildWebhookHeaders({
-          event: event.event,
+          event: envelope.event,
+          documentType: envelope.documentType,
           idempotencyKey,
           attempt,
           companyId: company?.id,
@@ -334,6 +415,8 @@ export async function notifyPlatform(event) {
         body,
         idempotencyKey,
         keySource,
+        event: envelope.event,
+        documentType: envelope.documentType,
       });
       if (res.ok) {
         const looseAccepted = Boolean(
@@ -357,7 +440,8 @@ export async function notifyPlatform(event) {
         lastWebhookStatus = {
           ok: true,
           at: new Date().toISOString(),
-          event: event.event,
+          event: envelope.event,
+          documentType: envelope.documentType,
           status: res.status,
           error: null,
           mode: "webhook",
@@ -377,8 +461,10 @@ export async function notifyPlatform(event) {
           attempt,
           body,
           accepted,
-          delivery: event.delivery || null,
+          delivery,
           idempotencyKey,
+          event: envelope.event,
+          documentType: envelope.documentType,
           hint: lastWebhookStatus.hint,
         };
       }
@@ -391,6 +477,8 @@ export async function notifyPlatform(event) {
         error: lastError,
         idempotencyKey,
         keySource,
+        event: envelope.event,
+        documentType: envelope.documentType,
       });
     } finally {
       clearTimeout(timer);
@@ -402,7 +490,8 @@ export async function notifyPlatform(event) {
   lastWebhookStatus = {
     ok: false,
     at: new Date().toISOString(),
-    event: event.event,
+    event: envelope.event,
+    documentType: envelope.documentType,
     status: lastStatus,
     error: lastError,
     mode: "webhook",
@@ -416,9 +505,11 @@ export async function notifyPlatform(event) {
     status: lastStatus,
     error: lastError,
     body: lastBody,
-    delivery: event.delivery || null,
+    delivery,
     idempotencyKey,
-    queuedForPull: Boolean(event.delivery?.deliveryId),
+    event: envelope.event,
+    documentType: envelope.documentType,
+    queuedForPull: Boolean(delivery?.deliveryId),
     hint,
     keySource,
   };

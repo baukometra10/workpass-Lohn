@@ -30,6 +30,7 @@ export function platformCapabilities() {
     },
     outbound: {
       events: [
+        "document.released",
         "payslip.released",
         "lstb.released",
         "verdienst.released",
@@ -39,6 +40,7 @@ export function platformCapabilities() {
         "month.closed",
         "month.close.failed",
       ],
+      documentTypes: ["payslip", "lstb", "verdienst", "invoice"],
       deliveryTypes: ["payslip", "lstb", "verdienst", "invoice"],
       pull: [
         "GET /v1/delivery/pending",
@@ -58,6 +60,7 @@ export function platformCapabilities() {
     notes: [
       "Platform should advertise pull URLs via activate payload — not guessed by accounting.",
       "Delivery ack confirms employee visibility, not just HTTP 2xx.",
+      "Employee documents are sent as event=document.released with documentType=payslip|lstb|verdienst|invoice (legacy *.released kept in meta.legacyEvent).",
       "LStB/VB require strictAck: accepted|deliveryAccepted|stored (bare {ok:true} is not enough).",
     ],
   };

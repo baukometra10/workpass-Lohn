@@ -67,6 +67,7 @@ export const accountingConnect = {
       "payroll.month.requested",
       "invoices.export.requested",
       "employee.data.requested",
+      "document.released",
       "payslip.released",
       "lstb.released",
       "verdienst.released",
@@ -79,6 +80,7 @@ export const accountingConnect = {
       "month.close.failed",
       "month.auto.processed",
     ],
+    documentTypes: ["payslip", "lstb", "verdienst", "invoice"],
     replyToAccounting: {
       employees: "POST /v1/employees/import",
       payrollBatch: "POST /v1/payroll/batch",

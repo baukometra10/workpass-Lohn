@@ -22,14 +22,21 @@ import {
 } from "./delivery-queue.mjs";
 import { notifyPlatform } from "./notify.mjs";
 
-/** Map queue delivery.type → platform webhook event (must stay in sync with notify.mjs). */
+/** Map queue delivery.type → platform webhook event (document.released + documentType). */
 export function eventForDelivery(delivery) {
-  const t = String(delivery?.type || "").toLowerCase();
-  if (t === "invoice") return "invoice.released";
-  if (t === "lstb") return "lstb.released";
-  if (t === "verdienst" || t === "vb") return "verdienst.released";
-  if (t === "payslip" || t === "payroll") return "payslip.released";
-  return "payslip.released";
+  const t = String(delivery?.documentType || delivery?.type || "").toLowerCase();
+  if (["invoice", "lstb", "verdienst", "vb", "payslip", "payroll"].includes(t)) {
+    return "document.released";
+  }
+  return "document.released";
+}
+
+export function documentTypeForDelivery(delivery) {
+  const t = String(delivery?.documentType || delivery?.type || "").toLowerCase();
+  if (t === "invoice") return "invoice";
+  if (t === "lstb") return "lstb";
+  if (t === "verdienst" || t === "vb") return "verdienst";
+  return "payslip";
 }
 
 /**
@@ -60,13 +67,25 @@ export async function replayPendingDeliveries(options = {}) {
   for (const delivery of candidates) {
     if (!delivery?.deliveryId) continue;
     try {
+      const documentType = documentTypeForDelivery(delivery);
       const notify = await notifyPlatform({
         event: eventForDelivery(delivery),
+        documentType,
         delivery,
         company: delivery.company || null,
         // Stable key so the platform can dedupe even if we retry a failure
         idempotencyKey: String(delivery.deliveryId),
-        meta: { reason: options.reason || "delivery_replay", force },
+        strictAck: documentType === "lstb" || documentType === "verdienst",
+        meta: {
+          reason: options.reason || "delivery_replay",
+          force,
+          documentType,
+          legacyEvent: documentType === "lstb"
+            ? "lstb.released"
+            : (documentType === "verdienst"
+              ? "verdienst.released"
+              : (documentType === "invoice" ? "invoice.released" : "payslip.released")),
+        },
       });
 
       const reached = Boolean(notify.ok && notify.mode === "webhook");

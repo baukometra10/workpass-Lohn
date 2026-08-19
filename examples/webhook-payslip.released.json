@@ -1,11 +1,16 @@
 {
   "kind": "platform.accounting.event.v1",
-  "event": "payslip.released",
+  "schemaVersion": 2,
+  "event": "document.released",
+  "documentType": "payslip",
   "occurredAt": "2026-07-28T10:00:00.000Z",
   "source": "workpass-accounting-bridge",
+  "idempotencyKey": "pay:muster-gmbh::02006::2025-07",
+  "company": { "id": "muster-gmbh", "name": "Muster GmbH" },
   "delivery": {
     "kind": "platform.employee.delivery.v1",
     "type": "payslip",
+    "documentType": "payslip",
     "deliveryId": "pay:muster-gmbh::02006::2025-07",
     "jobId": "muster-gmbh::02006::2025-07",
     "status": "ready_for_employee",
@@ -44,5 +49,9 @@
     },
     "appRoute": "/employee/payslips/muster-gmbh%3A%3A02006%3A%3A2025-07",
     "title": "Entgeltabrechnung 2025-07"
+  },
+  "meta": {
+    "legacyEvent": "payslip.released",
+    "documentType": "payslip"
   }
 }
