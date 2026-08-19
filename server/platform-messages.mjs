@@ -353,7 +353,7 @@ export async function notifyGapsForPayroll({
     + `Es fehlt:\n• ${gapLabels.join("\n• ")}\n\n`
     + `Bitte in der Plattform ergänzen und die Lohn-/Stundendaten erneut senden `
     + `(auch teilweise Daten sind willkommen).\n`
-- `Sobald Sie diese Mitteilung geöffnet und gelesen haben, bestätigt das Steuerprogramm: empfangen · geöffnet · gesehen.`;
+    + `Sobald Sie diese Mitteilung geöffnet und gelesen haben, bestätigt das Steuerprogramm: empfangen · geöffnet · gesehen.`;
 
   const result = await upsertPlatformMessage({
     type: "data.gap",
