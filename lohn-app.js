@@ -1045,10 +1045,11 @@
       const prev = groups.get(key) || {
         title,
         period,
-        label: s.label || "Auftrag gesehen",
+        label: s.label || "Auftrag: empfangen · geöffnet · gesehen",
         count: 0,
         latestAt: "",
         employees: [],
+        complete: Boolean(s.complete !== false && s.seen !== false),
       };
       prev.count += 1;
       const at = String(s.seenAt || "");
@@ -1883,18 +1884,18 @@
     if (kind === "lstb-all") {
       return uiT(
         "portal.certSendConfirmAll",
-        "Alle Lohnsteuerbescheinigungen dieses Jahres gehen wie die Lohnabrechnung an die Plattform (Mitarbeiter-App). Das Steuerprogramm meldet Erfolg erst nach Plattform-Bestätigung (accepted/ack) – nicht an das Finanzamt (ELSTER)."
+        "Alle Lohnsteuerbescheinigungen dieses Jahres gehen an die Plattform (Mitarbeiter-App). Erfolg erst nach vollständiger Bestätigung: empfangen · geöffnet · gesehen – nicht an das Finanzamt (ELSTER)."
       );
     }
     if (kind === "verdienst") {
       return uiT(
         "portal.certSendConfirmVb",
-        "Verdienstbescheinigung geht wie die Lohnabrechnung an die Plattform. Erfolg erst nach Bestätigung (accepted/ack) – dann sieht der Mitarbeiter sie in der App."
+        "Verdienstbescheinigung geht an die Plattform. Erfolg erst nach: empfangen · geöffnet · gesehen."
       );
     }
     return uiT(
       "portal.certSendConfirmLstb",
-      "Lohnsteuerbescheinigung (LStB, § 41b EStG) geht wie die Lohnabrechnung an die Plattform. Erfolg erst nach Bestätigung (accepted/ack) – nicht an das Finanzamt."
+      "Lohnsteuerbescheinigung (LStB, § 41b EStG) geht an die Plattform. Erfolg erst nach: empfangen · geöffnet · gesehen – nicht an das Finanzamt."
     );
   }
 
@@ -4032,7 +4033,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.53.6</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.53.7</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))

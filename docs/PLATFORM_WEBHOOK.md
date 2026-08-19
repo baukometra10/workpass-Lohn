@@ -104,8 +104,12 @@ Employee documents (Lohnabrechnung, LStB, VB, Rechnung) use:
 1. Verify `X-WorkPass-Webhook-Key`
 2. Dedupe on `idempotencyKey` / `delivery.deliveryId` → return 200 if already processed
 3. Route by `event`
-4. Ack documents: `POST /v1/delivery/{deliveryId}/ack`
-5. Ack messages after user read / data fixed: `POST /v1/messages/{messageId}/ack`
+4. Document receipt (required for full confirm):
+   - webhook `{ accepted: true }` = **empfangen**
+   - `POST /v1/delivery/{deliveryId}/open` = **geöffnet**
+   - `POST /v1/delivery/{deliveryId}/ack` = **gesehen** (complete)
+   - Or one webhook body: `{ accepted: true, opened: true, seen: true }` / `employeeAppStatus: "viewed"`
+5. Message receipt: `POST /v1/messages/:id/received` → `/open` → `/ack` (same three stages)
 6. Poll fallback anytime: `GET /v1/platform/status` or `/v1/delivery/pending` + `/v1/messages/pending`
 
 ---
@@ -113,11 +117,11 @@ Employee documents (Lohnabrechnung, LStB, VB, Rechnung) use:
 ## 4) Expected response
 
 ```json
-{ "ok": true, "accepted": true, "deliveryId": "pay:…", "employeeAppStatus": "queued" }
+{ "ok": true, "accepted": true, "received": true, "opened": true, "seen": true, "deliveryId": "pay:…", "employeeAppStatus": "viewed" }
 ```
 
-**Wichtig:** Nur mit `accepted: true` (oder `ok: true`) gilt die Lieferung als von der Plattform bestätigt.  
-Reines HTTP 200 ohne diesen Body lässt die Abrechnung in `/v1/delivery/pending` – sonst zeigt Accounting „gesendet“, die Mitarbeiter-App bleibt leer.
+**Wichtig:** Volle Bestätigung im Steuerprogramm nur bei **empfangen · geöffnet · gesehen**.  
+Nur `{ accepted: true }` = empfangen, aber noch nicht vollständig. Bare `{ ok: true }` reicht nicht.
 
 Non-2xx → accounting retries (default 3×). Items stay in `/v1/delivery/pending` for pull.
 

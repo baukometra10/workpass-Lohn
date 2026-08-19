@@ -113,8 +113,9 @@ markDeliveryWebhook(lstbId, {
   reached: true,
   idempotencyKey: lstbId,
 });
-ackDelivery(lstbId, { via: "test", at: new Date().toISOString() });
+ackDelivery(lstbId, { stage: "seen", via: "test", at: new Date().toISOString() });
 assert(verifyCertificateDelivery(lstbId).confirmed === true, "verify confirms ack");
+assert(verifyCertificateDelivery(lstbId).receipt?.complete === true, "verify receipt complete");
 
 const lstbAcked = await deliverEmployeeLstb(companyId, "EMP-CERT-1", 2026);
 assert(lstbAcked.ok && lstbAcked.alreadyDelivered && lstbAcked.confirmed, "lstb skips after platform accepted");

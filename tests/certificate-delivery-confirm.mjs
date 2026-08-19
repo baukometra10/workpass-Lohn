@@ -33,7 +33,7 @@ function assert(cond, msg) {
 }
 
 const inbox = [];
-let mode = "bare-ok"; // bare-ok | accepted | fail
+let mode = "bare-ok"; // bare-ok | accepted | seen | fail
 
 const mock = http.createServer(async (req, res) => {
   const chunks = [];
@@ -48,6 +48,19 @@ const mock = http.createServer(async (req, res) => {
   if (mode === "fail") {
     res.writeHead(500, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: false, error: "mock fail" }));
+    return;
+  }
+  if (mode === "seen") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      accepted: true,
+      received: true,
+      opened: true,
+      seen: true,
+      ok: true,
+      deliveryId: body?.delivery?.deliveryId || null,
+      employeeAppStatus: "viewed",
+    }));
     return;
   }
   if (mode === "accepted") {
@@ -81,6 +94,7 @@ const {
 } = await import("../server/certificates/deliver.mjs");
 const { buildEmployeeDelivery } = await import("../server/notify.mjs");
 const { eventForDelivery } = await import("../server/delivery-replay.mjs");
+const { ackDelivery } = await import("../server/delivery-queue.mjs");
 
 console.log("\n=== Certificate delivery confirmation ===");
 initDb();
@@ -175,31 +189,55 @@ assert(verifyCertificateDelivery(bare.delivery.deliveryId).confirmed === false, 
 
 mode = "accepted";
 inbox.length = 0;
+const onlyAccepted = await deliverEmployeeLstb(companyId, "EMP-CONF-1", 2026, {
+  forceRedeliver: true,
+  requireConfirm: true,
+  ackWaitMs: 0,
+});
+assert(onlyAccepted.confirmed === false, "accepted alone is NOT full confirm");
+assert(onlyAccepted.receipt?.received === true, "accepted → received");
+assert(onlyAccepted.receipt?.opened !== true, "accepted alone → not opened");
+assert(onlyAccepted.receipt?.seen !== true, "accepted alone → not seen");
+assert(onlyAccepted.trust === "received", `trust received (got ${onlyAccepted.trust})`);
+
+const opened = ackDelivery(onlyAccepted.delivery.deliveryId, { stage: "opened", via: "test-open" });
+assert(opened.confirmed === false, "opened alone still pending");
+assert(opened.receipt?.opened === true, "opened stage set");
+
+const seenAck = ackDelivery(onlyAccepted.delivery.deliveryId, { stage: "seen", via: "test-seen" });
+assert(seenAck.confirmed === true, "seen completes receipt");
+assert(seenAck.receipt?.complete === true, "receipt.complete");
+assert(verifyCertificateDelivery(onlyAccepted.delivery.deliveryId).confirmed === true, "verify after seen");
+
+mode = "seen";
+inbox.length = 0;
 const okLstb = await deliverEmployeeLstb(companyId, "EMP-CONF-1", 2026, {
   forceRedeliver: true,
   requireConfirm: true,
   ackWaitMs: 0,
 });
-assert(okLstb.ok === true && okLstb.confirmed === true, "accepted:true confirms lstb");
+assert(okLstb.ok === true && okLstb.confirmed === true, "webhook opened+seen confirms lstb");
 assert(okLstb.trust === "acked", "trust acked");
+assert(okLstb.receipt?.complete === true, "lstb receipt complete");
 assert(inbox[inbox.length - 1]?.body?.event === "document.released", "accepted path event");
 assert(inbox[inbox.length - 1]?.body?.documentType === "lstb", "accepted path documentType");
-assert(verifyCertificateDelivery(okLstb.delivery.deliveryId).confirmed === true, "verify after accept");
+assert(verifyCertificateDelivery(okLstb.delivery.deliveryId).confirmed === true, "verify after full webhook");
 
-mode = "accepted";
+mode = "seen";
 inbox.length = 0;
 const okVb = await deliverEmployeeVerdienst(companyId, "EMP-CONF-1", 2026, "2026-02", {
   forceRedeliver: true,
   requireConfirm: true,
   ackWaitMs: 0,
 });
-assert(okVb.ok === true && okVb.confirmed === true, "accepted:true confirms vb");
+assert(okVb.ok === true && okVb.confirmed === true, "webhook opened+seen confirms vb");
 assert(inbox[inbox.length - 1]?.body?.event === "document.released", `vb event (got ${inbox[inbox.length - 1]?.body?.event})`);
 assert(inbox[inbox.length - 1]?.body?.documentType === "verdienst", "vb documentType");
 assert(inbox[inbox.length - 1]?.body?.documentTitle === "Verdienstbescheinigung", "vb documentTitle");
 assert(String(inbox[inbox.length - 1]?.body?.title || "").startsWith("Verdienstbescheinigung"), "vb title");
 assert(inbox[inbox.length - 1]?.body?.delivery?.type === "verdienst", "vb delivery type");
 assert(inbox[inbox.length - 1]?.body?.delivery?.documentTitle === "Verdienstbescheinigung", "vb delivery.documentTitle");
+assert(okVb.receipt?.complete === true, "vb receipt complete");
 
 mode = "fail";
 inbox.length = 0;

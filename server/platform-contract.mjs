@@ -62,7 +62,8 @@ export function platformCapabilities() {
       "Delivery ack confirms employee visibility, not just HTTP 2xx.",
       "Employee documents are sent as event=document.released with documentType=payslip|lstb|verdienst|invoice (legacy *.released kept in meta.legacyEvent).",
       "Show delivery.title / documentTitle in the employee inbox (Entgeltabrechnung, Lohnsteuerbescheinigung, Verdienstbescheinigung, Rechnung) — never raw codes.",
-      "LStB/VB require strictAck: accepted|deliveryAccepted|stored (bare {ok:true} is not enough).",
+      "Full delivery/message confirm = received + opened + seen (POST .../received|/open|/ack or webhook body with those flags).",
+      "LStB/VB require strictAck for received; complete only after opened+seen (bare {ok:true} is not enough).",
     ],
   };
 }

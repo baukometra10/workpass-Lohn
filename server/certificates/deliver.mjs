@@ -1,12 +1,13 @@
 /**
  * Deliver LStB / Verdienstbescheinigung to the employee app — same channel as payslips:
- * enqueue → platform webhook (lstb.released / verdienst.released) → require accepted/ack.
+ * enqueue → platform webhook (document.released) → require received + opened + seen.
  * Not ELSTER / Finanzamt.
  */
 import { loadCompany } from "../db/repository.mjs";
 import { normalizeCompanyId, normalizeEmployeeId } from "../tenant.mjs";
 import { buildEmployeeDelivery, notifyPlatform } from "../notify.mjs";
 import { enqueueDelivery, getDelivery, markDeliveryWebhook, ackDelivery } from "../delivery-queue.mjs";
+import { normalizeReceipt, receiptLabels } from "../receipt.mjs";
 import {
   buildEmployeeLstbCertificate,
   buildEmployeeVerdienstCertificate,
@@ -20,17 +21,19 @@ function companyRef(companyId) {
 }
 
 function isDeliveryConfirmed(d) {
-  return Boolean(
-    d
-    && (d.webhookAccepted
-      || d.queueStatus === "delivered"
-      || d.ackedAt
-      || d.ackAt)
-  );
+  if (!d) return false;
+  const r = normalizeReceipt(d.receipt);
+  if (r.complete) return true;
+  // Legacy rows acked before receipt stages existed
+  if ((d.ackedAt || d.queueStatus === "delivered") && !d.receipt) return true;
+  return false;
 }
 
 function deliveryTrust(d) {
   if (isDeliveryConfirmed(d)) return "acked";
+  const r = normalizeReceipt(d?.receipt);
+  if (r.opened) return "opened";
+  if (r.received || d?.webhookAccepted) return "received";
   if (d?.webhookLastError) return "push_failed";
   if (d?.webhookPushedAt || d?.webhookReached) return "pushed";
   if (d) return "queued";
@@ -125,7 +128,7 @@ async function pushCertificateDelivery({ type, event, certificate, company, opti
 
   const localOnly = platformNotify?.mode === "local-log-only";
   const webhookReached = Boolean(platformNotify?.ok && (platformNotify.mode === "webhook" || localOnly));
-  let deliveredConfirmed = Boolean(
+  const transportAccepted = Boolean(
     platformNotify?.ok && platformNotify.mode === "webhook" && platformNotify.accepted === true
   );
 
@@ -134,37 +137,43 @@ async function pushCertificateDelivery({ type, event, certificate, company, opti
       at: new Date().toISOString(),
       status: platformNotify?.status ?? null,
       error: platformNotify?.ok ? null : (platformNotify?.error || null),
-      accepted: deliveredConfirmed,
+      accepted: transportAccepted,
       reached: webhookReached,
       idempotencyKey: platformNotify?.idempotencyKey || delivery.deliveryId,
+      body: platformNotify?.body || null,
     });
   } catch { /* ignore */ }
 
-  if (deliveredConfirmed) {
-    try {
-      ackDelivery(delivery.deliveryId, {
-        via: "webhook-accepted",
+  // Full confirm only when platform proves received + opened + seen (webhook body or later /open+/ack).
+  let deliveredConfirmed = false;
+  try {
+    const afterPush = getDelivery(delivery.deliveryId);
+    const receipt = normalizeReceipt(afterPush?.receipt);
+    if (receipt.complete) {
+      const acked = ackDelivery(delivery.deliveryId, {
+        stage: "seen",
+        via: "webhook-full-receipt",
         at: new Date().toISOString(),
-        status: platformNotify.status,
-        body: platformNotify.body || null,
+        status: platformNotify?.status,
+        body: platformNotify?.body || null,
       });
-    } catch { /* keep pending for pull */ }
-  } else if (webhookReached && !localOnly) {
-    // Same as payslip: stay in /v1/delivery/pending for platform pull + ack.
-    // Brief wait in case the platform acks asynchronously right after the webhook.
-    const waitMs = Number(
-      options.ackWaitMs != null
-        ? options.ackWaitMs
-        : (process.env.WORKPASS_CERT_ACK_WAIT_MS || 2500)
-    );
-    const afterWait = await waitForPlatformAck(delivery.deliveryId, waitMs);
-    if (isDeliveryConfirmed(afterWait)) {
-      deliveredConfirmed = true;
+      deliveredConfirmed = Boolean(acked?.confirmed || isDeliveryConfirmed(acked?.delivery || getDelivery(delivery.deliveryId)));
+    } else if (transportAccepted) {
+      // Empfangen – still waiting for Öffnen + Gesehen via POST .../open and .../ack
+      const waitMs = Number(
+        options.ackWaitMs != null
+          ? options.ackWaitMs
+          : (process.env.WORKPASS_CERT_ACK_WAIT_MS || 2500)
+      );
+      const afterWait = await waitForPlatformAck(delivery.deliveryId, waitMs);
+      deliveredConfirmed = isDeliveryConfirmed(afterWait);
     }
-  }
+  } catch { /* keep pending */ }
 
   const current = getDelivery(delivery.deliveryId) || delivery;
   const trust = deliveryTrust(current);
+  const receipt = normalizeReceipt(current.receipt);
+  const receiptView = receiptLabels(receipt);
   const confirmed = deliveredConfirmed || isDeliveryConfirmed(current);
 
   // Local (no webhook URL): queued for pull — cannot prove platform receipt.
@@ -193,6 +202,11 @@ async function pushCertificateDelivery({ type, event, certificate, company, opti
   }
 
   if (!confirmed && requireConfirm) {
+    const partialHint = receipt.received
+      ? (receipt.opened
+        ? "Empfangen und geöffnet – warte noch auf „gesehen“ (POST /v1/delivery/:id/ack)."
+        : "Empfangen – warte auf Öffnen und Gesehen (POST /v1/delivery/:id/open dann /ack).")
+      : "Noch nicht empfangen – Plattform muss accepted melden oder pending pollen.";
     return {
       ok: false,
       status: 422,
@@ -201,6 +215,8 @@ async function pushCertificateDelivery({ type, event, certificate, company, opti
       webhookReached,
       pendingPull: webhookReached,
       trust,
+      receipt,
+      receiptView,
       sameAsPayslip: true,
       certificate,
       delivery: current,
@@ -211,12 +227,14 @@ async function pushCertificateDelivery({ type, event, certificate, company, opti
         event,
         trust,
         confirmed: false,
+        receipt,
+        receiptView,
       },
       error: webhookReached
-        ? "Plattform hat LStB/VB nicht bestätigt (kein accepted/ack). Lieferung liegt in der Warteschlange – wie bei der Lohnabrechnung."
+        ? `Plattform-Bestätigung unvollständig (${receiptView.label}). ${partialHint}`
         : (platformNotify?.error || "Webhook zur Plattform fehlgeschlagen."),
       message: webhookReached
-        ? "Nicht zugestellt: Webhook erreicht, aber keine Plattform-Bestätigung. Dokument wartet in /v1/delivery/pending. Erneut senden oder Zustellungen · Vertrauen prüfen."
+        ? `Nicht vollständig bestätigt: ${receiptView.label}. ${partialHint}`
         : `Nicht zugestellt: ${platformNotify?.error || platformNotify?.status || "Webhook fehlgeschlagen"}.`,
     };
   }
@@ -228,6 +246,8 @@ async function pushCertificateDelivery({ type, event, certificate, company, opti
     webhookReached: true,
     pendingPull: false,
     trust: "acked",
+    receipt,
+    receiptView,
     sameAsPayslip: true,
     certificate,
     delivery: current,
@@ -238,10 +258,12 @@ async function pushCertificateDelivery({ type, event, certificate, company, opti
       event,
       trust: "acked",
       confirmed: true,
+      receipt,
+      receiptView,
     },
     message: type === "lstb"
-      ? "LStB an die Plattform gesendet und bestätigt – wie die Lohnabrechnung."
-      : "Verdienstbescheinigung an die Plattform gesendet und bestätigt – wie die Lohnabrechnung.",
+      ? "LStB: Plattform hat empfangen · geöffnet · gesehen."
+      : "Verdienstbescheinigung: Plattform hat empfangen · geöffnet · gesehen.",
   };
 }
 
@@ -325,19 +347,23 @@ export async function deliverYearLstb(companyId, year, options = {}) {
 export function verifyCertificateDelivery(deliveryId) {
   const d = getDelivery(String(deliveryId || "").trim());
   if (!d) {
-    return { ok: false, confirmed: false, error: "Delivery nicht gefunden", trust: "unknown" };
+    return { ok: false, confirmed: false, error: "Delivery nicht gefunden", trust: "unknown", receipt: null };
   }
   const confirmed = isDeliveryConfirmed(d);
+  const receipt = normalizeReceipt(d.receipt);
+  const receiptView = receiptLabels(receipt);
   return {
     ok: true,
     confirmed,
     trust: deliveryTrust(d),
+    receipt,
+    receiptView,
     delivery: d,
     deliveryId: d.deliveryId,
     type: d.type,
     pendingPull: !confirmed,
     message: confirmed
-      ? "Plattform hat die Zustellung bestätigt."
-      : "Noch nicht bestätigt – wartend auf Ack oder Pull.",
+      ? "Plattform: empfangen · geöffnet · gesehen."
+      : `Bestätigung unvollständig: ${receiptView.label}`,
   };
 }

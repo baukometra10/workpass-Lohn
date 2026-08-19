@@ -148,8 +148,11 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, {
         ok: true,
         accepted: true,
+        received: true,
+        opened: true,
+        seen: true,
         deliveryId: item.deliveryId,
-        employeeAppStatus: "visible",
+        employeeAppStatus: "viewed",
         kind: delivery.type || (event === "invoice.released" ? "invoice" : "payslip"),
       });
     } catch (e) {

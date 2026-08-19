@@ -57,6 +57,7 @@ import {
   listMessages,
   listPendingMessagesForPlatform,
   ackMessage,
+  markMessageReceipt,
   upsertPlatformMessage,
   messageStats,
   loadMessage,
@@ -2483,22 +2484,30 @@ async function handler(req, res) {
     if (
       req.method === "POST"
       && path.startsWith("/v1/messages/")
-      && (path.endsWith("/ack") || path.endsWith("/read"))
+      && (path.endsWith("/ack") || path.endsWith("/read") || path.endsWith("/open") || path.endsWith("/received"))
     ) {
-      const messageId = decodeURIComponent(
-        path.slice("/v1/messages/".length, path.endsWith("/ack") ? -"/ack".length : -"/read".length)
-      );
+      let stage = "seen";
+      let cut = "/ack".length;
+      if (path.endsWith("/read")) { stage = "seen"; cut = "/read".length; }
+      else if (path.endsWith("/open")) { stage = "opened"; cut = "/open".length; }
+      else if (path.endsWith("/received")) { stage = "received"; cut = "/received".length; }
+      else if (path.endsWith("/ack")) { stage = "seen"; cut = "/ack".length; }
+      const messageId = decodeURIComponent(path.slice("/v1/messages/".length, -cut));
       const existing = loadMessage(messageId);
       if (!existing) return reply(404, { ok: false, error: "Nachricht nicht gefunden" });
       const scopeCheck = assertSameTenant(tenantScope, existing.company?.id, "Message");
       if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
       const body = (await readBodyLimited(req)) || {};
-      const result = ackMessage(messageId, {
+      const result = markMessageReceipt(messageId, body.stage || stage, {
         readBy: body.readBy || body.actor || "platform",
         note: body.note || "",
+        opened: body.opened,
+        seen: body.seen,
+        received: body.received,
+        viewed: body.viewed,
       });
       audit({
-        type: "message.ack",
+        type: `message.${stage}`,
         outcome: result.ok ? "ok" : "error",
         ip,
         path,
@@ -2556,17 +2565,25 @@ async function handler(req, res) {
       return reply( 200, { ok: true, count: all.length, deliveries: all });
     }
 
-    if (req.method === "POST" && path.startsWith("/v1/delivery/") && path.endsWith("/ack")) {
-      const deliveryId = decodeURIComponent(path.slice("/v1/delivery/".length, -"/ack".length));
+    if (req.method === "POST" && path.startsWith("/v1/delivery/") && (path.endsWith("/ack") || path.endsWith("/open") || path.endsWith("/received"))) {
+      let stage = "seen";
+      let cut = "/ack".length;
+      if (path.endsWith("/open")) { stage = "opened"; cut = "/open".length; }
+      else if (path.endsWith("/received")) { stage = "received"; cut = "/received".length; }
+      const deliveryId = decodeURIComponent(path.slice("/v1/delivery/".length, -cut));
       const body = (await readBodyLimited(req)) || {};
       const queued = listAllDeliveries().find((d) => d.deliveryId === deliveryId);
       if (queued) {
         const scopeCheck = assertSameTenant(tenantScope, queued.company?.id, "Delivery");
-        if (!scopeCheck.ok) return reply( 403, { ok: false, error: scopeCheck.error });
+        if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
       }
-      const result = ackDelivery(deliveryId, body);
-      audit({ type: "delivery.ack", outcome: result.ok ? "ok" : "error", ip, path, companyId: queued?.company?.id });
-      return reply( result.ok ? 200 : 404, result);
+      const result = ackDelivery(deliveryId, {
+        ...body,
+        stage: body.stage || stage,
+        via: body.via || `delivery.${stage}`,
+      });
+      audit({ type: `delivery.${stage}`, outcome: result.ok ? "ok" : "error", ip, path, companyId: queued?.company?.id });
+      return reply(result.ok ? 200 : 404, result);
     }
 
     // --- Invoices ---

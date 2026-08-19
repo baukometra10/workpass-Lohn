@@ -17,6 +17,7 @@ import {
   deriveDeliverySyncStatus,
   auditSyncTransition,
 } from "../gobd/sync-lifecycle.mjs";
+import { applyReceiptStage, normalizeReceipt, receiptFromPlatformBody, receiptLabels } from "../receipt.mjs";
 
 export { GobdImmutableError };
 
@@ -547,9 +548,44 @@ export function ackDeliveryRow(deliveryId, meta = {}) {
   if (!existing) return { ok: false, error: "Delivery nicht gefunden" };
   const delivery = unpackPayload(existing.payload_json);
   const from = deriveDeliverySyncStatus(delivery);
+  const stage = String(meta.stage || (meta.seen === false && meta.opened ? "opened" : "seen")).toLowerCase();
+  const receipt = applyReceiptStage(delivery.receipt, stage, {
+    ...meta,
+    at: meta.at || now(),
+  });
+  delivery.receipt = receipt;
+  delivery.receivedAt = receipt.receivedAt;
+  delivery.openedAt = receipt.openedAt;
+  delivery.seenAt = receipt.seenAt;
+  delivery.ackMeta = { ...(delivery.ackMeta || {}), ...meta, receipt };
+
+  if (!receipt.complete) {
+    // Partial: empfangen/geöffnet – still pending until gesehen
+    if (receipt.received) delivery.webhookAccepted = true;
+    applySyncLifecycle(delivery, {
+      syncStatus: deriveDeliverySyncStatus(delivery),
+      processedAt: receipt.openedAt || receipt.receivedAt || undefined,
+    });
+    sqliteExec(
+      `UPDATE deliveries SET payload_json = ?, sync_version = sync_version + 1 WHERE delivery_id = ?`,
+      [packPayload(delivery), deliveryId]
+    );
+    enqueueSync("delivery", deliveryId, delivery);
+    scheduleSyncFlush();
+    return {
+      ok: true,
+      delivery,
+      receipt,
+      receiptView: receiptLabels(receipt),
+      confirmed: false,
+      pending: true,
+      message: receiptLabels(receipt).label,
+    };
+  }
+
   delivery.queueStatus = "delivered";
-  delivery.ackedAt = now();
-  delivery.ackMeta = meta;
+  delivery.ackedAt = receipt.seenAt || now();
+  delivery.webhookAccepted = true;
   delivery.processedAt = delivery.ackedAt;
   applySyncLifecycle(delivery, { syncStatus: "COMPLETED", processedAt: delivery.ackedAt });
   sqliteExec(
@@ -561,18 +597,26 @@ export function ackDeliveryRow(deliveryId, meta = {}) {
   if (from !== "COMPLETED") {
     auditSyncTransition(delivery, from, "COMPLETED", { reason: meta.via || "ack", source: "api" });
   }
-  return { ok: true, delivery };
+  return {
+    ok: true,
+    delivery,
+    receipt,
+    receiptView: receiptLabels(receipt),
+    confirmed: true,
+    pending: false,
+    message: "Plattform: empfangen · geöffnet · gesehen",
+  };
 }
 
-/** Record webhook push result without acking (so platform can still poll pending). */
+/** Record webhook push result without full confirm (needs opened + seen). */
 export function markDeliveryWebhookRow(deliveryId, meta = {}) {
   initDb();
   const existing = sqliteGet(`SELECT payload_json FROM deliveries WHERE delivery_id = ?`, [deliveryId]);
   if (!existing) return { ok: false, error: "Delivery nicht gefunden" };
   const delivery = unpackPayload(existing.payload_json);
-  if (delivery.queueStatus === "delivered") {
+  if (delivery.queueStatus === "delivered" && normalizeReceipt(delivery.receipt).complete) {
     applySyncLifecycle(delivery, { syncStatus: "COMPLETED" });
-    return { ok: true, delivery, alreadyDelivered: true };
+    return { ok: true, delivery, alreadyDelivered: true, receipt: normalizeReceipt(delivery.receipt) };
   }
   const from = deriveDeliverySyncStatus(delivery);
   const pushCount = Number(delivery.webhookPushCount || 0) + 1;
@@ -586,6 +630,20 @@ export function markDeliveryWebhookRow(deliveryId, meta = {}) {
   if (meta.reached) {
     delivery.webhookPushedAt = delivery.webhookPushedAt || delivery.webhookLastAt;
   }
+
+  if (meta.accepted || meta.body) {
+    const receipt = receiptFromPlatformBody(meta.body || { accepted: Boolean(meta.accepted) }, {
+      receipt: delivery.receipt,
+      at: delivery.webhookLastAt,
+      actor: meta.actor || "platform-webhook",
+      forceReceived: Boolean(meta.accepted),
+    });
+    delivery.receipt = receipt;
+    delivery.receivedAt = receipt.receivedAt;
+    delivery.openedAt = receipt.openedAt;
+    delivery.seenAt = receipt.seenAt;
+  }
+
   applySyncLifecycle(delivery, {
     idempotencyKey: delivery.webhookIdempotencyKey,
     lastError: meta.error || null,
@@ -593,8 +651,7 @@ export function markDeliveryWebhookRow(deliveryId, meta = {}) {
   });
   const to = deriveDeliverySyncStatus(delivery);
   delivery.syncStatus = to;
-  // Keep queue_status pending so GET /v1/delivery/pending still works until ack
-  // Dead-letter stays pending for visibility but excluded from auto-push
+  // Keep queue_status pending so GET /v1/delivery/pending still works until full seen-ack
   sqliteExec(
     `UPDATE deliveries SET payload_json = ?, sync_version = sync_version + 1 WHERE delivery_id = ?`,
     [packPayload(delivery), deliveryId]
@@ -607,7 +664,7 @@ export function markDeliveryWebhookRow(deliveryId, meta = {}) {
       source: "job",
     });
   }
-  return { ok: true, delivery, syncStatus: to };
+  return { ok: true, delivery, receipt: normalizeReceipt(delivery.receipt) };
 }
 
 export function getDeliveryRow(deliveryId) {

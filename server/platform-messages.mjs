@@ -12,6 +12,7 @@ import {
 } from "./db/sqlite.mjs";
 import { normalizeCompanyId, normalizeEmployeeId } from "./tenant.mjs";
 import { notifyPlatform } from "./notify.mjs";
+import { applyReceiptStage, normalizeReceipt, receiptFromPlatformBody, receiptLabels } from "./receipt.mjs";
 import { encryptJson, decryptJson, isEncryptedBlob } from "./security/crypto.mjs";
 
 openSqlite();
@@ -270,10 +271,23 @@ export async function upsertPlatformMessage(input = {}, opts = {}) {
       },
     });
     if (platformNotify && message) {
+      const receipt = platformNotify.accepted
+        ? receiptFromPlatformBody(platformNotify.body || { accepted: true }, {
+          receipt: message.receipt,
+          at: ts,
+          actor: "platform-webhook",
+          forceReceived: true,
+        })
+        : normalizeReceipt(message.receipt);
       const stamped = {
         ...message,
         notifiedAt: ts,
         notifiedOnce: true,
+        receipt,
+        receivedAt: receipt.receivedAt,
+        openedAt: receipt.openedAt,
+        seenAt: receipt.seenAt,
+        platformReceived: Boolean(receipt.received),
       };
       sqliteExec(
         `UPDATE platform_messages SET payload_json = ?, updated_at = ? WHERE message_id = ?`,
@@ -339,7 +353,7 @@ export async function notifyGapsForPayroll({
     + `Es fehlt:\n• ${gapLabels.join("\n• ")}\n\n`
     + `Bitte in der Plattform ergänzen und die Lohn-/Stundendaten erneut senden `
     + `(auch teilweise Daten sind willkommen).\n`
-    + `Sobald Sie diese Mitteilung gelesen haben, wird das im Steuerprogramm als „gesehen“ bestätigt.`;
+- `Sobald Sie diese Mitteilung geöffnet und gelesen haben, bestätigt das Steuerprogramm: empfangen · geöffnet · gesehen.`;
 
   const result = await upsertPlatformMessage({
     type: "data.gap",
@@ -505,18 +519,18 @@ export function listMessages(filter = {}) {
 }
 
 export function listPendingMessagesForPlatform(filter = {}) {
-  return listMessages({
-    companyId: filter.companyId,
-    status: "open",
-    direction: "accounting_to_platform",
-    limit: filter.limit || 100,
-  });
+  const companyId = filter.companyId ? normalizeCompanyId(filter.companyId) : "";
+  let sql = `SELECT * FROM platform_messages WHERE direction = 'accounting_to_platform' AND status IN ('open','opened')`;
+  const params = [];
+  if (companyId) {
+    sql += ` AND company_id = ?`;
+    params.push(companyId);
+  }
+  sql += ` ORDER BY updated_at DESC LIMIT ?`;
+  params.push(Number(filter.limit) || 100);
+  return sqliteAll(sql, params).map(rowToMessage).filter(Boolean);
 }
 
-/**
- * Platform marks message as read → disappears from pending inbox.
- * Accounting (Steuerprogramm) treats this as „Auftrag gesehen“.
- */
 /**
  * Close open request messages after platform delivered the data.
  * Types: employees.list.requested, payroll.month.requested (and optional extras).
@@ -528,7 +542,7 @@ export function ackOpenRequests({ companyId, period, types = [], meta = {} } = {
     ? types
     : ["employees.list.requested", "payroll.month.requested"]
   ).map(String);
-  let sql = `SELECT * FROM platform_messages WHERE company_id = ? AND status = 'open'`;
+  let sql = `SELECT * FROM platform_messages WHERE company_id = ? AND status IN ('open','opened')`;
   const params = [cid];
   if (period) {
     sql += ` AND (period = ? OR period = '' OR period IS NULL)`;
@@ -544,6 +558,7 @@ export function ackOpenRequests({ companyId, period, types = [], meta = {} } = {
     const r = ackMessage(msg.messageId, {
       readBy: meta.readBy || "accounting-auto",
       reason: meta.reason || "data_received",
+      stage: "seen",
     });
     if (r.ok) {
       acked += 1;
@@ -553,86 +568,130 @@ export function ackOpenRequests({ companyId, period, types = [], meta = {} } = {
   return { ok: true, acked, messageIds: ids };
 }
 
-export function ackMessage(messageId, meta = {}) {
+/**
+ * Platform marks message receipt stage: received | opened | seen.
+ * Full „Auftrag gesehen“ only when all three are true.
+ */
+export function markMessageReceipt(messageId, stage, meta = {}) {
   const row = sqliteGet(`SELECT * FROM platform_messages WHERE message_id = ?`, [String(messageId || "")]);
   if (!row) return { ok: false, error: "Nachricht nicht gefunden" };
   const msg = rowToMessage(row);
-  if (msg.status === "read" || msg.status === "resolved") {
-    return {
-      ok: true,
-      already: true,
-      message: msg,
-      confirmation: {
-        kind: "platform.accounting.seen.v1",
-        messageId: msg.messageId,
-        seen: true,
-        seenAt: msg.readAt || msg.seenAt,
-        seenBy: msg.seenBy || msg.ackMeta?.readBy || "platform",
-        label: "Auftrag wurde von der Plattform gesehen",
-      },
-    };
-  }
-  const ts = now();
-  const seenBy = String(meta.readBy || meta.actor || meta.seenBy || "platform").trim();
+  const receipt = applyReceiptStage(msg.receipt, stage, meta);
+  const ts = receipt.seenAt || receipt.openedAt || receipt.receivedAt || now();
   const next = {
     ...msg,
-    status: "read",
-    readAt: ts,
-    seenAt: ts,
-    seenBy,
-    seenConfirmed: true,
+    receipt,
+    receivedAt: receipt.receivedAt,
+    openedAt: receipt.openedAt,
+    seenAt: receipt.seenAt,
+    seenBy: receipt.seenBy,
+    platformReceived: receipt.received,
+    seenConfirmed: receipt.complete,
     updatedAt: ts,
-    ackMeta: meta,
-    accountingConfirmation: {
+    ackMeta: { ...(msg.ackMeta || {}), ...meta, stage, receipt },
+  };
+  if (receipt.complete) {
+    next.status = "read";
+    next.readAt = receipt.seenAt || ts;
+    next.accountingConfirmation = {
       kind: "platform.accounting.seen.v1",
       messageId: msg.messageId,
       seen: true,
-      seenAt: ts,
-      seenBy,
-      label: "Auftrag wurde von der Plattform gesehen",
+      opened: true,
+      received: true,
+      complete: true,
+      seenAt: receipt.seenAt,
+      openedAt: receipt.openedAt,
+      receivedAt: receipt.receivedAt,
+      seenBy: receipt.seenBy,
+      label: "Auftrag: empfangen · geöffnet · gesehen",
       employee: msg.employee,
       period: msg.period,
       title: msg.title,
-    },
-  };
+      receipt,
+      receiptView: receiptLabels(receipt),
+    };
+  } else if (receipt.opened && msg.status === "open") {
+    next.status = "opened";
+  }
   sqliteExec(
-    `UPDATE platform_messages SET status = 'read', read_at = ?, updated_at = ?, payload_json = ? WHERE message_id = ?`,
-    [ts, ts, pack(next), row.message_id]
+    `UPDATE platform_messages SET status = ?, read_at = ?, updated_at = ?, payload_json = ? WHERE message_id = ?`,
+    [
+      next.status,
+      next.readAt || null,
+      ts,
+      pack(next),
+      row.message_id,
+    ]
   );
   const message = loadMessage(row.message_id);
   return {
     ok: true,
-    already: false,
+    already: Boolean(msg.seenConfirmed && receipt.complete),
     message,
-    confirmation: message.accountingConfirmation,
+    receipt,
+    receiptView: receiptLabels(receipt),
+    confirmed: Boolean(receipt.complete),
+    confirmation: message.accountingConfirmation || null,
+    messageText: receiptLabels(receipt).label,
   };
 }
 
-/** Recently seen by platform – for Steuerprogramm confirmation panel */
+/**
+ * Platform marks message as read → disappears from pending inbox.
+ * Accounting (Steuerprogramm) treats complete receipt as „Auftrag gesehen“.
+ */
+export function ackMessage(messageId, meta = {}) {
+  return markMessageReceipt(messageId, meta.stage || "seen", meta);
+}
+
+/** Recently fully seen by platform – for Steuerprogramm confirmation panel */
 export function listSeenConfirmations(filter = {}) {
   const sinceHours = Number(filter.sinceHours) || 72;
   const since = new Date(Date.now() - sinceHours * 3600 * 1000).toISOString();
-  let sql = `SELECT * FROM platform_messages WHERE status = 'read' AND read_at IS NOT NULL AND read_at >= ?`;
+  let sql = `SELECT * FROM platform_messages WHERE status IN ('read','opened') AND (read_at IS NOT NULL OR updated_at >= ?)`;
   const params = [since];
   if (filter.companyId) {
     sql += ` AND company_id = ?`;
     params.push(normalizeCompanyId(filter.companyId));
   }
-  sql += ` ORDER BY read_at DESC LIMIT ?`;
+  sql += ` ORDER BY COALESCE(read_at, updated_at) DESC LIMIT ?`;
   params.push(Number(filter.limit) || 50);
-  return sqliteAll(sql, params).map(rowToMessage).filter(Boolean).map((m) => ({
-    kind: "platform.accounting.seen.v1",
-    messageId: m.messageId,
-    seen: true,
-    seenAt: m.readAt || m.seenAt,
-    seenBy: m.seenBy || m.ackMeta?.readBy || "platform",
-    label: "Auftrag wurde von der Plattform gesehen",
-    title: m.title,
-    employee: m.employee,
-    period: m.period,
-    gaps: m.gaps || [],
-    company: m.company,
-  }));
+  return sqliteAll(sql, params).map(rowToMessage).filter(Boolean).map((m) => {
+    const receipt = normalizeReceipt(m.receipt || {
+      received: Boolean(m.platformReceived || m.receivedAt || m.readAt),
+      opened: Boolean(m.openedAt || m.readAt),
+      seen: Boolean(m.readAt || m.seenAt),
+      receivedAt: m.receivedAt,
+      openedAt: m.openedAt,
+      seenAt: m.readAt || m.seenAt,
+    });
+    // Legacy acked messages without receipt → treat as complete
+    const complete = receipt.complete || (m.status === "read" && Boolean(m.readAt) && !m.receipt);
+    if (!complete && !filter.includePartial) return null;
+    return {
+      kind: "platform.accounting.seen.v1",
+      messageId: m.messageId,
+      seen: complete,
+      complete,
+      received: receipt.received || complete,
+      opened: receipt.opened || complete,
+      seenAt: receipt.seenAt || m.readAt || m.seenAt,
+      openedAt: receipt.openedAt,
+      receivedAt: receipt.receivedAt,
+      seenBy: receipt.seenBy || m.seenBy || m.ackMeta?.readBy || "platform",
+      label: complete
+        ? "Auftrag: empfangen · geöffnet · gesehen"
+        : receiptLabels(receipt).label,
+      title: m.title,
+      employee: m.employee,
+      period: m.period,
+      gaps: m.gaps || [],
+      company: m.company,
+      receipt,
+      receiptView: receiptLabels(receipt),
+    };
+  }).filter(Boolean);
 }
 
 export function messageStats(companyId) {
