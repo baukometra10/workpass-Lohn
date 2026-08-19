@@ -474,7 +474,7 @@ select option:checked,
 .lohn-form {
   background: var(--bg-elev);
   border-right: 1px solid var(--border);
-  padding: 0 12px 16px;
+  padding: 0 18px 28px;
   overflow-x: hidden;
   overflow-y: auto;
   min-height: 0;
@@ -484,7 +484,7 @@ select option:checked,
   scroll-padding-top: 120px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   overscroll-behavior: contain;
 }
 .lohn-form > .form-section:not(.form-fill),
@@ -3543,7 +3543,7 @@ body.company-portal #lohnApp.lohn-shell {
 body.lohn-desktop #lohnApp .lohn-layout,
 body.company-portal #lohnApp .lohn-layout {
   display: grid !important;
-  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr) !important;
+  grid-template-columns: minmax(420px, 460px) minmax(0, 1fr) !important;
   grid-template-rows: minmax(0, 1fr) !important;
   flex: 1 1 auto !important;
   min-height: 0 !important;
@@ -3566,6 +3566,7 @@ body.company-portal #lohnApp .lohn-form {
   overflow-y: auto !important;
   border-right: 1px solid var(--border) !important;
   border-bottom: none !important;
+  padding: 0 18px 28px !important;
 }
 body.lohn-desktop #lohnApp .lohn-preview,
 body.company-portal #lohnApp .lohn-preview {
@@ -3574,6 +3575,7 @@ body.company-portal #lohnApp .lohn-preview {
   grid-row: 1 !important;
   display: flex !important;
   flex-direction: column !important;
+  align-items: center !important;
   visibility: visible !important;
   width: auto !important;
   min-width: 0 !important;
@@ -3581,24 +3583,48 @@ body.company-portal #lohnApp .lohn-preview {
   max-height: none !important;
   min-height: 0 !important;
   overflow: hidden !important;
+  padding: 14px 28px 20px 36px !important;
 }
 body.lohn-desktop #lohnApp .preview-stage,
 body.company-portal #lohnApp .preview-stage {
   flex: 1 1 auto !important;
   min-height: 0 !important;
   overflow: auto !important;
+  justify-content: center !important;
+  padding-left: 12px !important;
 }
-@media (min-width: 1280px) {
+@media (min-width: 1440px) {
   body.lohn-desktop #lohnApp .lohn-layout,
   body.company-portal #lohnApp .lohn-layout {
-    grid-template-columns: minmax(360px, 400px) minmax(0, 1fr) !important;
+    grid-template-columns: minmax(440px, 500px) minmax(0, 1fr) !important;
   }
 }
 @media (max-width: 720px) {
   body.lohn-desktop #lohnApp .lohn-layout,
   body.company-portal #lohnApp .lohn-layout {
-    grid-template-columns: minmax(200px, 40vw) minmax(0, 1fr) !important;
+    grid-template-columns: minmax(240px, 46vw) minmax(0, 1fr) !important;
   }
+}
+
+/* Elegant form chrome */
+#lohnApp .form-section {
+  padding: 14px 16px 16px;
+  border-radius: 14px;
+}
+#lohnApp .lohn-form input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+#lohnApp .lohn-form select,
+#lohnApp .lohn-form textarea {
+  padding: 11px 13px;
+  font-size: 0.9rem;
+  min-height: 42px;
+  border-radius: 11px;
+}
+#lohnApp .lohn-form label {
+  font-size: 0.72rem;
+  margin-bottom: 5px;
+}
+#lohnApp .field-grid {
+  gap: 12px 14px;
 }
 
 
