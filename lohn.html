@@ -4,43 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="wp-layout" content="split-v233" />
-    <script>
-      /* Kill stale Service Worker before any CSS/JS — otherwise old shell HTML wins forever */
-      (function () {
-        var FLAG = "workpass.force.split.v233";
-        try {
-          if (sessionStorage.getItem(FLAG) === "1") return;
-          sessionStorage.setItem(FLAG, "1");
-        } catch (e) { return; }
-        var touched = false;
-        var done = function () {
-          if (touched) location.reload();
-        };
-        var tasks = [];
-        if ("serviceWorker" in navigator) {
-          tasks.push(
-            navigator.serviceWorker.getRegistrations().then(function (regs) {
-              if (regs && regs.length) {
-                touched = true;
-                return Promise.all(regs.map(function (r) { return r.unregister(); }));
-              }
-            })
-          );
-        }
-        if ("caches" in window) {
-          tasks.push(
-            caches.keys().then(function (keys) {
-              var shell = keys.filter(function (k) { return String(k).indexOf("workpass-shell-") === 0; });
-              if (shell.length) {
-                touched = true;
-                return Promise.all(shell.map(function (k) { return caches.delete(k); }));
-              }
-            })
-          );
-        }
-        Promise.all(tasks).then(done).catch(done);
-      })();
-    </script>
+    <script src="lohn-sw-boot.js?v=1"></script>
     <title>WorkPass Lohn – Steuerprogramm · Suppix AI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1043,9 +1007,9 @@
     <script src="mandant-checklist.js?v=4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="workpass-pwa.js?v=8"></script>
+    <script src="workpass-pwa.js?v=9"></script>
     <script src="annual-certificate.js?v=4"></script>
-    <script src="lohn-app.js?v=122"></script>
+    <script src="lohn-app.js?v=123"></script>
     <style id="lohnSplitHardTail">
       /* Form grows · A4 docked right */
       #lohnApp .lohn-layout,
@@ -1093,46 +1057,6 @@
         margin-right: 0 !important;
       }
     </style>
-    <script>
-      (function () {
-        function lockSplit() {
-          var layout = document.getElementById("lohnLayout") || document.querySelector("#lohnApp .lohn-layout");
-          var form = document.getElementById("lohnForm");
-          var preview = document.getElementById("lohnPreview") || document.querySelector("#lohnApp .lohn-preview");
-          if (layout) {
-            layout.style.setProperty("display", "grid", "important");
-            layout.style.setProperty("grid-template-columns", "minmax(460px, 1fr) minmax(520px, 620px)", "important");
-            layout.style.setProperty("grid-template-rows", "minmax(0, 1fr)", "important");
-            layout.style.setProperty("min-height", "0", "important");
-            layout.style.setProperty("overflow", "hidden", "important");
-          }
-          if (form) {
-            form.style.setProperty("grid-column", "1", "important");
-            form.style.setProperty("width", "auto", "important");
-            form.style.setProperty("max-width", "none", "important");
-            form.style.setProperty("height", "100%", "important");
-            form.style.setProperty("min-height", "0", "important");
-            form.style.setProperty("overflow-y", "auto", "important");
-            form.style.setProperty("padding", "0 20px 28px", "important");
-          }
-          if (preview) {
-            preview.style.setProperty("grid-column", "2", "important");
-            preview.style.setProperty("display", "flex", "important");
-            preview.style.setProperty("align-items", "flex-end", "important");
-            preview.style.setProperty("min-width", "0", "important");
-            preview.style.setProperty("height", "100%", "important");
-            preview.style.setProperty("visibility", "visible", "important");
-            preview.style.setProperty("opacity", "1", "important");
-            preview.style.setProperty("padding", "12px 14px 16px 8px", "important");
-          }
-        }
-        lockSplit();
-        document.addEventListener("DOMContentLoaded", lockSplit);
-        window.addEventListener("load", lockSplit);
-        setTimeout(lockSplit, 50);
-        setTimeout(lockSplit, 500);
-        setTimeout(lockSplit, 1500);
-      })();
-    </script>
+    <script src="lohn-split-lock.js?v=1"></script>
   </body>
 </html>

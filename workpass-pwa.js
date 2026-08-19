@@ -77,9 +77,12 @@
   }
 
   window.addEventListener("beforeinstallprompt", (e) => {
-    e.preventDefault();
     deferred = e;
-    showInstall();
+    // Defer the browser banner only when we can show our own install control.
+    if (document.getElementById("wpInstallApp") || document.querySelector(".wp-appbar-actions, .lohn-actions, #wpLangHost")) {
+      e.preventDefault();
+      showInstall();
+    }
   });
 
   window.addEventListener("appinstalled", () => {

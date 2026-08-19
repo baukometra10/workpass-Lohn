@@ -229,7 +229,27 @@ function rebuildJob(job, state) {
   const PC = getPayrollCore();
   const hard = PC.validate(state);
   const soft = PC.validatePrintHints?.(state) || [];
-  const payroll = PC.calculate(state);
+  let payroll;
+  try {
+    payroll = PC.calculate(state) || {};
+  } catch (e) {
+    payroll = {
+      gross: 0,
+      net: 0,
+      taxGross: 0,
+      svGross: 0,
+      payrollTax: 0,
+      churchTax: 0,
+      solidarity: 0,
+      health: 0,
+      pension: 0,
+      care: 0,
+      unemployment: 0,
+      svTotal: 0,
+      employerShare: 0,
+      calculateError: e.message || String(e),
+    };
+  }
   const status = hard.length
     ? "error"
     : (job.status === "released" ? "released" : "calculated");
@@ -365,6 +385,26 @@ function mergePlatformRowIntoState(state, row, filled, tag = "platform") {
  * Enrich job: pull company branding + employee/contract from platform, then ask only leftovers.
  */
 export async function enrichPayrollJob(jobId, options = {}) {
+  try {
+    return await enrichPayrollJobInner(jobId, options);
+  } catch (e) {
+    lastEnrichStatus = {
+      ok: false,
+      at: new Date().toISOString(),
+      jobId: String(jobId || ""),
+      error: e.message || String(e),
+    };
+    return {
+      ok: false,
+      error: e.message || String(e),
+      job: null,
+      filled: [],
+      filledCount: 0,
+    };
+  }
+}
+
+async function enrichPayrollJobInner(jobId, options = {}) {
   const job = loadPayrollJob(jobId);
   if (!job) return { ok: false, error: "Job nicht gefunden", job: null };
 

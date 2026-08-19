@@ -1267,24 +1267,33 @@ async function handler(req, res) {
     if (req.method === "POST" && path.startsWith("/v1/payroll/") && path.endsWith("/enrich")) {
       const jobId = decodeURIComponent(path.slice("/v1/payroll/".length, -"/enrich".length));
       const body = (await readBodyLimited(req)) || {};
-      const result = await enrichPayrollJob(jobId, {
-        tenantScope,
-        pull: body.pull !== false,
-        ask: body.ask !== false,
-        forceNotify: body.forceNotify === true,
-        forcePull: body.forcePull !== false,
-        period: body.period,
-        employeeId: body.employeeId || body.badgeId,
-      });
+      let result;
+      try {
+        result = await enrichPayrollJob(jobId, {
+          tenantScope,
+          pull: body.pull !== false,
+          ask: body.ask !== false,
+          forceNotify: body.forceNotify === true,
+          forcePull: body.forcePull !== false,
+          period: body.period,
+          employeeId: body.employeeId || body.badgeId,
+        });
+      } catch (e) {
+        result = { ok: false, error: e.message || String(e), job: null, filledCount: 0 };
+      }
       audit({
         type: "payroll.enrich",
         outcome: result.ok ? "ok" : "error",
         ip,
         path,
         companyId: result.job?.company?.id,
-        detail: { jobId, filledCount: result.filledCount, asked: result.askedPlatform },
+        detail: { jobId, filledCount: result.filledCount, asked: result.askedPlatform, error: result.error || null },
       });
-      const status = result.ok ? 200 : (String(result.error || "").includes("Tenant-Isolation") ? 403 : 422);
+      const status = result.ok
+        ? 200
+        : (String(result.error || "").includes("Tenant-Isolation")
+          ? 403
+          : (String(result.error || "").includes("nicht gefunden") ? 404 : 422));
       return reply(status, result);
     }
 
