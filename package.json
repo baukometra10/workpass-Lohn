@@ -1,6 +1,6 @@
 {
   "name": "workpass-lohn",
-  "version": "2.52.0",
+  "version": "2.53.0",
   "private": true,
   "description": "WorkPass Steuerprogramm – Buchhaltung + Platform Bridge API",
   "type": "module",
@@ -47,6 +47,8 @@
     "test:elster": "node tests/elster-channel.mjs",
     "test:lsta": "node tests/lsta.mjs",
     "test:certificates": "node tests/employee-certificates.mjs",
+    "test:critical": "node tests/run-critical.mjs",
+    "preview:firm": "node scripts/open-firm-portal-local.mjs",
     "test:logo": "node tests/company-logo.mjs",
     "test:fields": "node tests/e2e-fields.mjs",
     "backup:create": "node scripts/backup-cli.mjs create",

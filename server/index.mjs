@@ -7,6 +7,7 @@
  * Tenant: X-WorkPass-Company-Id
  * Encryption at rest: AES-256-GCM (WORKPASS_DATA_KEY or local .data-key)
  */
+import "./load-env.mjs";
 import http from "node:http";
 import { URL } from "node:url";
 import { ACCOUNTING_VERSION, SERVICE_NAME } from "./version.mjs";
@@ -148,6 +149,10 @@ import {
 } from "./portal-trust.mjs";
 import { buildOpsHealth } from "./ops-health.mjs";
 import { buildGobdExport } from "./gobd/export.mjs";
+import { platformCapabilities } from "./platform-contract.mjs";
+import { recordExportRun, exportStatusSummary, importBankStatus } from "./export-status.mjs";
+import { buildDeliveryReconciliation } from "./delivery-reconciliation.mjs";
+import { buildYearEndWizard } from "./portal-year-end.mjs";
 import { listBusinessAudit, verifyBusinessAuditChain, SYNC_STATUSES } from "./gobd/business-audit.mjs";
 import { listRevisions, getRevision } from "./gobd/revisions.mjs";
 import { summarizeSyncDeliveries, buildIdempotencyKey } from "./gobd/sync-lifecycle.mjs";
@@ -1426,6 +1431,13 @@ async function handler(req, res) {
         detail: { exportId: result.exportId || null },
       });
       if (!result.ok) return reply(result.status || 400, result);
+      recordExportRun({
+        companyId,
+        period: body.period || currentPeriod(),
+        kind: "gobd",
+        fileName: result.fileName || "GoBD.zip",
+        meta: { exportId: result.exportId || null },
+      });
       return reply(200, {
         ok: true,
         exportId: result.exportId,
@@ -1824,6 +1836,55 @@ async function handler(req, res) {
       return reply(200, buildComplianceCalendar(period, { companyId, dauerfrist }));
     }
 
+    if (req.method === "GET" && path === "/v1/portal/delivery-reconciliation") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const period = url.searchParams.get("period") || currentPeriod();
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Delivery-Reconciliation");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      return reply(200, buildDeliveryReconciliation(companyId, { period }));
+    }
+
+    if (req.method === "GET" && path === "/v1/portal/year-end") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const year = url.searchParams.get("year") || String(new Date().getFullYear());
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Jahresabschluss");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      return reply(200, buildYearEndWizard(companyId, year));
+    }
+
+    if (req.method === "GET" && path === "/v1/portal/export-status") {
+      const companyId = tenantScope || url.searchParams.get("companyId") || "";
+      const period = url.searchParams.get("period") || currentPeriod();
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Export-Status");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      return reply(200, exportStatusSummary(companyId, period));
+    }
+
+    if (req.method === "POST" && path === "/v1/portal/export-import") {
+      const body = (await readBodyLimited(req)) || {};
+      const companyId = normalizeCompanyId(body.companyId || tenantScope || "");
+      const scopeCheck = assertSameTenant(tenantScope, companyId, "Export-Import");
+      if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
+      const gate = requireHumanConfirm(body, "export_import");
+      if (!gate.ok) return reply(gate.status || 422, gate);
+      const result = importBankStatus({
+        companyId,
+        period: body.period || currentPeriod(),
+        kind: body.kind || "sepa",
+        content: body.content || body.text || body.xml || "",
+        source: body.source || "pain.002",
+      });
+      audit({
+        type: "portal.export_import",
+        outcome: result.ok ? "ok" : "error",
+        ip,
+        path,
+        companyId,
+        detail: { bankStatus: result.bankStatus || null, kind: body.kind || "sepa" },
+      });
+      return reply(result.ok ? 200 : (result.status || 422), result);
+    }
+
     if (req.method === "GET" && path === "/v1/portal/delivery-trust") {
       const companyId = tenantScope || url.searchParams.get("companyId") || "";
       const period = url.searchParams.get("period") || currentPeriod();
@@ -2054,6 +2115,15 @@ async function handler(req, res) {
         companyId,
         detail: { count: result.count, period: result.period, humanConfirm: true },
       });
+      if (result.ok) {
+        recordExportRun({
+          companyId,
+          period: result.period || body.period || currentPeriod(),
+          kind: "sepa",
+          fileName: "SEPA.xml",
+          meta: { count: result.count },
+        });
+      }
       return reply(result.ok ? 200 : 422, result);
     }
 
@@ -2077,6 +2147,12 @@ async function handler(req, res) {
         detail: { humanConfirm: true },
       });
       if (!result.ok) return reply(422, result);
+      recordExportRun({
+        companyId,
+        period: result.period || body.period || currentPeriod(),
+        kind: "datev",
+        fileName: "DATEV.csv",
+      });
       return reply(200, { kind: "portal.datev.month.v1", humanFinal: true, ...result });
     }
 
@@ -2100,6 +2176,12 @@ async function handler(req, res) {
         detail: { humanConfirm: true },
       });
       if (!result.ok) return reply(422, result);
+      recordExportRun({
+        companyId,
+        period: result.period || body.period || currentPeriod(),
+        kind: "lodas",
+        fileName: "LODAS.txt",
+      });
       return reply(200, { humanFinal: true, ...result });
     }
 
@@ -2254,6 +2336,7 @@ async function handler(req, res) {
         schemaVersion: 4,
         companyId: companyId || null,
         accountingVersion: ACCOUNTING_VERSION,
+        capabilities: platformCapabilities(),
         status,
         message,
         nextActions,

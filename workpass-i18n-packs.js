@@ -902,4 +902,526 @@ window.WorkPassI18nExtraPacks = [
   ["portal.certPrintAndSend",{"de":"Drucken und an Mitarbeiter","en":"Print and send to employee","tr":"Yazdır ve çalışana gönder","ar":"طباعة وإرسال للموظف","fr":"Imprimer et envoyer","es":"Imprimir y enviar","it":"Stampa e invia","pl":"Drukuj i wyślij"}],
   ["portal.certPrintAndSendBody",{"de":"Zuerst an die Plattform (Mitarbeiter-App), dann drucken. Ohne Webhook bleibt die Zustellung in der Warteschlange.","en":"First to the platform (employee app), then print. Without a webhook the delivery stays in the queue.","tr":"Önce platforma (çalışan uygulaması), sonra yazdır. Webhook yoksa kuyrukta kalır.","ar":"أولاً إلى المنصة (تطبيق الموظف)، ثم الطباعة. بدون Webhook تبقى في قائمة الانتظار.","fr":"D’abord la plateforme (app salarié), puis impression. Sans webhook, file d’attente.","es":"Primero la plataforma (app del empleado), luego imprimir. Sin webhook, queda en cola.","it":"Prima la piattaforma (app dipendente), poi stampa. Senza webhook resta in coda.","pl":"Najpierw platforma (aplikacja pracownika), potem druk. Bez webhooka zostaje w kolejce."}],
   ["portal.certSent",{"de":"An die Plattform übergeben.","en":"Handed to the platform.","tr":"Platforma iletildi.","ar":"سُلِّم إلى المنصة.","fr":"Remis à la plateforme.","es":"Entregado a la plataforma.","it":"Inoltrato alla piattaforma.","pl":"Przekazano na platformę."}],
+,
+  {
+    key: "portal.elsterReachFinanzamt",
+    locales: {
+      de: "Finanzamt (Sidecar)",
+      en: "Finanzamt (sidecar)",
+      tr: "Finanzamt (sidecar)",
+      ar: "Finanzamt (Sidecar)",
+      fr: "Finanzamt (sidecar)",
+      es: "Finanzamt (sidecar)",
+      it: "Finanzamt (sidecar)",
+      pl: "Finanzamt (sidecar)"
+    }
+  },
+  {
+    key: "portal.elsterReachLocal",
+    locales: {
+      de: "Lokal — nicht Finanzamt",
+      en: "Local — not Finanzamt",
+      tr: "Yerel — Finanzamt değil",
+      ar: "محلي — ليس Finanzamt",
+      fr: "Local — pas Finanzamt",
+      es: "Local — no Finanzamt",
+      it: "Locale — non Finanzamt",
+      pl: "Lokalnie — nie Finanzamt"
+    }
+  },
+  {
+    key: "portal.elsterReachChannel",
+    locales: {
+      de: "Kanal — nicht Finanzamt",
+      en: "Channel — not Finanzamt",
+      tr: "Kanal — Finanzamt değil",
+      ar: "قناة — ليس Finanzamt",
+      fr: "Canal — pas Finanzamt",
+      es: "Canal — no Finanzamt",
+      it: "Canale — non Finanzamt",
+      pl: "Kanał — nie Finanzamt"
+    }
+  },
+  {
+    key: "portal.yearEndTitle",
+    locales: {
+      de: "Jahresabschluss · Assistent",
+      en: "Year-end wizard",
+      tr: "Yıl sonu sihirbazı",
+      ar: "مساعد إغلاق السنة",
+      fr: "Assistant fin d'année",
+      es: "Asistente fin de año",
+      it: "Assistente fine anno",
+      pl: "Kreator roku"
+    }
+  },
+  {
+    key: "portal.yearEndBadge",
+    locales: {
+      de: "Schritte",
+      en: "Steps",
+      tr: "Adımlar",
+      ar: "خطوات",
+      fr: "Étapes",
+      es: "Pasos",
+      it: "Passi",
+      pl: "Kroki"
+    }
+  },
+  {
+    key: "portal.yearEndHint",
+    locales: {
+      de: "Freigegebene Monate → LStB → Mitarbeiter → optional ELSTER → DATEV/SEPA/GoBD.",
+      en: "Released months → LStB → employees → optional ELSTER → DATEV/SEPA/GoBD.",
+      tr: "Onaylı aylar → LStB → çalışanlar → isteğe bağlı ELSTER → DATEV/SEPA/GoBD.",
+      ar: "أشهر معتمدة → LStB → موظفون → ELSTER اختياري → DATEV/SEPA/GoBD.",
+      fr: "Mois validés → LStB → salariés → ELSTER optionnel → DATEV/SEPA/GoBD.",
+      es: "Meses liberados → LStB → empleados → ELSTER opcional → DATEV/SEPA/GoBD.",
+      it: "Mesi rilasciati → LStB → dipendenti → ELSTER opzionale → DATEV/SEPA/GoBD.",
+      pl: "Miesiące zatwierdzone → LStB → pracownicy → opcjonalnie ELSTER → DATEV/SEPA/GoBD."
+    }
+  },
+  {
+    key: "portal.yearEndYear",
+    locales: {
+      de: "Kalenderjahr",
+      en: "Calendar year",
+      tr: "Takvim yılı",
+      ar: "السنة",
+      fr: "Année civile",
+      es: "Año natural",
+      it: "Anno solare",
+      pl: "Rok kalendarzowy"
+    }
+  },
+  {
+    key: "portal.yearEndDone",
+    locales: {
+      de: "Erledigt",
+      en: "Done",
+      tr: "Tamam",
+      ar: "منجز",
+      fr: "Terminé",
+      es: "Hecho",
+      it: "Fatto",
+      pl: "Gotowe"
+    }
+  },
+  {
+    key: "portal.yearEndProgress",
+    locales: {
+      de: "In Arbeit",
+      en: "In progress",
+      tr: "Devam ediyor",
+      ar: "قيد التنفيذ",
+      fr: "En cours",
+      es: "En curso",
+      it: "In corso",
+      pl: "W toku"
+    }
+  },
+  {
+    key: "portal.yearEndOpen",
+    locales: {
+      de: "Offen",
+      en: "Open",
+      tr: "Açık",
+      ar: "مفتوح",
+      fr: "Ouvert",
+      es: "Abierto",
+      it: "Aperto",
+      pl: "Otwarte"
+    }
+  },
+  {
+    key: "portal.yearEndOptional",
+    locales: {
+      de: "Optional",
+      en: "Optional",
+      tr: "İsteğe bağlı",
+      ar: "اختياري",
+      fr: "Optionnel",
+      es: "Opcional",
+      it: "Opzionale",
+      pl: "Opcjonalne"
+    }
+  },
+  {
+    key: "portal.yearEndReady",
+    locales: {
+      de: "Bereit",
+      en: "Ready",
+      tr: "Hazır",
+      ar: "جاهز",
+      fr: "Prêt",
+      es: "Listo",
+      it: "Pronto",
+      pl: "Gotowe"
+    }
+  },
+  {
+    key: "portal.yearEndOpenCount",
+    locales: {
+      de: "{n} offen",
+      en: "{n} open",
+      tr: "{n} açık",
+      ar: "{n} مفتوح",
+      fr: "{n} ouvert(s)",
+      es: "{n} abierto(s)",
+      it: "{n} aperti",
+      pl: "{n} otwarte"
+    }
+  },
+  {
+    key: "portal.yearEndFail",
+    locales: {
+      de: "Jahresassistent nicht verfügbar.",
+      en: "Year-end wizard unavailable.",
+      tr: "Yıl sonu sihirbazı yok.",
+      ar: "مساعد السنة غير متاح.",
+      fr: "Assistant indisponible.",
+      es: "Asistente no disponible.",
+      it: "Assistente non disponibile.",
+      pl: "Kreator niedostępny."
+    }
+  },
+  {
+    key: "portal.deliveryReconTitle",
+    locales: {
+      de: "Zustellungen · Vertrauen",
+      en: "Deliveries · trust",
+      tr: "Teslimat · güven",
+      ar: "التسليم · الثقة",
+      fr: "Livraisons · confiance",
+      es: "Entregas · confianza",
+      it: "Consegne · fiducia",
+      pl: "Dostawy · zaufanie"
+    }
+  },
+  {
+    key: "portal.deliveryReconBadge",
+    locales: {
+      de: "Plattform",
+      en: "Platform",
+      tr: "Platform",
+      ar: "المنصة",
+      fr: "Plateforme",
+      es: "Plataforma",
+      it: "Piattaforma",
+      pl: "Platforma"
+    }
+  },
+  {
+    key: "portal.deliveryReconHint",
+    locales: {
+      de: "Lohnabrechnung, LStB, VB und Rechnungen — ob die Plattform bestätigt hat (Ack/Pull).",
+      en: "Payslip, LStB, VB and invoices — whether the platform confirmed (ack/pull).",
+      tr: "Bordro, LStB, VB ve faturalar — platform onayladı mı (Ack/Pull).",
+      ar: "كشف الراتب و LStB و VB والفواتير — هل أكدت المنصة (Ack/Pull).",
+      fr: "Bulletins, LStB, VB et factures — confirmation plateforme (ack/pull).",
+      es: "Nóminas, LStB, VB y facturas — si la plataforma confirmó (ack/pull).",
+      it: "Cedolini, LStB, VB e fatture — conferma piattaforma (ack/pull).",
+      pl: "Listy, LStB, VB i faktury — czy platforma potwierdziła (ack/pull)."
+    }
+  },
+  {
+    key: "portal.deliveryReconFail",
+    locales: {
+      de: "Zustellungen konnten nicht geladen werden.",
+      en: "Could not load deliveries.",
+      tr: "Teslimatlar yüklenemedi.",
+      ar: "تعذر تحميل التسليمات.",
+      fr: "Impossible de charger les livraisons.",
+      es: "No se pudieron cargar entregas.",
+      it: "Impossibile caricare consegne.",
+      pl: "Nie udało się wczytać dostaw."
+    }
+  },
+  {
+    key: "portal.deliveryReconPayroll",
+    locales: {
+      de: "Lohnabrechnungen: {ready}/{total} bereit",
+      en: "Payslips: {ready}/{total} ready",
+      tr: "Bordrolar: {ready}/{total} hazır",
+      ar: "كشوف: {ready}/{total} جاهزة",
+      fr: "Bulletins : {ready}/{total} prêts",
+      es: "Nóminas: {ready}/{total} listas",
+      it: "Cedolini: {ready}/{total} pronti",
+      pl: "Listy: {ready}/{total} gotowe"
+    }
+  },
+  {
+    key: "portal.deliveryReconEmpty",
+    locales: {
+      de: "Keine Dokument-Zustellungen für diesen Zeitraum.",
+      en: "No document deliveries for this period.",
+      tr: "Bu dönem için belge teslimi yok.",
+      ar: "لا تسليمات مستندات لهذه الفترة.",
+      fr: "Aucune livraison de documents pour cette période.",
+      es: "Sin entregas de documentos en este periodo.",
+      it: "Nessuna consegna documenti per questo periodo.",
+      pl: "Brak dostaw dokumentów w tym okresie."
+    }
+  },
+  {
+    key: "portal.deliveryReconError",
+    locales: {
+      de: "Fehler",
+      en: "Error",
+      tr: "Hata",
+      ar: "خطأ",
+      fr: "Erreur",
+      es: "Error",
+      it: "Errore",
+      pl: "Błąd"
+    }
+  },
+  {
+    key: "portal.deliveryReconPending",
+    locales: {
+      de: "Offen",
+      en: "Open",
+      tr: "Açık",
+      ar: "مفتوح",
+      fr: "Ouvert",
+      es: "Abierto",
+      it: "Aperto",
+      pl: "Otwarte"
+    }
+  },
+  {
+    key: "portal.deliveryReconOk",
+    locales: {
+      de: "OK",
+      en: "OK",
+      tr: "OK",
+      ar: "OK",
+      fr: "OK",
+      es: "OK",
+      it: "OK",
+      pl: "OK"
+    }
+  },
+  {
+    key: "portal.trustAcked",
+    locales: {
+      de: "Bestätigt",
+      en: "Confirmed",
+      tr: "Onaylandı",
+      ar: "مؤكد",
+      fr: "Confirmé",
+      es: "Confirmado",
+      it: "Confermato",
+      pl: "Potwierdzone"
+    }
+  },
+  {
+    key: "portal.trustPushed",
+    locales: {
+      de: "Gesendet",
+      en: "Sent",
+      tr: "Gönderildi",
+      ar: "مُرسل",
+      fr: "Envoyé",
+      es: "Enviado",
+      it: "Inviato",
+      pl: "Wysłane"
+    }
+  },
+  {
+    key: "portal.trustQueued",
+    locales: {
+      de: "Wartet",
+      en: "Waiting",
+      tr: "Bekliyor",
+      ar: "في الانتظار",
+      fr: "En attente",
+      es: "En espera",
+      it: "In attesa",
+      pl: "Oczekuje"
+    }
+  },
+  {
+    key: "portal.trustFailed",
+    locales: {
+      de: "Fehler",
+      en: "Failed",
+      tr: "Başarısız",
+      ar: "فشل",
+      fr: "Échec",
+      es: "Fallido",
+      it: "Fallito",
+      pl: "Błąd"
+    }
+  },
+  {
+    key: "portal.trustUnknown",
+    locales: {
+      de: "Unbekannt",
+      en: "Unknown",
+      tr: "Bilinmiyor",
+      ar: "غير معروف",
+      fr: "Inconnu",
+      es: "Desconocido",
+      it: "Sconosciuto",
+      pl: "Nieznany"
+    }
+  },
+  {
+    key: "portal.exportStatusEmpty",
+    locales: {
+      de: "Noch keine Exporte für diesen Monat.",
+      en: "No exports for this month yet.",
+      tr: "Bu ay için export yok.",
+      ar: "لا صادرات لهذا الشهر بعد.",
+      fr: "Pas encore d'exports ce mois.",
+      es: "Aún no hay exportaciones este mes.",
+      it: "Nessun export per questo mese.",
+      pl: "Brak eksportów w tym miesiącu."
+    }
+  },
+  {
+    key: "portal.exportImportTitle",
+    locales: {
+      de: "Bankstatus importieren (pain.002)",
+      en: "Import bank status (pain.002)",
+      tr: "Bank durumu içe aktar (pain.002)",
+      ar: "استيراد حالة البنك (pain.002)",
+      fr: "Importer statut banque (pain.002)",
+      es: "Importar estado banco (pain.002)",
+      it: "Importa stato banca (pain.002)",
+      pl: "Import statusu banku (pain.002)"
+    }
+  },
+  {
+    key: "portal.exportImportHint",
+    locales: {
+      de: "SEPA-Rückmeldung einfügen — Stub-Parser, bitte XML prüfen.",
+      en: "Paste SEPA feedback — stub parser, verify XML.",
+      tr: "SEPA yanıtını yapıştır — stub parser, XML'i kontrol edin.",
+      ar: "الصق رد SEPA — محلل stub، تحقق من XML.",
+      fr: "Coller retour SEPA — parseur stub, vérifiez le XML.",
+      es: "Pegar respuesta SEPA — parser stub, revise XML.",
+      it: "Incolla risposta SEPA — parser stub, verifica XML.",
+      pl: "Wklej odpowiedź SEPA — parser stub, sprawdź XML."
+    }
+  },
+  {
+    key: "portal.exportImportBtn",
+    locales: {
+      de: "Status importieren",
+      en: "Import status",
+      tr: "Durumu içe aktar",
+      ar: "استيراد الحالة",
+      fr: "Importer statut",
+      es: "Importar estado",
+      it: "Importa stato",
+      pl: "Importuj status"
+    }
+  },
+  {
+    key: "portal.exportImportStatus",
+    locales: {
+      de: "Bankstatus",
+      en: "Bank status",
+      tr: "Bank durumu",
+      ar: "حالة البنك",
+      fr: "Statut banque",
+      es: "Estado banco",
+      it: "Stato banca",
+      pl: "Status banku"
+    }
+  },
+  {
+    key: "portal.exportImportEmpty",
+    locales: {
+      de: "Bitte pain.002 / camt Text einfügen.",
+      en: "Please paste pain.002 / camt text.",
+      tr: "pain.002 / camt metnini yapıştırın.",
+      ar: "الصق نص pain.002 / camt.",
+      fr: "Collez le texte pain.002 / camt.",
+      es: "Pegue texto pain.002 / camt.",
+      it: "Incolla testo pain.002 / camt.",
+      pl: "Wklej tekst pain.002 / camt."
+    }
+  },
+  {
+    key: "portal.exportImportConfirmTitle",
+    locales: {
+      de: "Bankstatus importieren",
+      en: "Import bank status",
+      tr: "Bank durumu içe aktar",
+      ar: "استيراد حالة البنك",
+      fr: "Importer statut banque",
+      es: "Importar estado banco",
+      it: "Importa stato banca",
+      pl: "Importuj status banku"
+    }
+  },
+  {
+    key: "portal.exportImportConfirmBody",
+    locales: {
+      de: "Stub-Parser — bitte XML manuell prüfen.",
+      en: "Stub parser — please verify XML manually.",
+      tr: "Stub parser — XML'i elle kontrol edin.",
+      ar: "محلل stub — تحقق من XML يدوياً.",
+      fr: "Parseur stub — vérifiez le XML manuellement.",
+      es: "Parser stub — revise XML manualmente.",
+      it: "Parser stub — verifica XML manualmente.",
+      pl: "Parser stub — sprawdź XML ręcznie."
+    }
+  },
+  {
+    key: "portal.exportImportDone",
+    locales: {
+      de: "Bankstatus importiert.",
+      en: "Bank status imported.",
+      tr: "Bank durumu içe aktarıldı.",
+      ar: "تم استيراد حالة البنك.",
+      fr: "Statut banque importé.",
+      es: "Estado banco importado.",
+      it: "Stato banca importato.",
+      pl: "Status banku zaimportowany."
+    }
+  }
+,
+  {
+    key: "lohn.previewEmptyNext",
+    locales: {
+      de: "Als Nächstes: „Jetzt synchronisieren“ – dann erscheint die Live-Vorschau hier rechts.",
+      en: "Next: tap “Sync now” – the live preview appears on the right.",
+      tr: "Sonraki: „Jetzt synchronisieren“ – canlı önizleme sağda görünür.",
+      ar: "التالي: «Jetzt synchronisieren» — ثم تظهر المعاينة المباشرة على اليمين.",
+      fr: "Ensuite : « Jetzt synchronisieren » – l’aperçu live apparaît à droite.",
+      es: "Siguiente: «Jetzt synchronisieren» – la vista previa en vivo aparece a la derecha.",
+      it: "Poi: «Jetzt synchronisieren» – l’anteprima live compare a destra.",
+      pl: "Dalej: „Jetzt synchronisieren” – podgląd na żywo pojawi się po prawej."
+    }
+  },
+  {
+    key: "portal.syncNow",
+    locales: {
+      de: "Jetzt synchronisieren",
+      en: "Sync now",
+      tr: "Şimdi senkronize et",
+      ar: "زامن الآن",
+      fr: "Synchroniser maintenant",
+      es: "Sincronizar ahora",
+      it: "Sincronizza ora",
+      pl: "Synchronizuj teraz"
+    }
+  },
+  {
+    key: "status.firmReady",
+    locales: {
+      de: "Firmen-Portal bereit – tippen Sie auf „Jetzt synchronisieren“, dann erscheinen Mitarbeiter und die A4-Vorschau.",
+      en: "Firm portal ready – tap “Sync now” to load employees and the A4 preview.",
+      tr: "Firma portalı hazır – „Jetzt synchronisieren“ ile çalışanlar ve A4 önizleme gelir.",
+      ar: "بوابة الشركة جاهزة — اضغط «Jetzt synchronisieren» لظهور الموظفين ومعاينة A4.",
+      fr: "Portail entreprise prêt – touchez « Jetzt synchronisieren » pour les salariés et l’aperçu A4.",
+      es: "Portal de empresa listo – pulse «Jetzt synchronisieren» para empleados y vista A4.",
+      it: "Portale azienda pronto – tocca «Jetzt synchronisieren» per dipendenti e anteprima A4.",
+      pl: "Portal firmy gotowy – kliknij „Jetzt synchronisieren”, by wczytać pracowników i podgląd A4."
+    }
+  }
 ];

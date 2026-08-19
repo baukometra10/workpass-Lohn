@@ -57,6 +57,8 @@ function ensureTables() {
   ensureColumn("elster_submissions", "test_mode", "INTEGER NOT NULL DEFAULT 1");
   ensureColumn("elster_submissions", "employee_count", "INTEGER NOT NULL DEFAULT 0");
   ensureColumn("elster_submissions", "kind", "TEXT NOT NULL DEFAULT 'lstb'");
+  ensureColumn("elster_submissions", "finanzamt_reached", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn("elster_submissions", "receipt_json", "TEXT");
 }
 
 export function elsterChannelStatus() {
@@ -169,7 +171,16 @@ async function deliverToElsterChannel({ xml, cert, submissionId }) {
     if (run.status !== 0) {
       throw new Error((run.stderr || run.stdout || "ERiC-Fehler").slice(0, 400));
     }
-    return { mode: "eric-cmd", accepted: true, finanzamtReached: false };
+    let finanzamtReached = false;
+    let receipt = null;
+    try {
+      const parsed = JSON.parse((run.stdout || "").trim());
+      finanzamtReached = parsed.finanzamtReached === true;
+      receipt = parsed.receipt || parsed;
+    } catch {
+      receipt = { stdout: (run.stdout || "").slice(0, 400), stderr: (run.stderr || "").slice(0, 200) };
+    }
+    return { mode: "eric-cmd", accepted: true, finanzamtReached, receipt };
   }
   return {
     mode: "queued-local",
@@ -213,8 +224,11 @@ export async function submitElsterYear({ companyId, period, year, actor = "user"
   try {
     const delivered = await deliverToElsterChannel({ xml, cert, submissionId });
     const status = delivered.accepted ? "SENT" : "PENDING";
+    const receiptJson = delivered.receipt
+      ? JSON.stringify(delivered.receipt)
+      : (delivered.hint ? JSON.stringify({ hint: delivered.hint }) : null);
     sqliteExec(
-      `UPDATE elster_submissions SET status = ?, submitted_at = ?, error = ?, mode = ?, remote_id = ?, test_mode = ?, employee_count = ? WHERE submission_id = ?`,
+      `UPDATE elster_submissions SET status = ?, submitted_at = ?, error = ?, mode = ?, remote_id = ?, test_mode = ?, employee_count = ?, finanzamt_reached = ?, receipt_json = ? WHERE submission_id = ?`,
       [
         status,
         now(),
@@ -223,6 +237,8 @@ export async function submitElsterYear({ companyId, period, year, actor = "user"
         delivered.remoteId || null,
         testMode,
         built.employeeCount,
+        delivered.finanzamtReached ? 1 : 0,
+        receiptJson,
         submissionId,
       ]
     );
@@ -271,23 +287,36 @@ export function listElsterSubmissions(companyId, limit = 20) {
   ensureTables();
   const id = normalizeCompanyId(companyId);
   return sqliteAll(
-    `SELECT submission_id, period, year, status, error, created_at, submitted_at, mode, remote_id, test_mode, employee_count, kind
+    `SELECT submission_id, period, year, status, error, created_at, submitted_at, mode, remote_id, test_mode, employee_count, kind, finanzamt_reached, receipt_json
      FROM elster_submissions WHERE company_id = ? ORDER BY created_at DESC LIMIT ?`,
     [id, Math.max(1, Math.min(100, Number(limit) || 20))]
-  ).map((r) => ({
-    submissionId: r.submission_id,
-    kind: r.kind || "lstb",
-    period: r.period,
-    year: r.year,
-    status: r.status,
-    error: r.error,
-    createdAt: r.created_at,
-    submittedAt: r.submitted_at,
-    mode: r.mode || null,
-    remoteId: r.remote_id || null,
-    testMode: r.test_mode == null ? true : Boolean(r.test_mode),
-    employeeCount: Number(r.employee_count) || 0,
-  }));
+  ).map((r) => {
+    let receipt = null;
+    try {
+      receipt = r.receipt_json ? JSON.parse(r.receipt_json) : null;
+    } catch {
+      receipt = r.receipt_json ? { raw: String(r.receipt_json).slice(0, 200) } : null;
+    }
+    if (!receipt && r.error && (r.mode === "queued-local" || r.status === "PENDING")) {
+      receipt = { hint: r.error };
+    }
+    return {
+      submissionId: r.submission_id,
+      kind: r.kind || "lstb",
+      period: r.period,
+      year: r.year,
+      status: r.status,
+      error: r.error,
+      createdAt: r.created_at,
+      submittedAt: r.submitted_at,
+      mode: r.mode || null,
+      remoteId: r.remote_id || null,
+      testMode: r.test_mode == null ? true : Boolean(r.test_mode),
+      employeeCount: Number(r.employee_count) || 0,
+      finanzamtReached: Boolean(r.finanzamt_reached),
+      receipt,
+    };
+  });
 }
 
 export async function maybeAutoSubmitElster(companyId, period) {
@@ -355,8 +384,11 @@ export async function submitElsterLsta({ companyId, period, actor = "user" }) {
   try {
     const delivered = await deliverToElsterChannel({ xml, cert, submissionId });
     const status = delivered.accepted ? "SENT" : "PENDING";
+    const receiptJson = delivered.receipt
+      ? JSON.stringify(delivered.receipt)
+      : (delivered.hint ? JSON.stringify({ hint: delivered.hint }) : null);
     sqliteExec(
-      `UPDATE elster_submissions SET status = ?, submitted_at = ?, error = ?, mode = ?, remote_id = ?, test_mode = ?, employee_count = ? WHERE submission_id = ?`,
+      `UPDATE elster_submissions SET status = ?, submitted_at = ?, error = ?, mode = ?, remote_id = ?, test_mode = ?, employee_count = ?, finanzamt_reached = ?, receipt_json = ? WHERE submission_id = ?`,
       [
         status,
         now(),
@@ -365,6 +397,8 @@ export async function submitElsterLsta({ companyId, period, actor = "user" }) {
         delivered.remoteId || null,
         testMode,
         built.employeeCount,
+        delivered.finanzamtReached ? 1 : 0,
+        receiptJson,
         submissionId,
       ]
     );

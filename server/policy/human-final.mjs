@@ -42,6 +42,7 @@ export const CONFIRM_REQUIRED_ACTIONS = Object.freeze([
   "gobd_export",
   "erechnung_export",
   "certificate_deliver",
+  "export_import",
 ]);
 
 const AI_ACTOR_RE = /^(ai|assistant|llm|bot|copilot|auto[_-]?ai)$/i;

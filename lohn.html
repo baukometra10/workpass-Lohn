@@ -47,7 +47,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=26" />
     <link rel="stylesheet" href="datev-sheet.css?v=3" />
-    <link rel="stylesheet" href="lohn.css?v=97" />
+    <link rel="stylesheet" href="lohn.css?v=99" />
     <link rel="stylesheet" href="annual-certificate.css?v=10" />
     <style id="lohnSplitHard">
       /* Form expands left · A4 docked to the right edge */
@@ -404,6 +404,13 @@
                     <button type="button" class="portal-cta-secondary" id="btnLodasExportConfirm" data-i18n="portal.lodasExport">LODAS</button>
                     <button type="button" class="portal-cta-primary" id="btnGobdExport" data-i18n="portal.gobdExport">GoBD Export</button>
                   </div>
+                  <div id="portalExportStatus" class="api-inbox-list" style="margin-top:8px"></div>
+                  <details style="margin-top:8px">
+                    <summary data-i18n="portal.exportImportTitle">Bankstatus importieren (pain.002)</summary>
+                    <p class="section-hint" data-i18n="portal.exportImportHint">SEPA-Rückmeldung einfügen — Stub-Parser, bitte XML prüfen.</p>
+                    <textarea id="exportImportText" rows="4" style="width:100%;margin-top:6px" placeholder="pain.002 / camt …"></textarea>
+                    <button type="button" class="portal-cta-secondary" id="btnExportImport" style="margin-top:6px" data-i18n="portal.exportImportBtn">Status importieren</button>
+                  </details>
                 </section>
                 <section class="month-close-card portal-dash-card" id="portalExportCard" data-ws="steuer" style="margin-bottom:12px">
                   <div class="portal-card-head">
@@ -441,6 +448,28 @@
                   <p id="portalLstaStatus" class="section-hint"></p>
                   <div id="portalElsterPrepList" class="api-inbox-list" style="margin-top:8px"></div>
                   <div id="portalElsterList" class="api-inbox-list" style="margin-top:8px"></div>
+                </section>
+                <section class="month-close-card portal-dash-card" id="portalYearEndCard" data-ws="steuer" style="margin-bottom:12px">
+                  <div class="portal-card-head">
+                    <strong data-i18n="portal.yearEndTitle">Jahresabschluss · Assistent</strong>
+                    <span class="portal-card-badge" id="portalYearEndBadge" data-i18n="portal.yearEndBadge">Schritte</span>
+                  </div>
+                  <p class="section-hint" data-i18n="portal.yearEndHint">Freigegebene Monate → LStB → Mitarbeiter → optional ELSTER → DATEV/SEPA/GoBD.</p>
+                  <div class="field-grid" style="margin-top:8px">
+                    <div>
+                      <label for="yearEndYear" data-i18n="portal.yearEndYear">Kalenderjahr</label>
+                      <input id="yearEndYear" type="number" min="2020" max="2099" step="1" />
+                    </div>
+                  </div>
+                  <div id="portalYearEndList" class="api-inbox-list" style="margin-top:8px"></div>
+                </section>
+                <section class="month-close-card portal-dash-card" id="portalDeliveryReconCard" data-ws="steuer" style="margin-bottom:12px">
+                  <div class="portal-card-head">
+                    <strong data-i18n="portal.deliveryReconTitle">Zustellungen · Vertrauen</strong>
+                    <span class="portal-card-badge" id="portalDeliveryReconBadge" data-i18n="portal.deliveryReconBadge">Plattform</span>
+                  </div>
+                  <p class="section-hint" data-i18n="portal.deliveryReconHint">Lohnabrechnung, LStB, VB und Rechnungen — ob die Plattform bestätigt hat (Ack/Pull).</p>
+                  <div id="portalDeliveryReconList" class="api-inbox-list" style="margin-top:8px"></div>
                 </section>
                 <section class="month-close-card portal-dash-card" id="portalCertificatesCard" data-ws="steuer" style="margin-bottom:12px">
                   <div class="portal-card-head">
@@ -967,8 +996,10 @@
             <div id="previewEmpty" class="preview-empty" hidden>
               <strong data-i18n="lohn.previewEmpty">Noch keine Abrechnung geladen</strong>
               <span data-i18n="lohn.previewEmptyHint">Echte Daten von der Plattform empfangen, Datei importieren oder manuell erfassen.</span>
+              <span class="preview-empty-next" data-i18n="lohn.previewEmptyNext">Als Nächstes: „Jetzt synchronisieren“ – dann erscheint die Live-Vorschau hier rechts.</span>
               <div class="preview-empty-actions">
-                <button type="button" class="primary glossy" id="btnPreviewEmpfang" data-i18n="lohn.toInbox">Zum Empfang</button>
+                <button type="button" class="primary glossy" id="btnPreviewSync" data-i18n="sync.now">Jetzt synchronisieren</button>
+                <button type="button" class="portal-cta-secondary" id="btnPreviewEmpfang" data-i18n="lohn.toInbox">Zum Empfang</button>
               </div>
             </div>
             <div id="datevSheetHost" class="datev-sheet-host" aria-label="Abrechnungsvorschau" style="display:block;visibility:visible;min-height:120px"></div>
@@ -1014,7 +1045,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="workpass-pwa.js?v=8"></script>
     <script src="annual-certificate.js?v=4"></script>
-    <script src="lohn-app.js?v=119"></script>
+    <script src="lohn-app.js?v=121"></script>
     <style id="lohnSplitHardTail">
       /* Form grows · A4 docked right */
       #lohnApp .lohn-layout,

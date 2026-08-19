@@ -72,6 +72,16 @@ const p = securityPosture();
 assert(p.encryption === "aes-256-gcm", "AES-256-GCM");
 assert(p.keySource === "env", "Key from env in test");
 
+console.log("\n=== Security: Production guards ===");
+process.env.NODE_ENV = "production";
+process.env.WORKPASS_API_KEY = "production-test-key-with-enough-length";
+process.env.WORKPASS_ELSTER_SUBMIT_URL = "http://127.0.0.1:9999/v1/elster/submit";
+const prod = securityPosture();
+assert(prod.strict === true, "strict in production");
+assert(prod.warnings.some((w) => /ELSTER|localhost|mock/i.test(w)), "ELSTER localhost warning");
+delete process.env.NODE_ENV;
+delete process.env.WORKPASS_ELSTER_SUBMIT_URL;
+
 closeSqlite();
 try {
   const db = process.env.WORKPASS_SQLITE_PATH;

@@ -1010,13 +1010,21 @@ body.is-rtl .portal-emp-total-money { justify-self: start; }
   font-size: 0.76rem;
   color: var(--muted);
   line-height: 1.4;
+  margin-bottom: 8px;
+}
+.preview-empty .preview-empty-next {
   margin-bottom: 12px;
+  color: #c5daf0;
+  font-weight: 600;
 }
 .preview-empty-actions {
   display: flex;
   gap: 8px;
   justify-content: center;
   flex-wrap: wrap;
+}
+.preview-empty-actions .portal-cta-secondary {
+  min-height: 40px;
 }
 .preview-empty-actions button {
   min-height: 38px;
@@ -1547,6 +1555,21 @@ body.company-portal .month-close-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+body.company-portal .month-close-actions > .portal-cta-primary,
+body.company-portal .month-close-actions > .portal-cta-secondary,
+body.company-portal .month-close-actions > button {
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+  height: auto;
+  min-height: 40px;
+  padding: 8px 12px;
 }
 @media (max-width: 980px) {
   body.company-portal .lohn-layout {
@@ -2450,16 +2473,21 @@ body.company-portal .portal-cta-sync {
 }
 
 body.company-portal .portal-cta-secondary {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   min-height: 40px;
-  padding: 0 14px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 8px 14px;
   font-weight: 600;
   border-radius: 10px;
   border: 1px solid rgba(93, 180, 255, 0.4);
   background: linear-gradient(180deg, #1a4f8a 0%, #123a68 100%);
   color: #fff;
   cursor: pointer;
-  white-space: nowrap;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+  box-sizing: border-box;
 }
 
 body.company-portal .portal-cta-secondary:hover {
@@ -2999,9 +3027,11 @@ body.is-rtl .missing-panel ul {
 
 /* GoBD / export CTAs + human-readable audit */
 body.company-portal .portal-cta-primary {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   min-height: 42px;
-  padding: 0 16px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 8px 16px;
   font-weight: 700;
   border-radius: 11px;
   border: 1px solid rgba(120, 210, 255, 0.45);
@@ -3009,6 +3039,10 @@ body.company-portal .portal-cta-primary {
   color: #fff;
   cursor: pointer;
   box-shadow: 0 6px 16px rgba(16, 60, 120, 0.28);
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+  box-sizing: border-box;
 }
 body.company-portal .portal-cta-primary:hover {
   filter: brightness(1.07);
@@ -3417,8 +3451,11 @@ body.theme-light .portal-gobd-op {
   body.company-portal .month-close-actions,
   body.company-portal .portal-gobd-actions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* One column when the form rail is narrow — never clip long DE labels */
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
+    width: 100%;
+    max-width: 100%;
   }
   body.company-portal .month-close-actions > .portal-cta-primary,
   body.company-portal .month-close-actions > .portal-cta-secondary,
@@ -3426,7 +3463,9 @@ body.theme-light .portal-gobd-op {
   body.company-portal .portal-gobd-actions > button {
     width: 100%;
     min-width: 0;
+    max-width: 100%;
     justify-content: center;
+    white-space: normal;
   }
   body.company-portal .field-grid {
     grid-template-columns: 1fr 1fr;

@@ -145,6 +145,11 @@ export function securityPosture() {
     blockers.push("Öffentlicher Bind + Dev-API-Key verboten");
   }
 
+  const elsterUrl = String(process.env.WORKPASS_ELSTER_SUBMIT_URL || "").trim();
+  if (elsterUrl && /localhost|127\.0\.0\.1|0\.0\.0\.0|mock/i.test(elsterUrl)) {
+    warnings.push("ELSTER-SUBMIT_URL zeigt auf localhost/mock — nicht das Finanzamt");
+  }
+
   return {
     strict,
     encryption: "aes-256-gcm",

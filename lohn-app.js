@@ -1137,7 +1137,10 @@
     const status = $("statusBar");
     if (status) {
       status.setAttribute("data-i18n", "status.firmReady");
-      status.textContent = uiT("status.firmReady", "Firmen-Portal bereit – Sync holt Ihre Daten.");
+      status.textContent = uiT(
+        "status.firmReady",
+        "Firmen-Portal bereit – tippen Sie auf „Jetzt synchronisieren“, dann erscheinen Mitarbeiter und die A4-Vorschau."
+      );
     }
     const hint = $("recvSectionHint");
     if (hint) {
@@ -4751,6 +4754,10 @@
     $("btnPreviewEmpfang")?.addEventListener("click", () => {
       setRecvMode("file");
       $("secEmpfang")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    $("btnPreviewSync")?.addEventListener("click", () => {
+      if (typeof runAutoSyncNow === "function") runAutoSyncNow();
+      else $("btnPortalSyncTop")?.click();
     });
     $("btnPrint").addEventListener("click", printSheet);
     $("btnPdf").addEventListener("click", exportPdf);

@@ -151,6 +151,8 @@ assert(rows.length >= 3, `submissions listed (${rows.length})`);
 assert(rows.some((r) => r.status === "PENDING"), "list has PENDING");
 assert(rows.some((r) => r.status === "SENT"), "list has SENT");
 assert(rows.some((r) => r.status === "FAILED"), "list has FAILED");
+assert(rows.every((r) => typeof r.finanzamtReached === "boolean"), "finanzamtReached on all rows");
+assert(rows.some((r) => r.receipt != null || r.mode === "queued-local"), "receipt or local mode");
 
 closeSqlite();
 try {
