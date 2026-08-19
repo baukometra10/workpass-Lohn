@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="wp-layout" content="split-v230" />
+    <meta name="wp-layout" content="split-v231" />
     <script>
       /* Kill stale Service Worker before any CSS/JS — otherwise old shell HTML wins forever */
       (function () {
-        var FLAG = "workpass.force.split.v230";
+        var FLAG = "workpass.force.split.v231";
         try {
           if (sessionStorage.getItem(FLAG) === "1") return;
           sessionStorage.setItem(FLAG, "1");
@@ -618,6 +618,8 @@
                 </div>
               </div>
               <div class="field-grid portal-api-tech">
+                <div class="full">
+                  <label for="apiBaseUrl" data-i18n="api.baseUrl">API-URL (Bridge)</label>
                   <input id="apiBaseUrl" type="url" value="" placeholder="https://… oder http://127.0.0.1:8787" />
                 </div>
                 <div class="full">
