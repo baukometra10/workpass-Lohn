@@ -111,6 +111,7 @@ async function pushCertificateDelivery({ type, event, certificate, company, opti
     delivery,
     company,
     idempotencyKey: delivery.deliveryId,
+    strictAck: true,
     meta: {
       reason: options.reason || (options.printed ? "print" : "send"),
       printed: Boolean(options.printed),

@@ -336,11 +336,23 @@ export async function notifyPlatform(event) {
         keySource,
       });
       if (res.ok) {
-        const accepted = Boolean(
+        const looseAccepted = Boolean(
           body
           && typeof body === "object"
           && (body.accepted === true || body.ok === true || body.received === true || body.queued === true)
         );
+        // Certificates (and callers with strictAck) must not treat bare { ok: true } as delivery proof.
+        const strictAccepted = Boolean(
+          body
+          && typeof body === "object"
+          && (
+            body.accepted === true
+            || body.deliveryAccepted === true
+            || body.stored === true
+            || (body.queued === true && (body.deliveryId || body.idempotencyKey))
+          )
+        );
+        const accepted = event.strictAck === true ? strictAccepted : looseAccepted;
         // Bare 2xx without acceptance flag: transport OK, but platform may not have stored the payslip.
         lastWebhookStatus = {
           ok: true,
@@ -351,9 +363,12 @@ export async function notifyPlatform(event) {
           mode: "webhook",
           hint: accepted
             ? null
-            : "Webhook HTTP 2xx ohne accepted/ok – Plattform speichert ggf. noch nicht. Lieferung bleibt in /v1/delivery/pending.",
+            : (event.strictAck
+              ? "Webhook 2xx ohne accepted/stored – LStB/VB gilt nicht als zugestellt. Lieferung bleibt in /v1/delivery/pending."
+              : "Webhook HTTP 2xx ohne accepted/ok – Plattform speichert ggf. noch nicht. Lieferung bleibt in /v1/delivery/pending."),
           keySource,
           accepted,
+          strictAck: Boolean(event.strictAck),
         };
         return {
           ok: true,
@@ -364,6 +379,7 @@ export async function notifyPlatform(event) {
           accepted,
           delivery: event.delivery || null,
           idempotencyKey,
+          hint: lastWebhookStatus.hint,
         };
       }
       lastError = body?.error || `HTTP ${res.status}`;

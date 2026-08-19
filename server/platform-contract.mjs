@@ -58,6 +58,7 @@ export function platformCapabilities() {
     notes: [
       "Platform should advertise pull URLs via activate payload — not guessed by accounting.",
       "Delivery ack confirms employee visibility, not just HTTP 2xx.",
+      "LStB/VB require strictAck: accepted|deliveryAccepted|stored (bare {ok:true} is not enough).",
     ],
   };
 }

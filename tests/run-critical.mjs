@@ -13,6 +13,7 @@ const suites = [
   "tests/security.mjs",
   "tests/elster-channel.mjs",
   "tests/employee-certificates.mjs",
+  "tests/certificate-delivery-confirm.mjs",
   "tests/human-final-pillars.mjs",
   "tests/tenant-isolation.mjs",
   "tests/export-status.mjs",
