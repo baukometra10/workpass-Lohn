@@ -36,6 +36,11 @@ Employee documents (Lohnabrechnung, LStB, VB, Rechnung) use:
 
 - `event`: **`document.released`**
 - `documentType`: **`payslip` | `lstb` | `verdienst` | `invoice`**
+- `documentTitle` / `title`: German display names for the employee inbox (never raw codes)
+  - `payslip` → **Entgeltabrechnung** · title e.g. `Entgeltabrechnung 2026-08`
+  - `lstb` → **Lohnsteuerbescheinigung** · title e.g. `Lohnsteuerbescheinigung 2026`
+  - `verdienst` → **Verdienstbescheinigung** · title e.g. `Verdienstbescheinigung 2026-08`
+  - `invoice` → **Rechnung** · title e.g. `Rechnung RE-2026-0042`
 - Header `X-WorkPass-Event: document.released`
 - Header `X-WorkPass-Document-Type: payslip` (etc.)
 - `meta.legacyEvent` keeps the old name (`payslip.released`, …) for debugging
@@ -46,14 +51,26 @@ Employee documents (Lohnabrechnung, LStB, VB, Rechnung) use:
   "schemaVersion": 2,
   "event": "document.released",
   "documentType": "payslip",
+  "documentTitle": "Entgeltabrechnung",
+  "title": "Entgeltabrechnung 2025-07",
   "occurredAt": "2026-07-28T10:00:00.000Z",
   "source": "workpass-accounting-bridge",
   "idempotencyKey": "pay:…",
   "company": { "id": "luf", "name": "…" },
-  "delivery": { "type": "payslip", "documentType": "payslip" },
+  "delivery": {
+    "type": "payslip",
+    "documentType": "payslip",
+    "documentTitle": "Entgeltabrechnung",
+    "title": "Entgeltabrechnung 2025-07"
+  },
   "message": null,
   "monthClose": null,
-  "meta": { "legacyEvent": "payslip.released", "documentType": "payslip" }
+  "meta": {
+    "legacyEvent": "payslip.released",
+    "documentType": "payslip",
+    "documentTitle": "Entgeltabrechnung",
+    "title": "Entgeltabrechnung 2025-07"
+  }
 }
 ```
 

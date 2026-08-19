@@ -61,6 +61,7 @@ export function platformCapabilities() {
       "Platform should advertise pull URLs via activate payload — not guessed by accounting.",
       "Delivery ack confirms employee visibility, not just HTTP 2xx.",
       "Employee documents are sent as event=document.released with documentType=payslip|lstb|verdienst|invoice (legacy *.released kept in meta.legacyEvent).",
+      "Show delivery.title / documentTitle in the employee inbox (Entgeltabrechnung, Lohnsteuerbescheinigung, Verdienstbescheinigung, Rechnung) — never raw codes.",
       "LStB/VB require strictAck: accepted|deliveryAccepted|stored (bare {ok:true} is not enough).",
     ],
   };

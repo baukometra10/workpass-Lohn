@@ -129,9 +129,20 @@ const server = http.createServer(async (req, res) => {
       const item = deliverToEmployeeApp({
         ...delivery,
         event,
-        title: event === "invoice.released"
-          ? (delivery.title || `Rechnung ${delivery.invoiceId || delivery.number || ""}`)
-          : (delivery.title || event),
+        title: delivery.title
+          || (delivery.documentType === "lstb" || event === "lstb.released"
+            ? `Lohnsteuerbescheinigung ${delivery.year || delivery.period || ""}`.trim()
+            : null)
+          || (delivery.documentType === "verdienst" || event === "verdienst.released"
+            ? `Verdienstbescheinigung ${delivery.period || delivery.year || ""}`.trim()
+            : null)
+          || (delivery.documentType === "invoice" || event === "invoice.released"
+            ? `Rechnung ${delivery.invoiceId || delivery.number || ""}`.trim()
+            : null)
+          || (delivery.documentType === "payslip" || event === "payslip.released" || event === "document.released"
+            ? `Entgeltabrechnung ${delivery.period || ""}`.trim()
+            : null)
+          || event,
       });
       console.log(`[mock-platform] ${event || "delivery"} → employee app: ${item.title || item.deliveryId}`);
       return send(res, 200, {

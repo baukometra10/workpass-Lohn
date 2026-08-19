@@ -131,6 +131,26 @@ export function legacyEventForDocumentType(documentType) {
   return "payslip.released";
 }
 
+/**
+ * Canonical German document title for the employee app / platform inbox.
+ * Platform must show this title (not raw documentType / event codes).
+ */
+export function documentTitleForType(documentType) {
+  const t = String(documentType || "").toLowerCase();
+  if (t === "lstb") return "Lohnsteuerbescheinigung";
+  if (t === "verdienst" || t === "vb" || t === "vordienst") return "Verdienstbescheinigung";
+  if (t === "invoice") return "Rechnung";
+  if (t === "payslip" || t === "payroll") return "Entgeltabrechnung";
+  return "Dokument";
+}
+
+/** Human inbox title: "Verdienstbescheinigung 2026-08" / "Lohnsteuerbescheinigung 2026". */
+export function buildDocumentDisplayTitle(documentType, periodOrRef = "") {
+  const base = documentTitleForType(documentType);
+  const ref = String(periodOrRef || "").trim();
+  return ref ? `${base} ${ref}` : base;
+}
+
 function hintForWebhookFailure(status, keySource) {
   if (status === 401 || status === 403) {
     if (keySource === "missing") {
@@ -179,7 +199,8 @@ export function buildEmployeeDelivery(type, job) {
       },
       document: p,
       appRoute: `/employee/payslips/${encodeURIComponent(job.jobId)}`,
-      title: `Entgeltabrechnung ${p.period || ""}`.trim(),
+      documentTitle: documentTitleForType("payslip"),
+      title: buildDocumentDisplayTitle("payslip", p.period || job.period || ""),
     };
   }
 
@@ -217,7 +238,8 @@ export function buildEmployeeDelivery(type, job) {
       },
       document: cert,
       appRoute: `/employee/certificates/lstb/${encodeURIComponent(String(year))}/${encodeURIComponent(employeeId)}`,
-      title: `Lohnsteuerbescheinigung ${year}`.trim(),
+      documentTitle: documentTitleForType("lstb"),
+      title: buildDocumentDisplayTitle("lstb", year),
     };
   }
 
@@ -254,7 +276,8 @@ export function buildEmployeeDelivery(type, job) {
       },
       document: cert,
       appRoute: `/employee/certificates/verdienst/${encodeURIComponent(period || String(year))}/${encodeURIComponent(employeeId)}`,
-      title: `Verdienstbescheinigung ${period || year}`.trim(),
+      documentTitle: documentTitleForType("verdienst"),
+      title: buildDocumentDisplayTitle("verdienst", period || year),
     };
   }
 
@@ -283,7 +306,8 @@ export function buildEmployeeDelivery(type, job) {
       },
       document: d,
       appRoute: `/invoices/${encodeURIComponent(job.id)}`,
-      title: `Rechnung ${d.number || job.id}`,
+      documentTitle: documentTitleForType("invoice"),
+      title: buildDocumentDisplayTitle("invoice", d.number || job.id),
     };
   }
 
@@ -325,18 +349,35 @@ export async function notifyPlatform(event) {
 
   let delivery = event.delivery || null;
   if (delivery && release.isDocumentRelease) {
+    const documentTitle = delivery.documentTitle || documentTitleForType(release.documentType);
+    const title = delivery.title
+      || buildDocumentDisplayTitle(
+        release.documentType,
+        delivery.period || delivery.year || delivery.number || delivery.invoiceId || ""
+      );
     delivery = {
       ...delivery,
       type: release.documentType || delivery.type,
       documentType: release.documentType,
+      documentTitle,
+      title,
     };
   }
+
+  const documentTitle = release.isDocumentRelease
+    ? (delivery?.documentTitle || documentTitleForType(release.documentType))
+    : null;
+  const title = release.isDocumentRelease
+    ? (delivery?.title || event.title || documentTitle)
+    : (event.title || event.message?.title || null);
 
   const envelope = {
     kind: "platform.accounting.event.v1",
     schemaVersion: 2,
     event: release.eventName,
     documentType: release.isDocumentRelease ? release.documentType : (event.documentType || null),
+    documentTitle,
+    title,
     occurredAt: new Date().toISOString(),
     source: "workpass-accounting-bridge",
     idempotencyKey,
@@ -351,6 +392,8 @@ export async function notifyPlatform(event) {
         ? {
           legacyEvent: release.legacyEvent,
           documentType: release.documentType,
+          documentTitle,
+          title,
         }
         : {}),
     },

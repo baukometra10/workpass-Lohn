@@ -139,6 +139,10 @@ const lstbShape = buildEmployeeDelivery("lstb", {
 });
 assert(payShape.kind === lstbShape.kind, "same delivery kind as payslip");
 assert(payShape.status === lstbShape.status, "same ready_for_employee status");
+assert(payShape.documentTitle === "Entgeltabrechnung", "payslip documentTitle");
+assert(payShape.title === "Entgeltabrechnung 2026-02", `payslip title (${payShape.title})`);
+assert(lstbShape.documentTitle === "Lohnsteuerbescheinigung", "lstb documentTitle");
+assert(lstbShape.title === "Lohnsteuerbescheinigung 2026", `lstb title (${lstbShape.title})`);
 assert(typeof lstbShape.appRoute === "string" && lstbShape.appRoute.includes("/employee/certificates/lstb/"), "lstb appRoute");
 assert(eventForDelivery({ type: "lstb" }) === "document.released", "replay event lstb");
 assert(eventForDelivery({ type: "verdienst" }) === "document.released", "replay event verdienst");
@@ -157,8 +161,12 @@ assert(inbox.length >= 1, `webhook was called (inbox=${inbox.length})`);
 const last = inbox[inbox.length - 1] || {};
 assert(last.body?.event === "document.released", `event document.released (got ${last.body?.event})`);
 assert(last.body?.documentType === "lstb", `documentType lstb (got ${last.body?.documentType})`);
+assert(last.body?.documentTitle === "Lohnsteuerbescheinigung", "envelope documentTitle LStB");
+assert(last.body?.title === "Lohnsteuerbescheinigung 2026", `envelope title (${last.body?.title})`);
 assert(last.body?.delivery?.type === "lstb", "delivery.type lstb");
 assert(last.body?.delivery?.documentType === "lstb", "delivery.documentType lstb");
+assert(last.body?.delivery?.documentTitle === "Lohnsteuerbescheinigung", "delivery.documentTitle");
+assert(last.body?.delivery?.title?.startsWith("Lohnsteuerbescheinigung"), "delivery.title LStB");
 assert(last.body?.delivery?.kind === "platform.employee.delivery.v1", "envelope delivery kind");
 assert(last.body?.meta?.requireAck === true, "meta.requireAck");
 assert(last.body?.meta?.parity === "payslip", "meta.parity payslip");
@@ -188,7 +196,10 @@ const okVb = await deliverEmployeeVerdienst(companyId, "EMP-CONF-1", 2026, "2026
 assert(okVb.ok === true && okVb.confirmed === true, "accepted:true confirms vb");
 assert(inbox[inbox.length - 1]?.body?.event === "document.released", `vb event (got ${inbox[inbox.length - 1]?.body?.event})`);
 assert(inbox[inbox.length - 1]?.body?.documentType === "verdienst", "vb documentType");
+assert(inbox[inbox.length - 1]?.body?.documentTitle === "Verdienstbescheinigung", "vb documentTitle");
+assert(String(inbox[inbox.length - 1]?.body?.title || "").startsWith("Verdienstbescheinigung"), "vb title");
 assert(inbox[inbox.length - 1]?.body?.delivery?.type === "verdienst", "vb delivery type");
+assert(inbox[inbox.length - 1]?.body?.delivery?.documentTitle === "Verdienstbescheinigung", "vb delivery.documentTitle");
 
 mode = "fail";
 inbox.length = 0;

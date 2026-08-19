@@ -3,6 +3,8 @@
   "schemaVersion": 2,
   "event": "document.released",
   "documentType": "lstb",
+  "documentTitle": "Lohnsteuerbescheinigung",
+  "title": "Lohnsteuerbescheinigung 2026",
   "occurredAt": "2026-08-18T14:00:00.000Z",
   "source": "workpass-accounting-bridge",
   "idempotencyKey": "lstb:muster-gmbh:02006:2026",
@@ -32,11 +34,14 @@
       "currency": "EUR"
     },
     "appRoute": "/employee/certificates/lstb/2026/02006",
+    "documentTitle": "Lohnsteuerbescheinigung",
     "title": "Lohnsteuerbescheinigung 2026"
   },
   "meta": {
     "legacyEvent": "lstb.released",
     "documentType": "lstb",
+    "documentTitle": "Lohnsteuerbescheinigung",
+    "title": "Lohnsteuerbescheinigung 2026",
     "requireAck": true,
     "parity": "payslip"
   }

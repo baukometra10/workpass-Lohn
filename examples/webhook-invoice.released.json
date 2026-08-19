@@ -1,11 +1,18 @@
 {
   "kind": "platform.accounting.event.v1",
-  "event": "invoice.released",
+  "schemaVersion": 2,
+  "event": "document.released",
+  "documentType": "invoice",
+  "documentTitle": "Rechnung",
+  "title": "Rechnung RE-2025-0042",
   "occurredAt": "2026-07-28T10:05:00.000Z",
   "source": "workpass-accounting-bridge",
+  "idempotencyKey": "inv:muster-gmbh::RE-2025-0042",
+  "company": { "id": "muster-gmbh", "name": "Muster GmbH" },
   "delivery": {
     "kind": "platform.employee.delivery.v1",
     "type": "invoice",
+    "documentType": "invoice",
     "deliveryId": "inv:muster-gmbh::RE-2025-0042",
     "invoiceId": "muster-gmbh::RE-2025-0042",
     "status": "ready_for_employee",
@@ -36,6 +43,13 @@
       }
     },
     "appRoute": "/invoices/muster-gmbh%3A%3ARE-2025-0042",
+    "documentTitle": "Rechnung",
+    "title": "Rechnung RE-2025-0042"
+  },
+  "meta": {
+    "legacyEvent": "invoice.released",
+    "documentType": "invoice",
+    "documentTitle": "Rechnung",
     "title": "Rechnung RE-2025-0042"
   }
 }
