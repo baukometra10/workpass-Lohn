@@ -984,6 +984,9 @@
       loadElsterSubmissions().catch(() => {});
       loadLstaDraft().catch(() => {});
       loadCertificateSummary().catch(() => {});
+      loadYearEndWizard().catch(() => {});
+      loadDeliveryReconciliation().catch(() => {});
+      loadExportStatus().catch(() => {});
     } catch (e) {
       if (!silent) setStatus(`Portal: ${e.message}`, false);
     }
@@ -1404,6 +1407,28 @@
     return map[String(status || "").toUpperCase()] || String(status || "");
   }
 
+  function elsterReachBadge(r) {
+    if (r.finanzamtReached) {
+      return {
+        label: uiT("portal.elsterReachFinanzamt", "Finanzamt (Sidecar)"),
+        cls: "is-ok",
+      };
+    }
+    if (r.status === "PENDING" || r.mode === "queued-local") {
+      return {
+        label: uiT("portal.elsterReachLocal", "Lokal — nicht Finanzamt"),
+        cls: "is-error",
+      };
+    }
+    if (r.status === "SENT" || r.status === "COMPLETED") {
+      return {
+        label: uiT("portal.elsterReachChannel", "Kanal — nicht Finanzamt"),
+        cls: "",
+      };
+    }
+    return { label: "", cls: "" };
+  }
+
   async function loadElsterSubmissions() {
     const host = $("portalElsterList");
     if (!host) return;
@@ -1419,15 +1444,161 @@
           const kindLabel = r.kind === "lsta"
             ? uiT("portal.lstaKind", "LStA")
             : uiT("portal.lstbKind", "LStB");
+          const reach = elsterReachBadge(r);
           const meta = [kindLabel, elsterStatusLabel(r.status), r.period || r.year, r.mode || "", r.testMode ? "Test" : ""]
             .filter(Boolean)
             .join(" · ");
+          const reachHtml = reach.label
+            ? `<span class="portal-gobd-op ${reach.cls}">${esc(reach.label)}</span>`
+            : "";
+          const receiptHint = r.receipt?.hint ? `<p class="section-hint">${esc(r.receipt.hint)}</p>` : "";
           const extra = r.error ? `<p class="section-hint">${esc(r.error)}</p>` : "";
           return `<div class="api-inbox-item"><div><strong>${esc(r.submissionId)}</strong>
-            <span class="portal-item-meta">${esc(meta)}</span></div>${extra}</div>`;
+            ${reachHtml}
+            <span class="portal-item-meta">${esc(meta)}</span></div>${receiptHint}${extra}</div>`;
         }).join("");
     } catch (e) {
       host.innerHTML = `<p class="section-hint">${esc(e.message || uiT("portal.elsterSubmissionsFail", "ELSTER-Aufträge konnten nicht geladen werden."))}</p>`;
+    }
+  }
+
+  function yearEndStatusLabel(status) {
+    const map = {
+      done: uiT("portal.yearEndDone", "Erledigt"),
+      progress: uiT("portal.yearEndProgress", "In Arbeit"),
+      open: uiT("portal.yearEndOpen", "Offen"),
+      optional: uiT("portal.yearEndOptional", "Optional"),
+    };
+    return map[status] || status;
+  }
+
+  async function loadYearEndWizard() {
+    const host = $("portalYearEndList");
+    const badge = $("portalYearEndBadge");
+    const yearInput = $("yearEndYear");
+    if (!host) return;
+    const year = Number(yearInput?.value) || Number(String(currentPayrollPeriod()).slice(0, 4)) || new Date().getFullYear();
+    if (yearInput && !yearInput.value) yearInput.value = String(year);
+    try {
+      const data = await apiFetch(`/v1/portal/year-end?year=${encodeURIComponent(year)}`);
+      if (!data.ok) {
+        host.innerHTML = `<p class="section-hint">${esc(data.error || uiT("portal.yearEndFail", "Jahresassistent nicht verfügbar."))}</p>`;
+        return;
+      }
+      if (badge) {
+        badge.textContent = data.ready
+          ? uiT("portal.yearEndReady", "Bereit")
+          : uiT("portal.yearEndOpenCount", "{n} offen").replace("{n}", String(data.openCount || 0));
+        badge.classList.toggle("is-ok", Boolean(data.ready));
+      }
+      host.innerHTML = (data.steps || []).map((s) => `
+        <div class="api-inbox-item">
+          <div>
+            <strong>${esc(s.title)}</strong>
+            <span class="portal-gobd-op ${s.status === "done" ? "is-ok" : (s.status === "open" ? "is-error" : "")}">${esc(yearEndStatusLabel(s.status))}</span>
+            <span class="portal-item-meta">${esc(s.hint || "")}</span>
+          </div>
+        </div>`).join("");
+    } catch (e) {
+      host.innerHTML = `<p class="section-hint">${esc(e.message || uiT("portal.yearEndFail", "Jahresassistent nicht verfügbar."))}</p>`;
+    }
+  }
+
+  function deliveryTrustLabel(trust) {
+    const map = {
+      acked: uiT("portal.trustAcked", "Bestätigt"),
+      pushed: uiT("portal.trustPushed", "Gesendet"),
+      queued: uiT("portal.trustQueued", "Wartet"),
+      push_failed: uiT("portal.trustFailed", "Fehler"),
+      unknown: uiT("portal.trustUnknown", "Unbekannt"),
+    };
+    return map[trust] || trust;
+  }
+
+  async function loadDeliveryReconciliation() {
+    const host = $("portalDeliveryReconList");
+    const badge = $("portalDeliveryReconBadge");
+    if (!host) return;
+    try {
+      const period = currentPayrollPeriod();
+      const data = await apiFetch(`/v1/portal/delivery-reconciliation?period=${encodeURIComponent(period)}`);
+      if (!data.ok) {
+        host.innerHTML = `<p class="section-hint">${esc(data.error || uiT("portal.deliveryReconFail", "Zustellungen konnten nicht geladen werden."))}</p>`;
+        return;
+      }
+      const counts = data.documentCounts || {};
+      if (badge) {
+        badge.textContent = counts.push_failed
+          ? uiT("portal.deliveryReconError", "Fehler")
+          : (counts.queued ? uiT("portal.deliveryReconPending", "Offen") : uiT("portal.deliveryReconOk", "OK"));
+        badge.classList.toggle("is-error", Boolean(counts.push_failed));
+        badge.classList.toggle("is-ok", !counts.push_failed && !counts.queued && counts.total > 0);
+      }
+      const payroll = data.payroll;
+      const payrollHtml = payroll?.ok
+        ? `<p class="section-hint">${esc(uiT("portal.deliveryReconPayroll", "Lohnabrechnungen: {ready}/{total} bereit")
+          .replace("{ready}", String(payroll.counts?.acked || 0))
+          .replace("{total}", String(payroll.counts?.total || 0)))}</p>`
+        : "";
+      const docsHtml = (data.documents || []).slice(0, 12).map((d) => `
+        <div class="api-inbox-item">
+          <div>
+            <strong>${esc(d.typeLabel || d.type)}</strong>
+            <span class="portal-gobd-op ${d.trust === "acked" ? "is-ok" : (d.trust === "push_failed" ? "is-error" : "")}">${esc(deliveryTrustLabel(d.trust))}</span>
+            <span class="portal-item-meta">${esc([d.employee?.name, d.period || d.title].filter(Boolean).join(" · "))}</span>
+          </div>
+        </div>`).join("")
+        || `<p class="section-hint">${esc(uiT("portal.deliveryReconEmpty", "Keine Dokument-Zustellungen für diesen Zeitraum."))}</p>`;
+      const actions = (data.nextActions || []).slice(0, 2).map((a) => `<p class="section-hint">${esc(a)}</p>`).join("");
+      host.innerHTML = payrollHtml + docsHtml + actions;
+    } catch (e) {
+      host.innerHTML = `<p class="section-hint">${esc(e.message || uiT("portal.deliveryReconFail", "Zustellungen konnten nicht geladen werden."))}</p>`;
+    }
+  }
+
+  function exportKindLabel(kind) {
+    const map = {
+      sepa: "SEPA",
+      datev: "DATEV",
+      gobd: "GoBD",
+      lodas: "LODAS",
+    };
+    return map[kind] || kind;
+  }
+
+  async function loadExportStatus() {
+    const host = $("portalExportStatus");
+    if (!host) return;
+    try {
+      const period = currentPayrollPeriod();
+      const data = await apiFetch(`/v1/portal/export-status?period=${encodeURIComponent(period)}`);
+      if (!data.ok) {
+        host.innerHTML = "";
+        return;
+      }
+      const latest = Object.values(data.latestByKind || {});
+      const imports = data.imports || [];
+      if (!latest.length && !imports.length) {
+        host.innerHTML = `<p class="section-hint">${esc(uiT("portal.exportStatusEmpty", "Noch keine Exporte für diesen Monat."))}</p>`;
+        return;
+      }
+      host.innerHTML = latest.map((r) => `
+        <div class="api-inbox-item">
+          <div>
+            <strong>${esc(exportKindLabel(r.kind))}</strong>
+            <span class="portal-item-meta">${esc([r.fileName, r.createdAt?.slice(0, 16)].filter(Boolean).join(" · "))}</span>
+          </div>
+        </div>`).join("")
+        + imports.slice(0, 3).map((imp) => `
+        <div class="api-inbox-item">
+          <div>
+            <strong>${esc(uiT("portal.exportImportStatus", "Bankstatus"))}</strong>
+            <span class="portal-gobd-op ${imp.status === "accepted" ? "is-ok" : (imp.status === "rejected" ? "is-error" : "")}">${esc(imp.status)}</span>
+            <span class="portal-item-meta">${esc([imp.kind, imp.source, imp.createdAt?.slice(0, 16)].filter(Boolean).join(" · "))}</span>
+          </div>
+        </div>`).join("");
+    } catch {
+      host.innerHTML = "";
     }
   }
 
@@ -2057,6 +2228,7 @@
       a.click();
       URL.revokeObjectURL(a.href);
       toast(uiT("portal.exportDone", "Export bereit – bitte selbst einreichen."), "ok");
+      loadExportStatus().catch(() => {});
       return;
     }
     if (data.csv || data.content || data.package || data.files) {
@@ -2072,6 +2244,7 @@
       a.click();
       URL.revokeObjectURL(a.href);
       toast(uiT("portal.exportDone", "Export bereit – bitte selbst einreichen."), "ok");
+      loadExportStatus().catch(() => {});
       return;
     }
     toast(data.message || data.error || "Export", data.ok ? "ok" : "error");
@@ -2947,6 +3120,36 @@
     toast(all.slice(0, 4).join(" · ") + (all.length > 4 ? ` · +${all.length - 4}` : ""), errors.length ? "error" : "info");
   }
 
+  /** Clear stale PWA shell once so restored layout CSS is not stuck behind cache-first SW. */
+  async function bustStaleShellCacheOnce() {
+    const FLAG = "workpass.shell.bust.v227-split";
+    try {
+      if (sessionStorage.getItem(FLAG) === "1") return false;
+      let touched = false;
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        const shell = keys.filter((k) => String(k).startsWith("workpass-shell-"));
+        if (shell.length) {
+          await Promise.all(shell.map((k) => caches.delete(k)));
+          touched = true;
+        }
+      }
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        if (regs.length) {
+          await Promise.all(regs.map((r) => r.unregister()));
+          touched = true;
+        }
+      }
+      sessionStorage.setItem(FLAG, "1");
+      if (touched) {
+        location.reload();
+        return true;
+      }
+    } catch { /* ignore */ }
+    return false;
+  }
+
   function fitSheetPreview() {
     const host = $("datevSheetHost");
     const preview = document.querySelector(".lohn-preview");
@@ -3133,6 +3336,19 @@
     refreshingArchive = false;
   }
 
+  function focusPayslipEditingView() {
+    if (!companyPortalId) return;
+    setPortalWorkspace("monat", { scroll: false });
+    requestAnimationFrame(() => {
+      fitSheetPreview();
+      const narrow = window.matchMedia("(max-width: 1100px)").matches;
+      const target = narrow
+        ? document.querySelector(".lohn-preview")
+        : ($("secFirma") || document.querySelector(".lohn-preview"));
+      target?.scrollIntoView({ behavior: "smooth", block: narrow ? "start" : "nearest" });
+    });
+  }
+
   function applyIngestResult(result, label, source) {
     if (!result?.state) {
       setStatus(`${label}: ${(result?.errors || ["fehlgeschlagen"]).join(" · ")}`, false);
@@ -3151,6 +3367,9 @@
       setModePill("Plattform-Empfang", "Daten empfangen – bei Bearbeitung Live-Berechnung");
     } else if (source === "csv") {
       setModePill("CSV-Import", "Importiert – bei Bearbeitung Live-Berechnung");
+    }
+    if (companyPortalId && isPortalEditingDraft(state)) {
+      focusPayslipEditingView();
     }
   }
 
@@ -3764,7 +3983,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.52.0</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.53.0</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))
@@ -3948,6 +4167,7 @@
       if (companyPortalId && job?.status === "calculated" && !(job?.errors || []).length) {
         await releaseApiPayrollJob(jobId, { silent: true });
       }
+      focusPayslipEditingView();
     } catch (e) {
       const msg = String(e.message || e);
       if (/not_found|nicht gefunden|demo_job/i.test(msg)) {
@@ -4559,6 +4779,36 @@
     });
     $("btnLodasExportConfirm")?.addEventListener("click", () => {
       downloadConfirmedExport("/v1/portal/lodas-export", "LODAS.txt").catch((e) => toast(e.message, "error"));
+    });
+    $("yearEndYear")?.addEventListener("change", () => loadYearEndWizard().catch(() => {}));
+    $("btnExportImport")?.addEventListener("click", async () => {
+      try {
+        const content = String($("exportImportText")?.value || "").trim();
+        if (content.length < 8) {
+          toast(uiT("portal.exportImportEmpty", "Bitte pain.002 / camt Text einfügen."), "info");
+          return;
+        }
+        const ok = await humanConfirm({
+          title: uiT("portal.exportImportConfirmTitle", "Bankstatus importieren"),
+          body: uiT("portal.exportImportConfirmBody", "Stub-Parser — bitte XML manuell prüfen."),
+          requireCheck: true,
+        });
+        if (!ok) return;
+        const data = await apiFetch("/v1/portal/export-import", {
+          method: "POST",
+          body: JSON.stringify({
+            companyId: companyPortalId,
+            period: currentPayrollPeriod(),
+            kind: "sepa",
+            content,
+            confirm: true,
+          }),
+        });
+        toast(data.message || uiT("portal.exportImportDone", "Bankstatus importiert."), data.ok ? "ok" : "error");
+        loadExportStatus().catch(() => {});
+      } catch (e) {
+        toast(e.message, "error");
+      }
     });
     $("btnElsterPrep")?.addEventListener("click", async () => {
       try {
@@ -5340,7 +5590,8 @@
     apply();
   }
 
-  function init() {
+  async function init() {
+    if (await bustStaleShellCacheOnce()) return;
     bootI18n();
     initLohnActionsResponsive();
     // onUnlock startet die App nach PIN; bei aktiver Sitzung/E2E sofort

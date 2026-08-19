@@ -1496,9 +1496,9 @@ body.company-portal #apiBaseUrl,
 body.company-portal label[for="apiCompanyId"],
 body.company-portal #apiCompanyId { display: none !important; }
 
-/* Wider company portal – less cramped left rail */
+/* Wider company portal – form rail stays fixed; A4 keeps the rest */
 body.company-portal .lohn-layout {
-  grid-template-columns: minmax(460px, 1.2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(340px, 380px) minmax(0, 1fr);
 }
 body.company-portal .lohn-form {
   padding: 4px 16px 28px;
@@ -3545,6 +3545,80 @@ body.theme-light .portal-gobd-op {
   }
   body.company-portal .section-hint {
     margin-bottom: 6px;
+  }
+}
+
+/* —— Canonical: form left · A4 right (last rules win over stacking media queries) —— */
+html, body.lohn-desktop {
+  height: 100% !important;
+  overflow: hidden !important;
+}
+body.lohn-desktop #lohnApp.lohn-shell,
+body.company-portal #lohnApp.lohn-shell {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+}
+body.lohn-desktop #lohnApp .lohn-layout,
+body.company-portal #lohnApp .lohn-layout {
+  display: grid !important;
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  width: 100% !important;
+  overflow: hidden !important;
+  align-items: stretch !important;
+}
+body.lohn-desktop #lohnApp .lohn-form,
+body.company-portal #lohnApp .lohn-form {
+  order: 0 !important;
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  border-right: 1px solid var(--border) !important;
+  border-bottom: none !important;
+}
+body.lohn-desktop #lohnApp .lohn-preview,
+body.company-portal #lohnApp .lohn-preview {
+  order: 0 !important;
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  visibility: visible !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+body.lohn-desktop #lohnApp .preview-stage,
+body.company-portal #lohnApp .preview-stage {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+}
+@media (min-width: 1280px) {
+  body.lohn-desktop #lohnApp .lohn-layout,
+  body.company-portal #lohnApp .lohn-layout {
+    grid-template-columns: minmax(360px, 400px) minmax(0, 1fr) !important;
+  }
+}
+@media (max-width: 720px) {
+  body.lohn-desktop #lohnApp .lohn-layout,
+  body.company-portal #lohnApp .lohn-layout {
+    grid-template-columns: minmax(200px, 40vw) minmax(0, 1fr) !important;
   }
 }
 

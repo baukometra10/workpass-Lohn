@@ -1,9 +1,6 @@
 /* WorkPass shell cache – UI assets only; never cache API. */
-const CACHE = "workpass-shell-v223";
+const CACHE = "workpass-shell-v227";
 const PRECACHE = [
-  "./",
-  "./index.html",
-  "./lohn.html",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
@@ -24,6 +21,11 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+function isHtml(url) {
+  const p = url.pathname;
+  return p.endsWith(".html") || p === "/" || p.endsWith("/");
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
@@ -31,11 +33,43 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/v1") || url.pathname === "/health") return;
 
+  // HTML: always network-first so layout/CSS fixes are never stuck behind an old shell.
+  if (isHtml(url) || req.mode === "navigate") {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((cache) => cache.put(req, copy)).catch(() => {});
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // CSS/JS with ?v=: network-first, fall back to cache offline
+  if (/\.(css|js)(\?|$)/.test(url.pathname + url.search) || url.search.includes("v=")) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((cache) => cache.put(req, copy)).catch(() => {});
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(req).then((cached) => {
       const network = fetch(req)
         .then((res) => {
-          if (res && res.ok && (url.pathname.endsWith(".html") || url.pathname.endsWith(".css") || url.pathname.endsWith(".js") || url.pathname.endsWith(".webmanifest") || url.pathname.includes("/icons/"))) {
+          if (res && res.ok && (url.pathname.endsWith(".webmanifest") || url.pathname.includes("/icons/"))) {
             const copy = res.clone();
             caches.open(CACHE).then((cache) => cache.put(req, copy)).catch(() => {});
           }

@@ -95,8 +95,10 @@
 
   function registerSw() {
     if (!("serviceWorker" in navigator)) return;
-    const swUrl = new URL("sw.js", window.location.href).href;
-    navigator.serviceWorker.register(swUrl).catch(() => {});
+    const swUrl = new URL("sw.js?v=227", window.location.href).href;
+    navigator.serviceWorker.register(swUrl).then((reg) => {
+      try { reg.update(); } catch { /* ignore */ }
+    }).catch(() => {});
   }
 
   function boot() {
