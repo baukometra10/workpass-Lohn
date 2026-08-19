@@ -3,13 +3,51 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="wp-layout" content="split-v230" />
+    <script>
+      /* Kill stale Service Worker before any CSS/JS — otherwise old shell HTML wins forever */
+      (function () {
+        var FLAG = "workpass.force.split.v230";
+        try {
+          if (sessionStorage.getItem(FLAG) === "1") return;
+          sessionStorage.setItem(FLAG, "1");
+        } catch (e) { return; }
+        var touched = false;
+        var done = function () {
+          if (touched) location.reload();
+        };
+        var tasks = [];
+        if ("serviceWorker" in navigator) {
+          tasks.push(
+            navigator.serviceWorker.getRegistrations().then(function (regs) {
+              if (regs && regs.length) {
+                touched = true;
+                return Promise.all(regs.map(function (r) { return r.unregister(); }));
+              }
+            })
+          );
+        }
+        if ("caches" in window) {
+          tasks.push(
+            caches.keys().then(function (keys) {
+              var shell = keys.filter(function (k) { return String(k).indexOf("workpass-shell-") === 0; });
+              if (shell.length) {
+                touched = true;
+                return Promise.all(shell.map(function (k) { return caches.delete(k); }));
+              }
+            })
+          );
+        }
+        Promise.all(tasks).then(done).catch(done);
+      })();
+    </script>
     <title>WorkPass Lohn – Steuerprogramm · Suppix AI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=26" />
     <link rel="stylesheet" href="datev-sheet.css?v=3" />
-    <link rel="stylesheet" href="lohn.css?v=93" />
+    <link rel="stylesheet" href="lohn.css?v=94" />
     <link rel="stylesheet" href="annual-certificate.css?v=10" />
     <style id="lohnSplitHard">
       /* HARD LOCK: form left · A4 right — ignore every later stacking rule */
@@ -202,8 +240,8 @@
 
       <div id="companyPortalBanner" class="company-portal-banner" hidden></div>
 
-      <div class="lohn-layout">
-        <aside class="lohn-form" id="lohnForm">
+      <div class="lohn-layout" id="lohnLayout" style="display:grid;grid-template-columns:360px minmax(0,1fr);grid-template-rows:minmax(0,1fr);flex:1 1 auto;min-height:0;width:100%;overflow:hidden;align-items:stretch">
+        <aside class="lohn-form" id="lohnForm" style="grid-column:1;grid-row:1;width:360px;max-width:360px;min-width:0;height:100%;min-height:0;overflow-x:hidden;overflow-y:auto;border-right:1px solid rgba(90,140,200,0.28)">
           <div class="lohn-form-sticky">
             <div id="statusBar" class="lohn-status warn" data-i18n="status.ready">Bereit – manuell, Datei oder Inbox.</div>
             <div id="printHints" class="print-hints" hidden></div>
@@ -903,12 +941,12 @@
           </details>
         </aside>
 
-        <main class="lohn-preview">
+        <main class="lohn-preview" id="lohnPreview" style="grid-column:2;grid-row:1;display:flex;flex-direction:column;min-width:280px;width:auto;height:100%;min-height:0;overflow:hidden;visibility:visible;opacity:1">
           <div class="preview-toolbar">
             <span class="preview-label" data-i18n="lohn.livePreview">Live-Vorschau · A4 · Entgeltabrechnung</span>
             <span class="preview-note" data-i18n="preview.printNote">Druck &amp; PDF = nur dieses Blatt</span>
           </div>
-          <div class="preview-stage">
+          <div class="preview-stage" style="flex:1 1 auto;min-height:200px;overflow:auto">
             <div id="previewEmpty" class="preview-empty" hidden>
               <strong data-i18n="lohn.previewEmpty">Noch keine Abrechnung geladen</strong>
               <span data-i18n="lohn.previewEmptyHint">Echte Daten von der Plattform empfangen, Datei importieren oder manuell erfassen.</span>
@@ -916,7 +954,7 @@
                 <button type="button" class="primary glossy" id="btnPreviewEmpfang" data-i18n="lohn.toInbox">Zum Empfang</button>
               </div>
             </div>
-            <div id="datevSheetHost" class="datev-sheet-host" aria-label="Abrechnungsvorschau"></div>
+            <div id="datevSheetHost" class="datev-sheet-host" aria-label="Abrechnungsvorschau" style="display:block;visibility:visible;min-height:120px"></div>
           </div>
         </main>
       </div>
@@ -957,8 +995,78 @@
     <script src="mandant-checklist.js?v=4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="workpass-pwa.js?v=7"></script>
+    <script src="workpass-pwa.js?v=8"></script>
     <script src="annual-certificate.js?v=4"></script>
-    <script src="lohn-app.js?v=118"></script>
+    <script src="lohn-app.js?v=119"></script>
+    <style id="lohnSplitHardTail">
+      /* Last rule in document — form left · A4 right */
+      #lohnApp .lohn-layout,
+      #lohnLayout {
+        display: grid !important;
+        grid-template-columns: 360px minmax(0, 1fr) !important;
+        grid-template-rows: minmax(0, 1fr) !important;
+        flex-direction: row !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+      }
+      #lohnApp .lohn-form,
+      #lohnForm {
+        grid-column: 1 !important;
+        width: 360px !important;
+        max-width: 360px !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+      }
+      #lohnApp .lohn-preview,
+      #lohnPreview {
+        grid-column: 2 !important;
+        display: flex !important;
+        min-width: 280px !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+      }
+    </style>
+    <script>
+      (function () {
+        function lockSplit() {
+          var layout = document.getElementById("lohnLayout") || document.querySelector("#lohnApp .lohn-layout");
+          var form = document.getElementById("lohnForm");
+          var preview = document.getElementById("lohnPreview") || document.querySelector("#lohnApp .lohn-preview");
+          if (layout) {
+            layout.style.setProperty("display", "grid", "important");
+            layout.style.setProperty("grid-template-columns", "360px minmax(0, 1fr)", "important");
+            layout.style.setProperty("grid-template-rows", "minmax(0, 1fr)", "important");
+            layout.style.setProperty("min-height", "0", "important");
+            layout.style.setProperty("overflow", "hidden", "important");
+          }
+          if (form) {
+            form.style.setProperty("grid-column", "1", "important");
+            form.style.setProperty("width", "360px", "important");
+            form.style.setProperty("max-width", "360px", "important");
+            form.style.setProperty("height", "100%", "important");
+            form.style.setProperty("min-height", "0", "important");
+            form.style.setProperty("overflow-y", "auto", "important");
+          }
+          if (preview) {
+            preview.style.setProperty("grid-column", "2", "important");
+            preview.style.setProperty("display", "flex", "important");
+            preview.style.setProperty("min-width", "280px", "important");
+            preview.style.setProperty("height", "100%", "important");
+            preview.style.setProperty("visibility", "visible", "important");
+            preview.style.setProperty("opacity", "1", "important");
+          }
+        }
+        lockSplit();
+        document.addEventListener("DOMContentLoaded", lockSplit);
+        window.addEventListener("load", lockSplit);
+        setTimeout(lockSplit, 50);
+        setTimeout(lockSplit, 500);
+        setTimeout(lockSplit, 1500);
+      })();
+    </script>
   </body>
 </html>
