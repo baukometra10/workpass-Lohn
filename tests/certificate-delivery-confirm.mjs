@@ -183,6 +183,8 @@ assert(last.body?.delivery?.documentTitle === "Lohnsteuerbescheinigung", "delive
 assert(last.body?.delivery?.title?.startsWith("Lohnsteuerbescheinigung"), "delivery.title LStB");
 assert(last.body?.delivery?.document?.rows?.length >= 27, `full lstb document rows (${last.body?.delivery?.document?.rows?.length})`);
 assert(last.body?.delivery?.contentComplete === true || last.body?.meta?.contentComplete === true, "contentComplete on envelope");
+assert(String(last.body?.delivery?.pdfBase64 || "").startsWith("JVBER"), "webhook pdfBase64 present");
+assert(last.body?.delivery?.pdfMimeType === "application/pdf" || last.body?.delivery?.mimeType === "application/pdf", "pdf mime");
 assert(last.body?.delivery?.kind === "platform.employee.delivery.v1", "envelope delivery kind");
 assert(last.body?.meta?.requireAck === true, "meta.requireAck");
 assert(last.body?.meta?.parity === "payslip", "meta.parity payslip");

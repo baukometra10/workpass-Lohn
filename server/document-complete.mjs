@@ -1,7 +1,9 @@
 /**
  * Ensure employee documents sent to the platform are complete — no truncated payloads.
+ * Always attach original PDF (pdfBase64) so the employee app can show the file.
  */
 import { createHash } from "node:crypto";
+import { attachPdfToDelivery } from "./pdf/build-document-pdf.mjs";
 
 const LSTB_REQUIRED_ROW_COUNT = 27;
 
@@ -33,10 +35,13 @@ export function assessDocumentCompleteness(delivery) {
   const gaps = [];
   const type = String(delivery?.documentType || delivery?.type || "").toLowerCase();
   const doc = delivery?.document;
+  const pdf = String(delivery?.pdfBase64 || doc?.pdfBase64 || "").trim();
 
   missing(gaps, Boolean(delivery?.deliveryId), "deliveryId");
   missing(gaps, Boolean(delivery?.title || delivery?.documentTitle), "title");
   missing(gaps, doc && typeof doc === "object", "document");
+  // %PDF in base64 starts with JVBERi
+  missing(gaps, pdf.length > 100 && pdf.startsWith("JVBER"), "pdfBase64");
 
   if (!doc || typeof doc !== "object") {
     return {
@@ -87,16 +92,16 @@ export function assessDocumentCompleteness(delivery) {
     gaps,
     bytes,
     checksum,
+    pdfBytes: delivery?.pdfBytes || null,
     rowCount: Array.isArray(doc.rows) ? doc.rows.length : (Array.isArray(doc.wageItems) ? doc.wageItems.length : null),
     label: complete
-      ? "Dokument vollständig an Plattform"
+      ? "Dokument + Original-PDF vollständig an Plattform"
       : `Dokument unvollständig: ${gaps.join(", ")}`,
   };
 }
 
 /**
- * Clone full document onto delivery and stamp completeness metadata.
- * Never strips fields — platform must receive the same content as Accounting holds.
+ * Clone full document onto delivery, attach pdfBase64, stamp completeness metadata.
  */
 export function ensureCompleteDeliveryDocument(delivery) {
   if (!delivery || typeof delivery !== "object") {
@@ -113,10 +118,11 @@ export function ensureCompleteDeliveryDocument(delivery) {
     };
   }
 
-  const next = { ...delivery };
+  let next = { ...delivery };
   if (delivery.document != null) {
     next.document = deepClone(delivery.document);
   }
+  next = attachPdfToDelivery(next);
 
   const assessment = assessDocumentCompleteness(next);
   next.contentComplete = assessment.complete;
@@ -128,6 +134,8 @@ export function ensureCompleteDeliveryDocument(delivery) {
     bytes: assessment.bytes,
     gaps: assessment.gaps,
     rowCount: assessment.rowCount,
+    hasPdf: Boolean(next.pdfBase64),
+    pdfBytes: next.pdfBytes || null,
     checkedAt: new Date().toISOString(),
   };
   next.pullUrl = `/v1/delivery/${encodeURIComponent(String(next.deliveryId || ""))}`;
@@ -136,6 +144,7 @@ export function ensureCompleteDeliveryDocument(delivery) {
     contentComplete: assessment.complete,
     documentChecksum: assessment.checksum,
     documentBytes: assessment.bytes,
+    hasPdf: Boolean(next.pdfBase64),
   };
 
   return { delivery: next, assessment };

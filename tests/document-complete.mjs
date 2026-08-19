@@ -76,6 +76,9 @@ assert(lstbDel?.document?.rows?.length >= 27, `lstb rows ${lstbDel?.document?.ro
 assert(Array.isArray(lstbDel?.document?.monthDetails) && lstbDel.document.monthDetails.length === 2, "lstb monthDetails");
 assert(lstbDel.contentComplete === true, "lstb contentComplete");
 assert(Boolean(lstbDel.documentChecksum), "lstb checksum");
+assert(Boolean(lstbDel.pdfBase64) && lstbDel.pdfBase64.startsWith("JVBER"), "lstb pdfBase64");
+assert(lstbDel.pdfMimeType === "application/pdf", "lstb pdf mime");
+assert(Boolean(lstbDel.document?.pdfBase64), "lstb document.pdfBase64");
 assert(assessDocumentCompleteness(lstbDel).complete === true, "lstb assess complete");
 assert(Boolean(lstbDel.document?.seller != null || lstbDel.document?.taxNumber != null), "lstb employer block");
 
@@ -86,13 +89,18 @@ assert(vbDel?.document?.rows?.length > 0, "vb rows");
 assert(vbDel?.document?.monthly && vbDel?.document?.ytd, "vb monthly+ytd");
 assert(vbDel.contentComplete === true, "vb contentComplete");
 assert(Boolean(vbDel.documentChecksum), "vb checksum");
+assert(Boolean(vbDel.pdfBase64) && vbDel.pdfBase64.startsWith("JVBER"), "vb pdfBase64");
 
 const truncated = {
   ...lstbDel,
   document: { kind: "portal.certificate.lstb.v1", year: 2026 },
+  pdfBase64: undefined,
 };
 assert(assessDocumentCompleteness(truncated).complete === false, "truncated lstb rejected");
-assert(assessDocumentCompleteness(truncated).gaps.length > 0, "truncated has gaps");
+assert(assessDocumentCompleteness(truncated).gaps.includes("pdfBase64") || assessDocumentCompleteness(truncated).gaps.length > 0, "truncated has gaps");
+
+const noPdf = { ...lstbDel, pdfBase64: "", document: { ...lstbDel.document, pdfBase64: "" } };
+assert(assessDocumentCompleteness(noPdf).gaps.includes("pdfBase64"), "missing pdfBase64 flagged");
 
 closeSqlite();
 try {

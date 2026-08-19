@@ -42,7 +42,9 @@ Employee documents (Lohnabrechnung, LStB, VB, Rechnung) use:
   - `verdienst` → **Verdienstbescheinigung** · title e.g. `Verdienstbescheinigung 2026-08`
   - `invoice` → **Rechnung** · title e.g. `Rechnung RE-2026-0042`
 - `document` must be the **full** certificate/payslip/invoice body (rows, totals, monthDetails, wageItems) — never summary-only
-- `contentComplete: true` + `documentChecksum` prove integrity; incomplete payloads are **not** webhooked
+- **`pdfBase64`** (required): original PDF file as Base64 (`%PDF…` → starts with `JVBER…`). Also mirrored on `document.pdfBase64`, plus `pdfFileName` / `pdfMimeType: application/pdf`
+- Without `pdfBase64` the employee app cannot show the original — Accounting refuses incomplete deliveries
+- `contentComplete: true` + `documentChecksum` prove integrity
 - Fallback pull of one full item: `GET /v1/delivery/{deliveryId}`
 
 
