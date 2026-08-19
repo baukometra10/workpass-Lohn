@@ -737,21 +737,24 @@ button.glossy-secondary {
   padding: 10px; resize: vertical; background: #0a101c; color: var(--text);
 }
 
-.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
 .field-grid .full { grid-column: 1 / -1; }
-.mt-block { margin-top: 11px; }
+.mt-block { margin-top: 14px; }
 
 label {
-  display: block; font-size: 0.68rem; font-weight: 600;
-  margin-bottom: 3px; color: var(--muted);
+  display: block; font-size: 0.72rem; font-weight: 600;
+  margin-bottom: 5px; color: var(--muted);
+  letter-spacing: 0.02em;
 }
-label.mt { margin-top: 9px; }
+label.mt { margin-top: 10px; }
 
 input, select, textarea {
-  width: 100%; padding: 8px 10px;
-  border: 1px solid var(--border); border-radius: 10px;
-  font: inherit; font-size: 0.85rem;
-  background: #0a101c; color: var(--text);
+  width: 100%; padding: 11px 13px;
+  border: 1px solid rgba(90, 140, 200, 0.28); border-radius: 11px;
+  font: inherit; font-size: 0.9rem;
+  background: rgba(8, 14, 26, 0.92); color: var(--text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  min-height: 42px;
 }
 input[type="checkbox"],
 input[type="radio"] {
@@ -936,7 +939,7 @@ body.is-rtl .portal-emp-total-money { justify-self: start; }
 .lohn-preview {
   display: flex; flex-direction: column; align-items: center;
   justify-content: flex-start;
-  padding: 10px 12px 12px; overflow: hidden;
+  padding: 14px 28px 20px 36px; overflow: hidden;
   min-height: 0;
   height: 100%;
   max-height: none;
