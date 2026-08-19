@@ -854,7 +854,7 @@ a.sidebar-nav-link {
 
   display: grid;
 
-  grid-template-columns: minmax(360px, 1fr) min(210mm, 42vw);
+  grid-template-columns: minmax(460px, 1fr) minmax(520px, 620px);
 
   gap: 0;
 
@@ -912,7 +912,10 @@ a.sidebar-nav-link {
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: 12px 16px 20px;
+  padding: 12px 14px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
 }
 
 
@@ -1364,7 +1367,7 @@ body.payroll-mode .workspace .preview-panel {
 
   .workspace {
 
-    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+    grid-template-columns: minmax(380px, 1fr) minmax(420px, 520px);
 
     overflow: hidden;
 
@@ -1510,7 +1513,7 @@ body.dashboard-tab .preview-panel::before {
 
 @media (max-width: 1200px) {
   body.dashboard-tab .workspace {
-    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+    grid-template-columns: minmax(380px, 1fr) minmax(420px, 520px);
   }
 }
 
@@ -1903,10 +1906,10 @@ body.workpass-hub.dashboard-tab .dash-hero h2 {
   border-top: 1px solid var(--lex-border-light);
 }
 
-/* —— Canonical Hub workspace: form left · preview right —— */
+/* —— Canonical Hub workspace: form expands · preview docks right —— */
 .workspace {
   display: grid !important;
-  grid-template-columns: minmax(320px, 400px) minmax(0, 1fr) !important;
+  grid-template-columns: minmax(460px, 1fr) minmax(520px, 620px) !important;
   align-items: stretch !important;
   overflow: hidden !important;
   min-height: 0 !important;
@@ -1917,18 +1920,78 @@ body.workpass-hub.dashboard-tab .dash-hero h2 {
   height: auto !important;
   max-height: 100% !important;
   overflow-y: auto !important;
+  padding: 18px 22px 28px !important;
 }
 .workspace .preview-panel {
-  display: block !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
   visibility: visible !important;
   min-width: 0 !important;
   min-height: 0 !important;
   max-height: 100% !important;
   overflow: auto !important;
+  padding: 12px 14px 16px 8px !important;
+}
+.workspace .preview-panel::before {
+  width: 100%;
+  box-sizing: border-box;
+  margin-left: 0;
+  margin-right: 0;
+  align-self: stretch;
+}
+.workspace .preview-panel > * {
+  max-width: 100%;
+}
+.workspace .preview-panel .preview-tools,
+.workspace .preview-panel .invoice-doc-stage,
+.workspace .preview-panel > .payroll-sheet,
+.workspace .preview-panel > .a4-sheet,
+.workspace #invoicePreview > .invoice-sheet,
+.workspace #invoicePreview > article,
+.workspace #invoicePreview > .doc-sheet {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+@media (min-width: 1600px) {
+  .workspace {
+    grid-template-columns: minmax(520px, 1fr) minmax(560px, 680px) !important;
+  }
+}
+@media (max-width: 1100px) {
+  .workspace {
+    grid-template-columns: minmax(380px, 1fr) minmax(420px, 520px) !important;
+  }
 }
 @media (max-width: 720px) {
   .workspace {
-    grid-template-columns: minmax(200px, 42vw) minmax(0, 1fr) !important;
+    grid-template-columns: minmax(240px, 48vw) minmax(0, 1fr) !important;
   }
+}
+
+/* Dashboard uses the wider form rail */
+body.dashboard-tab .dash-kpi-grid,
+body.dashboard-tab .dash-kpi-grid.dash-kpi-local,
+body.dashboard-tab .dash-kpi-grid.dash-kpi-firm {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+body.dashboard-tab .dash-kpi {
+  padding: 14px 16px;
+  min-height: 88px;
+}
+body.dashboard-tab .dash-quick-actions {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+body.dashboard-tab .dash-action-btn {
+  padding: 14px 16px;
+  min-height: 88px;
+}
+body.dashboard-tab .wp-hub-banner {
+  max-width: none;
+}
+body.dashboard-tab .form-panel .form-section {
+  max-width: none;
 }
 
