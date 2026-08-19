@@ -150,7 +150,7 @@ window.WorkPassI18nExtraPacks = [
   ["help.exportElster", { de: "<strong>ELSTER-XML</strong> – Vorbereitungsdatei Lohnsteuerbescheinigung (kein direkter ELSTER-Versand)", en: "<strong>ELSTER-XML</strong> – prep file for annual certificate (no direct ELSTER send)", tr: "<strong>ELSTER-XML</strong> – hazırlık dosyası (doğrudan gönderim yok)", ar: "<strong>ELSTER-XML</strong> – ملف تحضير لشهادة الضريبة (بدون إرسال ELSTER مباشر)", fr: "<strong>ELSTER-XML</strong> – fichier de préparation (pas d'envoi direct)", es: "<strong>ELSTER-XML</strong> – archivo de preparación (sin envío directo)", it: "<strong>ELSTER-XML</strong> – file di preparazione (nessun invio diretto)", pl: "<strong>ELSTER-XML</strong> – plik przygotowawczy (bez bezpośredniego wysyłania)" }],
   ["help.exportBackup", {"de":"<strong>Datensicherung</strong> – JSON unter Firma","en":"<strong>Backup</strong> – JSON under Company","tr":"<strong>Yedek</strong> – Firma altında JSON","ar":"<strong>نسخ احتياطي</strong> – JSON ضمن الشركة","fr":"<strong>Sauvegarde</strong> – JSON sous Entreprise","es":"<strong>Copia</strong> – JSON en Empresa","it":"<strong>Backup</strong> – JSON in Azienda","pl":"<strong>Kopia</strong> – JSON w Firma"}],
   ["help.legalTitle", { de: "Rechtlicher Hinweis", en: "Legal notice", tr: "Yasal uyarı", ar: "تنويه قانوني", fr: "Mention légale", es: "Aviso legal", it: "Avviso legale", pl: "Informacja prawna" }],
-  ["help.legalText", { de: "WorkPass Steuerprogramm (Suppix AI) ist ein Buchhaltungs-Arbeitsplatz für Steuerberater und Firmen. Es ersetzt keine zertifizierte Voll-Lohnsoftware und keine individuelle Steuerberatung. ELSTER-Exporte sind Vorbereitungsdateien zur manuellen Prüfung.", en: "WorkPass Tax Suite (Suppix AI) is an accounting workspace for tax advisors and firms. It does not replace certified full payroll software or individual tax advice. ELSTER exports are preparation files for manual review.", tr: "WorkPass Steuerprogramm (Suppix AI) muhasebe çalışma alanıdır; sertifikalı tam bordro yazılımı veya bireysel vergi danışmanlığı yerine geçmez.", ar: "WorkPass Steuerprogramm (Suppix AI) مساحة عمل محاسبية للمستشارين والشركات. لا يحل محل برنامج رواتب معتمد بالكامل ولا استشارة ضريبية فردية. تصديرات ELSTER ملفات تحضير للمراجعة اليدوية.", fr: "WorkPass Steuerprogramm (Suppix AI) est un poste comptable. Il ne remplace pas un logiciel de paie certifié ni un conseil fiscal individuel.", es: "WorkPass Steuerprogramm (Suppix AI) es un puesto contable. No sustituye un software de nómina certificado ni asesoría fiscal individual.", it: "WorkPass Steuerprogramm (Suppix AI) è una postazione contabile. Non sostituisce un software paghe certificato né una consulenza fiscale individuale.", pl: "WorkPass Steuerprogramm (Suppix AI) to stanowisko księgowe. Nie zastępuje certyfikowanego oprogramowania płacowego ani indywidualnego doradztwa podatkowego." }],
+  ["help.legalText", { de: "WorkPass Steuerprogramm (Suppix AI) ist ein Buchhaltungs-Arbeitsplatz für Steuerberater und Firmen. Es ersetzt keine zertifizierte Voll-Lohnsoftware und keine individuelle Steuerberatung. ELSTER-Exporte sind Vorbereitungsdateien zur manuellen Prüfung.", en: "WorkPass Tax Suite (Suppix AI) is an accounting workspace for tax advisors and firms. It does not replace certified full payroll software or individual tax advice. ELSTER exports are preparation files for manual review.", tr: "WorkPass Steuerprogramm (Suppix AI) muhasebe çalışma alanıdır; sertifikalı tam bordro yazılımı veya bireysel vergi danışmanlığı yerine geçmez. ELSTER dışa aktarımları manuel kontrol için hazırlık dosyalarıdır.", ar: "WorkPass Steuerprogramm (Suppix AI) مساحة عمل محاسبية للمستشارين والشركات. لا يحل محل برنامج رواتب معتمد بالكامل ولا استشارة ضريبية فردية. تصديرات ELSTER ملفات تحضير للمراجعة اليدوية.", fr: "WorkPass Steuerprogramm (Suppix AI) est un poste comptable. Il ne remplace pas un logiciel de paie certifié ni un conseil fiscal individuel. Les exports ELSTER sont des fichiers de préparation à vérifier manuellement.", es: "WorkPass Steuerprogramm (Suppix AI) es un puesto contable. No sustituye un software de nómina certificado ni un asesoramiento fiscal individual. Las exportaciones ELSTER son archivos de preparación para revisión manual.", it: "WorkPass Steuerprogramm (Suppix AI) è una postazione contabile. Non sostituisce un software paghe certificato né una consulenza fiscale individuale. Gli export ELSTER sono file di preparazione da verificare manualmente.", pl: "WorkPass Steuerprogramm (Suppix AI) to stanowisko księgowe. Nie zastępuje certyfikowanego oprogramowania płacowego ani indywidualnego doradztwa podatkowego. Eksporty ELSTER to pliki przygotowawcze do ręcznej weryfikacji." }],
   ["hub.sub.dashboard", { de: "Dashboard · Mandant, Mitarbeiter & Schnellzugriff", en: "Dashboard · client, employees & quick access", tr: "Panel · müşteri, çalışanlar ve hızlı erişim", ar: "لوحة · العميل والموظفون والوصول السريع", fr: "Tableau · client, employés & accès rapide", es: "Panel · cliente, empleados y acceso rápido", it: "Dashboard · cliente, dipendenti e accesso rapido", pl: "Panel · klient, pracownicy i szybki dostęp" }],
   ["hub.sub.help", { de: "Schnellstart, Pflichtfelder, Export & Recht", en: "Quick start, required fields, export & legal", tr: "Hızlı başlangıç, zorunlu alanlar, dışa aktarma", ar: "بداية سريعة، الحقول الإلزامية، التصدير والقانون", fr: "Démarrage, champs obligatoires, export & droit", es: "Inicio rápido, campos obligatorios, exportación", it: "Avvio rapido, campi obbligatori, export e diritto", pl: "Szybki start, pola obowiązkowe, eksport i prawo" }],
   ["hub.sub.invoice", { de: "Ausgangsrechnungen nach § 14 UStG", en: "Outgoing invoices per § 14 UStG", tr: "§ 14 UStG’ye göre çıkış faturaları", ar: "فواتير صادرة وفق § 14 UStG", fr: "Factures sortantes selon § 14 UStG", es: "Facturas emitidas según § 14 UStG", it: "Fatture in uscita secondo § 14 UStG", pl: "Faktury wychodzące wg § 14 UStG" }],
@@ -1422,6 +1422,33 @@ window.WorkPassI18nExtraPacks = [
       es: "Portal de empresa listo – pulse «Jetzt synchronisieren» para empleados y vista A4.",
       it: "Portale azienda pronto – tocca «Jetzt synchronisieren» per dipendenti e anteprima A4.",
       pl: "Portal firmy gotowy – kliknij „Jetzt synchronisieren”, by wczytać pracowników i podgląd A4."
+    }
+  }
+,
+  {
+    key: "firma.directorPh",
+    locales: {
+      de: "Geschäftsführer",
+      en: "Managing director",
+      tr: "Genel müdür",
+      ar: "المدير التنفيذي",
+      fr: "Gérant",
+      es: "Gerente",
+      it: "Amministratore",
+      pl: "Dyrektor"
+    }
+  },
+  {
+    key: "firma.bankPh",
+    locales: {
+      de: "Bankname",
+      en: "Bank name",
+      tr: "Banka adı",
+      ar: "اسم البنك",
+      fr: "Banque",
+      es: "Banco",
+      it: "Banca",
+      pl: "Bank"
     }
   }
 ];
