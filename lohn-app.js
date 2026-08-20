@@ -436,15 +436,15 @@
     const companyId = companyPortalId || apiConfig().companyId || state.mandantId;
     const employeeId = state.badgeId || state.employeeId || state.meta?.badgeId;
     if (!companyId) {
-      toast("Keine Firma – bitte anmelden.", "error");
+      toast(uiT("portal.noCompany", "Keine Firma – bitte anmelden."), "error");
       return;
     }
     if (!employeeId && !state.employeeName) {
-      toast("Mitarbeiter / Badge fehlt noch.", "error");
+      toast(uiT("portal.noEmployee", "Mitarbeiter / Badge fehlt noch."), "error");
       return;
     }
     try {
-      setStatus("Hole Stammdaten von Plattform / Register…", true);
+      setStatus(uiT("portal.askPlatformBusy", "Hole Stammdaten von Plattform / Register…"), true);
       const data = await apiFetch("/v1/payroll/request-data", {
         method: "POST",
         body: JSON.stringify({
@@ -465,7 +465,7 @@
       if (data.job?.jobId) {
         await openApiPayrollJob(data.job.jobId, { skipEnrich: true });
         toast(
-          data.message || "Daten übernommen.",
+          data.message || uiT("portal.dataTaken", "Daten übernommen."),
           data.platformBlocked ? "error" : (data.remainingHard?.length ? "info" : "ok")
         );
       } else if (data.ingest?.count) {
@@ -473,16 +473,23 @@
         if (first?.jobId) {
           await openApiPayrollJob(first.jobId, { skipEnrich: true });
         }
-        toast(data.message || "Daten übernommen (auch unvollständig).", "ok");
+        toast(data.message || uiT("portal.dataTakenPartial", "Daten übernommen (auch unvollständig)."), "ok");
       } else {
-        toast(data.message || "Plattform wurde nach fehlenden Daten gefragt.", "info");
+        toast(
+          data.message || uiT("portal.askedPlatform", "Plattform wurde nach fehlenden Daten gefragt."),
+          data.ok === false ? "error" : "info"
+        );
       }
-      setStatus(data.message || "Anfrage gesendet", true);
+      setStatus(data.message || uiT("portal.requestSent", "Anfrage gesendet"), true);
       await loadPlatformMessages?.(true);
       await loadPortalDashboard?.(true);
     } catch (e) {
-      toast(`Anfrage fehlgeschlagen: ${e.message || e}`, "error");
-      setStatus(String(e.message || e), false);
+      const msg = String(e.message || e);
+      toast(
+        uiT("portal.askFailed", "Anfrage fehlgeschlagen: {err}").replace("{err}", msg),
+        "error"
+      );
+      setStatus(msg, false);
     }
   }
 
@@ -4038,7 +4045,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.54.3</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.54.4</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))
@@ -4175,7 +4182,7 @@
     try {
       let job = null;
       if (!opts.skipEnrich) {
-        setStatus("Lade Mitarbeiterdaten (Register + Plattform)…", true);
+        setStatus(uiT("portal.enrichBusy", "Lade Mitarbeiterdaten (Register + Plattform)…"), true);
         try {
           const enriched = await apiFetch(`/v1/payroll/${encodeURIComponent(jobId)}/enrich`, {
             method: "POST",
@@ -4195,13 +4202,22 @@
               enriched.message || `${enriched.filledCount} Felder ergänzt.`,
               (enriched.remainingHard || []).length ? "info" : "ok"
             );
-          } else if (enriched.platformBlocked) {
-            toast(enriched.message || "Plattform liefert keine Stammdaten.", "error");
+          } else if (enriched.platformBlocked || enriched.softFail) {
+            toast(
+              enriched.message || enriched.error || uiT("portal.enrichBlocked", "Plattform liefert noch nicht alle Stammdaten."),
+              "info"
+            );
           } else if (enriched.askedPlatform && (enriched.remainingHard || []).length) {
-            toast(enriched.message || "Noch Lücken – Plattform wurde gefragt.", "info");
+            toast(enriched.message || uiT("portal.enrichAsked", "Noch Lücken – Plattform wurde gefragt."), "info");
+          } else if (enriched.ok === false && enriched.error) {
+            toast(enriched.message || enriched.error, "info");
           }
-        } catch {
-          /* Fall back to plain job load if enrich fails */
+        } catch (enrichErr) {
+          /* Fall back to plain job load — show why enrich failed */
+          const em = String(enrichErr?.message || enrichErr || "");
+          if (em && !/HTTP 404|nicht gefunden/i.test(em)) {
+            toast(uiT("portal.enrichFallback", "Anreichern nicht möglich: {err}").replace("{err}", em), "info");
+          }
         }
       }
       if (!job) {

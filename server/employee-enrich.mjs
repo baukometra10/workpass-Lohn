@@ -406,15 +406,34 @@ export async function enrichPayrollJob(jobId, options = {}) {
 
 async function enrichPayrollJobInner(jobId, options = {}) {
   const job = loadPayrollJob(jobId);
-  if (!job) return { ok: false, error: "Job nicht gefunden", job: null };
+  if (!job) return { ok: false, error: "Job nicht gefunden", job: null, code: "job_not_found" };
 
-  const companyId = normalizeCompanyId(job.company?.id || job.state?.mandantId || "");
+  // Recover company from job payload or jobId (cmp-…::emp::period) — never fail only because company block is thin
+  let companyId = normalizeCompanyId(job.company?.id || job.state?.mandantId || job.state?.meta?.companyId || "");
+  if (!companyId && String(jobId || "").includes("::")) {
+    companyId = normalizeCompanyId(String(jobId).split("::")[0]);
+  }
+  if (!companyId && options.tenantScope) {
+    companyId = normalizeCompanyId(options.tenantScope);
+  }
   const scopeCheck = assertSameTenant(options.tenantScope, companyId, "Payroll-Anreichern");
-  if (!scopeCheck.ok) return { ok: false, error: scopeCheck.error, job: null };
+  if (!scopeCheck.ok) {
+    return { ok: false, error: scopeCheck.error, job: null, code: "tenant_denied" };
+  }
+  if (!companyId) {
+    return {
+      ok: false,
+      error: "Firma am Job fehlt – bitte Firma wählen und erneut synchronisieren.",
+      job,
+      code: "company_missing",
+      message: "Firma am Job fehlt – bitte Firma wählen und erneut synchronisieren.",
+    };
+  }
 
   const state = { ...(job.state || {}) };
   state.meta = { ...(state.meta || {}), jobId, enrichedAt: new Date().toISOString() };
   state.mandantId = state.mandantId || companyId;
+  job.company = { ...(job.company || {}), id: companyId, name: job.company?.name || state.companyName || "" };
   if (companyId) {
     state.meta.companyId = companyId;
     fillEmpty(state, "companyName", job.company?.name);
@@ -425,9 +444,20 @@ async function enrichPayrollJobInner(jobId, options = {}) {
     }
   }
   const employeeId = normalizeEmployeeId(
-    options.employeeId || state.badgeId || state.employeeId || job.employee?.badgeId || job.employee?.id || ""
+    options.employeeId
+    || state.badgeId
+    || state.employeeId
+    || job.employee?.badgeId
+    || job.employee?.id
+    || (String(jobId || "").includes("::") ? String(jobId).split("::")[1] : "")
   );
-  const period = String(options.period || state.payrollMonth || job.period || "").trim();
+  const period = String(
+    options.period
+    || state.payrollMonth
+    || job.period
+    || (String(jobId || "").includes("::") ? String(jobId).split("::")[2] : "")
+    || ""
+  ).trim();
   const filled = [];
 
   // 0) Pull company branding/logo; if still missing, send a clear logo question

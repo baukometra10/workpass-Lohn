@@ -1170,20 +1170,37 @@ async function handler(req, res) {
           forceNotify: body.forceNotify === true || body.force === true,
           forcePull: true,
         });
-        audit({
-          type: "payroll.request_data",
-          outcome: enriched.ok ? "ok" : "error",
-          ip,
-          path,
-          companyId,
-          detail: {
-            employeeId: body.employeeId || body.badgeId,
-            period: body.period,
-            filledCount: enriched.filledCount,
-            asked: enriched.askedPlatform,
-          },
-        });
-        return reply(enriched.ok ? 200 : 422, enriched);
+        if (enriched.ok) {
+          audit({
+            type: "payroll.request_data",
+            outcome: "ok",
+            ip,
+            path,
+            companyId,
+            detail: {
+              employeeId: body.employeeId || body.badgeId,
+              period: body.period,
+              filledCount: enriched.filledCount,
+              asked: enriched.askedPlatform,
+            },
+          });
+          // Soft platform gaps are still HTTP 200 — firm portal must not see hard 422
+          return reply(200, enriched);
+        }
+        // Job gone / thin — fall through and still ask the platform for this employee
+        if (enriched.code !== "tenant_denied") {
+          /* continue to requestEmployeeDataFromPlatform */
+        } else {
+          audit({
+            type: "payroll.request_data",
+            outcome: "error",
+            ip,
+            path,
+            companyId,
+            detail: { error: enriched.error, jobId },
+          });
+          return reply(403, enriched);
+        }
       }
 
       const result = await requestEmployeeDataFromPlatform({
@@ -1209,6 +1226,7 @@ async function handler(req, res) {
         companyId,
         detail: { employeeId: result.employeeId, period: result.period },
       });
+      // Asking the platform is success even when data is still incomplete
       return reply(result.ok ? 200 : 422, result);
     }
 
@@ -1291,12 +1309,20 @@ async function handler(req, res) {
         companyId: result.job?.company?.id,
         detail: { jobId, filledCount: result.filledCount, asked: result.askedPlatform, error: result.error || null },
       });
-      const status = result.ok
-        ? 200
-        : (String(result.error || "").includes("Tenant-Isolation")
-          ? 403
-          : (String(result.error || "").includes("nicht gefunden") ? 404 : 422));
-      return reply(status, result);
+      if (result.ok) return reply(200, result);
+      if (String(result.error || "").includes("Tenant-Isolation") || result.code === "tenant_denied") {
+        return reply(403, result);
+      }
+      if (String(result.error || "").includes("nicht gefunden") || result.code === "job_not_found") {
+        return reply(404, result);
+      }
+      // Soft failure: return 200 so the firm portal can show the German message and keep working
+      return reply(200, {
+        ...result,
+        ok: false,
+        softFail: true,
+        message: result.message || result.error || "Anreichern unvollständig – bitte Plattform-Daten prüfen.",
+      });
     }
 
     if (req.method === "POST" && path === "/v1/payroll/deliver-period") {
