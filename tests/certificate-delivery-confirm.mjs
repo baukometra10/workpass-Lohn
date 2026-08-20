@@ -153,9 +153,11 @@ const lstbShape = buildEmployeeDelivery("lstb", {
 });
 assert(payShape.kind === lstbShape.kind, "same delivery kind as payslip");
 assert(payShape.status === lstbShape.status, "same ready_for_employee status");
-assert(payShape.documentTitle === "Entgeltabrechnung", "payslip documentTitle");
-assert(payShape.title === "Entgeltabrechnung 2026-02", `payslip title (${payShape.title})`);
+assert(payShape.documentTitle === "Lohnabrechnung", "payslip documentTitle");
+assert(payShape.title === "Lohnabrechnung 2026-02", `payslip title (${payShape.title})`);
+assert(payShape.description === "Lohnabrechnung 2026-02", `payslip description (${payShape.description})`);
 assert(lstbShape.documentTitle === "Lohnsteuerbescheinigung", "lstb documentTitle");
+assert(lstbShape.description?.includes("Lohnsteuerbescheinigung"), "lstb description");
 assert(lstbShape.title === "Lohnsteuerbescheinigung 2026", `lstb title (${lstbShape.title})`);
 assert(typeof lstbShape.appRoute === "string" && lstbShape.appRoute.includes("/employee/certificates/lstb/"), "lstb appRoute");
 assert(eventForDelivery({ type: "lstb" }) === "document.released", "replay event lstb");
@@ -239,8 +241,10 @@ assert(inbox[inbox.length - 1]?.body?.event === "document.released", `vb event (
 assert(inbox[inbox.length - 1]?.body?.documentType === "verdienst", "vb documentType");
 assert(inbox[inbox.length - 1]?.body?.documentTitle === "Verdienstbescheinigung", "vb documentTitle");
 assert(String(inbox[inbox.length - 1]?.body?.title || "").startsWith("Verdienstbescheinigung"), "vb title");
+assert(String(inbox[inbox.length - 1]?.body?.description || "").startsWith("Verdienstbescheinigung"), "vb description");
 assert(inbox[inbox.length - 1]?.body?.delivery?.type === "verdienst", "vb delivery type");
 assert(inbox[inbox.length - 1]?.body?.delivery?.documentTitle === "Verdienstbescheinigung", "vb delivery.documentTitle");
+assert(String(inbox[inbox.length - 1]?.body?.delivery?.description || "").startsWith("Verdienstbescheinigung"), "vb delivery.description");
 assert(okVb.receipt?.complete === true, "vb receipt complete");
 
 mode = "fail";

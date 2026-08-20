@@ -30,7 +30,7 @@ function linesForPayslip(doc, delivery) {
   const co = d.company || delivery?.company || {};
   const t = d.totals || {};
   const lines = [
-    "Entgeltabrechnung",
+    "Lohnabrechnung",
     `Firma: ${co.name || ""}`,
     `Mitarbeiter: ${emp.name || ""}`,
     `ID: ${emp.badgeId || emp.id || ""}`,

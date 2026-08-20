@@ -5,6 +5,8 @@
   "documentType": "verdienst",
   "documentTitle": "Verdienstbescheinigung",
   "title": "Verdienstbescheinigung 2026-08",
+  "description": "Verdienstbescheinigung 2026-08",
+  "label": "Verdienstbescheinigung",
   "occurredAt": "2026-08-18T14:05:00.000Z",
   "source": "workpass-accounting-bridge",
   "idempotencyKey": "vb:muster-gmbh:02006:2026-08",
@@ -51,13 +53,16 @@
     "pullUrl": "/v1/delivery/vb%3Amuster-gmbh%3A02006%3A2026-08",
     "appRoute": "/employee/certificates/verdienst/2026-08/02006",
     "documentTitle": "Verdienstbescheinigung",
-    "title": "Verdienstbescheinigung 2026-08"
+    "title": "Verdienstbescheinigung 2026-08",
+    "description": "Verdienstbescheinigung 2026-08",
+    "label": "Verdienstbescheinigung"
   },
   "meta": {
     "legacyEvent": "verdienst.released",
     "documentType": "verdienst",
     "documentTitle": "Verdienstbescheinigung",
     "title": "Verdienstbescheinigung 2026-08",
+    "description": "Verdienstbescheinigung 2026-08",
     "contentComplete": true,
     "requireAck": true,
     "parity": "payslip"

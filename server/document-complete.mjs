@@ -47,6 +47,7 @@ export function assessDocumentCompleteness(delivery) {
 
   missing(gaps, Boolean(delivery?.deliveryId), "deliveryId");
   missing(gaps, Boolean(delivery?.title || delivery?.documentTitle), "title");
+  missing(gaps, Boolean(delivery?.description || delivery?.title || delivery?.documentTitle), "description");
   missing(gaps, doc && typeof doc === "object", "document");
   missing(gaps, pdf.length > 100 && pdf.startsWith("JVBER"), "pdfBase64");
 
@@ -154,6 +155,31 @@ export function ensureCompleteDeliveryDocument(delivery) {
   let next = { ...delivery };
   if (delivery.document != null) {
     next.document = deepClone(delivery.document);
+  }
+  // Ensure German Antrag labels exist before PDF + seal (description must never be empty)
+  const type = String(next.documentType || next.type || "").toLowerCase();
+  const documentTitle = String(next.documentTitle || (
+    type === "lstb" ? "Lohnsteuerbescheinigung"
+      : (type === "verdienst" || type === "vb") ? "Verdienstbescheinigung"
+        : type === "invoice" ? "Rechnung"
+          : "Lohnabrechnung"
+  )).trim();
+  const title = String(next.title || `${documentTitle}${next.period || next.year || next.number ? ` ${next.period || next.year || next.number}` : ""}`).trim();
+  next.documentTitle = documentTitle;
+  next.title = title;
+  next.description = String(next.description || title).trim();
+  next.label = String(next.label || documentTitle).trim();
+  next.name = String(next.name || documentTitle).trim();
+  next.subject = String(next.subject || title).trim();
+  if (next.document && typeof next.document === "object") {
+    next.document = {
+      ...next.document,
+      documentTitle,
+      title,
+      description: next.description,
+      label: next.label,
+      name: documentTitle,
+    };
   }
   next = attachPdfToDelivery(next);
   next = sealDelivery(next);

@@ -61,7 +61,7 @@ export function platformCapabilities() {
       "Platform should advertise pull URLs via activate payload — not guessed by accounting.",
       "Delivery ack confirms employee visibility, not just HTTP 2xx.",
       "Employee documents are sent as event=document.released with documentType=payslip|lstb|verdienst|invoice (legacy *.released kept in meta.legacyEvent).",
-      "Show delivery.title / documentTitle in the employee inbox (Entgeltabrechnung, Lohnsteuerbescheinigung, Verdienstbescheinigung, Rechnung) — never raw codes.",
+      "Show delivery.title / documentTitle / description in the employee inbox and Antrag (Lohnabrechnung, Lohnsteuerbescheinigung, Verdienstbescheinigung, Rechnung) — never raw codes or ‘Fehlende Unterlagen’.",
       "Full delivery/message confirm = received + opened + seen (POST .../received|/open|/ack or webhook body with those flags).",
       "Document webhooks include full delivery.document + original pdfBase64 (PDF). Incomplete / missing PDF is refused. Pull: GET /v1/delivery/:deliveryId.",
       "Sealed deliveries (immutable + seal.contentHash/pdfHash) are never rebuilt in transit; tampered document/PDF is blocked.",

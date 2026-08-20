@@ -36,11 +36,12 @@ Employee documents (Lohnabrechnung, LStB, VB, Rechnung) use:
 
 - `event`: **`document.released`**
 - `documentType`: **`payslip` | `lstb` | `verdienst` | `invoice`**
-- `documentTitle` / `title`: German display names for the employee inbox (never raw codes)
-  - `payslip` → **Entgeltabrechnung** · title e.g. `Entgeltabrechnung 2026-08`
-  - `lstb` → **Lohnsteuerbescheinigung** · title e.g. `Lohnsteuerbescheinigung 2026`
-  - `verdienst` → **Verdienstbescheinigung** · title e.g. `Verdienstbescheinigung 2026-08`
-  - `invoice` → **Rechnung** · title e.g. `Rechnung RE-2026-0042`
+- `documentTitle` / `title` / **`description`**: German names for the employee inbox / Antrag (never raw codes, never “Fehlende Unterlagen”)
+  - `payslip` → **Lohnabrechnung** · title/description e.g. `Lohnabrechnung 2026-08`
+  - `lstb` → **Lohnsteuerbescheinigung** · title/description e.g. `Lohnsteuerbescheinigung 2026`
+  - `verdienst` → **Verdienstbescheinigung** · title/description e.g. `Verdienstbescheinigung 2026-08`
+  - `invoice` → **Rechnung** · title/description e.g. `Rechnung RE-2026-0042`
+- Also mirrored: `label`, `name`, `subject`, and the same fields on `delivery.document`
 - `document` must be the **full** certificate/payslip/invoice body (rows, totals, monthDetails, wageItems) — never summary-only
 - **`pdfBase64`** (required): original PDF file as Base64 (`%PDF…` → starts with `JVBER…`). Also mirrored on `document.pdfBase64`, plus `pdfFileName` / `pdfMimeType: application/pdf`
 - Without `pdfBase64` the employee app cannot show the original — Accounting refuses incomplete deliveries
@@ -55,8 +56,10 @@ Employee documents (Lohnabrechnung, LStB, VB, Rechnung) use:
   "schemaVersion": 2,
   "event": "document.released",
   "documentType": "payslip",
-  "documentTitle": "Entgeltabrechnung",
-  "title": "Entgeltabrechnung 2025-07",
+  "documentTitle": "Lohnabrechnung",
+  "title": "Lohnabrechnung 2025-07",
+  "description": "Lohnabrechnung 2025-07",
+  "label": "Lohnabrechnung",
   "occurredAt": "2026-07-28T10:00:00.000Z",
   "source": "workpass-accounting-bridge",
   "idempotencyKey": "pay:…",
@@ -64,16 +67,19 @@ Employee documents (Lohnabrechnung, LStB, VB, Rechnung) use:
   "delivery": {
     "type": "payslip",
     "documentType": "payslip",
-    "documentTitle": "Entgeltabrechnung",
-    "title": "Entgeltabrechnung 2025-07"
+    "documentTitle": "Lohnabrechnung",
+    "title": "Lohnabrechnung 2025-07",
+    "description": "Lohnabrechnung 2025-07",
+    "label": "Lohnabrechnung"
   },
   "message": null,
   "monthClose": null,
   "meta": {
     "legacyEvent": "payslip.released",
     "documentType": "payslip",
-    "documentTitle": "Entgeltabrechnung",
-    "title": "Entgeltabrechnung 2025-07"
+    "documentTitle": "Lohnabrechnung",
+    "title": "Lohnabrechnung 2025-07",
+    "description": "Lohnabrechnung 2025-07"
   }
 }
 ```

@@ -136,23 +136,58 @@ export function legacyEventForDocumentType(documentType) {
 }
 
 /**
- * Canonical German document title for the employee app / platform inbox.
- * Platform must show this title (not raw documentType / event codes).
+ * Canonical German document title for the employee app / platform inbox / Antrag.
+ * Platform must show this title (not raw documentType / event codes / “Fehlende Unterlagen”).
  */
 export function documentTitleForType(documentType) {
   const t = String(documentType || "").toLowerCase();
   if (t === "lstb") return "Lohnsteuerbescheinigung";
   if (t === "verdienst" || t === "vb" || t === "vordienst") return "Verdienstbescheinigung";
   if (t === "invoice") return "Rechnung";
-  if (t === "payslip" || t === "payroll") return "Entgeltabrechnung";
+  if (t === "payslip" || t === "payroll") return "Lohnabrechnung";
   return "Dokument";
 }
 
-/** Human inbox title: "Verdienstbescheinigung 2026-08" / "Lohnsteuerbescheinigung 2026". */
+/** Human inbox / Antrag title: "Verdienstbescheinigung 2026-08" / "Lohnabrechnung 2026-08". */
 export function buildDocumentDisplayTitle(documentType, periodOrRef = "") {
   const base = documentTitleForType(documentType);
   const ref = String(periodOrRef || "").trim();
   return ref ? `${base} ${ref}` : base;
+}
+
+/**
+ * Labels the platform Antrag / employee inbox must show.
+ * description = full line (e.g. "Verdienstbescheinigung 2026-08") — never leave empty.
+ */
+export function applyPlatformDocumentLabels(delivery, documentType = null) {
+  if (!delivery || typeof delivery !== "object") return delivery;
+  const type = documentType || delivery.documentType || delivery.type || "";
+  const documentTitle = String(delivery.documentTitle || documentTitleForType(type)).trim() || "Dokument";
+  const periodRef = delivery.period || delivery.year || delivery.number || delivery.invoiceId || "";
+  const title = String(delivery.title || buildDocumentDisplayTitle(type, periodRef)).trim() || documentTitle;
+  const description = String(delivery.description || title).trim() || documentTitle;
+  const label = String(delivery.label || documentTitle).trim() || documentTitle;
+
+  delivery.documentType = delivery.documentType || type || null;
+  delivery.documentTitle = documentTitle;
+  delivery.title = title;
+  delivery.description = description;
+  delivery.label = label;
+  delivery.name = String(delivery.name || documentTitle).trim() || documentTitle;
+  delivery.subject = String(delivery.subject || title).trim() || title;
+  delivery.documentKindLabel = documentTitle;
+
+  if (delivery.document && typeof delivery.document === "object") {
+    delivery.document = {
+      ...delivery.document,
+      documentTitle,
+      title,
+      description,
+      label,
+      name: documentTitle,
+    };
+  }
+  return delivery;
 }
 
 function hintForWebhookFailure(status, keySource) {
@@ -205,8 +240,6 @@ export function buildEmployeeDelivery(type, job) {
       },
       document: p,
       appRoute: `/employee/payslips/${encodeURIComponent(job.jobId)}`,
-      documentTitle: documentTitleForType("payslip"),
-      title: buildDocumentDisplayTitle("payslip", p.period || job.period || ""),
     };
   } else if (type === "lstb") {
     const cert = job.certificate || job;
@@ -242,8 +275,6 @@ export function buildEmployeeDelivery(type, job) {
       },
       document: cert,
       appRoute: `/employee/certificates/lstb/${encodeURIComponent(String(year))}/${encodeURIComponent(employeeId)}`,
-      documentTitle: documentTitleForType("lstb"),
-      title: buildDocumentDisplayTitle("lstb", year),
     };
   } else if (type === "verdienst") {
     const cert = job.certificate || job;
@@ -278,8 +309,6 @@ export function buildEmployeeDelivery(type, job) {
       },
       document: cert,
       appRoute: `/employee/certificates/verdienst/${encodeURIComponent(period || String(year))}/${encodeURIComponent(employeeId)}`,
-      documentTitle: documentTitleForType("verdienst"),
-      title: buildDocumentDisplayTitle("verdienst", period || year),
     };
   } else if (type === "invoice") {
     const d = job.draft || {};
@@ -306,12 +335,11 @@ export function buildEmployeeDelivery(type, job) {
       },
       document: d,
       appRoute: `/invoices/${encodeURIComponent(job.id)}`,
-      documentTitle: documentTitleForType("invoice"),
-      title: buildDocumentDisplayTitle("invoice", d.number || job.id),
     };
   }
 
   if (!built) return null;
+  applyPlatformDocumentLabels(built, built.documentType || type);
   const { delivery, assessment } = ensureCompleteDeliveryDocument(built);
   if (!assessment.complete) {
     delivery.contentComplete = false;
@@ -356,23 +384,47 @@ export async function notifyPlatform(event) {
   let delivery = event.delivery || null;
   let contentAssessment = null;
   if (delivery && release.isDocumentRelease) {
+    const sealed = Boolean(delivery.immutable && delivery.seal?.seal);
     const documentTitle = delivery.documentTitle || documentTitleForType(release.documentType);
     const title = delivery.title
       || buildDocumentDisplayTitle(
         release.documentType,
         delivery.period || delivery.year || delivery.number || delivery.invoiceId || ""
       );
+    if (sealed) {
+      // Top-level Antrag labels only — never mutate sealed document body
+      delivery.description = delivery.description || title;
+      delivery.label = delivery.label || documentTitle;
+      delivery.name = delivery.name || documentTitle;
+      delivery.subject = delivery.subject || title;
+      delivery.documentTitle = delivery.documentTitle || documentTitle;
+      delivery.title = delivery.title || title;
+    } else {
+      applyPlatformDocumentLabels(delivery, release.documentType || delivery.documentType);
+    }
     // Prefer already-sealed delivery as-is (titles frozen at build). Never rebuild after seal.
-    const ensured = delivery.immutable && delivery.seal?.seal
+    const ensured = sealed
       ? ensureCompleteDeliveryDocument(delivery)
       : ensureCompleteDeliveryDocument({
         ...delivery,
         type: release.documentType || delivery.type,
         documentType: release.documentType,
-        documentTitle,
-        title,
+        documentTitle: delivery.documentTitle || documentTitle,
+        title: delivery.title || title,
+        description: delivery.description || title,
+        label: delivery.label || documentTitle,
+        name: delivery.name || documentTitle,
+        subject: delivery.subject || title,
       });
     delivery = ensured.delivery;
+    if (delivery) {
+      delivery.description = delivery.description || title;
+      delivery.label = delivery.label || documentTitle;
+      delivery.name = delivery.name || documentTitle;
+      delivery.subject = delivery.subject || title;
+      delivery.documentTitle = delivery.documentTitle || documentTitle;
+      delivery.title = delivery.title || title;
+    }
     contentAssessment = ensured.assessment;
     if (ensured.assessment?.tampered) {
       const result = {
@@ -434,6 +486,12 @@ export async function notifyPlatform(event) {
   const title = release.isDocumentRelease
     ? (delivery?.title || event.title || documentTitle)
     : (event.title || event.message?.title || null);
+  const description = release.isDocumentRelease
+    ? (delivery?.description || title || documentTitle)
+    : (event.description || title || null);
+  const label = release.isDocumentRelease
+    ? (delivery?.label || documentTitle)
+    : null;
 
   const envelope = {
     kind: "platform.accounting.event.v1",
@@ -442,6 +500,10 @@ export async function notifyPlatform(event) {
     documentType: release.isDocumentRelease ? release.documentType : (event.documentType || null),
     documentTitle,
     title,
+    description,
+    label,
+    name: release.isDocumentRelease ? (delivery?.name || documentTitle) : null,
+    subject: release.isDocumentRelease ? (delivery?.subject || title) : null,
     occurredAt: new Date().toISOString(),
     source: "workpass-accounting-bridge",
     idempotencyKey,
@@ -458,6 +520,8 @@ export async function notifyPlatform(event) {
           documentType: release.documentType,
           documentTitle,
           title,
+          description,
+          label,
           contentComplete: Boolean(contentAssessment?.complete ?? delivery?.contentComplete),
           documentChecksum: delivery?.documentChecksum || delivery?.contentHash || null,
           documentBytes: delivery?.documentBytes || null,
