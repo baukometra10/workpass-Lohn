@@ -10,8 +10,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=26" />
-    <link rel="stylesheet" href="datev-sheet.css?v=3" />
-    <link rel="stylesheet" href="lohn.css?v=101" />
+    <link rel="stylesheet" href="datev-sheet.css?v=4" />
+    <link rel="stylesheet" href="lohn.css?v=104" />
     <link rel="stylesheet" href="annual-certificate.css?v=10" />
     <style id="lohnSplitHard">
       /* Form expands left · A4 docked to the right edge */
@@ -38,7 +38,7 @@
       }
       #lohnApp .lohn-layout {
         display: grid !important;
-        grid-template-columns: minmax(460px, 1fr) minmax(520px, 620px) !important;
+        grid-template-columns: minmax(420px, 1fr) minmax(840px, 900px) !important;
         grid-template-rows: minmax(0, 1fr) !important;
         flex: 1 1 auto !important;
         min-height: 0 !important;
@@ -219,7 +219,7 @@
 
       <div id="companyPortalBanner" class="company-portal-banner" hidden></div>
 
-      <div class="lohn-layout" id="lohnLayout" style="display:grid;grid-template-columns:minmax(460px,1fr) minmax(520px,620px);grid-template-rows:minmax(0,1fr);flex:1 1 auto;min-height:0;width:100%;overflow:hidden;align-items:stretch">
+      <div class="lohn-layout" id="lohnLayout" style="display:grid;grid-template-columns:minmax(420px,1fr) minmax(840px,900px);grid-template-rows:minmax(0,1fr);flex:1 1 auto;min-height:0;width:100%;overflow:hidden;align-items:stretch">
         <aside class="lohn-form" id="lohnForm" style="grid-column:1;grid-row:1;min-width:0;height:100%;min-height:0;overflow-x:hidden;overflow-y:auto;border-right:1px solid rgba(90,140,200,0.28);padding:0 20px 28px">
           <div class="lohn-form-sticky">
             <div id="statusBar" class="lohn-status warn" data-i18n="status.ready">Bereit – manuell, Datei oder Inbox.</div>
@@ -998,7 +998,7 @@
     <script src="catalogs.js?v=1"></script>
     <script src="datev-import.js?v=2"></script>
     <script src="templates.js?v=1"></script>
-    <script src="datev-sheet.js?v=54"></script>
+    <script src="datev-sheet.js?v=56"></script>
     <script src="payroll-core.js?v=34"></script>
     <div id="portalCertPrintHost" class="portal-cert-print-host" hidden aria-hidden="true"></div>
     <script src="workpass-i18n-packs.js?v=43"></script>
@@ -1009,13 +1009,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="workpass-pwa.js?v=9"></script>
     <script src="annual-certificate.js?v=4"></script>
-    <script src="lohn-app.js?v=133"></script>
+    <script src="lohn-app.js?v=136"></script>
     <style id="lohnSplitHardTail">
-      /* Form left · A4 preview centered in right column (same sheet on every screen size) */
+      /* Form flexes · A4 preview stage grows on large desks · Blatt always 1:1 */
       #lohnApp .lohn-layout,
       #lohnLayout {
         display: grid !important;
-        grid-template-columns: minmax(280px, 1fr) minmax(400px, 620px) !important;
+        grid-template-columns: minmax(420px, 1fr) minmax(840px, 900px) !important;
         grid-template-rows: minmax(0, 1fr) !important;
         flex-direction: row !important;
         min-height: 0 !important;
@@ -1058,19 +1058,25 @@
         margin-left: auto !important;
         margin-right: auto !important;
       }
-      @media (min-width: 1600px) {
+      @media (min-width: 1800px) {
         #lohnApp .lohn-layout,
         #lohnLayout {
-          grid-template-columns: minmax(320px, 1fr) minmax(520px, 680px) !important;
+          grid-template-columns: minmax(560px, 1.35fr) minmax(840px, 960px) !important;
         }
       }
-      @media (max-width: 900px) {
+      @media (min-width: 2200px) {
         #lohnApp .lohn-layout,
         #lohnLayout {
-          grid-template-columns: minmax(240px, 1fr) minmax(300px, 48vw) !important;
+          grid-template-columns: minmax(640px, 1.4fr) minmax(840px, 1040px) !important;
+        }
+      }
+      @media (max-width: 1100px) {
+        #lohnApp .lohn-layout,
+        #lohnLayout {
+          grid-template-columns: minmax(280px, 1fr) minmax(0, 840px) !important;
         }
       }
     </style>
-    <script src="lohn-split-lock.js?v=2"></script>
+    <script src="lohn-split-lock.js?v=4"></script>
   </body>
 </html>

@@ -22,7 +22,9 @@
       background: #fff; color: #151a22;
       font-family: "IBM Plex Mono", "Courier New", Courier, monospace;
       font-size: 7pt; line-height: 1.15;
-      display: flex; flex-direction: column; overflow: hidden;
+      display: flex; flex-direction: column;
+      /* visible: avoid clipping the table outer frame after zoom/scale */
+      overflow: visible;
       flex-shrink: 0;
       justify-content: flex-start;
       gap: 2.2mm;
@@ -37,6 +39,7 @@
         min-height: 297mm !important;
         max-height: 297mm !important;
         transform: none !important;
+        overflow: hidden;
       }
     }
     .datev-sheet-a4.is-empty .ds-val:empty::after,
@@ -122,18 +125,30 @@
       width: 100%;
     }
     .ds-table {
-      width: 100%; border-collapse: collapse; table-layout: fixed;
-      height: auto; background: #fff;
+      width: 100%;
+      /* separate = one paint per edge — collapse + CSS scale creates 3–4-line moiré on large screens */
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+      height: auto;
+      background: #fff;
+      border: 1px solid #9aa8b3;
+      box-sizing: border-box;
     }
     .ds-table th, .ds-table td {
-      /* 1px borders stay stable under CSS scale (pt borders shimmer by DPI/scale) */
-      border: 1px solid #c3ced6;
-      padding: 0.7mm 1.4mm;
+      border: none;
+      border-right: 1px solid #c3ced6;
+      border-bottom: 1px solid #c3ced6;
+      padding: 2px 5px;
       font-size: 7pt;
       font-family: "IBM Plex Mono", "Courier New", Courier, monospace;
       vertical-align: middle;
       color: #151a22;
+      box-sizing: border-box;
     }
+    .ds-table th:last-child,
+    .ds-table td:last-child { border-right: none; }
+    .ds-table tbody tr:last-child td { border-bottom: 1px solid #c3ced6; }
     .ds-table th {
       background: #e8eef2;
       color: #151a22;
@@ -142,8 +157,8 @@
       letter-spacing: 0.06em;
       font-weight: 700;
       text-align: center;
-      height: 6.2mm;
-      padding: 1.1mm 1.2mm;
+      height: 24px;
+      padding: 4px 5px;
     }
     .ds-table col.ds-col-code { width: 13%; }
     .ds-table col.ds-col-label { width: 39%; }
@@ -155,8 +170,9 @@
       text-align: left;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .ds-table tbody tr { height: 5.1mm; }
-    .ds-table tbody td { height: 5.1mm; background: #fff; }
+    /* Integer CSS px — mm heights become fractional and alias under scale/zoom */
+    .ds-table tbody tr { height: 19px; }
+    .ds-table tbody td { height: 19px; background: #fff; }
     .ds-table tbody tr.ds-pad td {
       color: transparent; border-color: #c3ced6;
       background: #fff;
@@ -166,8 +182,9 @@
     .ds-sum-row td {
       font-weight: 700;
       background: #e8eef2;
-      height: 6.2mm;
+      height: 24px;
       border-color: #c3ced6;
+      border-bottom: none;
     }
     .ds-sum-row td:first-child { text-align: left; }
     .ds-two {

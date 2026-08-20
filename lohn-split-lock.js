@@ -1,16 +1,29 @@
 /**
  * Keep form-left / A4-right split after paint.
- * Preview column width may change with viewport; the A4 sheet itself never reflows
- * (fixed px size + uniform scale via fitSheetPreview).
+ *
+ * Flexibility: form column grows with the desk (large monitors get more workspace).
+ * Preview column also gains stage room on ultrawide — but the Blatt itself is always
+ * 794×1123 at scale 1 (fitSheetPreview). Same technique on every screen.
  * CSP: external file only (script-src 'self').
  */
 (function () {
   function previewColForWidth(w) {
-    if (w >= 1600) return "minmax(520px, 680px)";
-    if (w >= 1200) return "minmax(480px, 620px)";
-    if (w >= 900) return "minmax(400px, 540px)";
-    if (w >= 720) return "minmax(320px, 48vw)";
+    // Roomier preview stage on big desks; never force the sheet to rescale.
+    if (w >= 2200) return "minmax(840px, 1040px)";
+    if (w >= 1800) return "minmax(840px, 960px)";
+    if (w >= 1500) return "minmax(840px, 900px)";
+    if (w >= 1200) return "840px";
+    if (w >= 1000) return "minmax(700px, 840px)";
+    if (w >= 800) return "minmax(0, 840px)";
     return "minmax(0, 1fr)";
+  }
+
+  function formColForWidth(w) {
+    // Accounting workspace flexes: more form width on larger screens.
+    if (w >= 1800) return "minmax(560px, 1.35fr)";
+    if (w >= 1400) return "minmax(480px, 1.15fr)";
+    if (w >= 1100) return "minmax(420px, 1fr)";
+    return "minmax(280px, 1fr)";
   }
 
   function lockSplit() {
@@ -21,10 +34,11 @@
     var host = document.getElementById("datevSheetHost");
     var w = window.innerWidth || 1200;
     var previewCol = previewColForWidth(w);
+    var formCol = formColForWidth(w);
 
     if (layout) {
       layout.style.setProperty("display", "grid", "important");
-      layout.style.setProperty("grid-template-columns", "minmax(280px, 1fr) " + previewCol, "important");
+      layout.style.setProperty("grid-template-columns", formCol + " " + previewCol, "important");
       layout.style.setProperty("grid-template-rows", "minmax(0, 1fr)", "important");
       layout.style.setProperty("min-height", "0", "important");
       layout.style.setProperty("overflow", "hidden", "important");

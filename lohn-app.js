@@ -3209,19 +3209,20 @@
     return false;
   }
 
-  /** CSS px for A4 at 96dpi — identical on every monitor (mm units vary by DPI). */
+  /** CSS px for A4 at 96dpi — identical on every monitor (never rescale). */
   const A4_PREVIEW_W = 794;
   const A4_PREVIEW_H = 1123;
 
   function fitSheetPreview() {
     const host = $("datevSheetHost");
     const preview = document.querySelector(".lohn-preview");
-    const stage = document.querySelector(".preview-stage");
     const toolbar = preview?.querySelector(".preview-toolbar");
     const sheet = host?.querySelector(".datev-sheet-a4") || window.DatevSheet?.getSheetElement();
     if (!host || !preview || !sheet) return;
 
-    // Fixed A4 geometry — never reflow; only uniform transform scale
+    // Design rule: one technique only — fixed 794×1123, scale/zoom always 1.
+    // Large vs small screen must not change the sheet (no fit-to-width).
+    // If the column is narrower, .preview-stage scrolls; the Blatt stays identical.
     sheet.style.width = `${A4_PREVIEW_W}px`;
     sheet.style.height = `${A4_PREVIEW_H}px`;
     sheet.style.minWidth = `${A4_PREVIEW_W}px`;
@@ -3231,27 +3232,19 @@
     sheet.style.transform = "none";
     sheet.style.transformOrigin = "top left";
 
-    const box = stage || preview;
-    const sidePad = 16;
-    const availW = Math.max(240, (box.clientWidth || preview.clientWidth || A4_PREVIEW_W) - sidePad);
-
-    // Fill preview column width — no side letterboxing. Vertical scroll if needed.
-    // Layout geometry stays 794×1123; only uniform scale changes.
-    const scale = Math.max(0.35, availW / A4_PREVIEW_W);
-    const outW = Math.round(A4_PREVIEW_W * scale);
-    const outH = Math.round(A4_PREVIEW_H * scale);
-
-    sheet.style.transform = `scale(${scale})`;
-    host.style.width = `${outW}px`;
-    host.style.height = `${outH}px`;
+    host.style.zoom = "";
+    host.style.transform = "none";
+    host.style.width = `${A4_PREVIEW_W}px`;
+    host.style.height = `${A4_PREVIEW_H}px`;
+    host.style.overflow = "visible";
     host.style.marginLeft = "auto";
     host.style.marginRight = "auto";
-    host.dataset.scale = String(Number(scale.toFixed(4)));
+    host.dataset.scale = "1";
     host.dataset.ratio = String(Number((A4_PREVIEW_W / A4_PREVIEW_H).toFixed(4)));
-    host.dataset.a4Lock = "px-794x1123";
+    host.dataset.a4Lock = "1to1-794x1123";
 
     if (toolbar) {
-      toolbar.style.width = `${outW}px`;
+      toolbar.style.width = `${A4_PREVIEW_W}px`;
       toolbar.style.marginLeft = "auto";
       toolbar.style.marginRight = "auto";
     }
@@ -4052,7 +4045,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.54.6</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.54.9</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))

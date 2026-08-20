@@ -1109,7 +1109,7 @@ body.is-rtl .portal-emp-total-money { justify-self: start; }
   display: block;
   width: auto;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
   margin: 0 auto;
 }
 .datev-sheet-host .datev-sheet-a4 {
@@ -3593,7 +3593,8 @@ body.company-portal #lohnApp.lohn-shell {
 body.lohn-desktop #lohnApp .lohn-layout,
 body.company-portal #lohnApp .lohn-layout {
   display: grid !important;
-  grid-template-columns: minmax(460px, 1fr) minmax(520px, 620px) !important;
+  /* Form flexes with desk size; preview holds A4 at 1:1 (sheet never scales). */
+  grid-template-columns: minmax(420px, 1fr) minmax(840px, 900px) !important;
   grid-template-rows: minmax(0, 1fr) !important;
   flex: 1 1 auto !important;
   min-height: 0 !important;
@@ -3655,16 +3656,22 @@ body.company-portal #lohnApp #datevSheetHost {
   margin-left: auto !important;
   margin-right: auto !important;
 }
-@media (min-width: 1600px) {
+@media (min-width: 1800px) {
   body.lohn-desktop #lohnApp .lohn-layout,
   body.company-portal #lohnApp .lohn-layout {
-    grid-template-columns: minmax(520px, 1fr) minmax(560px, 680px) !important;
+    grid-template-columns: minmax(560px, 1.35fr) minmax(840px, 960px) !important;
+  }
+}
+@media (min-width: 2200px) {
+  body.lohn-desktop #lohnApp .lohn-layout,
+  body.company-portal #lohnApp .lohn-layout {
+    grid-template-columns: minmax(640px, 1.4fr) minmax(840px, 1040px) !important;
   }
 }
 @media (max-width: 1100px) {
   body.lohn-desktop #lohnApp .lohn-layout,
   body.company-portal #lohnApp .lohn-layout {
-    grid-template-columns: minmax(380px, 1fr) minmax(420px, 520px) !important;
+    grid-template-columns: minmax(280px, 1fr) minmax(0, 840px) !important;
   }
 }
 @media (max-width: 720px) {
