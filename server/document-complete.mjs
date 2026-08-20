@@ -1,9 +1,17 @@
 /**
- * Ensure employee documents sent to the platform are complete — no truncated payloads.
- * Always attach original PDF (pdfBase64) so the employee app can show the file.
+ * Ensure employee documents sent to the platform are complete and immutable.
+ * Once sealed, document + pdfBase64 are never rebuilt — only verified.
  */
 import { createHash } from "node:crypto";
 import { attachPdfToDelivery } from "./pdf/build-document-pdf.mjs";
+import {
+  sealDelivery,
+  verifyDeliverySeal,
+  documentContentWithoutPdf,
+  computeDeliverySeal,
+} from "./document-seal.mjs";
+
+export { verifyDeliverySeal, computeDeliverySeal, sealDelivery } from "./document-seal.mjs";
 
 const LSTB_REQUIRED_ROW_COUNT = 27;
 
@@ -20,7 +28,7 @@ function stableStringify(value) {
 }
 
 export function documentChecksum(document) {
-  const raw = stableStringify(document ?? null);
+  const raw = stableStringify(documentContentWithoutPdf(document) ?? null);
   return createHash("sha256").update(raw).digest("hex");
 }
 
@@ -40,7 +48,6 @@ export function assessDocumentCompleteness(delivery) {
   missing(gaps, Boolean(delivery?.deliveryId), "deliveryId");
   missing(gaps, Boolean(delivery?.title || delivery?.documentTitle), "title");
   missing(gaps, doc && typeof doc === "object", "document");
-  // %PDF in base64 starts with JVBERi
   missing(gaps, pdf.length > 100 && pdf.startsWith("JVBER"), "pdfBase64");
 
   if (!doc || typeof doc !== "object") {
@@ -82,7 +89,12 @@ export function assessDocumentCompleteness(delivery) {
     missing(gaps, doc.totals && typeof doc.totals === "object", "document.totals");
   }
 
-  const bytes = Buffer.byteLength(JSON.stringify(doc), "utf8");
+  if (delivery.immutable || delivery.seal?.seal) {
+    const v = verifyDeliverySeal(delivery);
+    if (!v.ok) missing(gaps, false, `seal:${v.reason}`);
+  }
+
+  const bytes = Buffer.byteLength(JSON.stringify(documentContentWithoutPdf(doc)), "utf8");
   const checksum = documentChecksum(doc);
   const complete = gaps.length === 0;
   return {
@@ -95,13 +107,13 @@ export function assessDocumentCompleteness(delivery) {
     pdfBytes: delivery?.pdfBytes || null,
     rowCount: Array.isArray(doc.rows) ? doc.rows.length : (Array.isArray(doc.wageItems) ? doc.wageItems.length : null),
     label: complete
-      ? "Dokument + Original-PDF vollständig an Plattform"
+      ? "Dokument + PDF versiegelt und vollständig (unveränderlich)"
       : `Dokument unvollständig: ${gaps.join(", ")}`,
   };
 }
 
 /**
- * Clone full document onto delivery, attach pdfBase64, stamp completeness metadata.
+ * Prepare delivery once: PDF + seal. If already sealed and intact → return unchanged.
  */
 export function ensureCompleteDeliveryDocument(delivery) {
   if (!delivery || typeof delivery !== "object") {
@@ -118,11 +130,33 @@ export function ensureCompleteDeliveryDocument(delivery) {
     };
   }
 
+  // Already frozen → verify only, never rebuild document/PDF
+  if (delivery.immutable && delivery.seal?.seal) {
+    const verify = verifyDeliverySeal(delivery);
+    if (!verify.ok) {
+      return {
+        delivery,
+        assessment: {
+          ok: false,
+          complete: false,
+          gaps: [`seal:${verify.reason}`],
+          bytes: 0,
+          checksum: delivery.seal?.contentHash || null,
+          label: verify.label,
+          tampered: true,
+        },
+      };
+    }
+    const assessment = assessDocumentCompleteness(delivery);
+    return { delivery, assessment };
+  }
+
   let next = { ...delivery };
   if (delivery.document != null) {
     next.document = deepClone(delivery.document);
   }
   next = attachPdfToDelivery(next);
+  next = sealDelivery(next);
 
   const assessment = assessDocumentCompleteness(next);
   next.contentComplete = assessment.complete;
@@ -136,6 +170,8 @@ export function ensureCompleteDeliveryDocument(delivery) {
     rowCount: assessment.rowCount,
     hasPdf: Boolean(next.pdfBase64),
     pdfBytes: next.pdfBytes || null,
+    immutable: true,
+    seal: next.seal?.seal || null,
     checkedAt: new Date().toISOString(),
   };
   next.pullUrl = `/v1/delivery/${encodeURIComponent(String(next.deliveryId || ""))}`;
@@ -145,6 +181,8 @@ export function ensureCompleteDeliveryDocument(delivery) {
     documentChecksum: assessment.checksum,
     documentBytes: assessment.bytes,
     hasPdf: Boolean(next.pdfBase64),
+    immutable: true,
+    seal: next.seal?.seal || null,
   };
 
   return { delivery: next, assessment };

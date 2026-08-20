@@ -76,11 +76,19 @@ assert(lstbDel?.document?.rows?.length >= 27, `lstb rows ${lstbDel?.document?.ro
 assert(Array.isArray(lstbDel?.document?.monthDetails) && lstbDel.document.monthDetails.length === 2, "lstb monthDetails");
 assert(lstbDel.contentComplete === true, "lstb contentComplete");
 assert(Boolean(lstbDel.documentChecksum), "lstb checksum");
+assert(lstbDel.immutable === true, "lstb immutable");
+assert(Boolean(lstbDel.seal?.seal), "lstb seal");
 assert(Boolean(lstbDel.pdfBase64) && lstbDel.pdfBase64.startsWith("JVBER"), "lstb pdfBase64");
 assert(lstbDel.pdfMimeType === "application/pdf", "lstb pdf mime");
 assert(Boolean(lstbDel.document?.pdfBase64), "lstb document.pdfBase64");
 assert(assessDocumentCompleteness(lstbDel).complete === true, "lstb assess complete");
 assert(Boolean(lstbDel.document?.seller != null || lstbDel.document?.taxNumber != null), "lstb employer block");
+
+const { ensureCompleteDeliveryDocument, verifyDeliverySeal } = await import("../server/document-complete.mjs");
+const again = ensureCompleteDeliveryDocument(lstbDel);
+assert(again.delivery.pdfBase64 === lstbDel.pdfBase64, "lstb ensure again keeps same PDF");
+assert(again.delivery.documentChecksum === lstbDel.documentChecksum, "lstb ensure again keeps checksum");
+assert(verifyDeliverySeal(again.delivery).ok === true, "lstb seal verifies");
 
 const vb = buildEmployeeVerdienstCertificate(companyId, "EMP-DOC-1", 2026, "2026-02");
 assert(vb.ok, `vb cert ok (${vb.error || ""})`);
@@ -89,18 +97,38 @@ assert(vbDel?.document?.rows?.length > 0, "vb rows");
 assert(vbDel?.document?.monthly && vbDel?.document?.ytd, "vb monthly+ytd");
 assert(vbDel.contentComplete === true, "vb contentComplete");
 assert(Boolean(vbDel.documentChecksum), "vb checksum");
+assert(vbDel.immutable === true && Boolean(vbDel.seal?.seal), "vb sealed");
 assert(Boolean(vbDel.pdfBase64) && vbDel.pdfBase64.startsWith("JVBER"), "vb pdfBase64");
 
 const truncated = {
   ...lstbDel,
   document: { kind: "portal.certificate.lstb.v1", year: 2026 },
   pdfBase64: undefined,
+  seal: undefined,
+  immutable: false,
 };
 assert(assessDocumentCompleteness(truncated).complete === false, "truncated lstb rejected");
 assert(assessDocumentCompleteness(truncated).gaps.includes("pdfBase64") || assessDocumentCompleteness(truncated).gaps.length > 0, "truncated has gaps");
 
-const noPdf = { ...lstbDel, pdfBase64: "", document: { ...lstbDel.document, pdfBase64: "" } };
+const noPdf = {
+  ...lstbDel,
+  pdfBase64: "",
+  document: { ...lstbDel.document, pdfBase64: "" },
+  seal: undefined,
+  immutable: false,
+};
 assert(assessDocumentCompleteness(noPdf).gaps.includes("pdfBase64"), "missing pdfBase64 flagged");
+
+const tampered = {
+  ...lstbDel,
+  document: { ...lstbDel.document, employeeName: "GEÄNDERT" },
+};
+assert(verifyDeliverySeal(tampered).ok === false, "tampered document fails seal");
+assert(ensureCompleteDeliveryDocument(tampered).assessment.tampered === true, "ensure blocks tampered");
+assert(assessDocumentCompleteness(tampered).complete === false, "tampered not complete");
+
+const pdfTampered = { ...lstbDel, pdfBase64: `${lstbDel.pdfBase64}XX` };
+assert(verifyDeliverySeal(pdfTampered).ok === false, "tampered PDF fails seal");
 
 closeSqlite();
 try {

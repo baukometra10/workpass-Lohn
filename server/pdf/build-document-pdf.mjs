@@ -194,9 +194,14 @@ export function buildDocumentPdf(delivery) {
 
 /**
  * Attach original PDF onto delivery (+ nested document) for platform employee app.
+ * Never rebuilds once sealed or when pdfBase64 already present.
  */
 export function attachPdfToDelivery(delivery) {
   if (!delivery || typeof delivery !== "object") return delivery;
+  // Sealed = frozen: do not touch document or PDF again
+  if (delivery.immutable || delivery.seal?.seal) {
+    return delivery;
+  }
   if (delivery.pdfBase64 && String(delivery.pdfBase64).length > 100) {
     delivery.pdfMimeType = delivery.pdfMimeType || "application/pdf";
     delivery.mimeType = delivery.mimeType || "application/pdf";

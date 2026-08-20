@@ -64,6 +64,7 @@ export function platformCapabilities() {
       "Show delivery.title / documentTitle in the employee inbox (Entgeltabrechnung, Lohnsteuerbescheinigung, Verdienstbescheinigung, Rechnung) — never raw codes.",
       "Full delivery/message confirm = received + opened + seen (POST .../received|/open|/ack or webhook body with those flags).",
       "Document webhooks include full delivery.document + original pdfBase64 (PDF). Incomplete / missing PDF is refused. Pull: GET /v1/delivery/:deliveryId.",
+      "Sealed deliveries (immutable + seal.contentHash/pdfHash) are never rebuilt in transit; tampered document/PDF is blocked.",
       "LStB/VB require strictAck for received; complete only after opened+seen (bare {ok:true} is not enough).",
     ],
   };

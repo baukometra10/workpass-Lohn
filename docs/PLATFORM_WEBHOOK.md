@@ -44,8 +44,9 @@ Employee documents (Lohnabrechnung, LStB, VB, Rechnung) use:
 - `document` must be the **full** certificate/payslip/invoice body (rows, totals, monthDetails, wageItems) — never summary-only
 - **`pdfBase64`** (required): original PDF file as Base64 (`%PDF…` → starts with `JVBER…`). Also mirrored on `document.pdfBase64`, plus `pdfFileName` / `pdfMimeType: application/pdf`
 - Without `pdfBase64` the employee app cannot show the original — Accounting refuses incomplete deliveries
-- `contentComplete: true` + `documentChecksum` prove integrity
-- Fallback pull of one full item: `GET /v1/delivery/{deliveryId}`
+- **Immutable seal**: after build, `delivery.immutable: true` + `delivery.seal` (`contentHash`, `pdfHash`, `seal`). WorkPass Lohn never rebuilds `document` or `pdfBase64` on webhook retry, pull, or receipt ack. Tampered payloads are refused (`409` / `document-tampered`).
+- `contentComplete: true` + `documentChecksum` / `seal` prove integrity
+- Fallback pull of one full item: `GET /v1/delivery/{deliveryId}` (returns sealed original; does not regenerate)
 
 
 ```json

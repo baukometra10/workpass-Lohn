@@ -177,7 +177,7 @@ function hintForWebhookFailure(status, keySource) {
  */
 export function buildEmployeeDelivery(type, job) {
   let built = null;
-  if (type === "payroll") {
+  if (type === "payroll" || type === "payslip") {
     const p = job.payslip || {};
     built = {
       kind: "platform.employee.delivery.v1",
@@ -362,15 +362,44 @@ export async function notifyPlatform(event) {
         release.documentType,
         delivery.period || delivery.year || delivery.number || delivery.invoiceId || ""
       );
-    const ensured = ensureCompleteDeliveryDocument({
-      ...delivery,
-      type: release.documentType || delivery.type,
-      documentType: release.documentType,
-      documentTitle,
-      title,
-    });
+    // Prefer already-sealed delivery as-is (titles frozen at build). Never rebuild after seal.
+    const ensured = delivery.immutable && delivery.seal?.seal
+      ? ensureCompleteDeliveryDocument(delivery)
+      : ensureCompleteDeliveryDocument({
+        ...delivery,
+        type: release.documentType || delivery.type,
+        documentType: release.documentType,
+        documentTitle,
+        title,
+      });
     delivery = ensured.delivery;
     contentAssessment = ensured.assessment;
+    if (ensured.assessment?.tampered) {
+      const result = {
+        ok: false,
+        mode: "document-tampered",
+        error: ensured.assessment.label,
+        gaps: ensured.assessment.gaps,
+        delivery,
+        idempotencyKey,
+        event: release.eventName,
+        documentType: release.documentType,
+        accepted: false,
+      };
+      lastWebhookStatus = {
+        ok: false,
+        at: new Date().toISOString(),
+        event: release.eventName,
+        documentType: release.documentType,
+        status: null,
+        error: result.error,
+        mode: "document-tampered",
+        hint: "Dokument/PDF Siegel gebrochen – Versand blockiert. Original unverändert lassen.",
+        keySource,
+        accepted: false,
+      };
+      return result;
+    }
     if (!ensured.assessment.complete && event.requireCompleteDocument !== false) {
       const result = {
         ok: false,
@@ -430,8 +459,11 @@ export async function notifyPlatform(event) {
           documentTitle,
           title,
           contentComplete: Boolean(contentAssessment?.complete ?? delivery?.contentComplete),
-          documentChecksum: delivery?.documentChecksum || null,
+          documentChecksum: delivery?.documentChecksum || delivery?.contentHash || null,
           documentBytes: delivery?.documentBytes || null,
+          immutable: Boolean(delivery?.immutable),
+          seal: delivery?.seal?.seal || null,
+          pdfHash: delivery?.pdfHash || delivery?.seal?.pdfHash || null,
         }
         : {}),
     },

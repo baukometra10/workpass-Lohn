@@ -2574,16 +2574,31 @@ async function handler(req, res) {
       if (!queued) return reply(404, { ok: false, error: "Delivery nicht gefunden" });
       const scopeCheck = assertSameTenant(tenantScope, queued.company?.id, "Delivery");
       if (!scopeCheck.ok) return reply(403, { ok: false, error: scopeCheck.error });
-      const { assessDocumentCompleteness, ensureCompleteDeliveryDocument } = await import("./document-complete.mjs");
+      const { ensureCompleteDeliveryDocument, verifyDeliverySeal } = await import("./document-complete.mjs");
       const ensured = ensureCompleteDeliveryDocument(queued);
+      if (ensured.assessment?.tampered) {
+        return reply(409, {
+          ok: false,
+          error: ensured.assessment.label,
+          reason: "document-tampered",
+          assessment: ensured.assessment,
+          hint: "Gesiegeltes Dokument wurde verändert – Original nicht ausliefern.",
+        });
+      }
+      const sealCheck = ensured.delivery?.seal
+        ? verifyDeliverySeal(ensured.delivery)
+        : { ok: false, reason: "not_sealed" };
       return reply(200, {
         ok: true,
         kind: "platform.delivery.full.v1",
         delivery: ensured.delivery,
         contentComplete: ensured.assessment.complete,
+        immutable: Boolean(ensured.delivery?.immutable),
+        seal: ensured.delivery?.seal || null,
+        sealOk: Boolean(sealCheck.ok),
         documentIntegrity: ensured.delivery?.documentIntegrity || null,
         assessment: ensured.assessment,
-        hint: "Vollständiges Dokument – nichts gekürzt. Speichern und dem Mitarbeiter anzeigen.",
+        hint: "Vollständiges, gesiegeltes Original – auf dem Weg nicht verändert. Speichern und dem Mitarbeiter anzeigen.",
       });
     }
 
