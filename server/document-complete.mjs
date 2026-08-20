@@ -10,6 +10,12 @@ import {
   documentContentWithoutPdf,
   computeDeliverySeal,
 } from "./document-seal.mjs";
+import {
+  documentTitleDeForType,
+  documentTitleForTypeLocalized,
+  buildDocumentDisplayTitleLocalized,
+  normalizeUiLocale,
+} from "./document-labels-i18n.mjs";
 
 export { verifyDeliverySeal, computeDeliverySeal, sealDelivery } from "./document-seal.mjs";
 
@@ -156,29 +162,35 @@ export function ensureCompleteDeliveryDocument(delivery) {
   if (delivery.document != null) {
     next.document = deepClone(delivery.document);
   }
-  // Ensure German Antrag labels exist before PDF + seal (description must never be empty)
+  // German labels on document body (seal-stable); localized titles on delivery top-level
   const type = String(next.documentType || next.type || "").toLowerCase();
-  const documentTitle = String(next.documentTitle || (
-    type === "lstb" ? "Lohnsteuerbescheinigung"
-      : (type === "verdienst" || type === "vb") ? "Verdienstbescheinigung"
-        : type === "invoice" ? "Rechnung"
-          : "Lohnabrechnung"
-  )).trim();
-  const title = String(next.title || `${documentTitle}${next.period || next.year || next.number ? ` ${next.period || next.year || next.number}` : ""}`).trim();
-  next.documentTitle = documentTitle;
-  next.title = title;
-  next.description = String(next.description || title).trim();
-  next.label = String(next.label || documentTitle).trim();
-  next.name = String(next.name || documentTitle).trim();
-  next.subject = String(next.subject || title).trim();
+  const locale = normalizeUiLocale(next.locale || "de");
+  const periodRef = next.period || next.year || next.number || "";
+  const documentTitleDe = documentTitleDeForType(type);
+  const titleDe = buildDocumentDisplayTitleLocalized(type, periodRef, "de");
+  const localizedTitle = documentTitleForTypeLocalized(type, locale);
+  const localizedDisplay = buildDocumentDisplayTitleLocalized(type, periodRef, locale);
+  next.locale = locale;
+  next.documentTitleDe = documentTitleDe;
+  next.titleDe = titleDe;
+  next.descriptionDe = titleDe;
+  next.labelDe = documentTitleDe;
+  next.documentTitle = localizedTitle;
+  next.title = localizedDisplay;
+  next.description = localizedDisplay;
+  next.label = localizedTitle;
+  next.name = localizedTitle;
+  next.subject = localizedDisplay;
   if (next.document && typeof next.document === "object") {
     next.document = {
       ...next.document,
-      documentTitle,
-      title,
-      description: next.description,
-      label: next.label,
-      name: documentTitle,
+      documentTitle: documentTitleDe,
+      title: titleDe,
+      description: titleDe,
+      label: documentTitleDe,
+      name: documentTitleDe,
+      documentTitleDe,
+      locale: "de",
     };
   }
   next = attachPdfToDelivery(next);

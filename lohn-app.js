@@ -1912,6 +1912,8 @@
       confirm: true,
       forceRedeliver: extra.forceRedeliver !== false,
       requireConfirm: true,
+      locale: window.WorkPassI18n?.getLocale?.() || localStorage.getItem("workpass.ui.locale") || "de",
+      language: window.WorkPassI18n?.getLocale?.() || localStorage.getItem("workpass.ui.locale") || "de",
     };
     const path = ctx.kind === "lstb-all"
       ? "/v1/portal/certificates/lstb/deliver-year"
@@ -3708,6 +3710,9 @@
       "Content-Type": "application/json",
       ...(options.headers || {}),
     };
+    const uiLocale = window.WorkPassI18n?.getLocale?.() || localStorage.getItem("workpass.ui.locale") || "de";
+    headers["Accept-Language"] = uiLocale;
+    headers["X-WorkPass-Locale"] = uiLocale;
     if (key) headers["X-WorkPass-Key"] = key;
     if (sessionToken) headers["X-WorkPass-Session"] = sessionToken;
     const useTenant = options.skipTenant ? "" : companyId;
@@ -4033,7 +4038,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.54.2</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.54.3</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))

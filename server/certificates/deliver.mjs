@@ -59,7 +59,8 @@ async function waitForPlatformAck(deliveryId, timeoutMs) {
  */
 async function pushCertificateDelivery({ type, event, certificate, company, options = {} }) {
   const requireConfirm = options.requireConfirm !== false;
-  const delivery = buildEmployeeDelivery(type, { certificate, company });
+  const locale = options.locale || options.language || options.preferredLocale || "de";
+  const delivery = buildEmployeeDelivery(type, { certificate, company, locale });
   if (!delivery) {
     return { ok: false, status: 422, confirmed: false, error: "Delivery konnte nicht gebaut werden" };
   }
@@ -113,6 +114,7 @@ async function pushCertificateDelivery({ type, event, certificate, company, opti
     event,
     delivery,
     company,
+    locale,
     idempotencyKey: delivery.deliveryId,
     strictAck: true,
     meta: {
@@ -122,6 +124,7 @@ async function pushCertificateDelivery({ type, event, certificate, company, opti
       requireAck: true,
       channel: "employee_app",
       parity: "payslip",
+      locale,
       legal: type === "lstb" ? "§ 41b EStG" : "Verdienstbescheinigung",
     },
   });

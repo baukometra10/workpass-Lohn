@@ -1,6 +1,7 @@
 /**
- * Immutable document seal — LStB / VB / Entgeltabrechnung must not change in transit.
+ * Immutable document seal — LStB / VB / Lohnabrechnung must not change in transit.
  * After seal, WorkPass Lohn never rebuilds document or pdfBase64; it only verifies.
+ * Display titles (locale) are not part of the seal — only content + PDF.
  */
 import { createHash } from "node:crypto";
 
@@ -45,10 +46,10 @@ export function computeDeliverySeal(delivery) {
     pdfHash,
     String(delivery?.documentType || delivery?.type || ""),
     String(delivery?.deliveryId || ""),
-    String(delivery?.title || ""),
   ].join("|"));
   return {
     kind: "platform.delivery.seal.v1",
+    version: 2,
     algorithm: "sha256",
     contentHash,
     pdfHash,
@@ -58,6 +59,16 @@ export function computeDeliverySeal(delivery) {
   };
 }
 
+function legacySealWithTitle(delivery, title) {
+  return sha256([
+    String(delivery?.seal?.contentHash || ""),
+    String(delivery?.seal?.pdfHash || ""),
+    String(delivery?.documentType || delivery?.type || ""),
+    String(delivery?.deliveryId || ""),
+    String(title || ""),
+  ].join("|"));
+}
+
 export function verifyDeliverySeal(delivery) {
   if (!delivery?.seal?.seal) {
     return { ok: false, reason: "not_sealed", label: "Kein Siegel – Dokument noch nicht eingefroren" };
@@ -65,8 +76,33 @@ export function verifyDeliverySeal(delivery) {
   const expected = computeDeliverySeal(delivery);
   const matchContent = expected.contentHash === delivery.seal.contentHash;
   const matchPdf = expected.pdfHash === delivery.seal.pdfHash;
-  const matchSeal = expected.seal === delivery.seal.seal;
-  if (matchContent && matchPdf && matchSeal) {
+  if (!matchContent || !matchPdf) {
+    return {
+      ok: false,
+      reason: "tampered",
+      label: "Dokument oder PDF wurde verändert – Versand blockiert",
+      expected: {
+        contentHash: expected.contentHash,
+        pdfHash: expected.pdfHash,
+        seal: expected.seal,
+      },
+      actual: {
+        contentHash: delivery.seal.contentHash,
+        pdfHash: delivery.seal.pdfHash,
+        seal: delivery.seal.seal,
+      },
+    };
+  }
+
+  const matchV2 = expected.seal === delivery.seal.seal;
+  const matchLegacy = [
+    delivery.title,
+    delivery.titleDe,
+    delivery.documentTitleDe,
+    delivery.documentTitle,
+  ].some((t) => t && legacySealWithTitle(delivery, t) === delivery.seal.seal);
+
+  if (matchV2 || matchLegacy) {
     return {
       ok: true,
       reason: "intact",
@@ -74,6 +110,7 @@ export function verifyDeliverySeal(delivery) {
       seal: delivery.seal,
     };
   }
+
   return {
     ok: false,
     reason: "tampered",

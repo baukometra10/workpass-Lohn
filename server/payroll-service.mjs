@@ -419,7 +419,7 @@ export async function releasePayrollJob(jobId, options = {}) {
     savePayrollJob(job, { actor: options.actor || "user", source: options.source || "user", forceStatus: true });
   }
 
-  const delivery = buildEmployeeDelivery("payroll", job);
+  const delivery = buildEmployeeDelivery("payroll", { ...job, locale: options.locale || options.language || job.locale });
   if (!delivery) {
     return { ok: false, error: "Delivery konnte nicht gebaut werden", job };
   }
@@ -463,10 +463,12 @@ export async function releasePayrollJob(jobId, options = {}) {
     event: "payslip.released",
     delivery,
     company: job.company,
+    locale: options.locale || options.language || delivery.locale || "de",
     idempotencyKey: delivery.deliveryId,
     meta: {
       reason: options.reason || (alreadyReleased ? "redeliver" : "release"),
       forceRedeliver: Boolean(options.forceRedeliver),
+      locale: options.locale || delivery.locale || "de",
     },
   });
 

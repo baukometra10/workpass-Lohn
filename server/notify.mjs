@@ -135,56 +135,69 @@ export function legacyEventForDocumentType(documentType) {
   return "payslip.released";
 }
 
-/**
- * Canonical German document title for the employee app / platform inbox / Antrag.
- * Platform must show this title (not raw documentType / event codes / “Fehlende Unterlagen”).
- */
-export function documentTitleForType(documentType) {
-  const t = String(documentType || "").toLowerCase();
-  if (t === "lstb") return "Lohnsteuerbescheinigung";
-  if (t === "verdienst" || t === "vb" || t === "vordienst") return "Verdienstbescheinigung";
-  if (t === "invoice") return "Rechnung";
-  if (t === "payslip" || t === "payroll") return "Lohnabrechnung";
-  return "Dokument";
-}
-
-/** Human inbox / Antrag title: "Verdienstbescheinigung 2026-08" / "Lohnabrechnung 2026-08". */
-export function buildDocumentDisplayTitle(documentType, periodOrRef = "") {
-  const base = documentTitleForType(documentType);
-  const ref = String(periodOrRef || "").trim();
-  return ref ? `${base} ${ref}` : base;
-}
+import {
+  documentTitleForTypeLocalized,
+  documentTitleDeForType,
+  buildDocumentDisplayTitleLocalized,
+  normalizeUiLocale,
+  resolveUiLocale,
+} from "./document-labels-i18n.mjs";
 
 /**
- * Labels the platform Antrag / employee inbox must show.
- * description = full line (e.g. "Verdienstbescheinigung 2026-08") — never leave empty.
+ * German canonical title (source of truth). Prefer documentTitleForTypeLocalized(type, locale) for UI.
  */
-export function applyPlatformDocumentLabels(delivery, documentType = null) {
+export function documentTitleForType(documentType, locale = "de") {
+  return documentTitleForTypeLocalized(documentType, locale);
+}
+
+/** Human inbox / Antrag title in the active UI language. */
+export function buildDocumentDisplayTitle(documentType, periodOrRef = "", locale = "de") {
+  return buildDocumentDisplayTitleLocalized(documentType, periodOrRef, locale);
+}
+
+/**
+ * Labels the platform Antrag / employee inbox must show — in the active UI language.
+ * German originals always on *De fields. Legal PDF body stays German.
+ * @param {{ locale?: string, topLevelOnly?: boolean }} opts
+ */
+export function applyPlatformDocumentLabels(delivery, documentType = null, opts = {}) {
   if (!delivery || typeof delivery !== "object") return delivery;
   const type = documentType || delivery.documentType || delivery.type || "";
-  const documentTitle = String(delivery.documentTitle || documentTitleForType(type)).trim() || "Dokument";
+  const locale = normalizeUiLocale(opts.locale || delivery.locale || "de");
   const periodRef = delivery.period || delivery.year || delivery.number || delivery.invoiceId || "";
-  const title = String(delivery.title || buildDocumentDisplayTitle(type, periodRef)).trim() || documentTitle;
-  const description = String(delivery.description || title).trim() || documentTitle;
-  const label = String(delivery.label || documentTitle).trim() || documentTitle;
+
+  const documentTitleDe = documentTitleDeForType(type);
+  const titleDe = buildDocumentDisplayTitleLocalized(type, periodRef, "de");
+  const documentTitle = documentTitleForTypeLocalized(type, locale);
+  const title = buildDocumentDisplayTitleLocalized(type, periodRef, locale);
+  const description = title;
+  const label = documentTitle;
 
   delivery.documentType = delivery.documentType || type || null;
+  delivery.locale = locale;
   delivery.documentTitle = documentTitle;
   delivery.title = title;
   delivery.description = description;
   delivery.label = label;
-  delivery.name = String(delivery.name || documentTitle).trim() || documentTitle;
-  delivery.subject = String(delivery.subject || title).trim() || title;
+  delivery.name = documentTitle;
+  delivery.subject = title;
   delivery.documentKindLabel = documentTitle;
+  delivery.documentTitleDe = documentTitleDe;
+  delivery.titleDe = titleDe;
+  delivery.descriptionDe = titleDe;
+  delivery.labelDe = documentTitleDe;
 
-  if (delivery.document && typeof delivery.document === "object") {
+  // Document body: keep German labels stable for seal / legal identity
+  if (!opts.topLevelOnly && delivery.document && typeof delivery.document === "object") {
     delivery.document = {
       ...delivery.document,
-      documentTitle,
-      title,
-      description,
-      label,
-      name: documentTitle,
+      documentTitle: documentTitleDe,
+      title: titleDe,
+      description: titleDe,
+      label: documentTitleDe,
+      name: documentTitleDe,
+      documentTitleDe,
+      locale: "de",
     };
   }
   return delivery;
@@ -339,7 +352,8 @@ export function buildEmployeeDelivery(type, job) {
   }
 
   if (!built) return null;
-  applyPlatformDocumentLabels(built, built.documentType || type);
+  const locale = resolveUiLocale(job?.locale, job?.language, job?.preferredLocale, built.locale);
+  applyPlatformDocumentLabels(built, built.documentType || type, { locale });
   const { delivery, assessment } = ensureCompleteDeliveryDocument(built);
   if (!assessment.complete) {
     delivery.contentComplete = false;
@@ -383,47 +397,33 @@ export async function notifyPlatform(event) {
 
   let delivery = event.delivery || null;
   let contentAssessment = null;
+  const locale = resolveUiLocale(
+    event.locale,
+    event.language,
+    event.preferredLocale,
+    delivery?.locale,
+    event.meta?.locale
+  );
   if (delivery && release.isDocumentRelease) {
     const sealed = Boolean(delivery.immutable && delivery.seal?.seal);
-    const documentTitle = delivery.documentTitle || documentTitleForType(release.documentType);
-    const title = delivery.title
-      || buildDocumentDisplayTitle(
-        release.documentType,
-        delivery.period || delivery.year || delivery.number || delivery.invoiceId || ""
-      );
-    if (sealed) {
-      // Top-level Antrag labels only — never mutate sealed document body
-      delivery.description = delivery.description || title;
-      delivery.label = delivery.label || documentTitle;
-      delivery.name = delivery.name || documentTitle;
-      delivery.subject = delivery.subject || title;
-      delivery.documentTitle = delivery.documentTitle || documentTitle;
-      delivery.title = delivery.title || title;
-    } else {
-      applyPlatformDocumentLabels(delivery, release.documentType || delivery.documentType);
+    // Verify/seal first, then apply locale labels (top-level only when sealed)
+    if (!sealed) {
+      applyPlatformDocumentLabels(delivery, release.documentType || delivery.documentType, { locale });
     }
-    // Prefer already-sealed delivery as-is (titles frozen at build). Never rebuild after seal.
     const ensured = sealed
       ? ensureCompleteDeliveryDocument(delivery)
       : ensureCompleteDeliveryDocument({
         ...delivery,
         type: release.documentType || delivery.type,
         documentType: release.documentType,
-        documentTitle: delivery.documentTitle || documentTitle,
-        title: delivery.title || title,
-        description: delivery.description || title,
-        label: delivery.label || documentTitle,
-        name: delivery.name || documentTitle,
-        subject: delivery.subject || title,
+        locale,
       });
     delivery = ensured.delivery;
     if (delivery) {
-      delivery.description = delivery.description || title;
-      delivery.label = delivery.label || documentTitle;
-      delivery.name = delivery.name || documentTitle;
-      delivery.subject = delivery.subject || title;
-      delivery.documentTitle = delivery.documentTitle || documentTitle;
-      delivery.title = delivery.title || title;
+      applyPlatformDocumentLabels(delivery, release.documentType || delivery.documentType, {
+        locale,
+        topLevelOnly: Boolean(delivery.immutable && delivery.seal?.seal),
+      });
     }
     contentAssessment = ensured.assessment;
     if (ensured.assessment?.tampered) {
@@ -481,7 +481,7 @@ export async function notifyPlatform(event) {
   }
 
   const documentTitle = release.isDocumentRelease
-    ? (delivery?.documentTitle || documentTitleForType(release.documentType))
+    ? (delivery?.documentTitle || documentTitleForType(release.documentType, locale))
     : null;
   const title = release.isDocumentRelease
     ? (delivery?.title || event.title || documentTitle)
@@ -504,6 +504,10 @@ export async function notifyPlatform(event) {
     label,
     name: release.isDocumentRelease ? (delivery?.name || documentTitle) : null,
     subject: release.isDocumentRelease ? (delivery?.subject || title) : null,
+    locale: release.isDocumentRelease ? locale : (event.locale || null),
+    documentTitleDe: release.isDocumentRelease ? (delivery?.documentTitleDe || documentTitleDeForType(release.documentType)) : null,
+    titleDe: release.isDocumentRelease ? (delivery?.titleDe || null) : null,
+    descriptionDe: release.isDocumentRelease ? (delivery?.descriptionDe || delivery?.titleDe || null) : null,
     occurredAt: new Date().toISOString(),
     source: "workpass-accounting-bridge",
     idempotencyKey,
@@ -522,6 +526,8 @@ export async function notifyPlatform(event) {
           title,
           description,
           label,
+          locale,
+          documentTitleDe: delivery?.documentTitleDe || null,
           contentComplete: Boolean(contentAssessment?.complete ?? delivery?.contentComplete),
           documentChecksum: delivery?.documentChecksum || delivery?.contentHash || null,
           documentBytes: delivery?.documentBytes || null,

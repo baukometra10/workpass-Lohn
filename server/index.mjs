@@ -65,6 +65,7 @@ import {
   ackOpenRequests,
 } from "./platform-messages.mjs";
 import { releaseInvoiceJob } from "./invoice-service.mjs";
+import { resolveUiLocale } from "./document-labels-i18n.mjs";
 import { listPayrollJobs, loadPayrollJob, listInvoiceJobs, loadInvoiceJob } from "./store.mjs";
 import { isDemoPayrollJob } from "./demo-detect.mjs";
 import { listPendingDeliveries, listAllDeliveries, ackDelivery } from "./delivery-queue.mjs";
@@ -1334,6 +1335,7 @@ async function handler(req, res) {
         tenantScope,
         actor: req._workpassSession?.email || req._workpassSession?.id || "user",
         source: "user",
+        locale: resolveUiLocale(body, req.headers, body.locale, body.language, body.preferredLocale),
       });
       audit({
         type: "payroll.release",
@@ -1733,6 +1735,7 @@ async function handler(req, res) {
         forceRedeliver: body.forceRedeliver === true,
         reason: body.reason || (body.printed ? "print" : "send"),
         requireConfirm: body.requireConfirm !== false,
+        locale: resolveUiLocale(body, req.headers, body.locale, body.language, body.preferredLocale),
       });
       audit({
         type: "portal.lstb_deliver",
@@ -1770,6 +1773,7 @@ async function handler(req, res) {
         forceRedeliver: body.forceRedeliver === true,
         reason: body.reason || (body.printed ? "print" : "send"),
         requireConfirm: body.requireConfirm !== false,
+        locale: resolveUiLocale(body, req.headers, body.locale, body.language, body.preferredLocale),
       });
       audit({
         type: "portal.verdienst_deliver",
@@ -1805,6 +1809,7 @@ async function handler(req, res) {
         forceRedeliver: body.forceRedeliver === true,
         reason: body.reason || (body.printed ? "print" : "send"),
         requireConfirm: body.requireConfirm !== false,
+        locale: resolveUiLocale(body, req.headers, body.locale, body.language, body.preferredLocale),
       });
       audit({
         type: "portal.lstb_deliver_year",

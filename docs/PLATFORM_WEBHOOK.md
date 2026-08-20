@@ -36,12 +36,13 @@ Employee documents (Lohnabrechnung, LStB, VB, Rechnung) use:
 
 - `event`: **`document.released`**
 - `documentType`: **`payslip` | `lstb` | `verdienst` | `invoice`**
-- `documentTitle` / `title` / **`description`**: German names for the employee inbox / Antrag (never raw codes, never “Fehlende Unterlagen”)
-  - `payslip` → **Lohnabrechnung** · title/description e.g. `Lohnabrechnung 2026-08`
-  - `lstb` → **Lohnsteuerbescheinigung** · title/description e.g. `Lohnsteuerbescheinigung 2026`
-  - `verdienst` → **Verdienstbescheinigung** · title/description e.g. `Verdienstbescheinigung 2026-08`
-  - `invoice` → **Rechnung** · title/description e.g. `Rechnung RE-2026-0042`
-- Also mirrored: `label`, `name`, `subject`, and the same fields on `delivery.document`
+- `documentTitle` / `title` / **`description`**: localized for the active UI language (`locale`: de|en|tr|ar|fr|es|it|pl)
+  - German originals always on `documentTitleDe` / `titleDe` / `descriptionDe`
+  - `payslip` → DE **Lohnabrechnung** · EN **Payslip** · …
+  - `lstb` → DE **Lohnsteuerbescheinigung** · EN **Wage tax certificate** · …
+  - `verdienst` → DE **Verdienstbescheinigung** · EN **Earnings certificate** · …
+  - `invoice` → DE **Rechnung** · EN **Invoice** · …
+- Also mirrored: `label`, `name`, `subject`, and German labels on `delivery.document` (legal body stays German)
 - `document` must be the **full** certificate/payslip/invoice body (rows, totals, monthDetails, wageItems) — never summary-only
 - **`pdfBase64`** (required): original PDF file as Base64 (`%PDF…` → starts with `JVBER…`). Also mirrored on `document.pdfBase64`, plus `pdfFileName` / `pdfMimeType: application/pdf`
 - Without `pdfBase64` the employee app cannot show the original — Accounting refuses incomplete deliveries

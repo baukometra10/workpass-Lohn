@@ -16,6 +16,7 @@ const suites = [
   "tests/certificate-delivery-confirm.mjs",
   "tests/document-complete.mjs",
   "tests/document-seal.mjs",
+  "tests/document-labels-i18n.mjs",
   "tests/monthly-cycle.mjs",
   "tests/human-final-pillars.mjs",
   "tests/tenant-isolation.mjs",
