@@ -126,7 +126,8 @@
       height: auto; background: #fff;
     }
     .ds-table th, .ds-table td {
-      border: 0.35pt solid #c3ced6;
+      /* 1px borders stay stable under CSS scale (pt borders shimmer by DPI/scale) */
+      border: 1px solid #c3ced6;
       padding: 0.7mm 1.4mm;
       font-size: 7pt;
       font-family: "IBM Plex Mono", "Courier New", Courier, monospace;
@@ -278,17 +279,20 @@
     return s;
   }
 
+  /** Fixed body rows for A4 — never depend on viewport/scale (same grid on every monitor). */
+  const FIXED_WAGE_BODY_ROWS = 16;
+
   function wagePadRowHtml() {
     return `<tr class="ds-pad"><td>&nbsp;</td><td></td><td class="ds-num"></td><td class="ds-num"></td><td class="ds-flags"></td></tr>`;
   }
 
   function wageRowsHtml(rows) {
-    const MIN_ROWS = 5;
-    const MAX_ROWS = 5;
     const list = (Array.isArray(rows) ? rows : [])
       .filter((r) => r && (r.code || r.label || r.amount))
-      .slice(0, MAX_ROWS);
-    while (list.length < MIN_ROWS) list.push({ code: "", label: "", amount: "", qty: "", taxFlag: "", svFlag: "" });
+      .slice(0, FIXED_WAGE_BODY_ROWS);
+    while (list.length < FIXED_WAGE_BODY_ROWS) {
+      list.push({ code: "", label: "", amount: "", qty: "", taxFlag: "", svFlag: "" });
+    }
     return list
       .map((r) => {
         const empty = !(r.code || r.label || r.amount);
@@ -307,36 +311,26 @@
   }
 
   /**
-   * Leere Rasterzeilen füllen die Lohnarten-Zone bis Gesamt-Brutto – ohne Zeilen zu strecken.
+   * Keep a constant number of Lohnarten grid lines (A4 design).
+   * Do not measure flex/scale — that made middle lines change on large screens.
    */
   function fillWageToPage(sheet) {
     if (!sheet) return;
     const tbody = sheet.querySelector("#datevWageRows");
-    const zone = sheet.querySelector(".ds-zone-wage");
-    const table = zone?.querySelector(".ds-table");
-    if (!tbody || !zone || !table) return;
+    if (!tbody) return;
 
+    const dataRows = Array.from(tbody.querySelectorAll("tr")).filter((tr) => !tr.classList.contains("ds-pad"));
     tbody.querySelectorAll("tr.ds-pad").forEach((tr) => tr.remove());
-    const dataCount = tbody.querySelectorAll("tr").length;
-    const minRows = Math.max(5, dataCount);
-    while (tbody.querySelectorAll("tr").length < minRows) {
-      tbody.insertAdjacentHTML("beforeend", wagePadRowHtml());
-    }
 
-    const sample = tbody.querySelector("tr");
-    const rowH = Math.max(14, Math.round(sample?.getBoundingClientRect().height || 19));
-    let guard = 0;
-    while (guard < 28) {
-      const spare = zone.clientHeight - table.offsetHeight;
-      if (spare < rowH - 0.5) break;
+    let total = dataRows.length;
+    while (total < FIXED_WAGE_BODY_ROWS) {
       tbody.insertAdjacentHTML("beforeend", wagePadRowHtml());
-      guard += 1;
+      total += 1;
     }
-    while (
-      table.offsetHeight > zone.clientHeight + 1
-      && tbody.querySelectorAll("tr.ds-pad").length > Math.max(1, 5 - dataCount)
-    ) {
-      tbody.querySelector("tr.ds-pad:last-child")?.remove();
+    while (tbody.querySelectorAll("tr").length > FIXED_WAGE_BODY_ROWS) {
+      const pad = tbody.querySelector("tr.ds-pad:last-child");
+      if (!pad) break;
+      pad.remove();
     }
   }
 
@@ -558,12 +552,7 @@
     hostEl = host;
     host.innerHTML = sheetHtml(data || {});
     const sheet = host.querySelector("#datevSheetA4");
-    // Zweimal: zuerst Basis-Zeilen, dann nach Layout freier Raum in der Zone
     fillWageToPage(sheet);
-    requestAnimationFrame(() => {
-      fillWageToPage(sheet);
-      requestAnimationFrame(() => fillWageToPage(sheet));
-    });
     initialized = true;
   }
 

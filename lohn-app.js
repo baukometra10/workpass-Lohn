@@ -3232,13 +3232,12 @@
     sheet.style.transformOrigin = "top left";
 
     const box = stage || preview;
-    const sidePad = 24;
-    const topPad = 8;
+    const sidePad = 16;
     const availW = Math.max(240, (box.clientWidth || preview.clientWidth || A4_PREVIEW_W) - sidePad);
-    const availH = Math.max(280, (box.clientHeight || 600) - topPad);
 
-    // Fit width and height; never upscale past 100% (layout stays identical)
-    const scale = Math.min(1, availW / A4_PREVIEW_W, availH / A4_PREVIEW_H);
+    // Fill preview column width — no side letterboxing. Vertical scroll if needed.
+    // Layout geometry stays 794×1123; only uniform scale changes.
+    const scale = Math.max(0.35, availW / A4_PREVIEW_W);
     const outW = Math.round(A4_PREVIEW_W * scale);
     const outH = Math.round(A4_PREVIEW_H * scale);
 
@@ -3453,8 +3452,8 @@
     setLiveCheck(state, payroll, errors);
     setPreviewEmptyState(state, payroll);
     requestAnimationFrame(() => {
-      fitSheetPreview();
       window.DatevSheet?.fillWageToPage?.(window.DatevSheet.getSheetElement?.());
+      fitSheetPreview();
     });
     const company = PayrollCore.companyDisplayName(state);
     if (errors.length) {
@@ -4053,7 +4052,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.54.5</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.54.6</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))
