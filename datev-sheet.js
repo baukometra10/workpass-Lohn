@@ -10,12 +10,13 @@
     @page { size: A4 portrait; margin: 0; }
     html, body { margin: 0; padding: 0; background: #fff; }
     .datev-sheet-a4 {
-      width: 210mm !important;
-      height: 297mm !important;
-      min-width: 210mm;
-      max-width: 210mm;
-      min-height: 297mm;
-      max-height: 297mm;
+      /* Screen: fixed CSS-px A4 so every monitor shows the same layout */
+      width: 794px !important;
+      height: 1123px !important;
+      min-width: 794px !important;
+      max-width: 794px !important;
+      min-height: 1123px !important;
+      max-height: 1123px !important;
       box-sizing: border-box;
       padding: 5.5mm 7.5mm 4mm;
       background: #fff; color: #151a22;
@@ -25,6 +26,18 @@
       flex-shrink: 0;
       justify-content: flex-start;
       gap: 2.2mm;
+      transform-origin: top left;
+    }
+    @media print {
+      .datev-sheet-a4 {
+        width: 210mm !important;
+        height: 297mm !important;
+        min-width: 210mm !important;
+        max-width: 210mm !important;
+        min-height: 297mm !important;
+        max-height: 297mm !important;
+        transform: none !important;
+      }
     }
     .datev-sheet-a4.is-empty .ds-val:empty::after,
     .datev-sheet-a4.is-empty .ds-hints:empty::after,

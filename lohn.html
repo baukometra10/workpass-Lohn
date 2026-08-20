@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="workpass-theme.css?v=26" />
     <link rel="stylesheet" href="datev-sheet.css?v=3" />
-    <link rel="stylesheet" href="lohn.css?v=99" />
+    <link rel="stylesheet" href="lohn.css?v=100" />
     <link rel="stylesheet" href="annual-certificate.css?v=10" />
     <style id="lohnSplitHard">
       /* Form expands left · A4 docked to the right edge */
@@ -998,7 +998,7 @@
     <script src="catalogs.js?v=1"></script>
     <script src="datev-import.js?v=2"></script>
     <script src="templates.js?v=1"></script>
-    <script src="datev-sheet.js?v=52"></script>
+    <script src="datev-sheet.js?v=53"></script>
     <script src="payroll-core.js?v=34"></script>
     <div id="portalCertPrintHost" class="portal-cert-print-host" hidden aria-hidden="true"></div>
     <script src="workpass-i18n-packs.js?v=43"></script>
@@ -1009,13 +1009,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="workpass-pwa.js?v=9"></script>
     <script src="annual-certificate.js?v=4"></script>
-    <script src="lohn-app.js?v=131"></script>
+    <script src="lohn-app.js?v=132"></script>
     <style id="lohnSplitHardTail">
-      /* Form grows · A4 docked right */
+      /* Form left · A4 preview centered in right column (same sheet on every screen size) */
       #lohnApp .lohn-layout,
       #lohnLayout {
         display: grid !important;
-        grid-template-columns: minmax(460px, 1fr) minmax(520px, 620px) !important;
+        grid-template-columns: minmax(280px, 1fr) minmax(400px, 620px) !important;
         grid-template-rows: minmax(0, 1fr) !important;
         flex-direction: row !important;
         min-height: 0 !important;
@@ -1035,28 +1035,42 @@
       #lohnPreview {
         grid-column: 2 !important;
         display: flex !important;
-        align-items: flex-end !important;
+        flex-direction: column !important;
+        align-items: center !important;
         min-width: 0 !important;
         height: 100% !important;
         min-height: 0 !important;
         overflow: hidden !important;
         visibility: visible !important;
         opacity: 1 !important;
-        padding: 12px 14px 16px 8px !important;
+        padding: 12px 14px 16px !important;
       }
       #lohnApp .preview-toolbar {
         margin-left: auto !important;
-        margin-right: 0 !important;
+        margin-right: auto !important;
       }
       #lohnApp .preview-stage {
-        justify-content: flex-end !important;
+        justify-content: center !important;
+        align-items: flex-start !important;
         width: 100% !important;
       }
       #lohnApp #datevSheetHost {
         margin-left: auto !important;
-        margin-right: 0 !important;
+        margin-right: auto !important;
+      }
+      @media (min-width: 1600px) {
+        #lohnApp .lohn-layout,
+        #lohnLayout {
+          grid-template-columns: minmax(320px, 1fr) minmax(520px, 680px) !important;
+        }
+      }
+      @media (max-width: 900px) {
+        #lohnApp .lohn-layout,
+        #lohnLayout {
+          grid-template-columns: minmax(240px, 1fr) minmax(300px, 48vw) !important;
+        }
       }
     </style>
-    <script src="lohn-split-lock.js?v=1"></script>
+    <script src="lohn-split-lock.js?v=2"></script>
   </body>
 </html>

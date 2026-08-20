@@ -1113,13 +1113,13 @@ body.is-rtl .portal-emp-total-money { justify-self: start; }
   margin: 0 auto;
 }
 .datev-sheet-host .datev-sheet-a4 {
-  /* Echtes A4 – nie zusammendrücken; nur per transform skalieren */
-  width: 210mm !important;
-  height: 297mm !important;
-  min-width: 210mm !important;
-  max-width: 210mm !important;
-  min-height: 297mm !important;
-  max-height: 297mm !important;
+  /* Screen: fixed CSS-px A4 (identical on every monitor). Print keeps mm. */
+  width: 794px !important;
+  height: 1123px !important;
+  min-width: 794px !important;
+  max-width: 794px !important;
+  min-height: 1123px !important;
+  max-height: 1123px !important;
   flex-shrink: 0 !important;
   transform-origin: top left;
   border-radius: 2px;
@@ -1127,6 +1127,17 @@ body.is-rtl .portal-emp-total-money { justify-self: start; }
     0 22px 55px rgba(0, 0, 0, 0.58),
     0 0 0 1px rgba(59, 158, 255, 0.14),
     0 1px 0 rgba(255,255,255,0.06) !important;
+}
+@media print {
+  .datev-sheet-host .datev-sheet-a4 {
+    width: 210mm !important;
+    height: 297mm !important;
+    min-width: 210mm !important;
+    max-width: 210mm !important;
+    min-height: 297mm !important;
+    max-height: 297mm !important;
+    transform: none !important;
+  }
 }
 
 @media (max-width: 1100px) {
@@ -3614,7 +3625,7 @@ body.company-portal #lohnApp .lohn-preview {
   grid-row: 1 !important;
   display: flex !important;
   flex-direction: column !important;
-  align-items: flex-end !important;
+  align-items: center !important;
   visibility: visible !important;
   width: auto !important;
   min-width: 0 !important;
@@ -3622,19 +3633,19 @@ body.company-portal #lohnApp .lohn-preview {
   max-height: none !important;
   min-height: 0 !important;
   overflow: hidden !important;
-  padding: 12px 14px 16px 8px !important;
+  padding: 12px 14px 16px !important;
 }
 body.lohn-desktop #lohnApp .preview-toolbar,
 body.company-portal #lohnApp .preview-toolbar {
   margin-left: auto !important;
-  margin-right: 0 !important;
+  margin-right: auto !important;
 }
 body.lohn-desktop #lohnApp .preview-stage,
 body.company-portal #lohnApp .preview-stage {
   flex: 1 1 auto !important;
   min-height: 0 !important;
   overflow: auto !important;
-  justify-content: flex-end !important;
+  justify-content: center !important;
   align-items: flex-start !important;
   width: 100% !important;
   padding-left: 0 !important;
@@ -3642,7 +3653,7 @@ body.company-portal #lohnApp .preview-stage {
 body.lohn-desktop #lohnApp #datevSheetHost,
 body.company-portal #lohnApp #datevSheetHost {
   margin-left: auto !important;
-  margin-right: 0 !important;
+  margin-right: auto !important;
 }
 @media (min-width: 1600px) {
   body.lohn-desktop #lohnApp .lohn-layout,

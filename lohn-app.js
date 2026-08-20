@@ -3209,6 +3209,10 @@
     return false;
   }
 
+  /** CSS px for A4 at 96dpi — identical on every monitor (mm units vary by DPI). */
+  const A4_PREVIEW_W = 794;
+  const A4_PREVIEW_H = 1123;
+
   function fitSheetPreview() {
     const host = $("datevSheetHost");
     const preview = document.querySelector(".lohn-preview");
@@ -3217,40 +3221,44 @@
     const sheet = host?.querySelector(".datev-sheet-a4") || window.DatevSheet?.getSheetElement();
     if (!host || !preview || !sheet) return;
 
-    // Echtes A4 (210×297mm) – Proportionen nie verzerren
+    // Fixed A4 geometry — never reflow; only uniform transform scale
+    sheet.style.width = `${A4_PREVIEW_W}px`;
+    sheet.style.height = `${A4_PREVIEW_H}px`;
+    sheet.style.minWidth = `${A4_PREVIEW_W}px`;
+    sheet.style.maxWidth = `${A4_PREVIEW_W}px`;
+    sheet.style.minHeight = `${A4_PREVIEW_H}px`;
+    sheet.style.maxHeight = `${A4_PREVIEW_H}px`;
     sheet.style.transform = "none";
-    sheet.style.width = "210mm";
-    sheet.style.height = "297mm";
-    sheet.style.minWidth = "210mm";
-    sheet.style.maxWidth = "210mm";
-    host.style.width = "210mm";
-    host.style.height = "297mm";
+    sheet.style.transformOrigin = "top left";
 
     const box = stage || preview;
-    // Breite der Vorschau-Sektion füllen (kleiner Rand), A4-Proportion behalten
-    const sidePad = 28;
-    const availW = Math.max(280, box.clientWidth - sidePad);
+    const sidePad = 24;
+    const topPad = 8;
+    const availW = Math.max(240, (box.clientWidth || preview.clientWidth || A4_PREVIEW_W) - sidePad);
+    const availH = Math.max(280, (box.clientHeight || 600) - topPad);
 
-    const sw = Math.round(sheet.getBoundingClientRect().width) || 794;
-    const sh = Math.round(sheet.getBoundingClientRect().height) || 1123;
-    const a4Ratio = 210 / 297;
-    const baseW = Math.abs(sw / sh - a4Ratio) > 0.02 ? Math.round(sh * a4Ratio) : sw;
-    const baseH = sh;
+    // Fit width and height; never upscale past 100% (layout stays identical)
+    const scale = Math.min(1, availW / A4_PREVIEW_W, availH / A4_PREVIEW_H);
+    const outW = Math.round(A4_PREVIEW_W * scale);
+    const outH = Math.round(A4_PREVIEW_H * scale);
 
-    // Nach Breite der Sektion skalieren – A4 nie über 100 % aufblasen (große Monitore)
-    const scale = Math.min(1, availW / baseW);
-    const outW = Math.round(baseW * scale);
-    const outH = Math.round(baseH * scale);
-
-    sheet.style.transformOrigin = "top left";
     sheet.style.transform = `scale(${scale})`;
     host.style.width = `${outW}px`;
     host.style.height = `${outH}px`;
+    host.style.marginLeft = "auto";
+    host.style.marginRight = "auto";
     host.dataset.scale = String(Number(scale.toFixed(4)));
-    host.dataset.ratio = String(Number((baseW / baseH).toFixed(4)));
+    host.dataset.ratio = String(Number((A4_PREVIEW_W / A4_PREVIEW_H).toFixed(4)));
+    host.dataset.a4Lock = "px-794x1123";
 
-    if (toolbar) toolbar.style.width = `${outW}px`;
+    if (toolbar) {
+      toolbar.style.width = `${outW}px`;
+      toolbar.style.marginLeft = "auto";
+      toolbar.style.marginRight = "auto";
+    }
   }
+
+  window.__workpassFitSheet = fitSheetPreview;
 
   function setPreviewEmptyState(state, payroll) {
     const stage = document.querySelector(".preview-stage");
@@ -4045,7 +4053,7 @@
           <div class="company-portal-banner-inner">
             <div class="portal-brand-block">
               <span class="eyebrow"><i class="pulse-dot" aria-hidden="true"></i> ${esc(t("portal.live", "Firmen-Portal live"))}</span>
-              <strong>${esc(companyName)} <span class="portal-version-chip">v2.54.4</span></strong>
+              <strong>${esc(companyName)} <span class="portal-version-chip">v2.54.5</span></strong>
               <small>${esc(uiT("portal.bannerMonth", "{base} · {monthLabel} {period}")
                 .replace("{base}", t("portal.onlyYourData", "Nur Ihre Daten · Mandantentrennung aktiv"))
                 .replace("{monthLabel}", uiT("lohn.month", "Monat"))
