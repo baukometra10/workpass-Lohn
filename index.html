@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Allura&family=Barlow:wght@400;500;600;700&family=Dancing+Script:wght@500;600&family=Great+Vibes&family=IBM+Plex+Mono:wght@400;500&family=Pacifico&family=Pinyon+Script&family=Satisfy&family=Space+Grotesk:wght@500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=47" />
+    <link rel="stylesheet" href="styles.css?v=48" />
     <link rel="stylesheet" href="agenda-reference.css?v=6" />
     <link rel="stylesheet" href="app-ui.css?v=25" />
     <link rel="stylesheet" href="payroll-layouts.css?v=21" />
@@ -148,7 +148,7 @@
           </button>
         </nav>
         <div class="sidebar-footer lex-sidebar-footer">
-          <span id="sidebarVersionLabel">v2.54.13</span>
+          <span id="sidebarVersionLabel">v2.54.14</span>
           <span data-i18n="status.localData">Lokale Daten · DSGVO-konform</span>
         </div>
       </aside>
@@ -450,27 +450,28 @@
             </select>
             </section>
 
-            <section class="form-section">
+            <section class="form-section invoice-form-block mode-invoice-only">
             <h2 class="form-section-title" data-i18n="doc.dataTitle">Dokumentdaten</h2>
+            <p class="field-hint muted small" data-i18n="doc.dataHint">Klare Felder für Nummer, Daten und Steuer – alles erscheint so auf der Rechnung.</p>
 
-            <div class="grid two-col">
-              <label>
+            <div class="grid two-col invoice-field-grid">
+              <label class="field-block">
                 <span data-i18n="doc.number">Dokumentnummer</span>
-                <input id="invoiceNumber" type="text" placeholder="RE-2026-0001" />
+                <input id="invoiceNumber" type="text" placeholder="RE-2026-0001" autocomplete="off" />
               </label>
-              <label>
+              <label class="field-block">
                 <span data-i18n="doc.created">Erstellungsdatum</span>
                 <input id="invoiceDate" type="date" />
               </label>
-              <label class="mode-invoice-only">
+              <label class="field-block mode-invoice-only">
                 <span data-i18n="doc.serviceDate">Leistungsdatum</span>
                 <input id="serviceDate" type="date" />
               </label>
-              <label class="mode-invoice-only">
+              <label class="field-block mode-invoice-only">
                 <span data-i18n="doc.dueDate">Fälligkeitsdatum</span>
                 <input id="dueDate" type="date" />
               </label>
-              <label class="mode-invoice-only">
+              <label class="field-block mode-invoice-only">
                 <span data-i18n="doc.vat">Umsatzsteuer</span>
                 <select id="taxRate">
                   <option value="0" data-i18n="doc.vat0">0 % (steuerfrei / § 19 UStG)</option>
@@ -480,30 +481,35 @@
               </label>
             </div>
 
-            <div class="grid two-col mode-invoice-only">
-              <label>
+            <div class="grid two-col mode-invoice-only invoice-check-row">
+              <label class="check-block">
                 <input id="kleinunternehmer" type="checkbox" />
                 <span data-i18n="doc.klein">Kleinunternehmer (§ 19 UStG – keine USt ausweisen)</span>
               </label>
-              <label>
+              <label class="check-block">
                 <input id="reverseCharge" type="checkbox" />
                 <span data-i18n="doc.reverse">Reverse-Charge (§ 13b UStG)</span>
               </label>
             </div>
 
-            <div class="grid two-col">
-              <label>
-                <span data-i18n="doc.seller">Absender / Arbeitgeber</span>
+            <div class="grid two-col invoice-party-grid">
+              <label class="field-block">
+                <span data-i18n="doc.sellerInvoice">Absender (Ihre Firma)</span>
                 <textarea id="seller" rows="5" placeholder="Muster GmbH&#10;Musterstraße 1&#10;12345 Musterstadt"></textarea>
+                <span class="field-hint muted small" data-i18n="doc.sellerHint">Name und Anschrift – wie auf dem Briefkopf.</span>
               </label>
-              <label>
-                <span data-i18n="doc.customer">Empfänger / Mitarbeiter-Adresse</span>
+              <label class="field-block">
+                <span data-i18n="doc.customerInvoice">Empfänger (Kunde)</span>
                 <textarea id="customer" rows="5" placeholder="Kunde GmbH&#10;Beispielweg 7&#10;54321 Ort"></textarea>
+                <span class="field-hint muted small" data-i18n="doc.customerHint">Rechnungsempfänger vollständig eintragen.</span>
               </label>
             </div>
 
             <div class="items-header mode-invoice-only">
-              <h3 data-i18n="doc.items">Positionen</h3>
+              <div>
+                <h3 data-i18n="doc.items">Positionen</h3>
+                <p class="field-hint muted small" data-i18n="doc.itemsHint">Beschreibung, Menge und Preis – jede Zeile wird klar auf der Rechnung ausgewiesen.</p>
+              </div>
               <button id="addItemBtn" type="button" data-i18n="doc.addItem">+ Position</button>
             </div>
 
@@ -522,10 +528,20 @@
               </table>
             </div>
 
-            <label>
-              <span data-i18n="doc.note">Notiz / Zahlungsbedingungen</span>
+            <label class="field-block note-field-block mode-invoice-only">
+              <span class="note-field-head">
+                <span data-i18n="doc.note">Notiz / Zahlungsbedingungen</span>
+                <button type="button" id="insertDefaultNoteBtn" class="linkish-btn" data-i18n="doc.noteInsertDefault">Vorschlag einfügen</button>
+              </span>
               <textarea id="note" rows="3" placeholder="Zahlbar ohne Abzug innerhalb von 14 Tagen."></textarea>
+              <span class="field-hint muted small" data-i18n="doc.noteHint">Leer lassen = kein Hinweis auf der Rechnung. Text vollständig löschbar.</span>
             </label>
+            </section>
+
+            <section class="form-section mode-payroll-only hidden" id="payrollDocMetaSection" hidden>
+            <h2 class="form-section-title" data-i18n="doc.payrollDataTitle">Lohn-Dokumentdaten</h2>
+            <p class="muted small" data-i18n="doc.payrollPortalHintShort">Für Lohn bitte das Lohn-Portal nutzen.</p>
+            </section>
 
             <section class="signature-pad-wrap mode-invoice-only" id="signatureSection">
               <div class="signature-head">
@@ -1718,13 +1734,13 @@
           </div>
 
           <div class="invoice-bank mode-invoice-only" id="invoiceBankBlock">
-            <h3>Bankverbindung</h3>
-            <p id="previewCompanyBank">-</p>
+            <h3 data-i18n="doc.bankTitle">Bankverbindung</h3>
+            <p id="previewCompanyBank"></p>
           </div>
 
-          <div class="note-box mode-invoice-only">
-            <h3>Hinweis</h3>
-            <p id="previewNote">-</p>
+          <div class="note-box mode-invoice-only" id="invoiceNoteBlock">
+            <h3 data-i18n="doc.noteTitle">Hinweis</h3>
+            <p id="previewNote"></p>
           </div>
 
           <div class="wp-sig-layer mode-invoice-only" id="signaturePreviewBox" hidden
@@ -1752,7 +1768,7 @@
         <span class="lex-status-item lex-status-right">
           <span id="lexStatusDate"></span>
           <span class="lex-status-sep">|</span>
-          <span id="lexStatusVersion">v2.54.13</span>
+          <span id="lexStatusVersion">v2.54.14</span>
         </span>
       </footer>
       </div>
@@ -1781,14 +1797,14 @@
     <script src="elster-export.js?v=2"></script>
     <script src="datev-sheet.js?v=52"></script>
     <script src="payroll-core.js?v=34"></script>
-    <script src="workpass-i18n-packs.js?v=43"></script>
+    <script src="workpass-i18n-packs.js?v=44"></script>
     <script src="workpass-i18n.js?v=6"></script>
     <script src="workpass-pwa.js?v=4"></script>
     <script src="auth-gate.js?v=18"></script>
     <script src="mandant-checklist.js?v=4"></script>
-    <script src="workpass-hub.js?v=15"></script>
+    <script src="workpass-hub.js?v=16"></script>
     <script src="templates.js?v=1" defer></script>
     <script src="signature-engine.js?v=5"></script>
-    <script src="script.js?v=120" defer></script>
+    <script src="script.js?v=121" defer></script>
   </body>
 </html>

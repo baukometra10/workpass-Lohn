@@ -238,7 +238,7 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2.54.13";
+const APP_VERSION = "2.54.14";
 const APP_VERSION_BUILD = "2026.45";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
@@ -1457,7 +1457,7 @@ function applyHubProfileFromServer(hubProfile, { force = false } = {}) {
       changed = true;
     }
   }
-  if (hubProfile.note && noteInput && (force || !noteInput.value.trim())) {
+  if (hubProfile.note && noteInput && force && !noteInput.dataset.userCleared) {
     noteInput.value = hubProfile.note;
     changed = true;
   }
@@ -3862,14 +3862,18 @@ function setPaymentStatus(invoiceDateValue, dueDateValue) {
 
 function createItemRow(description = "", quantity = 1, price = 0) {
   const row = document.createElement("tr");
+  const qtyVal = quantity === "" || quantity == null ? "" : quantity;
+  const priceVal = price === "" || price == null ? "" : price;
   row.innerHTML = `
-    <td><input class="desc-input" type="text" value="${escapeHtml(description)}" placeholder="z. B. Beratung" /></td>
-    <td><input class="qty-input" type="number" min="0" step="1" value="${quantity}" /></td>
-    <td><input class="price-input" type="number" min="0" step="0.01" value="${price}" /></td>
+    <td>
+      <textarea class="desc-input" rows="2" placeholder="Leistung klar beschreiben…">${escapeHtml(description)}</textarea>
+    </td>
+    <td><input class="qty-input" type="number" min="0" step="0.01" value="${qtyVal}" placeholder="1" inputmode="decimal" /></td>
+    <td><input class="price-input" type="number" min="0" step="0.01" value="${priceVal}" placeholder="0,00" inputmode="decimal" /></td>
     <td class="line-total">0,00</td>
-    <td><button type="button" class="remove-item">Entfernen</button></td>
+    <td><button type="button" class="remove-item" title="Position entfernen" aria-label="Position entfernen">×</button></td>
   `;
-  row.querySelectorAll("input").forEach((input) => {
+  row.querySelectorAll("input, textarea").forEach((input) => {
     input.addEventListener("input", () => {
       updatePreview();
       saveDraft(false);
@@ -3878,6 +3882,7 @@ function createItemRow(description = "", quantity = 1, price = 0) {
   });
   row.querySelector(".remove-item").addEventListener("click", () => {
     row.remove();
+    if (![...itemsBody.querySelectorAll("tr")].length) createItemRow("", 1, "");
     updatePreview();
     saveDraft(false);
     updateIncompleteFieldHighlights();
@@ -4850,13 +4855,17 @@ function updateInvoicePreview() {
     previewServiceDate.textContent = formatDateForView(serviceDateInput?.value || invoiceDateInput.value);
   }
   previewDueDate.textContent = formatDateForView(dueDateInput.value);
-  previewSeller.textContent = sellerInput.value.trim() || "-";
-  previewCustomer.textContent = customerInput.value.trim() || "-";
+  previewSeller.textContent = sellerInput.value.trim() || "—";
+  previewCustomer.textContent = customerInput.value.trim() || "—";
 
-  let noteText = noteInput.value.trim() || "-";
-  if (isKlein) noteText += "\n\nGemäß § 19 UStG wird keine Umsatzsteuer berechnet.";
-  if (isReverse) noteText += "\n\nSteuerschuldnerschaft des Leistungsempfängers (§ 13b UStG).";
-  previewNote.textContent = noteText;
+  const userNote = noteInput.value.trim();
+  const legalBits = [];
+  if (isKlein) legalBits.push("Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.");
+  if (isReverse) legalBits.push("Steuerschuldnerschaft des Leistungsempfängers (§ 13b UStG).");
+  const noteText = [userNote, ...legalBits].filter(Boolean).join("\n\n");
+  const noteBlock = document.getElementById("invoiceNoteBlock");
+  if (previewNote) previewNote.textContent = noteText;
+  if (noteBlock) noteBlock.classList.toggle("is-empty", !noteText);
 
   refreshActiveSignature({ save: false });
   refreshSignatureSealUi();
@@ -4881,7 +4890,11 @@ function updateInvoicePreview() {
     if (companyBankNameInput?.value?.trim()) parts.push(companyBankNameInput.value.trim());
     if (companyIbanInput?.value?.trim()) parts.push(`IBAN: ${companyIbanInput.value.trim()}`);
     if (companyBicInput?.value?.trim()) parts.push(`BIC: ${companyBicInput.value.trim()}`);
-    previewCompanyBank.textContent = parts.length ? parts.join(" · ") : "-";
+    previewCompanyBank.textContent = parts.length ? parts.join(" · ") : "";
+  }
+  const bankBlock = document.getElementById("invoiceBankBlock");
+  if (bankBlock) {
+    bankBlock.classList.toggle("is-empty", !previewCompanyBank?.textContent?.trim());
   }
 
   subtotalLabel.textContent = "Zwischensumme (netto):";
@@ -5016,7 +5029,8 @@ function updatePayrollPreview() {
   previewPayrollMonth.textContent = formatMonthForView(payrollMonthInput.value);
   previewSeller.textContent = sellerInput.value.trim() || "-";
   previewCustomer.textContent = customerInput.value.trim() || "-";
-  previewNote.textContent = noteInput.value.trim() || "-";
+  previewNote.textContent = noteInput.value.trim() || "";
+  document.getElementById("invoiceNoteBlock")?.classList.toggle("is-empty", !noteInput.value.trim());
   subtotalLabel.textContent = "Brutto:";
   taxLabel.textContent = "Abzüge gesamt:";
   totalLabel.textContent = "Nettoauszahlung:";
@@ -6082,16 +6096,21 @@ function isDraftMeaningless(draft) {
 }
 
 function seedFreshInvoiceWorkspace() {
-  noteInput.value = LEGAL_CONFIG?.invoice?.defaultNote || noteInput.value || "";
+  // Default payment text only as placeholder — value stays empty so the client can clear fully
+  if (noteInput) {
+    noteInput.value = "";
+    noteInput.placeholder = LEGAL_CONFIG?.invoice?.defaultNote || noteInput.placeholder || "";
+    delete noteInput.dataset.userCleared;
+  }
   documentTypeInput.value = "invoice";
   if (sellerInput && !sellerInput.value.trim()) {
-    sellerInput.value = "Muster GmbH\nMusterstraße 1\n12345 Musterstadt";
+    sellerInput.value = "";
   }
   if (customerInput && !customerInput.value.trim()) {
-    customerInput.value = "Kunde GmbH\nBeispielweg 7\n54321 Ort";
+    customerInput.value = "";
   }
   itemsBody.innerHTML = "";
-  createItemRow("Dienstleistung", 1, 100);
+  createItemRow("", 1, "");
   if (!invoiceNumberInput.value.trim()) setDefaultInvoiceNumber();
   setDefaultDates();
   if (taxRateInput && !kleinunternehmerInput?.checked && !reverseChargeInput?.checked) {
@@ -6125,6 +6144,11 @@ function applyDraftFromObject(draft, options = {}) {
   }
   syncEmployeeAddressFields("auto");
   noteInput.value = draft.note || "";
+  if (noteInput) {
+    if (String(draft.note || "").trim()) delete noteInput.dataset.userCleared;
+    else noteInput.dataset.userCleared = "1";
+    noteInput.placeholder = LEGAL_CONFIG?.invoice?.defaultNote || noteInput.placeholder || "";
+  }
   signatureNameInput.value = draft.signatureName || "";
   signatureMode = ["auto", "styled", "draw", "none"].includes(draft.signatureMode)
     ? draft.signatureMode
@@ -6432,7 +6456,11 @@ function resetForm() {
   sellerInput.value = "";
   customerInput.value = "";
   if (employeeAddressInput) employeeAddressInput.value = "";
-  noteInput.value = LEGAL_CONFIG.invoice.defaultNote;
+  if (noteInput) {
+    noteInput.value = "";
+    noteInput.placeholder = LEGAL_CONFIG?.invoice?.defaultNote || noteInput.placeholder || "";
+    noteInput.dataset.userCleared = "1";
+  }
   employeeNameInput.value = "";
   if (employeeSearchInput) employeeSearchInput.value = "";
   employeeIdInput.value = "";
@@ -7133,8 +7161,23 @@ if (newCompanyProfileBtn) newCompanyProfileBtn.addEventListener("click", createN
 if (deleteCompanyProfileBtn) deleteCompanyProfileBtn.addEventListener("click", deleteCurrentCompanyProfile);
 
 addItemBtn.addEventListener("click", () => {
-  createItemRow("", 1, 0);
+  createItemRow("", 1, "");
   saveDraft(false);
+});
+
+document.getElementById("insertDefaultNoteBtn")?.addEventListener("click", () => {
+  if (!noteInput) return;
+  const suggestion = LEGAL_CONFIG?.invoice?.defaultNote || "Zahlbar ohne Abzug innerhalb von 14 Tagen.";
+  noteInput.value = suggestion;
+  delete noteInput.dataset.userCleared;
+  noteInput.focus();
+  updatePreview();
+  saveDraft(false);
+});
+
+noteInput?.addEventListener("input", () => {
+  if (!noteInput.value.trim()) noteInput.dataset.userCleared = "1";
+  else delete noteInput.dataset.userCleared;
 });
 
 if (addWageItemBtn) {
