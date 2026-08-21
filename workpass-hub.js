@@ -185,24 +185,13 @@ html, body {
 .invoice-print-sheet .invoice-bank,
 .invoice-print-sheet .note-box {
   margin-top: 12px; padding: 7px 9px;
-  border: 0.55pt solid #e2e8f0; border-radius: 4px; font-size: 8.5pt;
+  border: 0.55pt solid #e2e8f0; border-radius: 3px; font-size: 8.5pt;
 }
 .invoice-print-sheet .note-box { border-style: dashed; }
-.invoice-print-sheet .invoice-bank.is-empty,
-.invoice-print-sheet .note-box.is-empty { display: none !important; }
-.invoice-print-sheet .invoice-bank h3, .invoice-print-sheet .note-box h3 {
-  margin: 0 0 3px; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b;
-}
-.invoice-print-sheet .addresses > div {
-  padding: 2.5mm 3mm; border: 0.55pt solid #e2e8f0; border-radius: 3px; background: #fbfdff;
-}
-.invoice-print-sheet .totals {
-  margin: 12px 0 0 auto; width: 52%; font-size: 9.5pt;
-  padding: 2.5mm 3mm; border: 0.55pt solid #dbe3ec; border-radius: 4px; background: #f8fafc;
-}
-.invoice-print-sheet::before {
-  content: ""; position: absolute; left: 0; top: 0; right: 0; height: 3px;
-  background: linear-gradient(90deg, #1e3a5f, #2563eb 55%, #0ea5e9);
+.invoice-print-sheet .invoice-bank h3,
+.invoice-print-sheet .note-box h3 {
+  margin: 0 0 3px; font-size: 7.5pt; text-transform: uppercase;
+  letter-spacing: 0.05em; color: #64748b;
 }
 .invoice-print-sheet .invoice-bank p,
 .invoice-print-sheet .note-box p { margin: 0; line-height: 1.35; }
@@ -329,13 +318,11 @@ ${styleBlock}
 
     root.querySelectorAll(".hidden, [hidden]").forEach((node) => {
       if (node.id === "signaturePreviewBox" || node.classList.contains("wp-sig-layer")) {
+        // keep signature box; only hide if mode none left it hidden
         return;
       }
       node.remove();
     });
-    // Fully cleared note/bank: do not print empty boxes
-    root.querySelectorAll("#invoiceNoteBlock.is-empty, #invoiceBankBlock.is-empty, .note-box.is-empty, .invoice-bank.is-empty")
-      .forEach((n) => n.remove());
 
     root.id = "invoicePrintSheet";
     root.className = "invoice-print-sheet";
