@@ -684,10 +684,13 @@ body.workpass-hub .dash-stage-pillars li {
   background: rgba(8, 14, 26, 0.55);
 }
 
-body.workpass-hub.dashboard-tab .lex-ribbon {
+body.workpass-hub.dashboard-tab .lex-ribbon,
+body.workpass-hub.help-tab .lex-ribbon,
+body.workpass-hub.company-tab .lex-ribbon {
   display: none !important;
 }
-body.workpass-hub.dashboard-tab .lex-context-bar {
+body.workpass-hub.dashboard-tab .lex-context-bar,
+body.workpass-hub.help-tab .lex-context-bar {
   display: none !important;
 }
 body.workpass-hub.document-tab .form-panel {
@@ -955,12 +958,22 @@ body.workpass-hub .lex-appbar {
   }
 }
 
-/* Help tab: full width, readable cards (no light-on-white) */
+/* Help tab: full width, no invoice preview ghost */
 body.workpass-hub.help-tab .workspace {
-  grid-template-columns: 1fr !important;
+  grid-template-columns: minmax(0, 1fr) !important;
 }
-body.workpass-hub.help-tab .preview-panel {
+body.workpass-hub.help-tab .workspace .form-panel {
+  width: 100% !important;
+  max-width: none !important;
+  grid-column: 1 / -1 !important;
+}
+body.workpass-hub.help-tab .preview-panel,
+body.workpass-hub.help-tab #invoicePreview {
   display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  max-width: 0 !important;
+  pointer-events: none !important;
 }
 body.workpass-hub .help-card {
   background: var(--wp-bg-panel) !important;

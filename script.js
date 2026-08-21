@@ -930,7 +930,8 @@ function hubShowSyncStatus(text, { error = false, nextActions = [] } = {}) {
   el.classList.toggle("is-error", error);
   el.classList.toggle("is-ok", !error);
   if (list) {
-    const actions = Array.isArray(nextActions) ? nextActions.filter(Boolean).slice(0, 4) : [];
+    const raw = Array.isArray(nextActions) ? nextActions.filter(Boolean) : [];
+    const actions = raw.length ? humanizeHubNextActions(raw).slice(0, 4) : [];
     if (!actions.length) {
       list.hidden = true;
       list.innerHTML = "";
@@ -974,9 +975,37 @@ function localizeHubSyncMessage(msg) {
       "Es wurde WORKPASS_API_KEY als Webhook-Key genutzt. Setze WORKPASS_PLATFORM_WEBHOOK_KEY auf denselben Secret wie die Plattform."
     );
   }
+  if (/Mitarbeiterdaten.*bereits einmal geholt/i.test(raw) || /kein erneuter Abruf/i.test(raw)) {
+    return hubT(
+      "hub.employeeDataCached",
+      "Mitarbeiterdaten für diesen Monat sind bereits geladen – kein erneuter Abruf nötig."
+    );
+  }
   if (/Sync geprüft/i.test(raw)) return hubT("hub.syncChecked", "Sync geprüft");
   if (/Sync-Prüfung fehlgeschlagen/i.test(raw)) return hubT("hub.syncFailed", "Sync-Prüfung fehlgeschlagen.");
   return raw;
+}
+
+/** Firm portal: never show raw API/webhook developer instructions. */
+function isTechnicalHubAction(text) {
+  const s = String(text || "");
+  return /\/v1\/|document\.released|documentType=|\{ ?ok:|POST |GET |ack|Webhook-Key|WORKPASS_|Endpoint|Pull-URL|batch|JSON:/i.test(s);
+}
+
+function humanizeHubNextActions(actions, { waiting = false } = {}) {
+  const src = Array.isArray(actions) ? actions.map(String).filter(Boolean) : [];
+  const cleaned = src.filter((a) => !isTechnicalHubAction(a));
+  if (cleaned.length) return cleaned.slice(0, 4);
+  if (waiting) {
+    return [
+      hubT("hub.nextWait1", "In der Plattform Mitarbeiter und Monatsdaten freigeben und an WorkPass senden"),
+      hubT("hub.nextWait2", "Danach im Lohn-Portal „Jetzt synchronisieren“ tippen"),
+      hubT("hub.nextWait3", "Offene Nachrichten verschwinden, sobald die Daten angekommen sind"),
+    ];
+  }
+  return [
+    hubT("hub.openLohnSync", "Lohn-Portal öffnen und „Jetzt synchronisieren“ tippen"),
+  ];
 }
 
 function hubFormatAutoSyncHint(sync, autoResult = null) {
@@ -1001,11 +1030,11 @@ function hubFormatAutoSyncHint(sync, autoResult = null) {
       return {
         text,
         error: true,
-        nextActions: [
+        nextActions: humanizeHubNextActions([
           hubT("hub.webhook401Next1", "Auf der Plattform: Webhook-URL und Secret prüfen"),
           hubT("hub.webhook401Next2", "Secret muss mit WORKPASS_PLATFORM_WEBHOOK_KEY übereinstimmen"),
           hubT("hub.webhook401Next3", "Danach Sync erneut prüfen oder in Lohn „Jetzt synchronisieren“"),
-        ],
+        ]),
       };
     } else if (raw && !/WORKPASS_|Endpoint|GET \/v1/i.test(raw)) {
       text = localizeHubSyncMessage(raw);
@@ -1013,43 +1042,54 @@ function hubFormatAutoSyncHint(sync, autoResult = null) {
     return {
       text,
       error: true,
-      nextActions: actions.length ? actions.filter((a) => !/WORKPASS_|Endpoint|Pull-URL|batch/i.test(String(a))) : [
-        hubT("hub.fixWebhook", "Auf der Plattform den Webhook-Endpoint live schalten"),
-        hubT("hub.thenSync", "Danach Sync erneut prüfen oder in Lohn „Jetzt synchronisieren“"),
-      ],
+      nextActions: humanizeHubNextActions(
+        actions.length ? actions : [
+          hubT("hub.fixWebhook", "Auf der Plattform den Webhook-Endpoint live schalten"),
+          hubT("hub.thenSync", "Danach Sync erneut prüfen oder in Lohn „Jetzt synchronisieren“"),
+        ]
+      ),
     };
   }
   if (sync?.status === "waiting" || last?.waitingForPlatform || (pending > 0 && !last?.ok)) {
+    const waitRaw = String(sync?.message || last?.message || "").trim();
     return {
-      text: sync?.message || last?.message || hubT("hub.waitPlatform", "Warte auf Plattform · {n} offene Nachricht(en)", { n: pending }),
+      text: waitRaw
+        ? localizeHubSyncMessage(waitRaw)
+        : hubT("hub.waitPlatform", "Warte auf Plattform · {n} offene Nachricht(en)", { n: pending }),
       error: false,
-      nextActions: actions.length ? actions : [
-        hubT("hub.platformShouldSend", "Plattform soll Import/Batch senden (Mitarbeiter, Monat, Rechnungen)"),
-        hubT("hub.syncInLohn", "In Lohn-Portal: Empfang → API-Bridge → Jetzt synchronisieren"),
-      ],
+      nextActions: humanizeHubNextActions(actions, { waiting: true }),
     };
   }
   if (sync?.status === "manual" || auto.enabled === false) {
+    const manRaw = String(sync?.message || "").trim();
     return {
-      text: sync?.message || hubT("hub.autoOff", "Automatik aus · manuell in Lohn synchronisieren"),
+      text: manRaw
+        ? localizeHubSyncMessage(manRaw)
+        : hubT("hub.autoOff", "Automatik aus · manuell in Lohn synchronisieren"),
       error: false,
-      nextActions: actions.length ? actions : [hubT("hub.openLohnSync", "Lohn-Portal öffnen und „Jetzt synchronisieren“ tippen")],
+      nextActions: humanizeHubNextActions(
+        actions.length ? actions : [hubT("hub.openLohnSync", "Lohn-Portal öffnen und „Jetzt synchronisieren“ tippen")]
+      ),
     };
   }
   if (sync?.message || last?.message) {
-    return { text: sync?.message || last.message, error: false, nextActions: actions };
+    return {
+      text: localizeHubSyncMessage(sync?.message || last.message),
+      error: false,
+      nextActions: humanizeHubNextActions(actions),
+    };
   }
   if (auto.lastSuccessAt) {
     return {
       text: hubT("hub.autoOk", "Automatik an · letzter Erfolg {at}", { at: auto.lastSuccessAt }),
       error: false,
-      nextActions: actions,
+      nextActions: humanizeHubNextActions(actions),
     };
   }
   return {
     text: hubT("hub.syncLimited", "Webhook nicht gesetzt · Sync nur begrenzt möglich"),
     error: false,
-    nextActions: actions,
+    nextActions: humanizeHubNextActions(actions),
   };
 }
 
@@ -1824,10 +1864,17 @@ function initTabs() {
       updateTopbarForMode();
       updateDashboard();
       updatePreview();
+      if (target === "help") {
+        loadHelpContactFromServer();
+      }
       requestAnimationFrame(() => {
-        lockDocumentSplit();
-        if (typeof window.__workpassLockRechnungSplit === "function") {
-          window.__workpassLockRechnungSplit();
+        if (target === "document") {
+          lockDocumentSplit();
+          if (typeof window.__workpassLockRechnungSplit === "function") {
+            window.__workpassLockRechnungSplit(true);
+          }
+        } else if (typeof window.__workpassClearRechnungSplit === "function") {
+          window.__workpassClearRechnungSplit();
         }
       });
     });
@@ -1837,6 +1884,10 @@ function initTabs() {
   document.body.classList.toggle("help-tab", initialTab === "help");
   document.body.classList.toggle("company-tab", initialTab === "company");
   document.body.classList.toggle("document-tab", initialTab === "document");
+  if (initialTab === "help" || /#help\b/i.test(location.hash)) {
+    document.querySelector('.form-tab[data-tab="help"]')?.click();
+    loadHelpContactFromServer();
+  }
 }
 
 const SIDEBAR_COLLAPSE_KEY = "workpass.hub.sidebarCollapsed";
@@ -1937,7 +1988,15 @@ function updateLexShellUI() {
   };
   if (lexBcModule) lexBcModule.textContent = tabLabels[activeTab] || tabLabels.document;
   if (lexBcDoc) {
-    lexBcDoc.textContent = activeTab === "dashboard" ? tt("doc.home", "Startseite") : (docLabels[mode] || docLabels.invoice);
+    if (activeTab === "dashboard") {
+      lexBcDoc.textContent = tt("doc.home", "Startseite");
+    } else if (activeTab === "help") {
+      lexBcDoc.textContent = tt("hub.sub.helpShort", "Dokumentation & Kontakt");
+    } else if (activeTab === "company") {
+      lexBcDoc.textContent = tt("hub.sub.companyShort", "Stammdaten");
+    } else {
+      lexBcDoc.textContent = docLabels[mode] || docLabels.invoice;
+    }
   }
   const profileName = companyProfileNameInput?.value?.trim()
     || readCompanyProfiles()[activeCompanyProfileId]?.name
@@ -5601,15 +5660,8 @@ function uiText(key, fallback) {
 function syncPreviewChrome() {
   const preview = document.getElementById("invoicePreview");
   if (!preview) return;
-  if (isDashboardTabActive()) {
+  if (isDashboardTabActive() || isCompanyTabActive()) {
     preview.dataset.previewLabel = "";
-    return;
-  }
-  if (isCompanyTabActive()) {
-    preview.dataset.previewLabel = uiText(
-      "preview.companyProfile",
-      "Vorschau · Firmenprofil & Erscheinungsbild"
-    );
     return;
   }
   if (getCurrentMode() === "payroll-annual") {
@@ -5692,25 +5744,38 @@ function updatePreview() {
   const companyTab = isCompanyTabActive();
   const dashboardTab = isDashboardTabActive();
   const documentTab = isDocumentTabActive();
+  const helpTab = document.querySelector(".form-tab.active")?.dataset.tab === "help"
+    || document.body.classList.contains("help-tab");
   document.body.classList.toggle("company-tab", companyTab);
   document.body.classList.toggle("document-tab", documentTab);
   document.body.classList.toggle("dashboard-tab", dashboardTab);
+  document.body.classList.toggle("help-tab", helpTab);
   document.body.classList.toggle("letterhead-preview", false);
 
   const companyCard = document.getElementById("companyProfilePreview");
   if (companyCard) companyCard.hidden = true;
 
-  const hideInvoiceSurface = companyTab || dashboardTab;
+  const hideInvoiceSurface = companyTab || dashboardTab || helpTab;
   if (hideInvoiceSurface) {
     annualTaxSheet?.classList.add("hidden");
     invoiceOnlyElements.forEach((el) => el.classList.add("hidden"));
     payrollOnlyElements.forEach((el) => el.classList.add("hidden"));
     annualOnlyElements.forEach((el) => el.classList.add("hidden"));
     document.getElementById("invoiceDocStage")?.classList.add("hidden");
+    if (typeof window.__workpassClearRechnungSplit === "function") {
+      window.__workpassClearRechnungSplit();
+    } else {
+      const preview = document.getElementById("invoicePreview");
+      if (preview) preview.style.setProperty("display", "none", "important");
+    }
     if (companyTab) updateCompanyIdentityStrip();
     updateDashboard();
     syncPreviewChrome();
-    requestAnimationFrame(() => lockDocumentSplit());
+    requestAnimationFrame(() => {
+      if (typeof window.__workpassClearRechnungSplit === "function") {
+        window.__workpassClearRechnungSplit();
+      }
+    });
     return;
   }
 

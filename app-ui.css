@@ -1630,20 +1630,23 @@ body.dashboard-tab .workspace .form-panel {
   width: 100% !important;
   height: 100% !important;
   max-height: 100% !important;
-  overflow: hidden !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
   display: flex !important;
   flex-direction: column !important;
-  padding: 10px 16px 12px !important;
+  padding: 10px 16px 20px !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 body.dashboard-tab .tab-panel.dash-board {
   display: none;
   flex-direction: column;
-  gap: 8px;
-  flex: 1 1 auto;
+  gap: 10px;
+  flex: 0 0 auto;
   min-height: 0;
-  height: 100%;
-  overflow: hidden;
+  height: auto;
+  overflow: visible;
 }
 body.dashboard-tab .tab-panel.dash-board.active {
   display: flex;
@@ -1682,18 +1685,19 @@ body.dashboard-tab .dash-archive-panel {
   flex-shrink: 0;
 }
 
-/* Pack remaining content; archive absorbs leftover with inner scroll */
+/* Archive stays readable; page itself scrolls on Übersicht */
 body.dashboard-tab .dash-archive-panel {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
   margin: 0;
   padding: 8px 10px;
-  overflow: hidden;
+  overflow: visible;
 }
 body.dashboard-tab .dash-archive-panel .invoice-archive-list {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  max-height: min(42vh, 360px);
   min-height: 0;
   overflow: auto;
   gap: 6px;
@@ -2548,21 +2552,47 @@ body.document-tab .workspace .preview-panel {
   padding: 10px 12px 20px !important;
 }
 
-/* Firma: full-width master data — no white preview column */
-body.company-tab .workspace {
+/* Firma: full-width master data — no white preview column (beat leftover inline locks) */
+body.company-tab .workspace,
+body.workpass-hub.company-tab .workspace,
+body.help-tab .workspace,
+body.workpass-hub.help-tab .workspace {
   grid-template-columns: minmax(0, 1fr) !important;
   display: grid !important;
 }
-body.company-tab .workspace .form-panel {
+body.company-tab .workspace .form-panel,
+body.workpass-hub.company-tab .workspace .form-panel {
   max-width: none !important;
   width: 100% !important;
   overflow: auto !important;
+  grid-column: 1 / -1 !important;
 }
-body.company-tab .workspace .preview-panel {
+body.company-tab .workspace .preview-panel,
+body.company-tab #invoicePreview,
+body.workpass-hub.company-tab .workspace .preview-panel,
+body.workpass-hub.company-tab #invoicePreview,
+body.help-tab .workspace .preview-panel,
+body.help-tab #invoicePreview,
+body.workpass-hub.help-tab .preview-panel,
+body.dashboard-tab .workspace .preview-panel,
+body.dashboard-tab #invoicePreview,
+body.workpass-hub.dashboard-tab .preview-panel {
   display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
 }
-body.company-tab #companyProfilePreview {
+body.company-tab #companyProfilePreview,
+body.workpass-hub.company-tab #companyProfilePreview,
+body:not(.document-tab) #companyProfilePreview {
   display: none !important;
+  visibility: hidden !important;
 }
 
 body.document-tab .module-hero,

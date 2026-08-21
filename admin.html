@@ -302,6 +302,9 @@
       @media (max-width: 700px) {
         .admin-field-grid { grid-template-columns: 1fr; }
       }
+      .admin-field-grid .admin-field-span {
+        grid-column: 1 / -1;
+      }
       .admin-field-grid label {
         display: block;
         font-size: 0.72rem;
@@ -316,6 +319,40 @@
         background: #0a101c;
         color: #fff;
         font: inherit;
+      }
+      .admin-field-grid input:disabled {
+        opacity: 1;
+        cursor: text;
+        background: #0a101c;
+      }
+      .admin-panel-help-contact {
+        border-color: rgba(93, 180, 255, 0.55);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.06),
+          0 0 0 1px rgba(59, 158, 255, 0.2),
+          0 12px 28px rgba(20, 90, 180, 0.18);
+        background:
+          radial-gradient(90% 60% at 0% 0%, rgba(59, 158, 255, 0.14), transparent 55%),
+          rgba(16, 24, 38, 0.9);
+      }
+      .admin-panel-help-contact h2 {
+        color: #7dd3fc;
+      }
+      .admin-jump-link {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid rgba(90, 140, 200, 0.35);
+        background: linear-gradient(180deg, #1a2740, #121b2c);
+        color: #9fd4ff;
+        border-radius: 10px;
+        padding: 8px 12px;
+        font: inherit;
+        font-size: 0.84rem;
+        text-decoration: none;
+      }
+      .admin-jump-link:hover {
+        border-color: rgba(93, 180, 255, 0.55);
+        color: #fff;
       }
       .admin-field-grid input:focus {
         outline: none;
@@ -426,19 +463,17 @@
       <div class="admin-status" id="adminStatus" role="status" data-i18n="action.loading">Laden…</div>
       <div class="admin-actions">
         <button type="button" class="primary" id="btnRefresh" data-i18n="action.refresh">Aktualisieren</button>
+        <a class="admin-jump-link" href="#adminHelpContactPanel" data-i18n="admin.jumpHelpContact">→ Hilfe-Kontakt</a>
         <button type="button" id="btnBackup" data-i18n="admin.backup">Backup jetzt</button>
         <button type="button" id="btnMonthCloseAll" data-i18n="admin.monthCloseAll">Monatsabschluss alle Firmen</button>
         <button type="button" id="btnClearRate" data-i18n="admin.clearRate">Rate-Limit löschen</button>
       </div>
-      <div class="admin-grid" id="adminKpis"></div>
-      <div class="admin-panel">
-        <h2 data-i18n="admin.rights">Ihre Admin-Rechte</h2>
-        <ul class="admin-rights" id="adminRights"></ul>
-      </div>
-      <div class="admin-panel" id="adminHelpContactPanel">
+
+      <div class="admin-panel admin-panel-help-contact" id="adminHelpContactPanel">
         <h2 data-i18n="admin.helpContactTitle">Hilfe-Kontakt (öffentlich)</h2>
         <p class="admin-hint" data-i18n="admin.helpContactHint">
-          E-Mail, Telefon und Website erscheinen im Hub unter <strong>Hilfe</strong>. Sie können die Angaben jederzeit ändern und speichern — auch offline (dann lokal auf diesem Gerät).
+          Diese Kontakte sehen <strong>alle Firmen und Nutzer</strong> im Hub unter <strong>Hilfe</strong>.
+          Hier eintragen → <strong>Kontakt speichern</strong>. Bridge muss laufen, damit Kunden dieselben Werte sehen (nicht nur dieses Gerät).
         </p>
         <div class="admin-field-grid">
           <label><span data-i18n="admin.helpProduct">Produktzeile</span>
@@ -459,7 +494,7 @@
           <label><span data-i18n="admin.helpWebsiteLabel">Website-Anzeige</span>
             <input id="helpContactWebsiteLabel" type="text" placeholder="beispiel.de" />
           </label>
-          <label><span data-i18n="admin.helpHours">Erreichbarkeit</span>
+          <label class="admin-field-span"><span data-i18n="admin.helpHours">Erreichbarkeit</span>
             <input id="helpContactHours" type="text" placeholder="Mo–Fr 9:00–17:00 (CET)" />
           </label>
         </div>
@@ -467,7 +502,14 @@
         <div class="admin-actions" style="margin-top:12px;margin-bottom:0">
           <button type="button" class="primary" id="btnHelpContactSave" data-i18n="admin.helpContactSave">Kontakt speichern</button>
           <button type="button" id="btnHelpContactReload" data-i18n="admin.helpContactReload">Neu laden</button>
+          <a href="index.html#help" class="admin-jump-link" data-i18n="admin.openHelpHub">Hub → Hilfe öffnen</a>
         </div>
+      </div>
+
+      <div class="admin-grid" id="adminKpis"></div>
+      <div class="admin-panel">
+        <h2 data-i18n="admin.rights">Ihre Admin-Rechte</h2>
+        <ul class="admin-rights" id="adminRights"></ul>
       </div>
 
       <div class="admin-panel">
@@ -550,7 +592,7 @@
       <p class="admin-foot" data-i18n="admin.foot">WorkPass Steuerprogramm · Bridge-Admin</p>
     </div>
 
-    <script src="workpass-i18n-packs.js?v=20"></script>
+    <script src="workpass-i18n-packs.js?v=21"></script>
     <script src="workpass-i18n.js?v=6"></script>
     <script src="workpass-pwa.js?v=4"></script>
     <script src="auth-gate.js?v=19"></script>
@@ -1068,9 +1110,12 @@
           } catch { /* ignore */ }
           return { contact: data.contact, offline: false };
         } catch (e) {
-          const saved = writeLocalHelpContact({ ...contact, updatedBy: "offline-admin" });
-          fillHelpContactForm(saved);
-          return { contact: saved, offline: true, error: e.message };
+          if (isOfflineAdminSession()) {
+            const saved = writeLocalHelpContact({ ...contact, updatedBy: "offline-admin" });
+            fillHelpContactForm(saved);
+            return { contact: saved, offline: true, error: e.message };
+          }
+          throw e;
         }
       }
 
@@ -1098,12 +1143,13 @@
         try {
           const result = await saveHelpContactForm();
           if (result.offline) {
-            setStatus(t("admin.helpContactSavedOffline", "Hilfe-Kontakt lokal gespeichert (Bridge offline). Hub zeigt die Werte auf diesem Gerät."), true);
+            setStatus(t("admin.helpContactSavedOffline", "Nur auf diesem Gerät gespeichert. Für Firmen/Kunden: Bridge starten, mit Admin-Konto anmelden und erneut speichern."), true);
           } else {
-            setStatus(t("admin.helpContactSaved", "Hilfe-Kontakt gespeichert."), true);
+            setStatus(t("admin.helpContactSavedPublic", "Gespeichert – sichtbar für alle Firmen unter Hub → Hilfe."), true);
           }
+          document.getElementById("adminHelpContactPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
         } catch (e) {
-          setStatus(e.message, false);
+          setStatus(bridgeMsg(e), false);
         } finally {
           setBusy(btn, false, t("admin.helpContactSave", "Kontakt speichern"));
         }
@@ -1115,7 +1161,7 @@
           await loadHelpContactForm();
           setStatus(t("admin.helpContactLoaded", "Hilfe-Kontakt geladen."), true);
         } catch (e) {
-          setStatus(e.message, false);
+          setStatus(bridgeMsg(e), false);
         } finally {
           setBusy(btn, false, t("admin.helpContactReload", "Neu laden"));
         }
@@ -1151,7 +1197,7 @@
         }
       });
       window.WorkPassAuth.init({
-        onUnlock: () => {
+        onUnlock: async () => {
           window.WorkPassI18n?.syncFromSession?.();
           window.WorkPassI18n?.applyDom?.(document);
           const u = window.WorkPassAuth.getSessionUser?.();
@@ -1162,13 +1208,18 @@
           }
           if (isOfflineAdminSession()) {
             setBridgeDependentControls(true);
-            setStatus(t("admin.offlineMode", "Offline-Admin (Geräte-PIN). Hilfe-Kontakt lokal speicherbar. Bridge starten + Admin-Konto für Server-Aktionen."), true);
-            loadHelpContactForm().catch(() => {});
+            setStatus(t("admin.offlineMode", "Offline-Admin (Geräte-PIN). Hilfe-Kontakt oben bearbeiten. Für alle Firmen: Bridge + Admin-Konto, dann speichern."), true);
+            await loadHelpContactForm().catch(() => {});
+            document.getElementById("adminHelpContactPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            document.getElementById("helpContactEmail")?.focus();
             return;
           }
           setBridgeDependentControls(false);
           refresh();
-          loadHelpContactForm().catch(() => {});
+          try {
+            await loadHelpContactForm();
+            document.getElementById("adminHelpContactPanel")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          } catch { /* ignore */ }
           syncLocalHelpContactIfOnline().catch(() => {});
         },
       });
