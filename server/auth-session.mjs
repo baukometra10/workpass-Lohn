@@ -308,6 +308,8 @@ function verifyLocalAdmin(email, password) {
     return {
       ok: false,
       error: "Passwort falsch – exakt WORKPASS_ADMIN_PASSWORD aus Railway Variables (ohne Leerzeichen).",
+      passwordLengthExpected: wantPass.length,
+      passwordLengthGot: pass.length,
     };
   }
   return {
@@ -453,12 +455,17 @@ export async function loginWithPassword(email, password, req, opts = {}) {
   if (!result?.ok) {
     noteAuthFailure(ip);
     audit({ type: "auth.login.fail", outcome: "deny", ip, detail: { email: mail } });
-    return {
+    const out = {
       ok: false,
       status: 401,
       error: result?.error || "Anmeldung fehlgeschlagen.",
       setupGaps: adminSetupGaps(),
     };
+    if (Number.isFinite(local?.passwordLengthExpected)) {
+      out.passwordLengthExpected = local.passwordLengthExpected;
+      out.passwordLengthGot = local.passwordLengthGot;
+    }
+    return out;
   }
 
   const roleFromPlatform = result.user.role === "admin" || result.user.role === "auditor"

@@ -42,6 +42,32 @@
         min-height: 0 !important;
         overflow: visible !important;
       }
+      #authGate .auth-error {
+        color: #fecaca !important;
+        background: rgba(127, 29, 29, 0.55);
+        border: 1px solid rgba(248, 113, 113, 0.55);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 0.88rem !important;
+        line-height: 1.35;
+        min-height: 0;
+        white-space: pre-wrap;
+      }
+      #authGate .auth-pin-fallback {
+        margin: 0 0 12px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        background: rgba(8, 47, 73, 0.55);
+        color: #e0f2fe;
+        font-size: 0.82rem;
+        line-height: 1.4;
+      }
+      #authGate .auth-pin-fallback code {
+        font-family: var(--wp-mono, "IBM Plex Mono", monospace);
+        font-size: 0.78em;
+        color: #7dd3fc;
+      }
       .admin-topbar {
         display: flex;
         flex-wrap: wrap;
@@ -449,6 +475,10 @@
             </div>
           </div>
           <p class="auth-error" id="authError" role="alert"></p>
+          <p class="auth-pin-fallback" id="authPinFallbackHint" hidden>
+            Soforthilfe: Tab <strong>Geräte-PIN</strong> – entsperrt Admin lokal (Hilfe-Kontakt bearbeiten).
+            Für Server-Login: in Railway <code>WORKPASS_ADMIN_PASSWORD</code> setzen/kopieren (nicht Outlook-Passwort).
+          </p>
           <button type="submit" class="auth-submit" id="authSubmit" data-i18n="auth.submit">Anmelden</button>
         </form>
         <p class="auth-foot"><a href="index.html" style="color:inherit">← Hub</a> · <a href="lohn.html" style="color:inherit">Lohn</a></p>
@@ -618,7 +648,7 @@
     <script src="workpass-i18n-packs.js?v=23"></script>
     <script src="workpass-i18n.js?v=6"></script>
     <script src="workpass-pwa.js?v=4"></script>
-    <script src="auth-gate.js?v=24"></script>
+    <script src="auth-gate.js?v=25"></script>
     <script>
       if (window.WorkPassI18n) {
         window.WorkPassI18n.init();

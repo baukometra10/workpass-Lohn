@@ -704,10 +704,23 @@
       if (!res.ok || !data.ok) {
         if (err) {
           let msg = data.error || `Login fehlgeschlagen (${res.status})`;
-          if (isAdminPage() && authConfig?.adminEmailHint) {
-            msg = `${msg} · Admin-E-Mail ähnelt: ${authConfig.adminEmailHint}`;
+          if (
+            isAdminPage()
+            && Number.isFinite(data.passwordLengthExpected)
+            && Number.isFinite(data.passwordLengthGot)
+            && data.passwordLengthExpected !== data.passwordLengthGot
+          ) {
+            msg = `${msg} · Railway-Passwort hat ${data.passwordLengthExpected} Zeichen, Ihre Eingabe ${data.passwordLengthGot}.`;
+          } else if (isAdminPage() && authConfig?.adminEmailHint) {
+            msg = `${msg} · E-Mail ok (${authConfig.adminEmailHint}). Passwort in Railway → Variables → WORKPASS_ADMIN_PASSWORD prüfen.`;
           }
           err.textContent = msg;
+          err.hidden = false;
+          err.style.display = "block";
+        }
+        if (isAdminPage() && authConfig?.devicePinAllowed !== false) {
+          const pinHint = document.getElementById("authPinFallbackHint");
+          if (pinHint) pinHint.hidden = false;
         }
         return false;
       }
