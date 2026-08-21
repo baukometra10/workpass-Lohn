@@ -833,26 +833,33 @@ ${styleBlock}
       if (raw) {
         const s = JSON.parse(raw);
         if (s?.token && s?.user?.role === "admin") {
-          // Nur localStorage – kein #suppix-sso= (Token sprengt die URL und zerstört die Session)
-          localStorage.setItem("workpassAdminSessionV2", raw);
-          localStorage.setItem("workpassPlatformSessionV2", raw);
+          const refreshed = {
+            ...s,
+            // Client-expiresAt oft abgelaufen während Hub noch offen ist – neu setzen
+            expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
+            via: s.via || "hub-admin-handoff",
+            handoffAt: new Date().toISOString(),
+          };
+          const packed = JSON.stringify(refreshed);
+          localStorage.setItem("workpassAdminSessionV2", packed);
+          localStorage.setItem("workpassPlatformSessionV2", packed);
           try {
+            sessionStorage.setItem("workpassAdminHandoffPayload", packed);
             sessionStorage.setItem("workpassAdminHandoff", "1");
             sessionStorage.setItem("workpassAdminHash", "adminHelpContactPanel");
             sessionStorage.removeItem("workpassSsoError");
           } catch { /* ignore */ }
-          const until = s.expiresAt ? Date.parse(s.expiresAt) : Date.now() + 8 * 60 * 60 * 1000;
           localStorage.setItem(
             "workpassLohnSessionV2",
             JSON.stringify({
-              until: Number.isFinite(until) ? Math.max(until, Date.now() + 60 * 60 * 1000) : Date.now() + 8 * 60 * 60 * 1000,
+              until: Date.now() + 8 * 60 * 60 * 1000,
               touchedAt: new Date().toISOString(),
             }),
           );
         }
       }
     } catch { /* ignore */ }
-    location.assign("admin.html?from=hub#adminHelpContactPanel");
+    location.assign(`admin.html?from=hub&t=${Date.now()}#adminHelpContactPanel`);
   }
 
   async function hubAdminFetch(path, opts = {}) {

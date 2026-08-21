@@ -246,12 +246,18 @@
       /* offline PIN is admin-page only – never promote Hub→Admin */
       return false;
     }
-    return sessionNotExpired(s);
+    // Client-expiresAt may be stale while Hub session + JWT are still valid
+    if (s.expiresAt) {
+      const exp = Date.parse(s.expiresAt);
+      if (Number.isFinite(exp) && Date.now() >= exp + 36 * 60 * 60 * 1000) return false;
+    }
+    return true;
   }
 
   function isUsableAdminPageSession(s) {
     if (!s?.token || s.user?.role !== "admin") return false;
-    return sessionNotExpired(s);
+    if (isOfflineAdminSessionData(s)) return sessionNotExpired(s);
+    return true;
   }
 
   /** Copy Hub Accounting-Admin session onto Admin key (same browser origin). */
@@ -260,10 +266,14 @@
       storageGet(PLATFORM_SESSION_KEY) || storageGet(LEGACY_PLATFORM_KEY)
     );
     if (!isLiveAdminSession(hub)) return null;
+    const refreshed = {
+      ...hub,
+      expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
+    };
     try {
-      storageSet(ADMIN_SESSION_KEY, JSON.stringify(hub));
+      storageSet(ADMIN_SESSION_KEY, JSON.stringify(refreshed));
     } catch { /* ignore */ }
-    return hub;
+    return refreshed;
   }
 
   function loadPlatformSession() {
@@ -392,9 +402,26 @@
   function isUnlocked() {
     if (storageGet(TEST_BYPASS) === "1" || sessionStorage.getItem(TEST_BYPASS) === "1") return true;
     if (isAdminPage()) {
+      // One-shot Hub handoff payload (survives even if localStorage race/expiry)
+      try {
+        const payload = sessionStorage.getItem("workpassAdminHandoffPayload");
+        if (payload) {
+          const parsed = JSON.parse(payload);
+          if (parsed?.token && parsed?.user?.role === "admin") {
+            storageSet(ADMIN_SESSION_KEY, payload);
+            storageSet(PLATFORM_SESSION_KEY, payload);
+          }
+          sessionStorage.removeItem("workpassAdminHandoffPayload");
+        }
+      } catch { /* ignore */ }
+      adoptHubAdminSession();
       const s = loadPlatformSession();
       if (!(s?.token && s.user?.role === "admin")) return false;
-      return platformSessionActive() || (s.via === "device-pin-offline" && sessionActiveAdmin());
+      if (isOfflineAdminSessionData(s)) {
+        return sessionNotExpired(s);
+      }
+      // Online Admin / Hub-Handoff: Token reicht (Client-expiresAt oft veraltet)
+      return true;
     }
     return sessionActive() || platformSessionActive();
   }

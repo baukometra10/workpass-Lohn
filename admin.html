@@ -11,6 +11,21 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0b1220" />
     <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png" />
+    <script>
+      /* Hub → Admin: Session vor auth-gate wiederherstellen (ohne Login-Schleife) */
+      (function () {
+        try {
+          var packed = sessionStorage.getItem("workpassAdminHandoffPayload");
+          if (!packed) return;
+          var s = JSON.parse(packed);
+          if (!(s && s.token && s.user && s.user.role === "admin")) return;
+          localStorage.setItem("workpassAdminSessionV2", packed);
+          localStorage.setItem("workpassPlatformSessionV2", packed);
+          sessionStorage.removeItem("workpassAdminHandoffPayload");
+          sessionStorage.removeItem("workpassSsoError");
+        } catch (e) { /* ignore */ }
+      })();
+    </script>
     <style>
       /* Admin shell — modern Hub-aligned chrome (no lohn.css viewport lock) */
       html, body {
