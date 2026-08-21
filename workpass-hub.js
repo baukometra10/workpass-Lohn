@@ -822,47 +822,62 @@ ${styleBlock}
     return false;
   }
 
-  async function openFullAdminPage(ev) {
-    if (ev) ev.preventDefault();
-    const status = document.getElementById("hubHelpContactStatus");
-    const token = window.WorkPassAuth?.getSessionToken?.() || "";
-    if (!token) {
-      if (status) {
-        status.textContent = t(
-          "hub.adminHandoffNeedLogin",
-          "Keine Admin-Sitzung – bitte zuerst im Hub anmelden."
-        );
-        status.style.color = "";
-      }
-      return;
+  function setHubAdminStatus(msg, ok) {
+    const status = document.getElementById("hubAdminAdvancedStatus")
+      || document.getElementById("hubHelpContactStatus");
+    if (!status) return;
+    status.textContent = msg || "";
+    status.style.color = ok ? "#86efac" : "";
+  }
+
+  function renderHubAdminOverview(data) {
+    const kpis = document.getElementById("hubAdminKpis");
+    const list = document.getElementById("hubAdminCompanyList");
+    const companies = data?.companies || {};
+    const health = data?.health || {};
+    if (kpis) {
+      kpis.innerHTML = [
+        ["Firmen", companies.count ?? "—"],
+        ["Aktiv", companies.active ?? "—"],
+        ["Version", health.version || "—"],
+      ].map(([k, v]) => `<div class="hub-admin-kpi-item"><span>${k}</span><strong>${v}</strong></div>`).join("");
     }
-    if (status) {
-      status.textContent = t("hub.adminHandoffBusy", "Admin-Seite wird geöffnet…");
-      status.style.color = "#7dd3fc";
+    if (list) {
+      const items = Array.isArray(companies.items) ? companies.items : [];
+      list.innerHTML = items.length
+        ? items.slice(0, 40).map((c) => {
+          const id = c.id || c.companyId || "—";
+          const name = c.name || id;
+          const on = c.accountingEnabled || c.meta?.accountingEnabled ? "●" : "○";
+          return `<li><span>${on}</span> <strong>${name}</strong> <code>${id}</code></li>`;
+        }).join("")
+        : `<li class="muted">${t("hub.adminNoCompanies", "Keine Firmen geladen.")}</li>`;
     }
+  }
+
+  async function loadHubAdminAdvanced() {
+    setHubAdminStatus(t("action.loading", "Laden…"), true);
     try {
-      const res = await fetch(`${apiOrigin()}/v1/auth/admin-handoff`, {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          "X-WorkPass-Session": token,
-        },
-        cache: "no-store",
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok || !data.ticket) {
-        throw new Error(data.error || `Handoff fehlgeschlagen (${res.status})`);
-      }
-      // Kurzes Ticket in der URL – kein riesiges Token, kein localStorage-Risiko
-      location.assign(
-        `admin.html?ticket=${encodeURIComponent(data.ticket)}&t=${Date.now()}#adminHelpContactPanel`
+      const data = await hubAdminFetch("/v1/admin/overview");
+      renderHubAdminOverview(data);
+      setHubAdminStatus(
+        t("hub.adminAdvancedReady", "Admin-Tools bereit – gleiche Hub-Sitzung."),
+        true
       );
     } catch (e) {
-      if (status) {
-        status.textContent = e.message || String(e);
-        status.style.color = "";
-      }
+      setHubAdminStatus(e.message || String(e), false);
+    }
+  }
+
+  async function openFullAdminPage(ev) {
+    if (ev) ev.preventDefault();
+    const panel = document.getElementById("hubAdminAdvanced");
+    if (!panel) return;
+    const show = panel.hidden;
+    panel.hidden = !show;
+    if (show) {
+      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+      await loadHubAdminAdvanced();
     }
   }
 
@@ -979,6 +994,78 @@ ${styleBlock}
       fullBtn.dataset.bound = "1";
       fullBtn.addEventListener("click", openFullAdminPage);
     }
+    const bindOnce = (id, fn) => {
+      const el = document.getElementById(id);
+      if (!el || el.dataset.bound === "1") return;
+      el.dataset.bound = "1";
+      el.addEventListener("click", fn);
+    };
+    bindOnce("btnHubAdminRefresh", () => loadHubAdminAdvanced());
+    bindOnce("btnHubAdminBackup", async () => {
+      try {
+        setHubAdminStatus(t("admin.backupBusy", "Backup läuft…"), true);
+        await hubAdminFetch("/v1/admin/backup", { method: "POST", body: "{}" });
+        setHubAdminStatus(t("admin.backupDone", "Backup erstellt."), true);
+        await loadHubAdminAdvanced();
+      } catch (e) {
+        setHubAdminStatus(e.message || String(e), false);
+      }
+    });
+    bindOnce("btnHubAdminMonthClose", async () => {
+      try {
+        setHubAdminStatus(t("admin.monthCloseBusy", "Läuft…"), true);
+        const data = await hubAdminFetch("/v1/admin/month-close/run", { method: "POST", body: "{}" });
+        setHubAdminStatus(
+          t("admin.monthCloseDone", "Monatsabschluss: {count} Firmen · ok={ok}", {
+            count: data.count || 0,
+            ok: data.ok,
+          }),
+          true
+        );
+        await loadHubAdminAdvanced();
+      } catch (e) {
+        setHubAdminStatus(e.message || String(e), false);
+      }
+    });
+    bindOnce("btnHubAdminClearRate", async () => {
+      try {
+        await hubAdminFetch("/v1/admin/rate-limit/clear", { method: "POST", body: "{}" });
+        setHubAdminStatus(t("admin.rateCleared", "Rate-Limit geleert."), true);
+      } catch (e) {
+        setHubAdminStatus(e.message || String(e), false);
+      }
+    });
+    bindOnce("btnHubSyncLogin", async () => {
+      const companyId = String(document.getElementById("hubSyncCompanyId")?.value || "").trim();
+      const name = String(document.getElementById("hubSyncCompanyName")?.value || "").trim();
+      const email = String(document.getElementById("hubSyncLoginEmail")?.value || "").trim();
+      const password = String(document.getElementById("hubSyncLoginPassword")?.value || "");
+      if (!companyId || password.length < 4) {
+        setHubAdminStatus(t("admin.syncNeed", "Firma-ID und PIN/Passwort (min. 4) erforderlich."), false);
+        return;
+      }
+      try {
+        const data = await hubAdminFetch("/v1/company/login-sync", {
+          method: "POST",
+          body: JSON.stringify({
+            companyId,
+            name: name || companyId,
+            login: { email: email || undefined, password },
+          }),
+        });
+        setHubAdminStatus(
+          t("admin.syncSaved", "Gespeichert: {who} – jetzt in Lohn anmelden.", {
+            who: data.login?.email || email || companyId,
+          }),
+          true
+        );
+        const pinEl = document.getElementById("hubSyncLoginPassword");
+        if (pinEl) pinEl.value = "";
+        await loadHubAdminAdvanced();
+      } catch (e) {
+        setHubAdminStatus(e.message || String(e), false);
+      }
+    });
     const top = document.getElementById("hubTopAdminLink");
     if (top && top.dataset.bound !== "1") {
       top.dataset.bound = "1";
@@ -1076,6 +1163,7 @@ ${styleBlock}
     openHubAdminTab,
     openFullAdminPage,
     loadHubHelpContactForm,
+    loadHubAdminAdvanced,
     printInvoice,
     upsertInvoice,
     readInvoiceArchive,

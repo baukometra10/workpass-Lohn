@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="annual-certificate.css?v=10" />
     <link rel="stylesheet" href="documents-bw.css?v=1" />
     <link rel="stylesheet" href="workpass-theme.css?v=55" />
-    <link rel="stylesheet" href="app-ui.css?v=62" />
+    <link rel="stylesheet" href="app-ui.css?v=63" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0b1220" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -1562,8 +1562,42 @@
                 <div class="help-contact-actions" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px">
                   <button type="button" class="company-save-primary" id="btnHubHelpContactSave" data-i18n="admin.helpContactSave">Kontakt speichern</button>
                   <button type="button" class="secondary-btn" id="btnHubHelpContactReload" data-i18n="admin.helpContactReload">Neu laden</button>
-                  <button type="button" class="secondary-btn" id="btnHubOpenFullAdmin" data-i18n="hub.openFullAdmin">Erweiterte Admin-Seite</button>
+                  <button type="button" class="secondary-btn" id="btnHubOpenFullAdmin" data-i18n="hub.openFullAdmin">Erweiterte Admin-Tools</button>
                 </div>
+              </section>
+
+              <section class="help-card hub-admin-advanced" id="hubAdminAdvanced" hidden>
+                <h3 data-i18n="hub.adminAdvancedTitle">Erweiterte Admin-Tools</h3>
+                <p class="small" data-i18n="hub.adminAdvancedSub">Direkt im Hub – gleiche Sitzung, kein erneutes Anmelden.</p>
+                <p class="small muted" id="hubAdminAdvancedStatus" role="status"></p>
+                <div class="hub-admin-kpi" id="hubAdminKpis" aria-live="polite"></div>
+                <div class="help-contact-actions" style="display:flex;flex-wrap:wrap;gap:10px;margin:12px 0">
+                  <button type="button" class="secondary-btn" id="btnHubAdminRefresh" data-i18n="action.refresh">Aktualisieren</button>
+                  <button type="button" class="secondary-btn" id="btnHubAdminBackup" data-i18n="admin.backup">Backup jetzt</button>
+                  <button type="button" class="secondary-btn" id="btnHubAdminMonthClose" data-i18n="admin.monthCloseAll">Monatsabschluss alle Firmen</button>
+                  <button type="button" class="secondary-btn" id="btnHubAdminClearRate" data-i18n="admin.clearRate">Rate-Limit löschen</button>
+                </div>
+                <h4 data-i18n="admin.syncTitle">Firma aus Plattform hier anlegen (Login-Sync)</h4>
+                <p class="small" data-i18n="admin.syncHint">Firma + Login einmal anlegen, wenn der Firmen-Zugang fehlt.</p>
+                <div class="grid two">
+                  <label>Firma-ID
+                    <input id="hubSyncCompanyId" type="text" placeholder="z. B. luf oder cmp-…" />
+                  </label>
+                  <label>Firmenname
+                    <input id="hubSyncCompanyName" type="text" placeholder="Anzeigename" />
+                  </label>
+                  <label>Login-E-Mail
+                    <input id="hubSyncLoginEmail" type="email" placeholder="luf@firma.de" />
+                  </label>
+                  <label>Passwort / PIN
+                    <input id="hubSyncLoginPassword" type="text" placeholder="4821" autocomplete="off" />
+                  </label>
+                </div>
+                <div class="help-contact-actions" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px">
+                  <button type="button" class="company-save-primary" id="btnHubSyncLogin" data-i18n="admin.saveLogin">Firma + Login speichern</button>
+                </div>
+                <h4 style="margin-top:18px" data-i18n="admin.companies">Firmen</h4>
+                <ul class="hub-admin-company-list" id="hubAdminCompanyList"></ul>
               </section>
             </div>
           </div>
@@ -2360,12 +2394,12 @@
     <script src="elster-export.js?v=2"></script>
     <script src="datev-sheet.js?v=52"></script>
     <script src="payroll-core.js?v=34"></script>
-    <script src="workpass-i18n-packs.js?v=53"></script>
+    <script src="workpass-i18n-packs.js?v=54"></script>
     <script src="workpass-i18n.js?v=7"></script>
     <script src="workpass-pwa.js?v=4"></script>
     <script src="auth-gate.js?v=29"></script>
     <script src="mandant-checklist.js?v=5"></script>
-    <script src="workpass-hub.js?v=30"></script>
+    <script src="workpass-hub.js?v=31"></script>
     <script src="templates.js?v=1" defer></script>
     <script src="signature-engine.js?v=5"></script>
     <script src="help-contact.js?v=2"></script>

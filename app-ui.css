@@ -3806,6 +3806,40 @@ body.help-tab .workspace .form-panel {
 body.admin-tab .workspace .form-panel {
   overflow: auto !important;
 }
+body.admin-tab .hub-admin-kpi {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+body.admin-tab .hub-admin-kpi-item {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(90, 140, 200, 0.28);
+  background: rgba(8, 14, 26, 0.65);
+}
+body.admin-tab .hub-admin-kpi-item span {
+  display: block;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+body.admin-tab .hub-admin-kpi-item strong {
+  font-size: 1.05rem;
+  color: #e8eef8;
+}
+body.admin-tab .hub-admin-company-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  max-height: 280px;
+  overflow: auto;
+  font-size: 0.84rem;
+  color: #d7e6f7;
+}
+body.admin-tab .hub-admin-company-list code {
+  font-size: 0.78em;
+  color: #7dd3fc;
+}
 body.admin-tab .hub-admin-panel .grid.two {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3831,6 +3865,9 @@ body.admin-tab .hub-admin-panel input {
 }
 @media (max-width: 720px) {
   body.admin-tab .hub-admin-panel .grid.two {
+    grid-template-columns: 1fr;
+  }
+  body.admin-tab .hub-admin-kpi {
     grid-template-columns: 1fr;
   }
 }
