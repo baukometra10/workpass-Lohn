@@ -1,5 +1,5 @@
 /* WorkPass shell cache – UI assets only; never cache API. */
-const CACHE = "workpass-shell-v229";
+const CACHE = "workpass-shell-v230";
 const PRECACHE = [
   "./manifest.webmanifest",
   "./icons/icon-192.png",

@@ -704,22 +704,30 @@ body.workpass-hub #hubAdminSessionBanner {
 body.workpass-hub #hubAdminSessionBanner .hub-admin-cta {
   display: inline-flex;
   align-items: center;
-  padding: 6px 12px;
+  margin-left: 0.35rem;
+  padding: 0.28rem 0.7rem;
   border-radius: 999px;
-  border: 1px solid rgba(59, 160, 255, 0.55);
-  background: linear-gradient(180deg, #1a4f8a, #123a68);
-  color: #fff !important;
-  text-decoration: none;
+  border: 1px solid rgba(93, 180, 255, 0.55);
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.35), rgba(29, 78, 216, 0.28));
+  color: #e8f3ff !important;
+  font: inherit;
+  font-size: 0.84rem;
   font-weight: 600;
-  font-size: 0.82rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+body.workpass-hub #hubAdminSessionBanner button.hub-admin-cta {
+  appearance: none;
 }
 body.workpass-hub.dashboard-tab .lex-ribbon,
 body.workpass-hub.help-tab .lex-ribbon,
+body.workpass-hub.admin-tab .lex-ribbon,
 body.workpass-hub.company-tab .lex-ribbon {
   display: none !important;
 }
 body.workpass-hub.dashboard-tab .lex-context-bar,
-body.workpass-hub.help-tab .lex-context-bar {
+body.workpass-hub.help-tab .lex-context-bar,
+body.workpass-hub.admin-tab .lex-context-bar {
   display: none !important;
 }
 body.workpass-hub.document-tab .form-panel {

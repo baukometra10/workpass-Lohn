@@ -5,32 +5,80 @@ let s = fs.readFileSync(path, "utf8");
 if (!s.trimEnd().endsWith("];")) throw new Error("unexpected packs end");
 
 const L = (de, en, tr, ar, fr, es, it, pl) => ({ de, en, tr, ar, fr, es, it, pl });
+
+// Replace outdated banner that linked to admin.html (caused re-login UX)
+s = s.replace(
+  /\["hub\.adminBanner",\s*\{[^\}]+\}\]/,
+  `["hub.adminBanner", ${JSON.stringify(L(
+    "Sie sind als Accounting-Admin angemeldet. Hilfe-Kontakt links unter Admin bearbeiten — ohne erneutes Anmelden.",
+    "You are signed in as Accounting Admin. Edit help contact under Admin on the left — no second login.",
+    "Accounting Admin olarak giriş yaptınız. Yardım iletişimini soldaki Admin’den düzenleyin — tekrar giriş yok.",
+    "أنت مسجّل كـ Accounting Admin. عدّل جهة اتصال المساعدة من Admin يساراً — بدون تسجيل دخول ثانٍ.",
+    "Vous êtes connecté en Accounting Admin. Modifiez le contact d’aide sous Admin à gauche — sans nouvelle connexion.",
+    "Ha iniciado sesión como Accounting Admin. Edite el contacto de ayuda en Admin a la izquierda — sin nuevo inicio de sesión.",
+    "Sei connesso come Accounting Admin. Modifica il contatto assistenza da Admin a sinistra — senza nuovo accesso.",
+    "Jesteś zalogowany jako Accounting Admin. Edytuj kontakt pomocy w Admin po lewej — bez ponownego logowania."
+  ))}]`
+);
+
+s = s.replace(
+  /\["hub\.adminOpenContacts",\s*\{[^\}]+\}\]/,
+  `["hub.adminOpenContacts", ${JSON.stringify(L(
+    "Hilfe-Kontakt öffnen",
+    "Open help contact",
+    "Yardım iletişimini aç",
+    "فتح جهة اتصال المساعدة",
+    "Ouvrir le contact d’aide",
+    "Abrir contacto de ayuda",
+    "Apri contatto assistenza",
+    "Otwórz kontakt pomocy"
+  ))}]`
+);
+
 const extra = [
-  ["admin.jumpHelpContact", L("→ Hilfe-Kontakt", "→ Help contact", "→ Yardım iletişimi", "→ جهة اتصال المساعدة", "→ Contact d’aide", "→ Contacto de ayuda", "→ Contatto assistenza", "→ Kontakt pomocy")],
-  ["admin.openHelpHub", L("Hub → Hilfe öffnen", "Open Hub → Help", "Hub → Yardım’ı aç", "فتح المركز ← مساعدة", "Ouvrir Hub → Aide", "Abrir Hub → Ayuda", "Apri Hub → Aiuto", "Otwórz Hub → Pomoc")],
-  ["admin.helpContactSavedPublic", L(
-    "Gespeichert – sichtbar für alle Firmen unter Hub → Hilfe.",
-    "Saved – visible to all firms under Hub → Help.",
-    "Kaydedildi – tüm firmalar Hub → Yardım’da görür.",
-    "تم الحفظ – يظهر لجميع الشركات في المركز ← مساعدة.",
-    "Enregistré – visible pour toutes les entreprises sous Hub → Aide.",
-    "Guardado – visible para todas las empresas en Hub → Ayuda.",
-    "Salvato – visibile a tutte le aziende in Hub → Aiuto.",
-    "Zapisano – widoczne dla wszystkich firm w Hub → Pomoc."
+  ["nav.adminSub", L(
+    "Hilfe-Kontakt",
+    "Help contact",
+    "Yardım iletişimi",
+    "جهة اتصال المساعدة",
+    "Contact d’aide",
+    "Contacto de ayuda",
+    "Contatto assistenza",
+    "Kontakt pomocy"
   )],
-  ["admin.helpContactSavedOffline", L(
-    "Nur auf diesem Gerät gespeichert. Für Firmen/Kunden: Bridge starten, mit Admin-Konto anmelden und erneut speichern.",
-    "Saved only on this device. For firms/clients: start the bridge, sign in with the Admin account, and save again.",
-    "Yalnızca bu cihazda kaydedildi. Firmalar için: Bridge’i başlatın, Admin hesabıyla girin ve tekrar kaydedin.",
-    "حُفظ على هذا الجهاز فقط. للعملاء: شغّل الجسر، سجّل بحساب Admin، واحفظ مجددًا.",
-    "Enregistré seulement sur cet appareil. Pour les clients : démarrez le bridge, connectez-vous en Admin, enregistrez à nouveau.",
-    "Guardado solo en este dispositivo. Para clientes: inicie el bridge, entre como Admin y guarde de nuevo.",
-    "Salvato solo su questo dispositivo. Per i clienti: avvia il bridge, accedi come Admin e salva di nuovo.",
-    "Zapisano tylko na tym urządzeniu. Dla firm: uruchom bridge, zaloguj się jako Admin i zapisz ponownie."
+  ["hub.adminPanelTitle", L(
+    "Admin · Hilfe-Kontakt",
+    "Admin · Help contact",
+    "Admin · Yardım iletişimi",
+    "Admin · جهة اتصال المساعدة",
+    "Admin · Contact d’aide",
+    "Admin · Contacto de ayuda",
+    "Admin · Contatto assistenza",
+    "Admin · Kontakt pomocy"
+  )],
+  ["hub.adminPanelSub", L(
+    "Nur für Accounting-Admin. Änderungen gelten für alle Firmen unter Hub → Hilfe — ohne erneutes Anmelden.",
+    "Accounting Admin only. Changes apply for all firms under Hub → Help — no second login.",
+    "Yalnızca Accounting Admin. Değişiklikler tüm firmalarda Hub → Yardım’da görünür — tekrar giriş yok.",
+    "لـ Accounting Admin فقط. التغييرات تظهر لكل الشركات تحت Hub → مساعدة — بدون دخول ثانٍ.",
+    "Réservé à Accounting Admin. Les changements s’appliquent à toutes les entreprises (Hub → Aide) — sans nouvelle connexion.",
+    "Solo Accounting Admin. Los cambios valen para todas las empresas (Hub → Ayuda) — sin nuevo inicio de sesión.",
+    "Solo Accounting Admin. Le modifiche valgono per tutte le aziende (Hub → Aiuto) — senza nuovo accesso.",
+    "Tylko Accounting Admin. Zmiany dotyczą wszystkich firm (Hub → Pomoc) — bez ponownego logowania."
+  )],
+  ["hub.openFullAdmin", L(
+    "Erweiterte Admin-Seite",
+    "Full Admin page",
+    "Gelişmiş Admin sayfası",
+    "صفحة Admin المتقدمة",
+    "Page Admin avancée",
+    "Página Admin avanzada",
+    "Pagina Admin avanzata",
+    "Zaawansowana strona Admin"
   )],
 ];
 
-const block = extra.map(([key, locs]) => `  [${JSON.stringify(key)}, ${JSON.stringify(locs)}]`).join(",\n");
-s = s.replace(/\];\s*$/, `${block},\n];\n`);
+const block = extra.map(([k, v]) => `  ${JSON.stringify([k, v])},`).join("\n");
+s = s.replace(/\];\s*$/, `${block}\n];\n`);
 fs.writeFileSync(path, s);
-console.log("appended", extra.length, "keys");
+console.log("appended", extra.length, "keys + updated hub.adminBanner/OpenContacts");

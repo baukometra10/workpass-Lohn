@@ -803,6 +803,179 @@ ${styleBlock}
     input.addEventListener("search", refresh);
   }
 
+  function apiOrigin() {
+    const h = String(location.hostname || "");
+    if (h === "localhost" || h === "127.0.0.1" || location.protocol === "file:") {
+      return "http://127.0.0.1:8787";
+    }
+    return String(location.origin || "").replace(/\/+$/, "");
+  }
+
+  function openHubAdminTab() {
+    const tab = document.getElementById("sidebarAdminTab")
+      || document.querySelector('.form-tab[data-tab="admin"]');
+    if (tab) {
+      tab.hidden = false;
+      tab.click();
+      return true;
+    }
+    return false;
+  }
+
+  function openFullAdminPage(ev) {
+    if (ev) ev.preventDefault();
+    try {
+      const raw =
+        localStorage.getItem("workpassPlatformSessionV2")
+        || sessionStorage.getItem("workpassPlatformSessionV2")
+        || localStorage.getItem("workpassPlatformSessionV1");
+      if (!raw) {
+        location.assign("admin.html#adminHelpContactPanel");
+        return;
+      }
+      const s = JSON.parse(raw);
+      if (!(s?.token && s?.user?.role === "admin")) {
+        location.assign("admin.html#adminHelpContactPanel");
+        return;
+      }
+      localStorage.setItem("workpassAdminSessionV2", raw);
+      try { sessionStorage.setItem("workpassAdminHash", "adminHelpContactPanel"); } catch { /* ignore */ }
+      const payload = encodeURIComponent(JSON.stringify({
+        token: s.token,
+        expiresAt: s.expiresAt || null,
+        user: s.user,
+        via: "hub-admin-handoff",
+        preferredLocale: s.preferredLocale || s.user?.locale || "",
+      }));
+      location.assign(`admin.html#suppix-sso=${payload}`);
+    } catch {
+      location.assign("admin.html#adminHelpContactPanel");
+    }
+  }
+
+  async function hubAdminFetch(path, opts = {}) {
+    const token = window.WorkPassAuth?.getSessionToken?.() || "";
+    const res = await fetch(`${apiOrigin()}${path}`, {
+      ...opts,
+      headers: {
+        Accept: "application/json",
+        ...(opts.body ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { "X-WorkPass-Session": token } : {}),
+        ...(opts.headers || {}),
+      },
+      cache: "no-store",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) {
+      throw new Error(data.error || `HTTP ${res.status}`);
+    }
+    return data;
+  }
+
+  function fillHubHelpContactForm(contact) {
+    const c = contact || {};
+    const set = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.value = val == null ? "" : String(val);
+    };
+    set("hubHelpContactProduct", c.product);
+    set("hubHelpContactEmail", c.email);
+    set("hubHelpContactPhone", c.phone);
+    set("hubHelpContactWhatsapp", c.whatsapp);
+    set("hubHelpContactWebsite", c.website);
+    set("hubHelpContactWebsiteLabel", c.websiteLabel);
+    set("hubHelpContactHours", c.hoursDe);
+    const meta = document.getElementById("hubHelpContactMeta");
+    if (meta) {
+      if (c.updatedAt) {
+        meta.hidden = false;
+        meta.textContent = t("admin.helpContactMeta", "Zuletzt gespeichert: {when}{by}", {
+          when: new Date(c.updatedAt).toLocaleString(),
+          by: c.updatedBy ? t("admin.helpContactBy", " · von {who}", { who: c.updatedBy }) : "",
+        });
+      } else {
+        meta.hidden = true;
+        meta.textContent = "";
+      }
+    }
+  }
+
+  function readHubHelpContactForm() {
+    return {
+      product: document.getElementById("hubHelpContactProduct")?.value || "",
+      email: document.getElementById("hubHelpContactEmail")?.value || "",
+      phone: document.getElementById("hubHelpContactPhone")?.value || "",
+      whatsapp: document.getElementById("hubHelpContactWhatsapp")?.value || "",
+      website: document.getElementById("hubHelpContactWebsite")?.value || "",
+      websiteLabel: document.getElementById("hubHelpContactWebsiteLabel")?.value || "",
+      hoursDe: document.getElementById("hubHelpContactHours")?.value || "",
+    };
+  }
+
+  async function loadHubHelpContactForm() {
+    const status = document.getElementById("hubHelpContactStatus");
+    try {
+      const data = await hubAdminFetch("/v1/admin/help-contact");
+      fillHubHelpContactForm(data.contact || data);
+      if (status) status.textContent = "";
+    } catch (e) {
+      if (status) status.textContent = e.message || String(e);
+    }
+  }
+
+  function bindHubAdminPanel() {
+    const saveBtn = document.getElementById("btnHubHelpContactSave");
+    const reloadBtn = document.getElementById("btnHubHelpContactReload");
+    const fullBtn = document.getElementById("btnHubOpenFullAdmin");
+    if (saveBtn && saveBtn.dataset.bound !== "1") {
+      saveBtn.dataset.bound = "1";
+      saveBtn.addEventListener("click", async () => {
+        const status = document.getElementById("hubHelpContactStatus");
+        saveBtn.disabled = true;
+        try {
+          const data = await hubAdminFetch("/v1/admin/help-contact", {
+            method: "PUT",
+            body: JSON.stringify(readHubHelpContactForm()),
+          });
+          fillHubHelpContactForm(data.contact || data);
+          if (status) {
+            status.textContent = t(
+              "admin.helpContactSavedPublic",
+              "Gespeichert – sichtbar für alle Firmen unter Hub → Hilfe."
+            );
+            status.style.color = "#86efac";
+          }
+          if (typeof window.loadHelpContactFromServer === "function") {
+            window.loadHelpContactFromServer();
+          }
+        } catch (e) {
+          if (status) {
+            status.textContent = e.message || String(e);
+            status.style.color = "";
+          }
+        } finally {
+          saveBtn.disabled = false;
+        }
+      });
+    }
+    if (reloadBtn && reloadBtn.dataset.bound !== "1") {
+      reloadBtn.dataset.bound = "1";
+      reloadBtn.addEventListener("click", () => loadHubHelpContactForm());
+    }
+    if (fullBtn && fullBtn.dataset.bound !== "1") {
+      fullBtn.dataset.bound = "1";
+      fullBtn.addEventListener("click", openFullAdminPage);
+    }
+    const top = document.getElementById("hubTopAdminLink");
+    if (top && top.dataset.bound !== "1") {
+      top.dataset.bound = "1";
+      top.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        openHubAdminTab();
+      });
+    }
+  }
+
   function boot() {
     document.body.classList.add("workpass-hub");
     document.documentElement.classList.add("hub-desktop");
@@ -811,6 +984,7 @@ ${styleBlock}
     renderInvoiceArchive();
     renderSyncLog();
     bindPinChange();
+    bindHubAdminPanel();
     window.WorkPassAuth?.init({
       onUnlock: () => {
         document.body.classList.remove("auth-locked");
@@ -819,10 +993,8 @@ ${styleBlock}
         const isAdminUser = user?.role === "admin";
         document.body.classList.toggle("company-portal", Boolean(companyUser));
         document.body.classList.toggle("hub-admin-session", Boolean(isAdminUser && !companyUser));
-        // Companies keep full Hub access (Rechnung + Mandant + Übersicht).
-        // Only Admin stays hidden for firm logins.
-        document.querySelectorAll('a[href="admin.html"]').forEach((a) => {
-          a.hidden = Boolean(companyUser);
+        document.querySelectorAll(".hub-admin-only").forEach((el) => {
+          el.hidden = !(isAdminUser && !companyUser);
         });
         const badge = document.getElementById("hubCompanyBadge");
         if (badge) {
@@ -848,47 +1020,28 @@ ${styleBlock}
           }
           adminBanner.hidden = false;
           adminBanner.innerHTML =
-            t(
+            `<span>${t(
               "hub.adminBanner",
-              "Sie sind als Accounting-Admin angemeldet. Firmen-Portal-Design nur mit Firmen-Login."
-            ) +
-            ' <a class="hub-admin-cta" href="admin.html#adminHelpContactPanel">' +
-            t("hub.adminOpenContacts", "Hilfe-Kontakt & Admin öffnen") +
-            "</a>";
-          const handoffAdminSession = (ev) => {
-            try {
-              const raw =
-                localStorage.getItem("workpassPlatformSessionV2")
-                || sessionStorage.getItem("workpassPlatformSessionV2")
-                || localStorage.getItem("workpassPlatformSessionV1");
-              if (!raw) return;
-              const s = JSON.parse(raw);
-              if (!(s?.token && s?.user?.role === "admin")) return;
-              localStorage.setItem("workpassAdminSessionV2", raw);
-              // Hash handoff: works even if Admin session key was stale/blocked
-              const payload = encodeURIComponent(JSON.stringify({
-                token: s.token,
-                expiresAt: s.expiresAt || null,
-                user: s.user,
-                via: "hub-admin-handoff",
-                preferredLocale: s.preferredLocale || s.user?.locale || "",
-              }));
-              const a = ev?.currentTarget;
-              if (a && a.setAttribute) {
-                a.setAttribute("href", `admin.html#suppix-sso=${payload}`);
-              }
-            } catch { /* ignore */ }
-          };
-          document.querySelectorAll('a[href="admin.html"], a[href^="admin.html#"]').forEach((a) => {
-            a.hidden = false;
-            a.classList.add("wp-admin-link-hot");
-            if (!String(a.getAttribute("href") || "").includes("#")) {
-              a.setAttribute("href", "admin.html#adminHelpContactPanel");
-            }
-            if (a.dataset.adminHandoffBound === "1") return;
-            a.dataset.adminHandoffBound = "1";
-            a.addEventListener("click", handoffAdminSession);
+              "Sie sind als Accounting-Admin angemeldet. Hilfe-Kontakt links unter Admin bearbeiten — ohne erneutes Anmelden."
+            )}</span> ` +
+            `<button type="button" class="hub-admin-cta" id="hubAdminOpenPanelBtn">${t(
+              "hub.adminOpenContacts",
+              "Hilfe-Kontakt öffnen"
+            )}</button>`;
+          document.getElementById("hubAdminOpenPanelBtn")?.addEventListener("click", () => {
+            openHubAdminTab();
+            loadHubHelpContactForm();
           });
+          // Pre-mirror session so optional full Admin page opens without gate
+          try {
+            const raw = localStorage.getItem("workpassPlatformSessionV2");
+            if (raw) {
+              const s = JSON.parse(raw);
+              if (s?.token && s?.user?.role === "admin") {
+                localStorage.setItem("workpassAdminSessionV2", raw);
+              }
+            }
+          } catch { /* ignore */ }
         } else if (adminBanner) {
           adminBanner.hidden = true;
         }
@@ -907,6 +1060,9 @@ ${styleBlock}
   window.WorkPassHub = {
     printHtml,
     printElement,
+    openHubAdminTab,
+    openFullAdminPage,
+    loadHubHelpContactForm,
     printInvoice,
     upsertInvoice,
     readInvoiceArchive,

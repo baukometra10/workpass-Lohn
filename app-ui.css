@@ -2556,7 +2556,9 @@ body.document-tab .workspace .preview-panel {
 body.company-tab .workspace,
 body.workpass-hub.company-tab .workspace,
 body.help-tab .workspace,
-body.workpass-hub.help-tab .workspace {
+body.workpass-hub.help-tab .workspace,
+body.admin-tab .workspace,
+body.workpass-hub.admin-tab .workspace {
   grid-template-columns: minmax(0, 1fr) !important;
   display: grid !important;
 }
@@ -2574,6 +2576,9 @@ body.workpass-hub.company-tab #invoicePreview,
 body.help-tab .workspace .preview-panel,
 body.help-tab #invoicePreview,
 body.workpass-hub.help-tab .preview-panel,
+body.admin-tab .workspace .preview-panel,
+body.admin-tab #invoicePreview,
+body.workpass-hub.admin-tab .preview-panel,
 body.dashboard-tab .workspace .preview-panel,
 body.dashboard-tab #invoicePreview,
 body.workpass-hub.dashboard-tab .preview-panel {
@@ -3797,6 +3802,37 @@ body.document-tab #invoiceFitFrame {
 /* ── Hilfe page ── */
 body.help-tab .workspace .form-panel {
   overflow: auto !important;
+}
+body.admin-tab .workspace .form-panel {
+  overflow: auto !important;
+}
+body.admin-tab .hub-admin-panel .grid.two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+body.admin-tab .hub-admin-panel .grid.two .full {
+  grid-column: 1 / -1;
+}
+body.admin-tab .hub-admin-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--muted, #94a3b8);
+}
+body.admin-tab .hub-admin-panel input {
+  border-radius: 10px;
+  border: 1px solid rgba(90, 140, 200, 0.35);
+  background: rgba(8, 14, 26, 0.85);
+  color: #e8eef8;
+  padding: 10px 12px;
+  font: inherit;
+}
+@media (max-width: 720px) {
+  body.admin-tab .hub-admin-panel .grid.two {
+    grid-template-columns: 1fr;
+  }
 }
 .help-page-inner {
   width: min(100%, 920px);

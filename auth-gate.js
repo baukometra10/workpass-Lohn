@@ -120,7 +120,14 @@
     }
     const path = String(location.pathname || "").toLowerCase();
     if (/admin\.html$/i.test(path) || document.body?.classList?.contains("admin-page")) {
-      const hashTarget = user?.role === "admin" ? "#adminHelpContactPanel" : "";
+      let hashTarget = "#adminHelpContactPanel";
+      try {
+        const saved = sessionStorage.getItem("workpassAdminHash");
+        if (saved) {
+          hashTarget = `#${String(saved).replace(/^#/, "")}`;
+          sessionStorage.removeItem("workpassAdminHash");
+        }
+      } catch { /* ignore */ }
       history.replaceState(null, "", `${location.pathname}${hashTarget}`);
       return;
     }

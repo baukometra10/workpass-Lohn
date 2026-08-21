@@ -1859,6 +1859,7 @@ function initTabs() {
       });
       document.body.classList.toggle("dashboard-tab", target === "dashboard");
       document.body.classList.toggle("help-tab", target === "help");
+      document.body.classList.toggle("admin-tab", target === "admin");
       document.body.classList.toggle("company-tab", target === "company");
       document.body.classList.toggle("document-tab", target === "document");
       updateTopbarForMode();
@@ -1866,6 +1867,9 @@ function initTabs() {
       updatePreview();
       if (target === "help") {
         loadHelpContactFromServer();
+      }
+      if (target === "admin") {
+        window.WorkPassHub?.loadHubHelpContactForm?.();
       }
       requestAnimationFrame(() => {
         if (target === "document") {
@@ -1882,11 +1886,16 @@ function initTabs() {
   const initialTab = document.querySelector(".form-tab.active")?.dataset.tab || "dashboard";
   document.body.classList.toggle("dashboard-tab", initialTab === "dashboard");
   document.body.classList.toggle("help-tab", initialTab === "help");
+  document.body.classList.toggle("admin-tab", initialTab === "admin");
   document.body.classList.toggle("company-tab", initialTab === "company");
   document.body.classList.toggle("document-tab", initialTab === "document");
   if (initialTab === "help" || /#help\b/i.test(location.hash)) {
     document.querySelector('.form-tab[data-tab="help"]')?.click();
     loadHelpContactFromServer();
+  }
+  if (initialTab === "admin" || /#admin\b/i.test(location.hash)) {
+    document.querySelector('.form-tab[data-tab="admin"]')?.click();
+    window.WorkPassHub?.loadHubHelpContactForm?.();
   }
 }
 
