@@ -565,10 +565,17 @@
         } else {
           hint.textContent = authConfig?.adminHint
             || tt("auth.adminHint", "Admin ist getrennt vom Firmen-Zugang. E-Mail + Passwort aus Railway (WORKPASS_ADMIN_EMAIL). Offline: Tab Geräte-PIN.");
+          if (authConfig?.adminEmailHint) {
+            hint.textContent = `${hint.textContent} · Erwartet: ${authConfig.adminEmailHint} (nicht @firma.de)`;
+          }
           if (authConfig?.setupGaps?.length) {
             hint.textContent = `${hint.textContent} · Fehlt: ${authConfig.setupGaps.join(", ")}`;
           }
         }
+      }
+      const emailInput = document.getElementById("authEmail");
+      if (emailInput && authConfig?.adminEmailHint) {
+        emailInput.placeholder = authConfig.adminEmailHint.replace(/\*\*\*/g, "…");
       }
       return;
     }
@@ -650,10 +657,29 @@
 
   async function submitPlatform() {
     const err = document.getElementById("authError");
-    const email = String(document.getElementById("authEmail")?.value || "").trim();
+    const emailEl = document.getElementById("authEmail");
+    let email = String(emailEl?.value || "").trim().toLowerCase();
+    // Autocomplete oft klebt Firmen-Domain an: name@outlook.defirma.de
+    const fixed = email
+      .replace(/@(outlook|gmail|hotmail|yahoo|live|icloud|googlemail)\.de(firma\.de)$/i, "@$1.de")
+      .replace(/\.defirma\.de$/i, ".de")
+      .replace(/@([^@]+)@[^@]+$/i, "@$1");
+    if (fixed !== email && emailEl) {
+      emailEl.value = fixed;
+      email = fixed;
+    }
     const password = String(document.getElementById("authPassword")?.value || "");
     if (!email || password.length < 4) {
       if (err) err.textContent = tt("auth.needCreds", "E-Mail und Passwort/PIN (min. 4 Zeichen) erforderlich.");
+      return false;
+    }
+    if (isAdminPage() && /@[^@]*firma\.de$/i.test(email)) {
+      if (err) {
+        err.textContent = tt(
+          "auth.adminNotFirmEmail",
+          "Das ist eine Firmen-Adresse (@firma.de) – kein Admin. Bitte Admin-E-Mail nutzen (z. B. …@outlook.de), nicht die Firmen-Login-Adresse."
+        );
+      }
       return false;
     }
     if (err) err.textContent = tt("auth.signingIn", "Anmelden…");
@@ -676,7 +702,13 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
-        if (err) err.textContent = data.error || `Login fehlgeschlagen (${res.status})`;
+        if (err) {
+          let msg = data.error || `Login fehlgeschlagen (${res.status})`;
+          if (isAdminPage() && authConfig?.adminEmailHint) {
+            msg = `${msg} · Admin-E-Mail ähnelt: ${authConfig.adminEmailHint}`;
+          }
+          err.textContent = msg;
+        }
         return false;
       }
       savePlatformSession({
