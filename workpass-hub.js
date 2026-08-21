@@ -815,21 +815,44 @@ ${styleBlock}
       onUnlock: () => {
         document.body.classList.remove("auth-locked");
         const companyUser = window.WorkPassAuth?.isCompanyPortalUser?.();
+        const user = window.WorkPassAuth?.getSessionUser?.();
+        const isAdminUser = user?.role === "admin";
         document.body.classList.toggle("company-portal", Boolean(companyUser));
+        document.body.classList.toggle("hub-admin-session", Boolean(isAdminUser && !companyUser));
         // Companies keep full Hub access (Rechnung + Mandant + Übersicht).
         // Only Admin stays hidden for firm logins.
         document.querySelectorAll('a[href="admin.html"]').forEach((a) => {
           a.hidden = Boolean(companyUser);
         });
-        const user = window.WorkPassAuth?.getSessionUser?.();
         const badge = document.getElementById("hubCompanyBadge");
         if (badge) {
           if (companyUser) {
             badge.hidden = false;
             badge.textContent = t("hub.firmLine", "Firma · {id}", { id: user.companyId });
+          } else if (isAdminUser) {
+            badge.hidden = false;
+            badge.textContent = t("hub.adminLine", "Accounting Admin · kein Firmen-Portal");
           } else {
             badge.hidden = true;
           }
+        }
+        let adminBanner = document.getElementById("hubAdminSessionBanner");
+        if (isAdminUser && !companyUser) {
+          if (!adminBanner) {
+            adminBanner = document.createElement("p");
+            adminBanner.id = "hubAdminSessionBanner";
+            adminBanner.className = "wp-hub-banner";
+            adminBanner.setAttribute("role", "status");
+            const host = document.querySelector(".app-main") || document.getElementById("invoiceForm") || document.body;
+            host.prepend(adminBanner);
+          }
+          adminBanner.hidden = false;
+          adminBanner.innerHTML = t(
+            "hub.adminBanner",
+            "Sie sind als Accounting-Admin angemeldet. Das Firmen-Portal-Design erscheint nur mit Firmen-Login. Admin-Rechte und Hilfe-Kontakt: <a href=\"admin.html\">admin.html</a>."
+          );
+        } else if (adminBanner) {
+          adminBanner.hidden = true;
         }
         window.WorkPassI18n?.syncFromSession?.();
         renderInvoiceArchive();

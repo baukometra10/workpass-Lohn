@@ -234,6 +234,16 @@
       }
       .admin-rights { margin: 0; padding-left: 18px; }
       .admin-rights li { margin: 6px 0; color: #d7e6f7; font-size: 0.88rem; }
+      .admin-rights li.admin-rights-note {
+        list-style: none;
+        margin-left: -18px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(251, 191, 36, 0.35);
+        background: rgba(251, 191, 36, 0.08);
+        color: #fde68a;
+        font-size: 0.8rem;
+      }
       .admin-status {
         min-height: 1.2em;
         font-size: 0.82rem;
@@ -592,10 +602,10 @@
       <p class="admin-foot" data-i18n="admin.foot">WorkPass Steuerprogramm · Bridge-Admin</p>
     </div>
 
-    <script src="workpass-i18n-packs.js?v=21"></script>
+    <script src="workpass-i18n-packs.js?v=22"></script>
     <script src="workpass-i18n.js?v=6"></script>
     <script src="workpass-pwa.js?v=4"></script>
-    <script src="auth-gate.js?v=19"></script>
+    <script src="auth-gate.js?v=20"></script>
     <script>
       if (window.WorkPassI18n) {
         window.WorkPassI18n.init();
@@ -603,9 +613,11 @@
         window.WorkPassI18n.applyDom(document);
       }
       function origin() {
-        const h = location.hostname;
-        if (h === "localhost" || h === "127.0.0.1") return "http://127.0.0.1:8787";
-        return location.origin;
+        const h = String(location.hostname || "");
+        if (h === "localhost" || h === "127.0.0.1" || location.protocol === "file:") {
+          return "http://127.0.0.1:8787";
+        }
+        return String(location.origin || "").replace(/\/+$/, "");
       }
       function bridgeMsg(err) {
         const msg = String(err?.message || err || "");
@@ -616,6 +628,36 @@
           );
         }
         return msg || t("admin.unknownError", "Unbekannter Fehler");
+      }
+      const ADMIN_RIGHTS_CATALOG = [
+        ["activateCompany", "admin.right.activate", "Firma aktivieren"],
+        ["deactivateCompany", "admin.right.deactivate", "Firma deaktivieren"],
+        ["deleteCompany", "admin.right.delete", "Firma löschen"],
+        ["backups", "admin.right.backups", "Backups erstellen & wiederherstellen"],
+        ["sync", "admin.right.sync", "Login-Sync / Plattform-Sync"],
+        ["clearRateLimit", "admin.right.rateLimit", "Rate-Limit löschen"],
+        ["viewAllCompanies", "admin.right.viewAll", "Alle Firmen einsehen"],
+        ["audit", "admin.right.audit", "Audit-Log lesen"],
+        ["helpContact", "admin.right.helpContact", "Hilfe-Kontakt öffentlich pflegen"],
+      ];
+      function renderAdminRights(rights, { confirmed = true } = {}) {
+        const host = document.getElementById("adminRights");
+        if (!host) return;
+        const src = rights && typeof rights === "object" ? rights : {};
+        const rows = ADMIN_RIGHTS_CATALOG.map(([key, i18nKey, fb]) => {
+          const on = confirmed ? src[key] !== false : false;
+          const label = t(i18nKey, fb);
+          const mark = confirmed ? (on ? "✓" : "–") : "·";
+          return "<li>" + mark + " " + esc(label) + "</li>";
+        });
+        if (!confirmed) {
+          rows.unshift(
+            "<li class=\"admin-rights-note\">" +
+              esc(t("admin.rightsNeedOnline", "Vollständige Rechte erscheinen nach erfolgreicher Bridge-Verbindung (Admin-Konto, nicht nur PIN).")) +
+            "</li>"
+          );
+        }
+        host.innerHTML = rows.join("");
       }
       async function api(path, opts = {}) {
         const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
@@ -687,8 +729,8 @@
             '<div class="admin-kpi"><span>' + esc(t("admin.kpiBackups", "Backups")) + "</span><strong>" + (data.backup?.backups?.length ?? 0) + "</strong></div>" +
             '<div class="admin-kpi"><span>' + esc(t("admin.kpiVersion", "Version")) + "</span><strong>" + esc(data.health?.version || "—") + "</strong></div>";
           const rights = data.rights || {};
-          document.getElementById("adminRights").innerHTML = Object.entries(rights)
-            .map(([k, v]) => "<li>" + (v ? "✓" : "–") + " " + esc(k) + "</li>").join("") || ("<li>" + esc(t("admin.noRights", "Keine Rechte geladen.")) + "</li>");
+          // helpContact is always part of Admin UI (server overview may omit the key)
+          renderAdminRights({ ...rights, helpContact: true }, { confirmed: true });
           const rows = (data.companies?.items || []).map((c) => {
             const warnings = [];
             if (!c.accountingEnabled) warnings.push(t("admin.warnNoAccounting", "Kein Accounting"));
@@ -780,10 +822,7 @@
         } catch (e) {
           setStatus(bridgeMsg(e), false);
           setBridgeDependentControls(true);
-          const rights = document.getElementById("adminRights");
-          if (rights && !rights.children.length) {
-            rights.innerHTML = "<li>" + esc(t("admin.rightsOffline", "Offline – Rechte erscheinen nach Bridge-Verbindung.")) + "</li>";
-          }
+          renderAdminRights({}, { confirmed: false });
         } finally {
           setBusy(btn, false, t("action.refresh", "Aktualisieren"));
         }
@@ -1209,6 +1248,7 @@
           if (isOfflineAdminSession()) {
             setBridgeDependentControls(true);
             setStatus(t("admin.offlineMode", "Offline-Admin (Geräte-PIN). Hilfe-Kontakt oben bearbeiten. Für alle Firmen: Bridge + Admin-Konto, dann speichern."), true);
+            renderAdminRights({}, { confirmed: false });
             await loadHelpContactForm().catch(() => {});
             document.getElementById("adminHelpContactPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
             document.getElementById("helpContactEmail")?.focus();
@@ -1223,6 +1263,8 @@
           syncLocalHelpContactIfOnline().catch(() => {});
         },
       });
+      // Show rights catalog immediately (filled/confirmed after overview)
+      renderAdminRights({}, { confirmed: false });
     </script>
   </body>
 </html>

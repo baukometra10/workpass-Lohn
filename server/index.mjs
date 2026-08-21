@@ -813,6 +813,7 @@ async function handler(req, res) {
           clearRateLimit: true,
           viewAllCompanies: true,
           audit: true,
+          helpContact: true,
         },
       });
     }

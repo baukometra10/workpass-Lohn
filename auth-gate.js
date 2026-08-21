@@ -291,7 +291,8 @@
       },
       via: "device-pin-offline",
     });
-    touchSession(IDLE_MS);
+    // Do NOT touch shared Hub/Lohn session — Admin stays isolated.
+    resetIdleWatch();
   }
 
   /** One successful login (Konto oder PIN) keeps the app open. Admin is a separate session. */
@@ -300,15 +301,41 @@
     if (isAdminPage()) {
       const s = loadPlatformSession();
       if (!(s?.token && s.user?.role === "admin")) return false;
-      if (s.via === "device-pin-offline") return sessionActive() || platformSessionActive();
-      return platformSessionActive();
+      return platformSessionActive() || (s.via === "device-pin-offline" && sessionActiveAdmin());
     }
     return sessionActive() || platformSessionActive();
   }
 
+  function sessionActiveAdmin() {
+    const s = loadPlatformSession();
+    if (!s?.token || s.user?.role !== "admin") return false;
+    if (s.expiresAt) {
+      const exp = Date.parse(s.expiresAt);
+      if (Number.isFinite(exp) && Date.now() >= exp) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Extend UI idle TTL.
+   * Admin page must NOT write workpassLohnSessionV2 — that unlocked Hub/Lohn
+   * without company-portal and made the whole app look “different”.
+   */
   function touchSession(extraMs) {
     const ttl = Number(extraMs) > 0 ? Number(extraMs) : IDLE_MS;
     const until = Date.now() + ttl;
+    if (isAdminPage()) {
+      const s = loadPlatformSession();
+      if (s?.token) {
+        savePlatformSession({
+          ...s,
+          expiresAt: new Date(until).toISOString(),
+          touchedAt: new Date().toISOString(),
+        });
+      }
+      resetIdleWatch();
+      return;
+    }
     storageSet(SESSION_KEY, JSON.stringify({ until, touchedAt: new Date().toISOString() }));
     try { sessionStorage.removeItem(LEGACY_SESSION_KEY); } catch { /* ignore */ }
     resetIdleWatch();
@@ -322,15 +349,24 @@
   function resetIdleWatch() {
     clearTimeout(idleTimer);
     if (!isUnlocked()) return;
-    const s = (() => {
-      try {
-        const raw = storageGet(SESSION_KEY) || storageGet(LEGACY_SESSION_KEY);
-        return raw ? JSON.parse(raw) : null;
-      } catch {
-        return null;
+    let remaining = IDLE_MS;
+    if (isAdminPage()) {
+      const s = loadPlatformSession();
+      if (s?.expiresAt) {
+        const exp = Date.parse(s.expiresAt);
+        if (Number.isFinite(exp)) remaining = Math.max(1000, exp - Date.now());
       }
-    })();
-    const remaining = s?.until ? Math.max(1000, s.until - Date.now()) : IDLE_MS;
+    } else {
+      const s = (() => {
+        try {
+          const raw = storageGet(SESSION_KEY) || storageGet(LEGACY_SESSION_KEY);
+          return raw ? JSON.parse(raw) : null;
+        } catch {
+          return null;
+        }
+      })();
+      remaining = s?.until ? Math.max(1000, s.until - Date.now()) : IDLE_MS;
+    }
     idleTimer = setTimeout(() => {
       if (isAdminPage()) {
         clearPlatformSession();
@@ -563,10 +599,15 @@
         user: data.user,
         via: data.via,
       });
-      document.body.classList.toggle(
-        "company-portal",
-        Boolean(data.user?.companyId && data.user?.role !== "admin")
-      );
+      if (isAdminPage()) {
+        document.body.classList.remove("company-portal");
+        document.body.classList.add("admin-page");
+      } else {
+        document.body.classList.toggle(
+          "company-portal",
+          Boolean(data.user?.companyId && data.user?.role !== "admin")
+        );
+      }
       try {
         if (data.user?.companyId && typeof localStorage !== "undefined") {
           const prev = JSON.parse(localStorage.getItem("workpass.lohn.apiConfig.v1") || "{}");
@@ -864,7 +905,7 @@
     });
     document.getElementById("btnLock")?.addEventListener("click", lock);
 
-    // One unlock is enough across Hub / Lohn / Admin (localStorage)
+    // Admin page unlock must not auto-open Hub/Lohn (separate session keys).
     if (isUnlocked()) {
       const verified = await verifyPlatformSessionOrClear();
       if (!verified.ok) {
@@ -874,7 +915,12 @@
       }
       hideGate();
       touchSession();
-      document.body.classList.toggle("company-portal", isCompanyPortalUser());
+      if (!isAdminPage()) {
+        document.body.classList.toggle("company-portal", isCompanyPortalUser());
+      } else {
+        document.body.classList.remove("company-portal");
+        document.body.classList.add("admin-page");
+      }
       await window.WorkPassI18n?.syncFromSession?.();
       onUnlockCb?.();
       return true;
