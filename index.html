@@ -10,9 +10,8 @@
       href="https://fonts.googleapis.com/css2?family=Allura&family=Barlow:wght@400;500;600;700&family=Dancing+Script:wght@500;600&family=Great+Vibes&family=IBM+Plex+Mono:wght@400;500&family=Pacifico&family=Pinyon+Script&family=Satisfy&family=Space+Grotesk:wght@500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=47" />
+    <link rel="stylesheet" href="styles.css?v=85" />
     <link rel="stylesheet" href="agenda-reference.css?v=6" />
-    <link rel="stylesheet" href="app-ui.css?v=25" />
     <link rel="stylesheet" href="payroll-layouts.css?v=21" />
     <link rel="stylesheet" href="datev-layout.css?v=12" />
     <link rel="stylesheet" href="datev-ref-overlay.css?v=2" />
@@ -21,7 +20,8 @@
     <link rel="stylesheet" href="verdienst-sheet.css?v=1" />
     <link rel="stylesheet" href="annual-certificate.css?v=10" />
     <link rel="stylesheet" href="documents-bw.css?v=1" />
-    <link rel="stylesheet" href="workpass-theme.css?v=27" />
+    <link rel="stylesheet" href="workpass-theme.css?v=52" />
+    <link rel="stylesheet" href="app-ui.css?v=59" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0b1220" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -29,6 +29,226 @@
     <meta name="apple-mobile-web-app-title" content="WorkPass" />
     <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  
+    <style id="rechnungSplitHard">
+      /* ALWAYS two columns: form left · A4 right — never stack. Scale content to fit. */
+      body.workpass-hub.document-tab .app-shell,
+      body.document-tab .app-shell {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        max-width: none !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      body.document-tab #invoiceWorkspace,
+      body.document-tab main.layout.workspace {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+        grid-template-rows: minmax(0, 1fr) !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        gap: 0 !important;
+        margin: 0 !important;
+        overflow: hidden !important;
+        align-items: stretch !important;
+      }
+      @media (min-width: 1400px) {
+        body.document-tab #invoiceWorkspace,
+        body.document-tab main.layout.workspace {
+          grid-template-columns: minmax(360px, 1fr) minmax(0, 860px) !important;
+        }
+      }
+      @media (min-width: 1800px) {
+        body.document-tab #invoiceWorkspace,
+        body.document-tab main.layout.workspace {
+          grid-template-columns: minmax(420px, 1.05fr) minmax(0, 900px) !important;
+        }
+      }
+      body.document-tab #invoiceForm,
+      body.document-tab .workspace .form-panel {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        max-height: 100% !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        overscroll-behavior: contain !important;
+        position: relative !important;
+        z-index: 5 !important;
+        isolation: isolate !important;
+        contain: layout !important;
+        border-right: 1px solid rgba(90, 140, 200, 0.28) !important;
+        border-bottom: none !important;
+        padding: 8px 12px 24px !important;
+        background: #0a1220 !important;
+      }
+      body.document-tab #invoiceForm .tab-panel,
+      body.document-tab #invoiceForm .invoice-entry-section,
+      body.document-tab #invoiceForm .invoice-block,
+      body.document-tab #invoiceForm .module-hero,
+      body.document-tab #invoiceForm .grid.two-col {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+      }
+      body.document-tab #invoiceForm .grid.two-col {
+        grid-template-columns: 1fr 1fr !important;
+      }
+      /* TAX FLAGS — always 1 column (no .two-col). Wide: optional 2-col via container. */
+      body.document-tab #invoiceForm .invoice-tax-flags,
+      body.document-tab #invoiceTaxFlags {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        gap: 10px !important;
+        margin-top: 12px !important;
+        box-sizing: border-box !important;
+      }
+      @container invoiceform (min-width: 640px) {
+        body.document-tab #invoiceForm .invoice-tax-flags,
+        body.document-tab #invoiceTaxFlags {
+          grid-template-columns: 1fr 1fr !important;
+        }
+      }
+      body.document-tab #invoiceForm .invoice-flag-chip {
+        display: grid !important;
+        grid-template-columns: auto minmax(0, 1fr) !important;
+        align-items: start !important;
+        justify-items: start !important;
+        column-gap: 10px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+      }
+      body.document-tab #invoiceForm .invoice-flag-chip input {
+        grid-column: 1 !important;
+        margin-top: 2px !important;
+      }
+      body.document-tab #invoiceForm .invoice-flag-chip span {
+        grid-column: 2 !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        overflow-wrap: break-word !important;
+        word-break: normal !important;
+        white-space: normal !important;
+        line-height: 1.35 !important;
+      }
+      /* SIG CHECKBOXES — Freie Position: checkbox | label text */
+      body.document-tab #invoiceForm .sig-adv-grid {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        gap: 10px !important;
+      }
+      body.document-tab #invoiceForm .sig-adv-grid .check-inline {
+        display: grid !important;
+        grid-template-columns: auto minmax(0, 1fr) !important;
+        align-items: start !important;
+        justify-items: start !important;
+        column-gap: 10px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        text-align: left !important;
+      }
+      body.document-tab #invoiceForm .sig-adv-grid .check-inline input {
+        grid-column: 1 !important;
+        margin-top: 2px !important;
+      }
+      body.document-tab #invoiceForm .sig-adv-grid .check-inline > span {
+        grid-column: 2 !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        white-space: normal !important;
+        overflow-wrap: break-word !important;
+        word-break: normal !important;
+        line-height: 1.35 !important;
+      }
+      body.document-tab #invoiceForm .signature-pad-wrap,
+      body.document-tab #invoiceForm .sig-advanced-box,
+      body.document-tab #invoiceForm .sig-adv-sliders,
+      body.document-tab #invoiceForm .sig-caption-row {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+      }
+      body.document-tab #invoiceForm .sig-adv-sliders label {
+        grid-template-columns: minmax(0, 4.5rem) minmax(0, 1fr) minmax(2.5rem, 3rem) !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+      }
+      body.document-tab #invoiceForm input,
+      body.document-tab #invoiceForm select,
+      body.document-tab #invoiceForm textarea {
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+      }
+      body.document-tab #invoicePreview,
+      body.document-tab .workspace .preview-panel {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        width: auto !important;
+        min-width: 0 !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        max-height: 100% !important;
+        overflow: hidden !important;
+        position: relative !important;
+        z-index: 1 !important;
+        zoom: 1 !important;
+        transform: none !important;
+        isolation: isolate !important;
+        contain: layout paint !important;
+        clip-path: inset(0) !important;
+        padding: 10px 10px 12px !important;
+        background: #060b14 !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+      }
+      body.document-tab #invoicePreviewStage,
+      body.document-tab .invoice-preview-stage {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        min-width: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        overflow-y: auto !important;
+        overscroll-behavior: contain !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+      }
+      body.document-tab #invoiceZoomPad,
+      body.document-tab .invoice-zoom-pad {
+        max-width: 100% !important;
+      }
+    </style>
+
   </head>
   <body class="lexware-app workpass-hub auth-locked">
     <div id="authGate" class="auth-gate" aria-hidden="false">
@@ -118,21 +338,33 @@
     </header>
 
     <div class="app-frame">
-      <aside class="app-sidebar lex-module-panel" aria-label="Modulauswahl">
-        <div class="lex-module-head" data-i18n="menu.modules">Module</div>
+      <aside class="app-sidebar lex-module-panel" id="appSidebar" aria-label="Modulauswahl">
+        <div class="lex-module-head">
+          <span data-i18n="menu.modules">Module</span>
+          <button type="button" id="sidebarToggleBtn" class="sidebar-toggle-btn" aria-expanded="true" aria-controls="appSidebar" title="Module einklappen" data-i18n-title="nav.sidebarCollapse">
+            <svg class="sidebar-toggle-icon sidebar-toggle-icon-collapse" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor"/></svg>
+            <svg class="sidebar-toggle-icon sidebar-toggle-icon-expand" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" fill="currentColor"/></svg>
+          </button>
+        </div>
         <nav class="sidebar-nav lex-module-nav" role="tablist" aria-label="Eingabebereiche">
           <p class="lex-nav-group" data-i18n="menu.general">Allgemein</p>
           <button type="button" class="form-tab sidebar-nav-btn active" data-tab="dashboard" role="tab" aria-selected="true">
             <svg class="sidebar-nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" fill="currentColor"/></svg>
             <span data-i18n="nav.overview">Übersicht</span>
           </button>
-          <button type="button" class="form-tab sidebar-nav-btn" data-tab="document" role="tab" aria-selected="false">
+          <button type="button" class="form-tab sidebar-nav-btn nav-mod-invoice" data-tab="document" role="tab" aria-selected="false">
             <svg class="sidebar-nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm0 2l5 5h-5V4zM8 13h8v2H8v-2zm0 4h8v2H8v-2z" fill="currentColor"/></svg>
-            <span data-i18n="nav.document">Rechnung</span>
+            <span class="nav-mod-copy">
+              <span data-i18n="nav.document">Rechnung</span>
+              <small data-i18n="nav.documentSub">erstellen &amp; senden</small>
+            </span>
           </button>
-          <button type="button" class="form-tab sidebar-nav-btn" data-tab="company" role="tab" aria-selected="false">
+          <button type="button" class="form-tab sidebar-nav-btn nav-mod-company" data-tab="company" role="tab" aria-selected="false">
             <svg class="sidebar-nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10z" fill="currentColor"/></svg>
-            <span data-i18n="nav.company">Firma</span>
+            <span class="nav-mod-copy">
+              <span data-i18n="nav.company">Firma</span>
+              <small data-i18n="nav.companySub">Stammdaten &amp; Briefkopf</small>
+            </span>
           </button>
           <a href="lohn.html" class="sidebar-nav-btn sidebar-nav-link" id="sidebarLohnLink">
             <svg class="sidebar-nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z" fill="currentColor"/></svg>
@@ -148,7 +380,7 @@
           </button>
         </nav>
         <div class="sidebar-footer lex-sidebar-footer">
-          <span id="sidebarVersionLabel">v2.54.13</span>
+          <span id="sidebarVersionLabel">v2.54.48</span>
           <span data-i18n="status.localData">Lokale Daten · DSGVO-konform</span>
         </div>
       </aside>
@@ -256,9 +488,39 @@
         </header>
 
         <div class="app-shell">
-      <main class="layout workspace">
-        <section class="panel form-panel">
-          <div class="tab-panel active" data-tab-panel="dashboard">
+      <main class="layout workspace" id="invoiceWorkspace">
+        <section class="panel form-panel" id="invoiceForm">
+          <div class="tab-panel active dash-board" data-tab-panel="dashboard">
+            <section class="dash-stage" aria-labelledby="dashStageTitle">
+              <div class="dash-stage-glow" aria-hidden="true"></div>
+              <div class="dash-stage-top">
+                <div class="dash-stage-copy">
+                  <p class="dash-stage-kicker" data-i18n="hub.showcaseKicker">WorkPass Steuerprogramm</p>
+                  <h2 id="dashStageTitle" data-i18n="hub.showcaseTitle">Klar. Vertrauenswürdig. Für Ihre Firma.</h2>
+                  <p class="dash-stage-lead" data-i18n="hub.showcaseLead">Rechnung, Stammdaten und Lohn – ein ruhiger Arbeitsplatz ohne Demo-Ballast.</p>
+                </div>
+                <div class="dash-stage-actions">
+                  <button type="button" class="hub-showcase-btn" data-dash-go="document" data-i18n="hub.newInvoice">Neue Rechnung</button>
+                  <button type="button" class="hub-showcase-btn hub-showcase-btn-ghost" data-dash-go="company" data-i18n="hub.manageClient">Firma</button>
+                  <a href="lohn.html" class="hub-showcase-btn hub-showcase-btn-ghost" data-i18n="hub.lohnPortal">Lohn-Portal</a>
+                </div>
+              </div>
+              <ul class="dash-stage-pillars">
+                <li>
+                  <strong data-i18n="nav.document">Rechnung</strong>
+                  <span data-i18n="hub.showcaseInvoice">Ausgangsrechnungen nach § 14 UStG</span>
+                </li>
+                <li>
+                  <strong data-i18n="nav.company">Firma</strong>
+                  <span data-i18n="hub.showcaseCompany">Profil, Logo, Bank und Briefkopf</span>
+                </li>
+                <li>
+                  <strong data-i18n="nav.lohn">Lohn</strong>
+                  <span data-i18n="hub.showcaseLohn">Monatsabrechnung im Lohn-Portal</span>
+                </li>
+              </ul>
+            </section>
+
             <section id="onboardingBanner" class="onboarding-banner dash-onboarding">
               <div>
                 <strong data-i18n="hub.welcomeTitle">Willkommen bei WorkPass Steuerprogramm</strong>
@@ -283,7 +545,7 @@
               </div>
             </section>
 
-            <p class="wp-hub-banner" id="dashHubBanner" data-i18n="hub.banner" data-i18n-html>
+            <p class="wp-hub-banner dash-hub-banner-legacy" id="dashHubBanner" hidden data-i18n="hub.banner" data-i18n-html>
               <strong>Hub:</strong> Rechnung · Firma · Lohn (Monat, Steuer, Dateien) ·
               <a href="lohn.html">Zum Lohn-Portal</a>
             </p>
@@ -294,7 +556,6 @@
               <p id="dashWelcomeText" class="dash-welcome" data-i18n="hub.welcomeText">Ihr Mandant und alle Belege auf einen Blick.</p>
               <p class="muted small dash-local-meta" id="dashLocalMeta"></p>
             </header>
-
             <div class="dash-kpi-grid dash-kpi-local" id="dashKpiGridLocal">
               <article class="dash-kpi">
                 <span class="dash-kpi-label" data-i18n="hub.kpi.profiles">Mandanten</span>
@@ -337,8 +598,7 @@
               </article>
             </div>
 
-            <section class="form-section dash-actions-section" id="dashActionsLocal">
-              <h2 class="form-section-title" data-i18n="hub.quickAccess">Schnellzugriff</h2>
+            <section class="form-section dash-actions-section dash-actions-compact" id="dashActionsLocal">
               <div class="dash-quick-actions">
                 <button type="button" class="dash-action-btn" data-dash-go="document" data-dash-mode="invoice">
                   <strong data-i18n="hub.newInvoice">Neue Rechnung</strong>
@@ -355,8 +615,7 @@
               </div>
             </section>
 
-            <section class="form-section dash-actions-section" id="dashActionsFirm" hidden>
-              <h2 class="form-section-title" data-i18n="hub.firmQuickAccess">Was wollen Sie jetzt tun?</h2>
+            <section class="form-section dash-actions-section dash-actions-compact" id="dashActionsFirm" hidden>
               <div class="dash-quick-actions">
                 <a href="lohn.html" class="dash-action-btn dash-action-primary" style="text-decoration:none;color:inherit">
                   <strong data-i18n="hub.lohnPortal">Lohn-Portal</strong>
@@ -373,10 +632,23 @@
               </div>
             </section>
 
-            <section class="form-section">
-              <h2 class="form-section-title" data-i18n="hub.invoiceArchive">Rechnungsarchiv</h2>
-              <p class="muted small" data-i18n="hub.invoiceArchiveHint">Lokal gespeicherte Entwürfe und freigegebene Rechnungen vom Server (Firmen-Login).</p>
-              <div id="invoiceArchiveList" class="invoice-archive-list"></div>
+            <section class="form-section dash-archive-panel">
+              <div class="dash-archive-head">
+                <h2 class="form-section-title" data-i18n="hub.invoiceArchive">Rechnungsarchiv</h2>
+                <p class="muted small" data-i18n="hub.invoiceArchiveHint">Jede Rechnung hat eine Nr. RE-…. Tippen Sie den Kundennamen, um die passende Rechnung zu finden (Nummernkreis bleibt unverändert).</p>
+                <label class="invoice-archive-search-wrap">
+                  <span class="visually-hidden" data-i18n="hub.invoiceArchiveSearch">Kunde oder Nr. RE- suchen</span>
+                  <input
+                    id="invoiceArchiveSearch"
+                    type="search"
+                    autocomplete="off"
+                    spellcheck="false"
+                    data-i18n-placeholder="hub.invoiceArchiveSearchPh"
+                    placeholder="Kunde oder Nr. RE-…"
+                  />
+                </label>
+              </div>
+              <div id="invoiceArchiveList" class="invoice-archive-list" role="list"></div>
             </section>
 
             <section class="form-section" hidden>
@@ -425,6 +697,32 @@
           </div>
 
           <div class="tab-panel" data-tab-panel="document">
+            <header class="module-hero module-hero-invoice" aria-labelledby="invoiceModuleTitle">
+              <div class="module-hero-badge" aria-hidden="true">RE</div>
+              <div class="module-hero-text">
+                <h2 id="invoiceModuleTitle" data-i18n="doc.invoice">Rechnung</h2>
+                <p data-i18n="doc.moduleSub">Ausgangsrechnung nach § 14 UStG – klar für den Empfänger, bereit zum Drucken.</p>
+              </div>
+            </header>
+
+            <section class="invoice-find-bar" aria-label="Rechnung finden">
+              <label class="invoice-find-label" for="invoiceFindSearch">
+                <span data-i18n="doc.findInvoice">Rechnung finden</span>
+                <span class="muted small" data-i18n="doc.findInvoiceHint">Nach Nr. RE- oder Kundenname suchen (auch in der Übersicht → Rechnungsarchiv).</span>
+              </label>
+              <input
+                id="invoiceFindSearch"
+                type="search"
+                autocomplete="off"
+                spellcheck="false"
+                data-i18n-placeholder="doc.findInvoicePh"
+                placeholder="Nr. RE-… oder Kundenname"
+              />
+              <div id="invoiceFindResults" class="invoice-find-results" hidden role="listbox"></div>
+            </section>
+
+            <p class="invoice-rail-hint muted small" data-i18n="doc.payrollPortalHint" data-i18n-html>Lohnabrechnung, LStB (Mitarbeiter) und LStA (Firma) nur im <a href="lohn.html">Lohn-Portal</a> — hier nur Rechnungen.</p>
+
             <section class="form-section workflow-banner hidden" aria-hidden="true">
               <h2 class="form-section-title">Arbeitsablauf</h2>
               <ol class="workflow-steps">
@@ -435,9 +733,6 @@
               <p class="muted small workflow-ref">Referenz: <code>assets/referenz-agenda-lohnabrechnung.png</code></p>
             </section>
 
-            <section class="form-section">
-            <h2 class="form-section-title" data-i18n="doc.invoice">Rechnung</h2>
-            <p class="muted small" data-i18n="doc.payrollPortalHint" data-i18n-html>Lohnabrechnung, LStB (Mitarbeiter) und LStA (Firma) nur im <a href="lohn.html">Lohn-Portal</a> — hier nur Rechnungen.</p>
             <div class="doc-type-picker hidden" hidden role="radiogroup" aria-hidden="true">
               <button type="button" class="doc-type-card active" data-doc-type="invoice" aria-pressed="true">
                 <strong data-i18n="doc.invoice">Rechnung</strong>
@@ -448,15 +743,17 @@
               <option value="payroll" data-i18n="doc.optPayroll">Lohnabrechnung (monatlich)</option>
               <option value="payroll-annual" data-i18n="doc.optAnnual">Lohnsteuerbescheinigung (jährlich)</option>
             </select>
-            </section>
 
-            <section class="form-section">
+            <section class="form-section invoice-entry-section">
+            <div class="invoice-block invoice-block-meta">
             <h2 class="form-section-title" data-i18n="doc.dataTitle">Dokumentdaten</h2>
+            <p class="muted small invoice-entry-hint" data-i18n="doc.dataHint">Nummer, Daten und Adressen erscheinen so auf der Rechnung.</p>
 
             <div class="grid two-col">
               <label>
                 <span data-i18n="doc.number">Dokumentnummer</span>
-                <input id="invoiceNumber" type="text" placeholder="RE-2026-0001" />
+                <input id="invoiceNumber" type="text" placeholder="RE-202608-0001" autocomplete="off" readonly />
+                <span class="muted small" data-i18n="doc.numberAutoHint">Automatisch vergeben · eindeutig · wird nicht wiederholt</span>
               </label>
               <label>
                 <span data-i18n="doc.created">Erstellungsdatum</span>
@@ -480,17 +777,20 @@
               </label>
             </div>
 
-            <div class="grid two-col mode-invoice-only">
-              <label>
+            <div class="mode-invoice-only invoice-tax-flags" id="invoiceTaxFlags">
+              <label class="invoice-flag-chip">
                 <input id="kleinunternehmer" type="checkbox" />
                 <span data-i18n="doc.klein">Kleinunternehmer (§ 19 UStG – keine USt ausweisen)</span>
               </label>
-              <label>
+              <label class="invoice-flag-chip">
                 <input id="reverseCharge" type="checkbox" />
                 <span data-i18n="doc.reverse">Reverse-Charge (§ 13b UStG)</span>
               </label>
             </div>
+            </div>
 
+            <div class="invoice-block invoice-block-parties">
+            <h3 class="invoice-block-title" data-i18n="doc.partiesTitle">Absender &amp; Empfänger</h3>
             <div class="grid two-col">
               <label>
                 <span data-i18n="doc.seller">Absender / Arbeitgeber</span>
@@ -501,13 +801,23 @@
                 <textarea id="customer" rows="5" placeholder="Kunde GmbH&#10;Beispielweg 7&#10;54321 Ort"></textarea>
               </label>
             </div>
+            </div>
 
-            <div class="items-header mode-invoice-only">
+            <div class="invoice-block invoice-block-purpose mode-invoice-only">
+            <label class="field-block purpose-field">
+              <span data-i18n="doc.purpose">Beschreibung / Zweck der Rechnung</span>
+              <textarea id="invoicePurpose" rows="3" placeholder="z. B. Beratung März 2026 · Auftrag 4821 · Projekt Website-Relaunch" data-i18n-placeholder="doc.purposePh"></textarea>
+              <span class="muted small" data-i18n="doc.purposeHint">Für den Empfänger: warum diese Rechnung gestellt wird – Anlass, Auftrag, Projekt oder Kurzbeschreibung.</span>
+            </label>
+            </div>
+
+            <div class="invoice-block invoice-block-items mode-invoice-only">
+            <div class="items-header">
               <h3 data-i18n="doc.items">Positionen</h3>
               <button id="addItemBtn" type="button" data-i18n="doc.addItem">+ Position</button>
             </div>
 
-            <div class="items-table-wrap mode-invoice-only">
+            <div class="items-table-wrap">
               <table class="items-table">
                 <thead>
                   <tr>
@@ -522,12 +832,37 @@
               </table>
             </div>
 
-            <label>
-              <span data-i18n="doc.note">Notiz / Zahlungsbedingungen</span>
-              <textarea id="note" rows="3" placeholder="Zahlbar ohne Abzug innerhalb von 14 Tagen."></textarea>
-            </label>
+            <div class="invoice-extras" id="invoiceExtras">
+              <div class="invoice-extras-grid">
+                <label>
+                  <span data-i18n="doc.surchargeLabel">Zusatzbetrag / Zuschlag (Bezeichnung)</span>
+                  <input id="invoiceSurchargeLabel" type="text" placeholder="z. B. Expresszuschlag, Versand, Bearbeitung" data-i18n-placeholder="doc.surchargeLabelPh" autocomplete="off" />
+                </label>
+                <label>
+                  <span data-i18n="doc.surchargeAmount">Zusatzbetrag (EUR, netto)</span>
+                  <input id="invoiceSurchargeAmount" type="number" min="0" step="0.01" placeholder="0,00" />
+                </label>
+              </div>
+              <label class="field-block invoice-warning-field">
+                <span data-i18n="doc.invoiceWarning">Warnung / Hinweis auf der Rechnung</span>
+                <textarea id="invoiceWarning" rows="2" placeholder="z. B. Zahlungsverzug: 5 % Verzugszinsen · Mahnung folgt" data-i18n-placeholder="doc.invoiceWarningPh"></textarea>
+                <span class="muted small" data-i18n="doc.invoiceWarningHint">Erscheint deutlich auf dem Beleg – leer lassen = kein Warnhinweis.</span>
+              </label>
+            </div>
+            </div>
 
-            <section class="signature-pad-wrap mode-invoice-only" id="signatureSection">
+            <div class="invoice-block invoice-block-note mode-invoice-only">
+            <label class="note-field">
+              <span class="note-field-head">
+                <span data-i18n="doc.note">Notiz / Zahlungsbedingungen</span>
+                <button type="button" id="insertDefaultNoteBtn" class="linkish-btn" data-i18n="doc.noteInsertDefault">Vorschlag einfügen</button>
+              </span>
+              <textarea id="note" rows="3" placeholder="Zahlbar ohne Abzug innerhalb von 14 Tagen."></textarea>
+              <span class="muted small" data-i18n="doc.noteHint">Leer lassen = kein Hinweis auf der Rechnung. Text vollständig löschbar.</span>
+            </label>
+            </div>
+
+            <section class="signature-pad-wrap mode-invoice-only invoice-block invoice-block-sign" id="signatureSection">
               <div class="signature-head">
                 <h3 data-i18n="doc.signature">Signatur</h3>
                 <button id="clearSignatureBtn" type="button" class="secondary-btn" data-i18n="action.reset">Zurücksetzen</button>
@@ -552,15 +887,15 @@
                 <div class="sig-adv-grid">
                   <label class="check-inline">
                     <input id="sigShowCaption" type="checkbox" />
-                    Namen unter der Signatur anzeigen
+                    <span>Namen unter der Signatur anzeigen</span>
                   </label>
                   <label class="check-inline">
                     <input id="sigShowLine" type="checkbox" checked />
-                    Unterschriftslinie
+                    <span>Unterschriftslinie</span>
                   </label>
                   <label class="check-inline">
                     <input id="sigLockPosition" type="checkbox" />
-                    Position sperren
+                    <span>Position sperren</span>
                   </label>
                 </div>
                 <label>
@@ -599,18 +934,40 @@
             </section>
           </div>
 
-          <div class="tab-panel" data-tab-panel="company">
-            <h2 data-i18n="nav.company">Firma</h2>
-            <p class="muted" data-i18n="hub.companyIntro" data-i18n-html>
-              Rechts: Firmenbriefkopf für Rechnung und PDF. Die Lohnsteuerbescheinigung (LStB) gilt für den Mitarbeiter
-              und liegt im <a href="lohn.html">Lohn-Portal</a> — nicht auf dieser Seite.
+          <div class="tab-panel company-master-page" data-tab-panel="company">
+            <div class="company-master-inner">
+            <header class="module-hero module-hero-company" aria-labelledby="companyModuleTitle">
+              <div class="module-hero-badge" aria-hidden="true">CO</div>
+              <div class="module-hero-text">
+                <h2 id="companyModuleTitle" data-i18n="nav.company">Firma</h2>
+                <p data-i18n="co.moduleSub">Stammdaten, Briefkopf und Bank – einmal pflegen, überall korrekt auf dem Beleg.</p>
+              </div>
+            </header>
+
+            <aside class="company-identity-strip" id="companyIdentityStrip" aria-live="polite">
+              <div class="company-identity-logo" id="companyIdentityLogo" aria-hidden="true"></div>
+              <div class="company-identity-copy">
+                <strong id="companyIdentityName">—</strong>
+                <span id="companyIdentityMeta" class="muted small">—</span>
+              </div>
+              <button type="button" class="company-identity-progress" id="companyIdentityProgressBtn" title="Nächstes offenes Feld">
+                <span class="company-identity-progress-lab" data-i18n="co.identityReady">Stammdaten</span>
+                <strong id="companyIdentityProgress">0/7</strong>
+              </button>
+            </aside>
+
+            <p class="muted small company-intro-line" data-i18n="hub.companyIntro" data-i18n-html>
+              Hier pflegen Sie Logo, Anschrift, Steuer, Telefon und Bank — einmal korrekt, überall auf dem Beleg.
+              Die Lohnsteuerbescheinigung (LStB) liegt im <a href="lohn.html">Lohn-Portal</a>.
             </p>
             <p class="wp-hub-banner" id="mandantAccountingStatus" hidden role="status"></p>
 
-            <section class="form-section dash-checklist">
-              <h2 class="form-section-title" data-i18n="hub.masterChecklist">Stammdaten-Checkliste</h2>
-              <p class="muted small" id="companyChecklistSummary" role="status"></p>
-              <ul class="dash-checklist-items" id="companyChecklist">
+            <section class="company-section company-section-check compact-checklist">
+              <div class="company-section-head">
+                <h3 class="company-section-title" data-i18n="hub.masterChecklist">Stammdaten-Checkliste</h3>
+                <p class="muted small" id="companyChecklistSummary" role="status"></p>
+              </div>
+              <ul class="dash-checklist-items company-check-inline" id="companyChecklist">
                 <li data-check="seller" data-i18n="hub.checkSeller">Firma / Arbeitgeber hinterlegt</li>
                 <li data-check="tax" data-i18n="hub.checkTax">Steuernummer oder USt-IdNr.</li>
                 <li data-check="bank" data-i18n="hub.checkBank">Bankverbindung Firma (IBAN)</li>
@@ -619,131 +976,169 @@
                 <li data-check="layout" data-i18n="hub.checkLayout">Lohn-Vorlage gewählt</li>
                 <li data-check="datev" data-i18n="hub.checkDatev">DATEV-Mandant- oder Berater-Nr.</li>
               </ul>
-              <p class="muted small">
+              <p class="muted small company-check-actions">
                 <button type="button" class="linkish-btn" id="companyChecklistNextBtn" data-i18n="hub.checkNextFocus">Nächstes offenes Feld fokussieren</button>
               </p>
             </section>
 
-            <div class="grid two-col">
-              <label>
-                <span data-i18n="co.pickProfile">Profil auswählen</span>
-                <select id="companyProfileSelect"></select>
-              </label>
-              <label>
-                <span data-i18n="co.profileName">Profilname</span>
-                <input id="companyProfileName" type="text" placeholder="z. B. Müller GmbH" />
-              </label>
-            </div>
-
-            <div class="tool-row">
-              <button id="saveCompanyProfileBtn" type="button" class="secondary-btn" data-i18n="co.saveProfile">Profil speichern</button>
-              <button id="syncCompanyProfileBtn" type="button" class="secondary-btn" data-i18n="co.syncServer">Mit Server synchronisieren</button>
-              <button id="newCompanyProfileBtn" type="button" class="secondary-btn" data-i18n="co.newProfile">Neues Profil</button>
-              <button id="deleteCompanyProfileBtn" type="button" class="secondary-btn danger-btn" data-i18n="co.deleteProfile">Profil löschen</button>
-            </div>
-            <p class="muted small" id="mandantProfileSyncHint" data-i18n="co.syncHint">Lokal gespeichert. Mit Firmen-Login zusätzlich auf dem Server.</p>
-
-            <section class="logo-upload-box">
-              <h3 data-i18n="co.logoTitle">Firmenlogo</h3>
-              <p class="muted small" data-i18n="co.logoHint">PNG oder JPG, max. 2 MB – erscheint auf Rechnung und Lohnabrechnung.</p>
-              <div class="logo-upload-row">
-                <label class="logo-file-label">
-                  <span data-i18n="co.logoPick">Logo auswählen</span>
-                  <input id="companyLogoInput" type="file" accept="image/png,image/jpeg,image/webp" />
+            <section class="company-section" id="companySectionIdentity">
+              <div class="company-section-head">
+                <h3 class="company-section-title" data-i18n="co.secIdentity">Identität</h3>
+                <p class="muted small" data-i18n="co.secIdentityHint">Profil, Logo, Anschrift und Telefon für Briefkopf und Rechnung.</p>
+              </div>
+              <div class="grid two-col">
+                <label>
+                  <span data-i18n="co.pickProfile">Profil auswählen</span>
+                  <select id="companyProfileSelect"></select>
                 </label>
-                <button id="removeLogoBtn" type="button" class="secondary-btn danger-btn" data-i18n="co.logoRemove">Logo entfernen</button>
+                <label>
+                  <span data-i18n="co.profileName">Profilname</span>
+                  <input id="companyProfileName" type="text" placeholder="z. B. Müller GmbH" />
+                </label>
               </div>
-              <img id="companyLogoPreview" class="company-logo-preview hidden" alt="Logo-Vorschau" />
+              <div class="tool-row company-profile-actions">
+                <button id="saveCompanyProfileBtn" type="button" class="company-save-primary" data-i18n="co.saveProfile">Profil speichern</button>
+                <button id="syncCompanyProfileBtn" type="button" class="secondary-btn" data-i18n="co.syncServer">Mit Server synchronisieren</button>
+                <button id="newCompanyProfileBtn" type="button" class="secondary-btn" data-i18n="co.newProfile">Neues Profil</button>
+                <button id="deleteCompanyProfileBtn" type="button" class="secondary-btn danger-btn" data-i18n="co.deleteProfile">Profil löschen</button>
+              </div>
+              <p class="muted small company-save-hint" id="mandantProfileSyncHint" role="status" aria-live="polite" data-i18n="co.syncHint">Lokal gespeichert. Mit Firmen-Login zusätzlich auf dem Server.</p>
+
+              <div class="logo-upload-box company-logo-block">
+                <h4 data-i18n="co.logoTitle">Firmenlogo</h4>
+                <p class="muted small" data-i18n="co.logoHint">PNG oder JPG, max. 2 MB – erscheint auf Rechnung und Lohnabrechnung.</p>
+                <div class="logo-upload-row">
+                  <label class="logo-file-label">
+                    <span data-i18n="co.logoPick">Logo auswählen</span>
+                    <input id="companyLogoInput" type="file" accept="image/png,image/jpeg,image/webp" />
+                  </label>
+                  <button id="removeLogoBtn" type="button" class="secondary-btn danger-btn" data-i18n="co.logoRemove">Logo entfernen</button>
+                </div>
+                <img id="companyLogoPreview" class="company-logo-preview hidden" alt="Logo-Vorschau" />
+              </div>
+
+              <label>
+                <span data-i18n="co.sellerAddr">Firma / Arbeitgeber (Anschrift)</span>
+                <textarea id="companySeller" rows="3" placeholder="Muster GmbH&#10;Musterstraße 1&#10;80331 München"></textarea>
+              </label>
+              <p class="muted small" data-i18n="co.sellerSync">Wird mit dem Feld „Verkäufer“ im Beleg synchronisiert.</p>
+              <label>
+                <span data-i18n="co.phone">Telefon (Firma)</span>
+                <input id="companyPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+49 89 123456" />
+              </label>
             </section>
 
-            <label>
-              <span data-i18n="co.sellerAddr">Firma / Arbeitgeber (Anschrift)</span>
-              <textarea id="companySeller" rows="3" placeholder="Muster GmbH&#10;Musterstraße 1&#10;80331 München"></textarea>
-            </label>
-            <p class="muted small" data-i18n="co.sellerSync">Wird mit dem Feld „Verkäufer“ im Beleg synchronisiert.</p>
+            <section class="company-section" id="companySectionTax">
+              <div class="company-section-head">
+                <h3 class="company-section-title" data-i18n="co.secTax">Steuern &amp; Recht</h3>
+                <p class="muted small" data-i18n="co.secTaxHint">Steuernummer, USt-IdNr. und rechtliche Angaben auf dem Beleg.</p>
+              </div>
+              <div class="grid two-col">
+                <label>
+                  <span data-i18n="co.taxNumber">Steuernummer</span>
+                  <input id="taxNumber" type="text" placeholder="12/345/67890" />
+                </label>
+                <label>
+                  <span data-i18n="co.vatId">USt-IdNr.</span>
+                  <input id="vatId" type="text" placeholder="DE123456789" />
+                </label>
+                <label>
+                  <span data-i18n="co.register">Handelsregister</span>
+                  <input id="commercialRegister" type="text" placeholder="HRB 12345 Amtsgericht …" />
+                </label>
+                <label>
+                  <span data-i18n="co.director">Geschäftsführer</span>
+                  <input id="managingDirector" type="text" placeholder="Max Mustermann" />
+                </label>
+              </div>
+            </section>
 
-            <div class="grid two-col">
-              <label>
-                <span data-i18n="co.taxNumber">Steuernummer</span>
-                <input id="taxNumber" type="text" placeholder="12/345/67890" />
-              </label>
-              <label>
-                <span data-i18n="co.vatId">USt-IdNr.</span>
-                <input id="vatId" type="text" placeholder="DE123456789" />
-              </label>
-              <label>
-                <span data-i18n="co.register">Handelsregister</span>
-                <input id="commercialRegister" type="text" placeholder="HRB 12345 Amtsgericht …" />
-              </label>
-              <label>
-                <span data-i18n="co.director">Geschäftsführer</span>
-                <input id="managingDirector" type="text" placeholder="Max Mustermann" />
-              </label>
-              <label>
-                <span data-i18n="co.bank">Bank</span>
-                <input id="companyBankName" type="text" placeholder="Musterbank AG" />
-              </label>
-              <label>
-                <span data-i18n="co.iban">IBAN (Firma)</span>
-                <input id="companyIban" type="text" placeholder="DE00 0000 0000 0000 0000 00" />
-              </label>
-              <label>
-                <span data-i18n="co.bic">BIC (Firma)</span>
-                <input id="companyBic" type="text" placeholder="GENODE00XXX" />
-              </label>
-              <label>
-                <span data-i18n="co.datevClient">DATEV-Mandant-Nr.</span>
-                <input id="datevClientNo" type="text" placeholder="z. B. 10001" />
-              </label>
-              <label>
-                <span data-i18n="co.datevConsultant">DATEV-Berater-Nr.</span>
-                <input id="datevConsultantNo" type="text" placeholder="z. B. 12345" />
-              </label>
-              <label>
-                <span data-i18n="co.payrollLayout">Lohn-Vorlage</span>
-                <select id="payrollLayoutSelect"></select>
-              </label>
+            <section class="company-section" id="companySectionBank">
+              <div class="company-section-head">
+                <h3 class="company-section-title" data-i18n="co.secBank">Bank</h3>
+                <p class="muted small" data-i18n="co.secBankHint">Zahlungsdaten der Firma für Rechnungen und Fußzeile.</p>
+              </div>
+              <div class="grid two-col">
+                <label>
+                  <span data-i18n="co.bank">Bank</span>
+                  <input id="companyBankName" type="text" placeholder="Musterbank AG" />
+                </label>
+                <label>
+                  <span data-i18n="co.iban">IBAN (Firma)</span>
+                  <input id="companyIban" type="text" placeholder="DE00 0000 0000 0000 0000 00" />
+                </label>
+                <label>
+                  <span data-i18n="co.bic">BIC (Firma)</span>
+                  <input id="companyBic" type="text" placeholder="GENODE00XXX" />
+                </label>
+              </div>
+            </section>
+
+            <section class="company-section" id="companySectionPayroll">
+              <div class="company-section-head">
+                <h3 class="company-section-title" data-i18n="co.secPayroll">Lohn &amp; DATEV</h3>
+                <p class="muted small" data-i18n="co.secPayrollHint">Vorlage, Mandant-/Berater-Nr. und Briefkopf für Abrechnungen.</p>
+              </div>
+              <div class="grid two-col">
+                <label>
+                  <span data-i18n="co.datevClient">DATEV-Mandant-Nr.</span>
+                  <input id="datevClientNo" type="text" placeholder="z. B. 10001" />
+                </label>
+                <label>
+                  <span data-i18n="co.datevConsultant">DATEV-Berater-Nr.</span>
+                  <input id="datevConsultantNo" type="text" placeholder="z. B. 12345" />
+                </label>
+                <label>
+                  <span data-i18n="co.payrollLayout">Lohn-Vorlage</span>
+                  <select id="payrollLayoutSelect"></select>
+                </label>
+              </div>
+              <p id="payrollLayoutDescription" class="layout-description"></p>
+              <div class="letterhead-box">
+                <h4 data-i18n="co.letterhead">Briefkopf &amp; Fußzeile (Lohnabrechnung)</h4>
+                <p class="muted small" data-i18n="co.letterheadHint">Erscheint auf jeder Lohnabrechnung im PDF – z. B. Abteilung im Kopf, Impressum in der Fußzeile.</p>
+                <label>
+                  <span data-i18n="co.headerLine">Abteilung / Zusatzzeile unter Firmenname</span>
+                  <input id="payrollHeaderLine" type="text" placeholder="z. B. Personalabteilung · Lohnbuchhaltung" />
+                </label>
+                <label>
+                  <span data-i18n="co.footerLine">Fußzeile (mehrzeilig)</span>
+                  <textarea id="payrollFooterLine" rows="3" placeholder="Geschäftsführer · Handelsregister · Bankverbindung"></textarea>
+                </label>
+                <p class="muted small" data-i18n="co.footerAuto">Leer lassen = Fußzeile wird automatisch aus Geschäftsführer, HRB und Firmenbank erzeugt.</p>
+              </div>
+            </section>
+
+            <section class="company-section company-section-muted" id="companySectionSecurity">
+              <div class="company-section-head">
+                <h3 class="company-section-title" data-i18n="co.secSecurity">Sicherheit &amp; Backup</h3>
+                <p class="muted small" data-i18n="co.secSecurityHint">PIN auf diesem Gerät und lokales JSON-Backup.</p>
+              </div>
+              <div class="data-backup-box">
+                <h4 data-i18n="co.backupTitle">Datensicherung</h4>
+                <p class="muted small" data-i18n="co.backupHint" data-i18n-html>
+                  Browser-Backup: alle lokalen Mandanten, Mitarbeiter und Einstellungen als JSON.
+                  Server-Backups (SQLite, verschlüsselt) liegen im <a href="admin.html">Admin</a> unter Backup – dort auch Wiederherstellen.
+                </p>
+                <div class="tool-row">
+                  <button id="exportDataBtn" type="button" class="secondary-btn" data-i18n="co.exportAll">Alles exportieren</button>
+                  <button id="importDataBtn" type="button" class="secondary-btn" data-i18n="co.importAll">Daten importieren</button>
+                </div>
+              </div>
+              <div class="pin-change-box">
+                <h4 data-i18n="co.pinTitle">Zugangsschutz (PIN)</h4>
+                <p class="muted small" data-i18n="co.pinHint">PIN ändern – schützt Hub und Lohnarbeitsplatz auf diesem Gerät.</p>
+                <div class="grid two-col">
+                  <label><span data-i18n="co.pinOld">Alte PIN</span><input id="pinOld" type="password" inputmode="numeric" maxlength="8" /></label>
+                  <label><span data-i18n="co.pinNew">Neue PIN</span><input id="pinNew" type="password" inputmode="numeric" maxlength="8" /></label>
+                  <label><span data-i18n="co.pinConfirm">Bestätigen</span><input id="pinNewConfirm" type="password" inputmode="numeric" maxlength="8" /></label>
+                </div>
+                <div class="tool-row" style="margin-top:10px">
+                  <button id="btnChangePin" type="button" class="secondary-btn" data-i18n="co.pinSave">PIN speichern</button>
+                </div>
+              </div>
+            </section>
             </div>
-            <p id="payrollLayoutDescription" class="layout-description"></p>
-
-            <section class="letterhead-box">
-              <h3 data-i18n="co.letterhead">Briefkopf &amp; Fußzeile (Lohnabrechnung)</h3>
-              <p class="muted small" data-i18n="co.letterheadHint">Erscheint auf jeder Lohnabrechnung im PDF – z. B. Abteilung im Kopf, Impressum in der Fußzeile.</p>
-              <label>
-                <span data-i18n="co.headerLine">Abteilung / Zusatzzeile unter Firmenname</span>
-                <input id="payrollHeaderLine" type="text" placeholder="z. B. Personalabteilung · Lohnbuchhaltung" />
-              </label>
-              <label>
-                <span data-i18n="co.footerLine">Fußzeile (mehrzeilig)</span>
-                <textarea id="payrollFooterLine" rows="3" placeholder="Geschäftsführer · Handelsregister · Bankverbindung"></textarea>
-              </label>
-              <p class="muted small" data-i18n="co.footerAuto">Leer lassen = Fußzeile wird automatisch aus Geschäftsführer, HRB und Firmenbank erzeugt.</p>
-            </section>
-
-            <section class="data-backup-box">
-              <h3>Datensicherung</h3>
-              <p class="muted small">
-                Browser-Backup: alle lokalen Mandanten, Mitarbeiter und Einstellungen als JSON.
-                Server-Backups (SQLite, verschlüsselt) liegen im <a href="admin.html">Admin</a> unter Backup – dort auch Wiederherstellen.
-              </p>
-              <div class="tool-row">
-                <button id="exportDataBtn" type="button" class="secondary-btn">Alles exportieren</button>
-                <button id="importDataBtn" type="button" class="secondary-btn">Daten importieren</button>
-              </div>
-            </section>
-
-            <section class="pin-change-box">
-              <h3>Zugangsschutz (PIN)</h3>
-              <p class="muted small">PIN ändern – schützt Hub und Lohnarbeitsplatz auf diesem Gerät.</p>
-              <div class="grid">
-                <label>Alte PIN<input id="pinOld" type="password" inputmode="numeric" maxlength="8" /></label>
-                <label>Neue PIN<input id="pinNew" type="password" inputmode="numeric" maxlength="8" /></label>
-                <label>Bestätigen<input id="pinNewConfirm" type="password" inputmode="numeric" maxlength="8" /></label>
-              </div>
-              <div class="tool-row" style="margin-top:10px">
-                <button id="btnChangePin" type="button" class="secondary-btn">PIN speichern</button>
-              </div>
-            </section>
           </div>
 
           <div class="tab-panel" data-tab-panel="payroll">
@@ -1026,53 +1421,102 @@
             </section>
           </div>
 
-          <div class="tab-panel" data-tab-panel="help">
-            <h2 data-i18n="help.title">Hilfe &amp; Dokumentation</h2>
-            <section class="help-card">
-              <h3 data-i18n="help.quickstart">Schnellstart (5 Schritte)</h3>
-              <ol class="help-steps">
-                <li data-i18n="help.step1" data-i18n-html><strong>Übersicht</strong> – Rechnung, Firma oder Lohn wählen</li>
-                <li data-i18n="help.step2" data-i18n-html><strong>Firma</strong> – Briefkopf, Steuer-Nr., IBAN, Logo</li>
-                <li data-i18n="help.step3" data-i18n-html><strong>Rechnung</strong> – Ausgangsrechnung nach § 14 UStG</li>
-                <li data-i18n="help.step4" data-i18n-html><strong>Lohn</strong> – Monat (Abrechnung), Steuer (LStA / LStB), Dateien</li>
-                <li data-i18n="help.step5" data-i18n-html><strong>PDF / Druck</strong> – Vorschau prüfen, exportieren</li>
-              </ol>
-            </section>
-            <section class="help-card">
-              <h3 data-i18n="help.shortcuts">Tastenkürzel</h3>
-              <ul class="help-steps">
-                <li data-i18n="help.shortcutSave" data-i18n-html><kbd>Strg+S</kbd> – Entwurf speichern</li>
-                <li data-i18n="help.shortcutPrint" data-i18n-html><kbd>Strg+P</kbd> – Drucken / PDF</li>
-              </ul>
-            </section>
-            <section class="help-card">
-              <h3 data-i18n="help.invoiceDuty">Rechnung – Pflichtangaben § 14 UStG</h3>
-              <ul id="invoiceComplianceList" class="compliance-list"></ul>
-            </section>
-            <section class="help-card">
-              <h3 data-i18n="help.payrollTitle">Lohnabrechnung</h3>
-              <p class="small" data-i18n="help.payrollP1" data-i18n-html>6 Layouts auf Agenda-Struktur: <strong>Agenda</strong>, DATEV, Standard, Kompakt, Modern, Formal – Druck/PDF <strong>schwarz/weiß</strong>.</p>
-              <p class="small" data-i18n="help.payrollP2">Lohnsteuer: BMF PAP des gültigen Rulesets · SV: gesetzliche Beitragssätze zum Abrechnungsmonat.</p>
-              <p class="small" data-i18n="help.payrollP3">Monatsdaten speichern aktiviert Jahres-YTD auf der Abrechnung und die Lohnsteuerbescheinigung.</p>
-            </section>
-            <section class="help-card">
-              <h3 data-i18n="help.exportTitle">Export &amp; Schnittstellen</h3>
-              <ul class="help-steps">
-                <li data-i18n="help.exportPdf" data-i18n-html><strong>PDF</strong> – Drucklayout 1:1 aus Vorschau</li>
-                <li data-i18n="help.exportCsv" data-i18n-html><strong>Rechnung CSV</strong> – Buchhaltungsimport</li>
-                <li data-i18n="help.exportDatev" data-i18n-html><strong>DATEV CSV / LODAS</strong> – Lohn Bewegungsdaten (Lohnmodus)</li>
-                <li data-i18n="help.exportElster" data-i18n-html><strong>ELSTER-XML</strong> – Vorbereitungsdatei Lohnsteuerbescheinigung (kein direkter ELSTER-Versand)</li>
-                <li data-i18n="help.exportBackup" data-i18n-html><strong>Datensicherung</strong> – JSON unter Firma</li>
-              </ul>
-            </section>
-            <section class="help-card help-legal">
-              <h3 data-i18n="help.legalTitle">Rechtlicher Hinweis</h3>
-              <p class="small" data-i18n="help.legalText">WorkPass Steuerprogramm (Suppix AI) ist ein Buchhaltungs-Arbeitsplatz für Steuerberater und Firmen. Es ersetzt keine zertifizierte Voll-Lohnsoftware und keine individuelle Steuerberatung. ELSTER-Exporte sind Vorbereitungsdateien zur manuellen Prüfung.</p>
-            </section>
+          <div class="tab-panel help-page" data-tab-panel="help">
+            <div class="help-page-inner">
+              <header class="help-hero">
+                <div class="help-hero-badge" aria-hidden="true">?</div>
+                <div class="help-hero-text">
+                  <h2 data-i18n="help.title">Hilfe &amp; Dokumentation</h2>
+                  <p data-i18n="help.heroSub">Kurz erklärt: Firma, Rechnung, Lohn — und wie Sie uns erreichen.</p>
+                </div>
+              </header>
+
+              <section class="help-card help-contact-card" id="helpContactCard" aria-labelledby="helpContactTitle">
+                <h3 id="helpContactTitle" data-i18n="help.contactTitle">Kontakt &amp; Support</h3>
+                <p class="small help-contact-lead" data-i18n="help.contactLead">Fragen zu WorkPass Steuerprogramm, Login oder Belegen? Schreiben Sie uns — wir helfen weiter.</p>
+                <ul class="help-contact-list" id="helpContactList">
+                  <!-- filled by script.js from Admin-stored /v1/help/contact -->
+                </ul>
+                <p class="small muted" data-i18n="help.contactAdminNote">Kontaktdaten pflegt der Accounting-Admin unter Admin → Hilfe-Kontakt.</p>
+                <p class="muted small" data-i18n="help.contactHint">Bitte Firmenname und Mandant-ID in der Nachricht angeben, damit wir schneller helfen können.</p>
+              </section>
+
+              <section class="help-card">
+                <h3 data-i18n="help.quickstart">Schnellstart (5 Schritte)</h3>
+                <ol class="help-steps">
+                  <li data-i18n="help.step1" data-i18n-html><strong>Übersicht</strong> – Rechnung, Firma oder Lohn wählen</li>
+                  <li data-i18n="help.step2" data-i18n-html><strong>Firma</strong> – Briefkopf, Steuer-Nr., Telefon, IBAN, Logo</li>
+                  <li data-i18n="help.step3" data-i18n-html><strong>Rechnung</strong> – Ausgangsrechnung nach § 14 UStG · Nr. RE- automatisch</li>
+                  <li data-i18n="help.step4" data-i18n-html><strong>Lohn</strong> – Monat (Abrechnung), Steuer (LStA / LStB), Dateien</li>
+                  <li data-i18n="help.step5" data-i18n-html><strong>PDF / Druck</strong> – Vorschau prüfen, exportieren</li>
+                </ol>
+              </section>
+
+              <section class="help-card">
+                <h3 data-i18n="help.modulesTitle">Module auf einen Blick</h3>
+                <ul class="help-steps help-modules">
+                  <li data-i18n="help.modFirma" data-i18n-html><strong>Firma</strong> – Stammdaten einmal pflegen; Checkliste klicken öffnet das fehlende Feld; Profil speichern sichert lokal (und Server bei Firmen-Login).</li>
+                  <li data-i18n="help.modRechnung" data-i18n-html><strong>Rechnung</strong> – Jede Rechnung erhält eine eindeutige <strong>Nr. RE-</strong>. Suche nach Nummer oder Kundenname im Tab Rechnung und im Rechnungsarchiv (Übersicht).</li>
+                  <li data-i18n="help.modLohn" data-i18n-html><strong>Lohn-Portal</strong> – Abrechnung, LStB und LStA nur unter <a href="lohn.html">lohn.html</a> — nicht im Rechnungs-Tab.</li>
+                </ul>
+              </section>
+
+              <section class="help-card">
+                <h3 data-i18n="help.shortcuts">Tastenkürzel</h3>
+                <ul class="help-steps">
+                  <li data-i18n="help.shortcutSave" data-i18n-html><kbd>Strg+S</kbd> – Entwurf speichern</li>
+                  <li data-i18n="help.shortcutPrint" data-i18n-html><kbd>Strg+P</kbd> – Drucken / PDF</li>
+                </ul>
+              </section>
+
+              <section class="help-card">
+                <h3 data-i18n="help.invoiceDuty">Rechnung – Pflichtangaben § 14 UStG</h3>
+                <ul id="invoiceComplianceList" class="compliance-list"></ul>
+              </section>
+
+              <section class="help-card">
+                <h3 data-i18n="help.payrollTitle">Lohnabrechnung</h3>
+                <p class="small" data-i18n="help.payrollP1" data-i18n-html>6 Layouts auf Agenda-Struktur: <strong>Agenda</strong>, DATEV, Standard, Kompakt, Modern, Formal – Druck/PDF <strong>schwarz/weiß</strong>.</p>
+                <p class="small" data-i18n="help.payrollP2">Lohnsteuer: BMF PAP des gültigen Rulesets · SV: gesetzliche Beitragssätze zum Abrechnungsmonat.</p>
+                <p class="small" data-i18n="help.payrollP3">Monatsdaten speichern aktiviert Jahres-YTD auf der Abrechnung und die Lohnsteuerbescheinigung.</p>
+              </section>
+
+              <section class="help-card">
+                <h3 data-i18n="help.exportTitle">Export &amp; Schnittstellen</h3>
+                <ul class="help-steps">
+                  <li data-i18n="help.exportPdf" data-i18n-html><strong>PDF</strong> – Drucklayout 1:1 aus Vorschau</li>
+                  <li data-i18n="help.exportCsv" data-i18n-html><strong>Rechnung CSV</strong> – Buchhaltungsimport</li>
+                  <li data-i18n="help.exportDatev" data-i18n-html><strong>DATEV CSV / LODAS</strong> – Lohn Bewegungsdaten (Lohnmodus)</li>
+                  <li data-i18n="help.exportElster" data-i18n-html><strong>ELSTER-XML</strong> – Vorbereitungsdatei Lohnsteuerbescheinigung (kein direkter ELSTER-Versand)</li>
+                  <li data-i18n="help.exportBackup" data-i18n-html><strong>Datensicherung</strong> – JSON unter Firma</li>
+                </ul>
+              </section>
+
+              <section class="help-card help-faq">
+                <h3 data-i18n="help.faqTitle">Häufige Fragen</h3>
+                <details class="help-faq-item">
+                  <summary data-i18n="help.faq1q">Wo finde ich eine Rechnung nach Kundenname?</summary>
+                  <p class="small" data-i18n="help.faq1a">Im Tab Rechnung oben suchen, oder in der Übersicht → Rechnungsarchiv. Tippen Sie den Kundennamen oder die Nr. RE-.</p>
+                </details>
+                <details class="help-faq-item">
+                  <summary data-i18n="help.faq2q">Warum ändert sich die Rechnungsnummer nicht manuell?</summary>
+                  <p class="small" data-i18n="help.faq2a">Nummern werden automatisch vergeben und nicht wiederholt (GoBD-freundlich). Neue Rechnung = neue Nr. RE-.</p>
+                </details>
+                <details class="help-faq-item">
+                  <summary data-i18n="help.faq3q">Wo trage ich die Firmen-Telefonnummer ein?</summary>
+                  <p class="small" data-i18n="help.faq3a">Unter Firma → Identität → Telefon (Firma). Sie erscheint auf der Rechnung als Tel.: …</p>
+                </details>
+              </section>
+
+              <section class="help-card help-legal">
+                <h3 data-i18n="help.legalTitle">Rechtlicher Hinweis</h3>
+                <p class="small" data-i18n="help.legalText">WorkPass Steuerprogramm (Suppix AI) ist ein Buchhaltungs-Arbeitsplatz für Steuerberater und Firmen. Es ersetzt keine zertifizierte Voll-Lohnsoftware und keine individuelle Steuerberatung. ELSTER-Exporte sind Vorbereitungsdateien zur manuellen Prüfung.</p>
+              </section>
+            </div>
           </div>
         </section>
 
-        <section class="panel preview-panel" id="invoicePreview" data-preview-label="Vorschau · Drucklayout Schwarz/Weiß">
+        <section class="panel preview-panel" id="invoicePreview" data-preview-label="Live-Vorschau · A4 · Rechnung">
           <div class="preview-tools">
             <p class="preview-sheet-hint mode-payroll-only">DATEV-Vorschau (leeres Formular). Für Plattform-Import und saubere Bearbeitung bitte <a href="lohn.html">Zur Lohnabrechnung</a> nutzen. Druck/PDF = nur A4.</p>
             <label for="previewZoom" class="preview-zoom-label">Vorschau</label>
@@ -1082,6 +1526,63 @@
               <option value="120">120 %</option>
             </select>
           </div>
+
+          <div class="invoice-preview-stage" id="invoicePreviewStage">
+          <article id="companyProfilePreview" class="company-profile-preview" hidden aria-label="Firmenprofil Vorschau">
+            <header class="cpp-hero">
+              <img id="cppLogo" class="cpp-logo hidden" alt="" />
+              <div class="cpp-hero-text">
+                <p class="cpp-kicker" data-i18n="co.previewKicker">Firmenprofil</p>
+                <h2 id="cppCompanyName">—</h2>
+                <p id="cppProfileName" class="cpp-profile-name"></p>
+              </div>
+            </header>
+            <section class="cpp-block">
+              <h3 data-i18n="co.previewAddress">Anschrift</h3>
+              <pre id="cppAddress">—</pre>
+            </section>
+            <section class="cpp-grid">
+              <div class="cpp-block">
+                <h3 data-i18n="co.taxNumber">Steuernummer</h3>
+                <p id="cppTaxNumber">—</p>
+              </div>
+              <div class="cpp-block">
+                <h3 data-i18n="co.vatId">USt-IdNr.</h3>
+                <p id="cppVatId">—</p>
+              </div>
+              <div class="cpp-block">
+                <h3 data-i18n="co.register">Handelsregister</h3>
+                <p id="cppRegister">—</p>
+              </div>
+              <div class="cpp-block">
+                <h3 data-i18n="co.director">Geschäftsführer</h3>
+                <p id="cppDirector">—</p>
+              </div>
+              <div class="cpp-block">
+                <h3 data-i18n="co.phone">Telefon (Firma)</h3>
+                <p id="cppPhone">—</p>
+              </div>
+            </section>
+            <section class="cpp-block">
+              <h3 data-i18n="co.previewBank">Bankverbindung</h3>
+              <p id="cppBank">—</p>
+            </section>
+            <section class="cpp-look cpp-block">
+              <h3 data-i18n="co.previewLook">Erscheinungsbild</h3>
+              <p class="cpp-look-hint" data-i18n="co.previewLookHint">So wirken Logo, Kopf- und Fußzeile auf Ihren Belegen — ohne Rechnungsinhalt.</p>
+              <div class="cpp-look-sample" aria-hidden="true">
+                <div class="cpp-look-head">
+                  <span id="cppLookLogoSlot" class="cpp-look-logo-slot"></span>
+                  <div>
+                    <strong id="cppLookName">Firma</strong>
+                    <span id="cppLookHeader" class="cpp-look-sub"></span>
+                  </div>
+                </div>
+                <div class="cpp-look-body" data-i18n="co.previewLookBody">Hier erscheint später der Beleginhalt.</div>
+                <div class="cpp-look-foot" id="cppLookFooter"></div>
+              </div>
+            </section>
+          </article>
 
           <div id="datevSheetHost" class="datev-sheet-host mode-payroll-only hidden" aria-label="DATEV Lohnabrechnung"></div>
 
@@ -1105,6 +1606,7 @@
           <div class="invoice-meta mode-invoice-only" id="invoiceMetaBlock">
             <p id="previewTaxNumber"></p>
             <p id="previewVatId"></p>
+            <p id="previewCompanyPhone"></p>
             <p id="previewCommercialRegister"></p>
           </div>
 
@@ -1117,6 +1619,11 @@
               <h3>An</h3>
               <pre id="previewCustomer">-</pre>
             </div>
+          </div>
+
+          <div class="invoice-purpose mode-invoice-only is-empty" id="invoicePurposeBlock">
+            <h3 data-i18n="doc.purposeTitle">Beschreibung</h3>
+            <p id="previewInvoicePurpose"></p>
           </div>
 
           <section id="payrollSheet" class="payroll-sheet hidden mode-payroll-only layout-datev">
@@ -1711,20 +2218,38 @@
             <tbody id="previewItemsBody"></tbody>
           </table>
 
-          <div class="totals mode-invoice-only">
-            <p><span id="subtotalLabel">Zwischensumme (netto):</span> <strong id="previewSubtotal">0,00 EUR</strong></p>
-            <p id="taxRowPreview"><span id="taxLabel">USt:</span> <strong id="previewTax">0,00 EUR</strong></p>
-            <p class="grand-total"><span id="totalLabel">Gesamt:</span> <strong id="previewTotal">0,00 EUR</strong></p>
+          <div class="totals mode-invoice-only" id="invoiceTotalsBlock">
+            <div class="totals-lines">
+              <p class="totals-line"><span id="subtotalLabel">Zwischensumme (netto):</span> <strong id="previewSubtotal">0,00 EUR</strong></p>
+              <p class="totals-line" id="surchargeRowPreview" hidden><span id="surchargeLabel">Zusatz:</span> <strong id="previewSurcharge">0,00 EUR</strong></p>
+              <p class="totals-line" id="taxRowPreview"><span id="taxLabel">USt:</span> <strong id="previewTax">0,00 EUR</strong></p>
+            </div>
+            <div class="grand-total-plaque">
+              <span class="grand-total-kicker" id="totalLabel">Betrag fällig</span>
+              <strong class="grand-total-amount" id="previewTotal">0,00 EUR</strong>
+            </div>
           </div>
 
-          <div class="invoice-bank mode-invoice-only" id="invoiceBankBlock">
-            <h3>Bankverbindung</h3>
-            <p id="previewCompanyBank">-</p>
+          <div class="invoice-warning mode-invoice-only is-empty" id="invoiceWarningBlock">
+            <h3 data-i18n="doc.invoiceWarningTitle">Wichtig</h3>
+            <p id="previewInvoiceWarning"></p>
           </div>
 
-          <div class="note-box mode-invoice-only">
-            <h3>Hinweis</h3>
-            <p id="previewNote">-</p>
+          <div class="invoice-closing mode-invoice-only" id="invoiceClosing">
+            <div class="invoice-closing-main">
+              <div class="invoice-bank" id="invoiceBankBlock">
+                <h3>Bankverbindung</h3>
+                <p id="previewCompanyBank"></p>
+              </div>
+              <div class="note-box" id="invoiceNoteBlock">
+                <h3>Hinweis</h3>
+                <p id="previewNote"></p>
+              </div>
+            </div>
+            <div class="invoice-sig-plate" aria-hidden="true">
+              <span class="invoice-sig-plate-label">Unterschrift</span>
+              <span class="invoice-sig-plate-line"></span>
+            </div>
           </div>
 
           <div class="wp-sig-layer mode-invoice-only" id="signaturePreviewBox" hidden
@@ -1742,6 +2267,7 @@
             <strong>WP-Siegel</strong>
             <span id="signatureSealProof">—</span>
           </aside>
+          </div>
         </section>
       </main>
         </div>
@@ -1752,7 +2278,7 @@
         <span class="lex-status-item lex-status-right">
           <span id="lexStatusDate"></span>
           <span class="lex-status-sep">|</span>
-          <span id="lexStatusVersion">v2.54.13</span>
+          <span id="lexStatusVersion">v2.54.48</span>
         </span>
       </footer>
       </div>
@@ -1781,14 +2307,16 @@
     <script src="elster-export.js?v=2"></script>
     <script src="datev-sheet.js?v=52"></script>
     <script src="payroll-core.js?v=34"></script>
-    <script src="workpass-i18n-packs.js?v=43"></script>
-    <script src="workpass-i18n.js?v=6"></script>
+    <script src="workpass-i18n-packs.js?v=48"></script>
+    <script src="workpass-i18n.js?v=7"></script>
     <script src="workpass-pwa.js?v=4"></script>
-    <script src="auth-gate.js?v=18"></script>
-    <script src="mandant-checklist.js?v=4"></script>
-    <script src="workpass-hub.js?v=15"></script>
+    <script src="auth-gate.js?v=19"></script>
+    <script src="mandant-checklist.js?v=5"></script>
+    <script src="workpass-hub.js?v=22"></script>
     <script src="templates.js?v=1" defer></script>
     <script src="signature-engine.js?v=5"></script>
-    <script src="script.js?v=120" defer></script>
+    <script src="help-contact.js?v=2"></script>
+    <script src="script.js?v=91" defer></script>
+    <script src="rechnung-split-lock.js?v=9" defer></script>
   </body>
 </html>

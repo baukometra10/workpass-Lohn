@@ -266,7 +266,15 @@ body.lexware-app {
 
 .lex-module-head {
 
-  padding: 10px 14px 8px;
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 8px;
+
+  padding: 10px 10px 8px 14px;
 
   font-size: 11px;
 
@@ -282,6 +290,107 @@ body.lexware-app {
 
   background: transparent;
 
+}
+
+.sidebar-toggle-btn {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.sidebar-toggle-btn:hover {
+  border-color: rgba(59, 158, 255, 0.35);
+  background: rgba(59, 158, 255, 0.1);
+}
+.sidebar-toggle-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+/* Collapsed module rail — more room for invoice preview */
+body.sidebar-collapsed {
+  --sidebar-w: 58px;
+}
+body.sidebar-collapsed .app-frame {
+  grid-template-columns: var(--sidebar-w) 1fr;
+}
+body.sidebar-collapsed .lex-module-panel,
+body.sidebar-collapsed .app-sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  max-width: var(--sidebar-w);
+}
+body.sidebar-collapsed .lex-module-head {
+  justify-content: center;
+  padding: 8px 4px;
+}
+body.sidebar-collapsed .lex-module-head > span,
+body.sidebar-collapsed .lex-nav-group,
+body.sidebar-collapsed .sidebar-nav-btn > span:not(.sidebar-nav-svg),
+body.sidebar-collapsed .nav-mod-copy,
+body.sidebar-collapsed .lex-sidebar-footer span[data-i18n],
+body.sidebar-collapsed .lex-sidebar-footer #sidebarVersionLabel {
+  display: none !important;
+}
+body.sidebar-collapsed .sidebar-nav-btn {
+  justify-content: center;
+  width: calc(100% - 8px);
+  margin: 2px 4px;
+  padding: 10px 0 !important;
+  gap: 0;
+}
+body.sidebar-collapsed .sidebar-nav-btn.active {
+  padding-left: 0 !important;
+  border-left-width: 0 !important;
+}
+body.sidebar-collapsed .sidebar-nav-svg {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+body.sidebar-collapsed .lex-sidebar-footer {
+  padding: 8px 4px !important;
+  text-align: center;
+  font-size: 9px;
+}
+body.sidebar-collapsed .sidebar-toggle-icon-collapse {
+  display: none !important;
+}
+body.sidebar-collapsed .sidebar-toggle-icon-expand {
+  display: block !important;
+}
+body.sidebar-collapsed .sidebar-toggle-icon-expand[hidden] {
+  display: block !important;
+}
+
+@media (max-width: 980px) {
+  body.workpass-hub.sidebar-collapsed .app-sidebar,
+  body.workpass-hub.sidebar-collapsed .lex-module-panel {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+  body.sidebar-collapsed .lex-module-head > span,
+  body.sidebar-collapsed .lex-nav-group,
+  body.sidebar-collapsed .sidebar-nav-btn > span:not(.sidebar-nav-svg),
+  body.sidebar-collapsed .nav-mod-copy,
+  body.sidebar-collapsed .lex-sidebar-footer span[data-i18n],
+  body.sidebar-collapsed .lex-sidebar-footer #sidebarVersionLabel {
+    display: revert !important;
+  }
+  body.sidebar-collapsed .sidebar-nav-btn {
+    justify-content: flex-start;
+    padding: 8px 12px !important;
+    gap: 10px;
+  }
 }
 
 
@@ -835,17 +944,11 @@ a.sidebar-nav-link {
 /* ── Workspace ── */
 
 .app-shell {
-
   flex: 1;
-
   min-height: 0;
-
   overflow: hidden;
-
   display: flex;
-
   flex-direction: column;
-
 }
 
 
@@ -1502,31 +1605,302 @@ body.payroll-mode .workspace .preview-panel {
   }
 }
 
-/* ── Dashboard: keep live preview visible (Hub index.html) ── */
+/* ── Dashboard: full-width hub — one viewport, no page scroll ── */
 body.dashboard-tab .preview-panel {
-  display: block;
+  display: none !important;
 }
 
-body.dashboard-tab .preview-panel::before {
-  content: attr(data-preview-label);
+body.dashboard-tab .workspace {
+  grid-template-columns: minmax(0, 1fr) !important;
 }
 
-@media (max-width: 1200px) {
-  body.dashboard-tab .workspace {
-    grid-template-columns: minmax(380px, 1fr) minmax(420px, 520px);
-  }
+body.dashboard-tab .app-topbar.lex-page-header,
+body.dashboard-tab .lex-context-bar {
+  display: none !important;
 }
 
-body.dashboard-tab .app-topbar.lex-page-header .topbar-heading {
-  /* Page chrome already says Übersicht via sidebar */
+body.dashboard-tab .lex-ribbon {
+  min-height: 0;
+  padding-top: 2px;
+  padding-bottom: 2px;
 }
 
-body.dashboard-tab .lex-context-bar .ui-status-bar {
-  opacity: 0.85;
+body.dashboard-tab .workspace .form-panel {
+  max-width: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 10px 16px 12px !important;
+}
+
+body.dashboard-tab .tab-panel.dash-board {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+body.dashboard-tab .tab-panel.dash-board.active {
+  display: flex;
+}
+
+body.dashboard-tab .dash-hub-banner-legacy,
+body.dashboard-tab #dashHubBanner {
+  display: none !important;
+}
+
+body.dashboard-tab .dash-onboarding {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+body.dashboard-tab .dash-onboarding p {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+body.dashboard-tab .firm-cockpit {
+  flex: 0 0 auto;
+  padding: 10px 14px !important;
+  margin: 0;
+}
+
+body.dashboard-tab .dash-board-main,
+body.dashboard-tab .dash-hero,
+body.dashboard-tab .dash-kpi-grid,
+body.dashboard-tab .dash-actions-section,
+body.dashboard-tab .dash-archive-panel {
+  flex-shrink: 0;
+}
+
+/* Pack remaining content; archive absorbs leftover with inner scroll */
+body.dashboard-tab .dash-archive-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 8px 10px;
+  overflow: hidden;
+}
+body.dashboard-tab .dash-archive-panel .invoice-archive-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  gap: 6px;
+}
+body.dashboard-tab .dash-archive-head .form-section-title {
+  margin: 0 0 2px;
+  padding-bottom: 2px;
+  font-size: 12px;
+}
+body.dashboard-tab .dash-archive-head .muted {
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+}
+body.dashboard-tab .invoice-archive-item {
+  padding: 8px 10px;
 }
 
 body.workpass-hub.dashboard-tab .dash-hero h2 {
   display: none;
+}
+
+/* Compact elegant stage */
+.dash-stage {
+  position: relative;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 14px 16px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background:
+    radial-gradient(120% 90% at 8% 0%, rgba(14, 116, 144, 0.28), transparent 52%),
+    radial-gradient(80% 70% at 95% 15%, rgba(180, 83, 9, 0.18), transparent 48%),
+    linear-gradient(165deg, #0b1220 0%, #111827 50%, #0f172a 100%);
+  color: #e8eef8;
+  box-shadow: 0 12px 28px rgba(2, 8, 23, 0.3);
+  overflow: hidden;
+}
+.dash-stage-glow {
+  position: absolute;
+  inset: auto -15% -50% 40%;
+  height: 70%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.14), transparent 70%);
+  pointer-events: none;
+}
+.dash-stage-top {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.dash-stage-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.dash-stage-kicker {
+  margin: 0 0 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7dd3fc;
+}
+.dash-stage h2 {
+  margin: 0 0 4px;
+  font-size: clamp(1.15rem, 1.8vw, 1.45rem);
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  color: #fff;
+  max-width: 28ch;
+}
+.dash-stage-lead {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.35;
+  color: #cbd5e1;
+  max-width: 52ch;
+}
+.dash-stage-actions {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  max-width: 42%;
+}
+.dash-stage-pillars {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.dash-stage-pillars li {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.55);
+  min-height: 0;
+}
+.dash-stage-pillars strong {
+  font-size: 0.88rem;
+  color: #f8fafc;
+}
+.dash-stage-pillars span {
+  font-size: 0.74rem;
+  line-height: 1.3;
+  color: #94a3b8;
+}
+
+body.dashboard-tab .dash-hero {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+body.dashboard-tab .dash-welcome {
+  font-size: 0.95rem;
+}
+body.dashboard-tab .dash-local-meta {
+  margin: 0;
+}
+
+body.dashboard-tab .dash-kpi-grid,
+body.dashboard-tab .dash-kpi-grid.dash-kpi-local,
+body.dashboard-tab .dash-kpi-grid.dash-kpi-firm {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+body.dashboard-tab .dash-kpi-grid.dash-kpi-firm {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+body.dashboard-tab .dash-kpi {
+  padding: 10px 12px;
+  min-height: 0;
+  border-radius: 10px;
+}
+body.dashboard-tab .dash-kpi-value {
+  font-size: 1.25rem;
+}
+
+body.dashboard-tab .dash-actions-section {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+body.dashboard-tab .dash-quick-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+body.dashboard-tab .dash-action-btn {
+  padding: 10px 12px;
+  min-height: 0;
+  border-radius: 10px;
+}
+body.dashboard-tab .dash-action-btn strong {
+  font-size: 0.9rem;
+}
+body.dashboard-tab .dash-action-btn span {
+  font-size: 0.72rem;
+}
+
+body.dashboard-tab .form-section {
+  max-width: none;
+}
+
+@media (max-width: 1100px) {
+  body.dashboard-tab .dash-kpi-grid,
+  body.dashboard-tab .dash-kpi-grid.dash-kpi-local {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  body.dashboard-tab .dash-kpi-grid.dash-kpi-firm,
+  body.dashboard-tab .dash-quick-actions,
+  .dash-stage-pillars {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dash-stage-top {
+    flex-direction: column;
+  }
+  .dash-stage-actions {
+    max-width: none;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  body.dashboard-tab .workspace .form-panel {
+    overflow: auto !important;
+  }
+  body.dashboard-tab .tab-panel.dash-board {
+    overflow: auto;
+    height: auto;
+  }
+  .dash-stage-pillars,
+  body.dashboard-tab .dash-quick-actions {
+    grid-template-columns: 1fr;
+  }
 }
 
 .dash-hero {
@@ -1599,6 +1973,109 @@ body.workpass-hub.dashboard-tab .dash-hero h2 {
   content: " …";
 }
 
+.invoice-find-bar {
+  position: relative;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border, #d5dde8);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface, #fff) 92%, var(--accent, #1a5f9e) 8%);
+}
+.invoice-find-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.invoice-find-label .muted {
+  font-weight: 400;
+}
+.invoice-find-bar input[type="search"] {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid var(--border, #d5dde8);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.95rem;
+  background: #fff;
+}
+.invoice-find-results {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: calc(100% - 4px);
+  z-index: 40;
+  max-height: 240px;
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid var(--border, #d5dde8);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(16, 32, 56, 0.12);
+}
+.invoice-find-hit {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr) auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: start;
+  font: inherit;
+  cursor: pointer;
+}
+.invoice-find-hit:hover,
+.invoice-find-hit:focus-visible {
+  background: #eef5fc;
+  outline: none;
+}
+.invoice-find-hit strong {
+  font-variant-numeric: tabular-nums;
+}
+.invoice-find-hit span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted, #5a6a7e);
+}
+.invoice-find-hit em {
+  font-style: normal;
+  font-size: 0.85rem;
+  color: var(--accent, #1a5f9e);
+}
+.invoice-find-empty {
+  margin: 6px 8px;
+}
+
+#invoiceNumber[readonly] {
+  background: #f4f7fb;
+  cursor: default;
+}
+.invoice-archive-search-wrap input[type="search"] {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid var(--border, #d5dde8);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  font: inherit;
+  font-size: 0.9rem;
+}
+.invoice-archive-search-wrap input[type="search"]:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent, #1a5f9e) 35%, transparent);
+  outline-offset: 1px;
+  border-color: var(--accent, #1a5f9e);
+}
+
 .invoice-archive-list {
   display: flex;
   flex-direction: column;
@@ -1612,6 +2089,29 @@ body.workpass-hub.dashboard-tab .dash-hero h2 {
   gap: 12px;
   padding: 12px 14px;
   transition: border-color 0.12s, background 0.12s;
+}
+.invoice-archive-item-main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.invoice-archive-nr {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+.invoice-archive-buyer {
+  margin-top: 2px;
+  font-size: 0.92rem;
+  color: var(--text, #1a2332);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.invoice-archive-buyer-lab {
+  color: var(--muted, #5a6a7e);
+  font-weight: 500;
+}
+.invoice-archive-meta {
+  margin-top: 2px;
 }
 
 .invoice-archive-item .inv-badge {
@@ -1922,6 +2422,10 @@ body.workpass-hub.dashboard-tab .dash-hero h2 {
   overflow-y: auto !important;
   padding: 18px 22px 28px !important;
 }
+body.document-tab .workspace .form-panel {
+  height: 100% !important;
+  max-height: 100% !important;
+}
 .workspace .preview-panel {
   display: flex !important;
   flex-direction: column !important;
@@ -1933,6 +2437,12 @@ body.workpass-hub.dashboard-tab .dash-hero h2 {
   overflow: auto !important;
   padding: 12px 14px 16px 8px !important;
 }
+body.document-tab .workspace .preview-panel,
+body.document-tab #invoicePreview {
+  /* Override generic workspace scroll — stage scrolls, shell clips */
+  overflow: hidden !important;
+  align-items: center !important;
+}
 .workspace .preview-panel::before {
   width: 100%;
   box-sizing: border-box;
@@ -1943,6 +2453,10 @@ body.workpass-hub.dashboard-tab .dash-hero h2 {
 .workspace .preview-panel > * {
   max-width: 100%;
 }
+.workspace .preview-panel > #invoiceFitFrame,
+.workspace .preview-panel > .invoice-fit-frame {
+  max-width: 100% !important;
+}
 .workspace .preview-panel .preview-tools,
 .workspace .preview-panel .invoice-doc-stage,
 .workspace .preview-panel > .payroll-sheet,
@@ -1951,7 +2465,13 @@ body.workpass-hub.dashboard-tab .dash-hero h2 {
 .workspace #invoicePreview > article,
 .workspace #invoicePreview > .doc-sheet {
   margin-left: auto !important;
+  margin-right: auto !important;
+}
+body.document-tab .workspace .preview-panel .invoice-doc-stage,
+body.document-tab #invoiceFitFrame .invoice-doc-stage {
+  margin-left: 0 !important;
   margin-right: 0 !important;
+  max-width: none !important;
 }
 @media (min-width: 1600px) {
   .workspace {
@@ -1959,34 +2479,43 @@ body.workpass-hub.dashboard-tab .dash-hero h2 {
   }
 }
 @media (max-width: 1100px) {
-  .workspace {
+  body:not(.document-tab) .workspace {
     grid-template-columns: minmax(380px, 1fr) minmax(420px, 520px) !important;
   }
 }
 @media (max-width: 720px) {
-  .workspace {
+  body:not(.document-tab) .workspace {
     grid-template-columns: minmax(240px, 48vw) minmax(0, 1fr) !important;
   }
 }
 
-/* Dashboard uses the wider form rail */
+/* Dashboard uses the wider form rail — keep compact (no page scroll) */
 body.dashboard-tab .dash-kpi-grid,
 body.dashboard-tab .dash-kpi-grid.dash-kpi-local,
 body.dashboard-tab .dash-kpi-grid.dash-kpi-firm {
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+body.dashboard-tab .dash-kpi-grid.dash-kpi-firm {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 body.dashboard-tab .dash-kpi {
-  padding: 14px 16px;
-  min-height: 88px;
+  padding: 10px 12px;
+  min-height: 0;
 }
 body.dashboard-tab .dash-quick-actions {
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 body.dashboard-tab .dash-action-btn {
-  padding: 14px 16px;
-  min-height: 88px;
+  padding: 10px 12px;
+  min-height: 0;
+}
+body.dashboard-tab .dash-actions-section {
+  display: none !important; /* CTAs already in .dash-stage */
+}
+body.dashboard-tab .dash-hero {
+  display: none !important; /* covered by stage lead */
 }
 body.dashboard-tab .wp-hub-banner {
   max-width: none;
@@ -1994,4 +2523,1345 @@ body.dashboard-tab .wp-hub-banner {
 body.dashboard-tab .form-panel .form-section {
   max-width: none;
 }
+body.dashboard-tab .workspace {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+body.dashboard-tab .preview-panel {
+  display: none !important;
+}
 
+/* Rechnung / Firma: pull form + preview up — drop duplicate page title */
+body.document-tab .app-topbar.lex-page-header,
+body.company-tab .app-topbar.lex-page-header {
+  display: none !important;
+}
+body.document-tab .lex-context-bar,
+body.company-tab .lex-context-bar {
+  height: 34px;
+  padding: 0 14px;
+}
+body.document-tab .workspace .form-panel,
+body.company-tab .workspace .form-panel {
+  padding: 8px 14px 28px !important;
+}
+body.document-tab .workspace .preview-panel {
+  padding: 10px 12px 20px !important;
+}
+
+/* Firma: full-width master data — no white preview column */
+body.company-tab .workspace {
+  grid-template-columns: minmax(0, 1fr) !important;
+  display: grid !important;
+}
+body.company-tab .workspace .form-panel {
+  max-width: none !important;
+  width: 100% !important;
+  overflow: auto !important;
+}
+body.company-tab .workspace .preview-panel {
+  display: none !important;
+}
+body.company-tab #companyProfilePreview {
+  display: none !important;
+}
+
+body.document-tab .module-hero,
+body.company-tab .module-hero {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  gap: 12px;
+}
+body.document-tab .form-section {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Firma master page — luxury champagne / bronze atelier
+   (company-tab only; Rechnung & Übersicht untouched)
+   ═══════════════════════════════════════════════════════════ */
+body.company-tab {
+  --co-ink: #3b2416;
+  --co-bronze: #8a4b1f;
+  --co-amber: #c47a2c;
+  --co-gold: #d4a24a;
+  --co-champagne: #f3e6cf;
+  --co-ivory: #fbf6ee;
+  --co-pearl: #fffaf3;
+  --co-line: rgba(138, 75, 31, 0.18);
+  --co-shine: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(255, 248, 235, 0.35) 38%,
+    rgba(212, 162, 74, 0.14) 72%,
+    rgba(255, 255, 255, 0.45) 100%
+  );
+}
+body.workpass-hub.company-tab .workspace {
+  background:
+    radial-gradient(1200px 520px at 12% -8%, rgba(212, 162, 74, 0.22), transparent 58%),
+    radial-gradient(900px 480px at 92% 8%, rgba(138, 75, 31, 0.14), transparent 55%),
+    linear-gradient(180deg, #1a1410 0%, #241911 42%, #1c1612 100%) !important;
+  color: var(--co-ivory) !important;
+}
+body.workpass-hub.company-tab .workspace .form-panel {
+  background: transparent !important;
+  color: var(--co-ivory) !important;
+  padding: 18px 22px 40px !important;
+}
+body.workpass-hub.company-tab .muted,
+body.workpass-hub.company-tab .small,
+body.workpass-hub.company-tab .company-intro-line {
+  color: rgba(243, 230, 207, 0.78) !important;
+}
+body.workpass-hub.company-tab .company-section .muted,
+body.workpass-hub.company-tab .company-section .small,
+body.workpass-hub.company-tab .company-section label {
+  color: rgba(59, 36, 22, 0.72) !important;
+}
+body.workpass-hub.company-tab .company-section label {
+  color: rgba(59, 36, 22, 0.9) !important;
+}
+body.workpass-hub.company-tab .company-identity-strip .muted {
+  color: rgba(59, 36, 22, 0.68) !important;
+}
+body.workpass-hub.company-tab .linkish-btn {
+  color: #b45309 !important;
+}
+body.company-tab .lex-context-bar {
+  background: linear-gradient(90deg, #1f1712, #2a1e16 55%, #1f1712) !important;
+  border-bottom: 1px solid rgba(212, 162, 74, 0.28) !important;
+  color: #f3e6cf !important;
+}
+body.company-tab .lex-context-bar a,
+body.company-tab .lex-context-bar .muted,
+body.company-tab .lex-breadcrumb {
+  color: #e8d5b5 !important;
+}
+
+body.company-tab .module-hero.module-hero-company {
+  position: relative;
+  overflow: hidden;
+  margin: 0 0 16px;
+  padding: 18px 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(212, 162, 74, 0.45);
+  background:
+    linear-gradient(145deg, #3a2718 0%, #5a3a22 38%, #8a4b1f 72%, #c47a2c 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+    0 18px 40px rgba(0, 0, 0, 0.35),
+    0 0 48px rgba(212, 162, 74, 0.18);
+}
+body.company-tab .module-hero.module-hero-company::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--co-shine);
+  pointer-events: none;
+  opacity: 0.55;
+}
+body.company-tab .module-hero.module-hero-company::after {
+  content: "";
+  position: absolute;
+  top: -40%;
+  right: -8%;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 236, 190, 0.35), transparent 68%);
+  pointer-events: none;
+}
+body.company-tab .module-hero-company .module-hero-badge {
+  position: relative;
+  z-index: 1;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #f6e2b8, #d4a24a 55%, #8a4b1f);
+  color: #2a1a10;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.35) inset,
+    0 8px 18px rgba(0, 0, 0, 0.28);
+  font-size: 0.86rem;
+}
+body.company-tab .module-hero-company .module-hero-text {
+  position: relative;
+  z-index: 1;
+}
+body.company-tab .module-hero-company .module-hero-text h2 {
+  color: #fff8e8 !important;
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+}
+body.company-tab .module-hero-company .module-hero-text p {
+  color: rgba(255, 244, 220, 0.88) !important;
+  font-size: 0.9rem;
+  max-width: 52ch;
+}
+
+.company-master-inner {
+  width: min(100%, 1080px);
+  margin: 0 auto;
+  padding-bottom: 40px;
+}
+
+.company-identity-strip {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  margin: 0 0 18px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(212, 162, 74, 0.42);
+  background:
+    linear-gradient(160deg, rgba(255, 250, 243, 0.98) 0%, rgba(243, 230, 207, 0.92) 48%, rgba(255, 248, 235, 0.96) 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.55) inset,
+    0 16px 36px rgba(0, 0, 0, 0.28),
+    0 0 40px rgba(212, 162, 74, 0.16);
+  color: var(--co-ink);
+}
+.company-identity-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  border: 1px solid rgba(138, 75, 31, 0.28);
+  background:
+    linear-gradient(145deg, #fffef9, #f3e6cf);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: var(--co-bronze);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.7) inset,
+    0 8px 16px rgba(138, 75, 31, 0.12);
+}
+.company-identity-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.company-identity-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.company-identity-copy strong {
+  font-size: 1.18rem;
+  letter-spacing: -0.025em;
+  color: var(--co-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.company-identity-copy .muted {
+  color: rgba(59, 36, 22, 0.68) !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.company-identity-progress {
+  text-align: end;
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #2a1c14, #4a3020 55%, #6b4424);
+  border: 1px solid rgba(212, 162, 74, 0.5);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 8px 18px rgba(0, 0, 0, 0.25);
+  color: #fff4df;
+}
+.company-identity-progress-lab {
+  display: block;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #e8c98a;
+  opacity: 0.9;
+}
+.company-identity-progress strong {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.2rem;
+  color: #fff8e8;
+}
+
+.company-intro-line {
+  margin: 0 0 14px;
+  max-width: 64ch;
+  line-height: 1.5;
+  color: rgba(243, 230, 207, 0.82) !important;
+}
+.company-intro-line a {
+  color: #f0c878;
+  text-decoration-color: rgba(240, 200, 120, 0.45);
+}
+
+body.company-tab .wp-hub-banner {
+  border-radius: 12px;
+  border: 1px solid rgba(212, 162, 74, 0.35);
+  background: linear-gradient(90deg, rgba(42, 28, 20, 0.92), rgba(74, 48, 32, 0.88));
+  color: #f3e6cf;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.company-section {
+  position: relative;
+  margin: 0 0 16px;
+  padding: 16px 18px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(212, 162, 74, 0.28);
+  background:
+    linear-gradient(165deg, rgba(255, 252, 246, 0.97) 0%, rgba(247, 236, 216, 0.94) 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.55) inset,
+    0 14px 32px rgba(0, 0, 0, 0.22);
+  color: var(--co-ink);
+  overflow: hidden;
+}
+.company-section::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85), transparent);
+  pointer-events: none;
+}
+.company-section-muted {
+  background:
+    linear-gradient(165deg, rgba(250, 245, 236, 0.96) 0%, rgba(236, 224, 204, 0.92) 100%);
+}
+.company-section-head {
+  margin: 0 0 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--co-line);
+}
+.company-section-title {
+  margin: 0 0 4px;
+  font-size: 1.02rem;
+  letter-spacing: -0.015em;
+  color: var(--co-bronze);
+}
+.company-section-head .muted {
+  margin: 0;
+  color: rgba(59, 36, 22, 0.62) !important;
+}
+.company-section .grid.two-col {
+  gap: 12px 16px;
+}
+.company-section label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: rgba(59, 36, 22, 0.88);
+  font-weight: 550;
+}
+.company-section label > span {
+  font-size: 0.8rem;
+  letter-spacing: 0.01em;
+}
+.company-section input,
+.company-section select,
+.company-section textarea {
+  border-radius: 10px !important;
+  border: 1px solid rgba(138, 75, 31, 0.22) !important;
+  background:
+    linear-gradient(180deg, #fffefb 0%, #faf3e6 100%) !important;
+  color: var(--co-ink) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.company-section input:focus,
+.company-section select:focus,
+.company-section textarea:focus {
+  outline: none !important;
+  border-color: rgba(196, 122, 44, 0.7) !important;
+  box-shadow:
+    0 0 0 3px rgba(212, 162, 74, 0.28),
+    0 1px 0 rgba(255, 255, 255, 0.85) inset !important;
+}
+.company-section h4 {
+  margin: 14px 0 6px;
+  font-size: 0.9rem;
+  color: var(--co-bronze);
+}
+.company-section .muted {
+  color: rgba(59, 36, 22, 0.62) !important;
+}
+.company-section .secondary-btn {
+  border-radius: 10px;
+  border-color: rgba(138, 75, 31, 0.28);
+  background: linear-gradient(180deg, #fff9f0, #f0e0c4);
+  color: var(--co-ink);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+}
+.company-section .secondary-btn:hover {
+  border-color: rgba(196, 122, 44, 0.55);
+  background: linear-gradient(180deg, #fffdf8, #e8d2a8);
+}
+.company-section .secondary-btn.danger-btn {
+  border-color: rgba(153, 60, 40, 0.35);
+  color: #7f1d1d;
+}
+.company-profile-actions {
+  flex-wrap: wrap;
+  margin: 12px 0 8px;
+  gap: 8px;
+}
+.company-logo-block {
+  margin: 14px 0;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(212, 162, 74, 0.35);
+  background:
+    linear-gradient(145deg, rgba(255, 252, 245, 0.95), rgba(243, 230, 207, 0.75));
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45) inset;
+}
+.company-section-check.compact-checklist {
+  padding: 14px 16px;
+}
+.company-check-inline {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 6px 14px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+.company-check-inline li {
+  font-size: 0.84rem;
+  line-height: 1.35;
+  color: rgba(59, 36, 22, 0.88);
+}
+body.company-tab .company-check-inline li.done {
+  color: #5a3d1a;
+}
+body.company-tab .company-check-inline li.done::before {
+  color: #b45309;
+}
+.company-check-actions {
+  margin: 0;
+}
+body.company-tab .company-check-actions .linkish-btn {
+  color: #a16207;
+}
+body.company-tab .company-master-page {
+  animation: companyMasterIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes companyMasterIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@media (max-width: 720px) {
+  .company-identity-strip {
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+  .company-identity-progress {
+    grid-column: 1 / -1;
+    text-align: start;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .company-identity-progress-lab {
+    display: inline;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.8rem;
+  }
+}
+
+/* Nested boxes inside Firma sections — same champagne language */
+body.company-tab .company-section .letterhead-box,
+body.company-tab .company-section .data-backup-box,
+body.company-tab .company-section .pin-change-box,
+body.company-tab .company-section .logo-upload-box,
+body.company-tab .company-section.company-section-check {
+  margin-top: 10px !important;
+  padding: 12px 14px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(138, 75, 31, 0.16) !important;
+  background: linear-gradient(180deg, rgba(255, 254, 250, 0.95), rgba(243, 230, 207, 0.55)) !important;
+  color: var(--co-ink) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4) inset !important;
+}
+body.company-tab .company-section {
+  background:
+    linear-gradient(165deg, rgba(255, 252, 246, 0.98) 0%, rgba(247, 236, 216, 0.95) 100%) !important;
+  border: 1px solid rgba(212, 162, 74, 0.32) !important;
+  color: var(--co-ink) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.55) inset,
+    0 14px 32px rgba(0, 0, 0, 0.22) !important;
+}
+body.company-tab .company-section-muted {
+  background:
+    linear-gradient(165deg, rgba(250, 245, 236, 0.97) 0%, rgba(236, 224, 204, 0.94) 100%) !important;
+}
+body.company-tab .company-section .letterhead-box h3,
+body.company-tab .company-section .letterhead-box h4,
+body.company-tab .company-section .data-backup-box h3,
+body.company-tab .company-section .data-backup-box h4,
+body.company-tab .company-section .pin-change-box h3,
+body.company-tab .company-section .pin-change-box h4,
+body.company-tab .company-section .logo-upload-box h3,
+body.company-tab .company-section .logo-upload-box h4 {
+  color: var(--co-bronze) !important;
+  margin-top: 0;
+}
+body.company-tab .company-section input,
+body.company-tab .company-section select,
+body.company-tab .company-section textarea {
+  border-radius: 10px !important;
+  border: 1px solid rgba(138, 75, 31, 0.22) !important;
+  background: linear-gradient(180deg, #fffefb 0%, #faf3e6 100%) !important;
+  color: var(--co-ink) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset !important;
+}
+body.company-tab .company-section input:focus,
+body.company-tab .company-section select:focus,
+body.company-tab .company-section textarea:focus {
+  border-color: rgba(196, 122, 44, 0.75) !important;
+  box-shadow:
+    0 0 0 3px rgba(212, 162, 74, 0.3),
+    0 1px 0 rgba(255, 255, 255, 0.85) inset !important;
+}
+body.company-tab .logo-file-label {
+  border-radius: 10px !important;
+  border: 1px solid rgba(196, 122, 44, 0.4) !important;
+  background: linear-gradient(145deg, #fff8eb, #f0d9a8) !important;
+  color: var(--co-ink) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.65) inset !important;
+}
+body.company-tab .company-logo-preview:not(.hidden) {
+  border-radius: 10px;
+  border: 1px solid rgba(138, 75, 31, 0.2);
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(59, 36, 22, 0.12);
+}
+body.company-tab .company-section .secondary-btn {
+  border-radius: 10px !important;
+  border: 1px solid rgba(138, 75, 31, 0.28) !important;
+  background: linear-gradient(180deg, #fff9f0, #f0e0c4) !important;
+  color: var(--co-ink) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset !important;
+}
+body.company-tab .company-section .linkish-btn {
+  color: #a16207 !important;
+}
+body.company-tab .workspace .form-panel {
+  background: transparent !important;
+}
+
+/* Primary save CTA + feedback */
+body.company-tab .company-save-primary {
+  appearance: none;
+  border: 1px solid rgba(212, 162, 74, 0.65) !important;
+  border-radius: 12px !important;
+  padding: 10px 18px !important;
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  color: #2a1a10 !important;
+  background:
+    linear-gradient(165deg, #fff4d8 0%, #e8c070 42%, #c47a2c 100%) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.45) inset,
+    0 10px 22px rgba(0, 0, 0, 0.22),
+    0 0 24px rgba(212, 162, 74, 0.28) !important;
+  transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
+}
+body.company-tab .company-save-primary:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+body.company-tab .company-save-primary:active {
+  transform: translateY(0);
+}
+body.company-tab .company-save-primary:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+body.company-tab .company-save-primary.is-save-ok {
+  box-shadow:
+    0 0 0 2px rgba(47, 160, 100, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.45) inset,
+    0 10px 22px rgba(0, 0, 0, 0.22) !important;
+}
+body.company-tab .company-save-primary.is-save-error {
+  box-shadow:
+    0 0 0 2px rgba(180, 60, 50, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.45) inset !important;
+}
+body.company-tab .company-save-hint {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+body.company-tab .company-save-hint.is-ok {
+  color: #1f6b45 !important;
+  background: rgba(47, 160, 100, 0.14);
+  border-color: rgba(47, 160, 100, 0.35);
+}
+body.company-tab .company-save-hint.is-error {
+  color: #8b2e24 !important;
+  background: rgba(180, 60, 50, 0.12);
+  border-color: rgba(180, 60, 50, 0.35);
+}
+body.company-tab .company-save-hint.is-flash {
+  animation: companyHintFlash 0.7s ease;
+}
+@keyframes companyHintFlash {
+  0% { transform: translateY(2px); opacity: 0.55; }
+  100% { transform: none; opacity: 1; }
+}
+
+/* Clickable checklist */
+body.company-tab .company-check-inline li.is-clickable {
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 4px 8px;
+  margin: 0 -4px;
+  border: 1px solid transparent;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+body.company-tab .company-check-inline li.is-clickable:hover,
+body.company-tab .company-check-inline li.is-clickable:focus-visible {
+  background: rgba(196, 122, 44, 0.12);
+  border-color: rgba(196, 122, 44, 0.35);
+  outline: none;
+}
+body.company-tab .company-check-inline li.is-next:not(.done) {
+  background: rgba(212, 162, 74, 0.18);
+  border-color: rgba(196, 122, 44, 0.45);
+  font-weight: 600;
+}
+body.company-tab .company-section.is-highlight {
+  box-shadow:
+    0 0 0 2px rgba(196, 122, 44, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.55) inset,
+    0 14px 32px rgba(0, 0, 0, 0.22) !important;
+}
+body.company-tab .field-pulse {
+  animation: companyFieldPulse 1.1s ease;
+}
+@keyframes companyFieldPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196, 122, 44, 0); }
+  35% { box-shadow: 0 0 0 4px rgba(212, 162, 74, 0.45); }
+}
+
+body.company-tab .company-identity-progress {
+  appearance: none;
+  font: inherit;
+  cursor: pointer;
+  text-align: end;
+}
+body.company-tab .company-identity-progress:hover {
+  filter: brightness(1.08);
+}
+body.company-tab .company-identity-progress:focus-visible {
+  outline: 2px solid rgba(240, 200, 120, 0.7);
+  outline-offset: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   2.54.42 — Lohn split only: form 1fr · A4 dock · no % columns
+   Preview shell clipped · stage scrolls · no paint over form
+   ═══════════════════════════════════════════════════════════ */
+body.document-tab main.layout.workspace,
+body.document-tab .workspace.layout,
+body.document-tab .workspace,
+body.document-tab #invoiceWorkspace {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  gap: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  min-height: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  position: relative !important;
+  box-sizing: border-box !important;
+}
+@media (min-width: 1400px) {
+  body.document-tab .workspace,
+  body.document-tab #invoiceWorkspace {
+    grid-template-columns: minmax(360px, 1fr) minmax(0, 860px) !important;
+  }
+}
+@media (min-width: 1800px) {
+  body.document-tab .workspace,
+  body.document-tab #invoiceWorkspace {
+    grid-template-columns: minmax(420px, 1.05fr) minmax(0, 900px) !important;
+  }
+}
+@media (max-width: 1399px) {
+  body.document-tab .workspace,
+  body.document-tab #invoiceWorkspace {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+  }
+}
+
+body.document-tab.rechnung-split-stacked .workspace,
+body.document-tab.rechnung-split-stacked #invoiceWorkspace {
+  /* stacking disabled — keep side-by-side */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+}
+
+body.document-tab .workspace .form-panel,
+body.document-tab #invoiceForm {
+  grid-column: 1 / 2 !important;
+  grid-row: 1 / 2 !important;
+  position: relative !important;
+  inset: auto !important;
+  z-index: 5 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  border-right: 1px solid rgba(90, 140, 200, 0.35) !important;
+  padding: 10px 16px 28px !important;
+  background: #0a1220 !important;
+  isolation: isolate !important;
+  contain: layout !important;
+  flex: none !important;
+}
+
+body.document-tab .workspace .preview-panel,
+body.document-tab #invoicePreview {
+  grid-column: 2 / 3 !important;
+  grid-row: 1 / 2 !important;
+  position: relative !important;
+  inset: auto !important;
+  z-index: 1 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  /* Shell never scrolls — stage scrolls (Lohn). Prevents nested scroll fight + bleed. */
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  zoom: 1 !important;
+  transform: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  padding: 10px 12px 16px !important;
+  background: #060b14 !important;
+  border-left: 1px solid rgba(90, 140, 200, 0.2) !important;
+  box-shadow: none !important;
+  isolation: isolate !important;
+  contain: layout paint !important;
+  clip-path: inset(0) !important;
+}
+
+/* Always side-by-side — never stack form above preview */
+body.document-tab .workspace .form-panel,
+body.document-tab #invoiceForm {
+  grid-column: 1 / 2 !important;
+  grid-row: 1 / 2 !important;
+  border-right: 1px solid rgba(90, 140, 200, 0.28) !important;
+  border-bottom: none !important;
+}
+body.document-tab .workspace .preview-panel,
+body.document-tab #invoicePreview {
+  grid-column: 2 / 3 !important;
+  grid-row: 1 / 2 !important;
+}
+body.document-tab.rechnung-split-stacked .workspace .form-panel,
+body.document-tab.rechnung-split-stacked #invoiceForm {
+  grid-column: 1 / 2 !important;
+  grid-row: 1 / 2 !important;
+  border-right: 1px solid rgba(90, 140, 200, 0.28) !important;
+  border-bottom: none !important;
+}
+body.document-tab.rechnung-split-stacked .workspace .preview-panel,
+body.document-tab.rechnung-split-stacked #invoicePreview {
+  grid-column: 2 / 3 !important;
+  grid-row: 1 / 2 !important;
+}
+
+body.document-tab .workspace .preview-panel::before {
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: 100%;
+  margin: 0 0 6px !important;
+  padding: 0;
+  background: transparent !important;
+  border: none !important;
+  color: #5eb4ff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+body.document-tab .workspace .preview-panel .preview-tools {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 8px !important;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(90, 140, 200, 0.2);
+  background: rgba(12, 20, 34, 0.85);
+  color: #c5d4e8;
+  box-shadow: none;
+  padding: 6px 10px;
+  position: relative !important;
+  top: auto !important;
+  z-index: 1;
+}
+
+body.document-tab #invoicePreviewStage,
+body.document-tab .invoice-preview-stage {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  position: relative !important;
+  isolation: isolate !important;
+}
+
+body.document-tab .workspace .preview-panel .preview-zoom-label {
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: #9bb0c9;
+}
+body.document-tab .workspace .preview-panel .preview-zoom-select {
+  min-height: 30px;
+  border-radius: 6px;
+  border: 1px solid rgba(90, 140, 200, 0.28);
+  background: rgba(8, 14, 26, 0.85);
+  color: #e8eef6;
+  padding: 4px 8px;
+}
+
+body.document-tab #invoiceFitFrame,
+body.document-tab .invoice-fit-frame {
+  flex: 0 0 auto;
+  position: relative !important;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  overflow: hidden !important;
+  align-self: center;
+}
+
+body.document-tab #invoiceZoomPad,
+body.document-tab .invoice-zoom-pad {
+  position: relative !important;
+  flex: 0 0 auto !important;
+  margin: 0 auto !important;
+  overflow: hidden !important;
+  max-width: none !important;
+}
+
+body.document-tab .workspace .preview-panel .invoice-doc-stage,
+body.document-tab #invoiceFitFrame .invoice-doc-stage,
+body.document-tab #invoiceDocStage {
+  box-sizing: border-box !important;
+  width: 794px !important;
+  min-width: 794px !important;
+  max-width: 794px !important;
+  height: 1123px !important;
+  min-height: 1123px !important;
+  max-height: 1123px !important;
+  flex: 0 0 auto !important;
+  z-index: 1;
+  zoom: 1 !important;
+}
+/* Default (no pad yet): flow in stage */
+body.document-tab #invoicePreviewStage > .invoice-doc-stage,
+body.document-tab #invoicePreviewStage > #invoiceDocStage {
+  position: relative !important;
+  margin: 0 auto !important;
+  transform: none !important;
+}
+/* Inside zoom pad: absolute + optional scale (set by fitInvoiceSheet) */
+body.document-tab #invoiceZoomPad > .invoice-doc-stage,
+body.document-tab #invoiceZoomPad > #invoiceDocStage {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  margin: 0 !important;
+}
+
+body.document-tab .preview-panel,
+body.workpass-hub.document-tab #invoicePreview.preview-panel {
+  position: relative !important;
+  top: auto !important;
+  align-self: stretch !important;
+  max-height: 100% !important;
+  zoom: 1 !important;
+  overflow: hidden !important;
+}
+
+body.document-tab main.layout,
+body.document-tab main.layout.workspace {
+  /* Never reintroduce % columns — lock script + rules above win */
+  gap: 0 !important;
+  margin-top: 0 !important;
+}
+
+.doc-type-select-hidden,
+#documentType.doc-type-select-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Flat left rail — no cards stacked on cards */
+body.document-tab .invoice-entry-section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+body.document-tab .invoice-block,
+body.document-tab .signature-pad-wrap.invoice-block-sign {
+  margin: 0 !important;
+  padding: 14px 0 16px !important;
+  border: none !important;
+  border-radius: 0 !important;
+  border-bottom: 1px solid rgba(90, 140, 200, 0.16) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+body.document-tab .invoice-block-meta {
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+body.document-tab .module-hero-invoice {
+  border-radius: 10px !important;
+  border: 1px solid rgba(90, 140, 200, 0.22) !important;
+  background: rgba(14, 28, 46, 0.55) !important;
+  box-shadow: none !important;
+  margin-bottom: 8px !important;
+}
+body.document-tab .invoice-rail-hint {
+  border-radius: 8px;
+  border: 1px solid rgba(90, 140, 200, 0.18);
+  background: rgba(12, 24, 42, 0.45);
+  box-shadow: none;
+}
+body.document-tab .form-section {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin-bottom: 8px !important;
+}
+body.document-tab .invoice-block .form-section-title,
+body.document-tab .invoice-block-title,
+body.document-tab .invoice-block .items-header h3,
+body.document-tab .invoice-block-sign .signature-head h3 {
+  color: #9ecbff !important;
+  letter-spacing: 0.08em;
+}
+
+/* A4 addresses: paper, not floating cards */
+body.document-tab .invoice-doc-stage .addresses > div {
+  border: 1px solid #d8dee6 !important;
+  border-radius: 2px !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+body.document-tab .invoice-doc-stage .invoice-purpose {
+  border-radius: 2px !important;
+  border: 1px solid #d8dee6 !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   2.54.37 — Narrow window: form content reflows, no clip
+   Container queries · 1-col fields · table scrolls · sig wraps
+   ═══════════════════════════════════════════════════════════ */
+body.document-tab .workspace .form-panel {
+  container-type: inline-size;
+  container-name: invoiceform;
+}
+
+/* Narrow desk: keep TWO columns — reflow form content only */
+@media (max-width: 1399px) {
+  body.document-tab .workspace,
+  body.document-tab #invoiceWorkspace {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+  }
+  body.document-tab .workspace .form-panel,
+  body.document-tab #invoiceForm {
+    grid-column: 1 / 2 !important;
+    grid-row: 1 / 2 !important;
+    border-right: 1px solid rgba(90, 140, 200, 0.28) !important;
+    border-bottom: none !important;
+    z-index: 2 !important;
+    padding: 8px 10px 20px !important;
+  }
+  body.document-tab .workspace .preview-panel,
+  body.document-tab #invoicePreview {
+    grid-column: 2 / 3 !important;
+    grid-row: 1 / 2 !important;
+    z-index: 1 !important;
+    padding: 8px 8px 10px !important;
+  }
+  body.document-tab .form-panel input,
+  body.document-tab .form-panel select,
+  body.document-tab .form-panel textarea {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  body.document-tab .form-panel .grid.two-col {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Always reflow two-col grids inside the form when the rail is tight */
+@container invoiceform (max-width: 520px) {
+  body.document-tab .form-panel .grid.two-col,
+  body.document-tab .form-panel .invoice-extras-grid,
+  body.document-tab .form-panel .invoice-tax-flags,
+  body.document-tab .form-panel .sig-adv-grid {
+    grid-template-columns: 1fr !important;
+  }
+  body.document-tab .form-panel .sig-caption-row {
+    flex-wrap: wrap !important;
+  }
+  body.document-tab .form-panel .sig-caption-row input {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+  }
+  body.document-tab .form-panel .sig-caption-row .secondary-btn,
+  body.document-tab .form-panel .sig-caption-row button {
+    flex: 1 1 auto !important;
+  }
+  body.document-tab .form-panel .sig-adv-sliders label {
+    grid-template-columns: 64px minmax(0, 1fr) 44px !important;
+  }
+  body.document-tab .form-panel .sig-adv-actions,
+  body.document-tab .form-panel .btn-row.sig-adv-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  body.document-tab .form-panel .sig-adv-actions button {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+}
+
+/* Fallback: collapse two-col only when viewport is truly narrow */
+@media (max-width: 1100px) {
+  body.document-tab .form-panel .grid.two-col,
+  body.document-tab .form-panel .invoice-extras-grid,
+  body.document-tab .form-panel .invoice-tax-flags {
+    grid-template-columns: 1fr !important;
+  }
+  body.document-tab .form-panel .sig-caption-row {
+    flex-wrap: wrap !important;
+  }
+  body.document-tab .form-panel .sig-caption-row input {
+    flex: 1 1 100% !important;
+  }
+  body.document-tab .form-panel .sig-adv-actions {
+    flex-wrap: wrap !important;
+  }
+}
+
+/* Items table: scroll inside form — never crush columns into the preview */
+body.document-tab .form-panel .items-table-wrap {
+  overflow-x: auto !important;
+  max-width: 100% !important;
+  -webkit-overflow-scrolling: touch;
+}
+body.document-tab .form-panel .items-table {
+  min-width: 420px;
+  width: 100%;
+}
+body.document-tab .form-panel .items-table .desc-input,
+body.document-tab .form-panel .items-table input {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Tax flags + signature checkboxes — grid: checkbox | label (never crush) */
+body.document-tab .invoice-tax-flags,
+body.document-tab #invoiceTaxFlags {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  gap: 10px !important;
+}
+@container invoiceform (min-width: 640px) {
+  body.document-tab .invoice-tax-flags,
+  body.document-tab #invoiceTaxFlags {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+body.document-tab .invoice-flag-chip {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: start !important;
+  column-gap: 10px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+body.document-tab .invoice-flag-chip span {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+  white-space: normal !important;
+  line-height: 1.35 !important;
+}
+body.document-tab .signature-pad-wrap.invoice-block-sign,
+body.document-tab .sig-advanced-box {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+body.document-tab .sig-adv-grid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  gap: 10px !important;
+}
+body.document-tab .sig-adv-grid .check-inline {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: start !important;
+  column-gap: 10px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  text-align: left !important;
+}
+body.document-tab .sig-adv-grid .check-inline input {
+  grid-column: 1 !important;
+}
+body.document-tab .sig-adv-grid .check-inline > span {
+  grid-column: 2 !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+  line-height: 1.35 !important;
+}
+body.document-tab .sig-adv-sliders label {
+  grid-template-columns: minmax(0, 4.5rem) minmax(0, 1fr) minmax(2.5rem, 3rem) !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+body.document-tab .sig-caption-row {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  flex-wrap: wrap !important;
+}
+body.document-tab .sig-caption-row input {
+  flex: 1 1 12rem !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+body.document-tab .sig-adv-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+body.document-tab .sig-adv-actions button {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+@container invoiceform (max-width: 380px) {
+  body.document-tab .sig-adv-sliders label {
+    grid-template-columns: 1fr !important;
+    gap: 4px !important;
+  }
+}
+
+/* Hard clip: preview shell never paints into the form column */
+body.document-tab .workspace .preview-panel,
+body.document-tab #invoicePreview {
+  overflow: hidden !important;
+  clip-path: inset(0) !important;
+}
+body.document-tab #invoiceFitFrame {
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+/* ── Hilfe page ── */
+body.help-tab .workspace .form-panel {
+  overflow: auto !important;
+}
+.help-page-inner {
+  width: min(100%, 920px);
+  margin: 0 auto;
+  padding: 8px 4px 36px;
+}
+.help-hero {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin: 0 0 16px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(59, 158, 255, 0.28);
+  background:
+    linear-gradient(135deg, rgba(59, 158, 255, 0.16) 0%, rgba(14, 116, 144, 0.12) 55%, rgba(11, 18, 32, 0.4) 100%);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+.help-hero-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: #041018;
+  background: linear-gradient(145deg, #7dd3fc, #38bdf8 55%, #0ea5e9);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35) inset;
+}
+.help-hero-text h2 {
+  margin: 0 0 4px;
+  font-size: 1.25rem;
+}
+.help-hero-text p {
+  margin: 0;
+  opacity: 0.85;
+  font-size: 0.9rem;
+}
+.help-contact-card {
+  border-color: rgba(56, 189, 248, 0.35) !important;
+  box-shadow:
+    0 0 0 1px rgba(56, 189, 248, 0.12) inset,
+    0 14px 28px rgba(0, 0, 0, 0.2) !important;
+}
+.help-contact-list {
+  list-style: none;
+  margin: 12px 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.help-contact-list li {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+.help-contact-list li > span {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+}
+.help-contact-list a {
+  color: #7dd3fc !important;
+  word-break: break-word;
+}
+.help-contact-product strong {
+  color: #fff !important;
+}
+.help-faq-item {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.02);
+}
+.help-faq-item summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+.help-faq-item p {
+  margin: 8px 0 2px;
+}
+body.workpass-hub.help-tab .help-hero-text h2,
+body.workpass-hub.help-tab .help-hero-badge {
+  color: #fff;
+}
+body.workpass-hub.help-tab .help-hero-badge {
+  color: #041018;
+}

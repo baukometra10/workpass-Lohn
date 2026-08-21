@@ -661,8 +661,88 @@ body.workpass-hub .dash-action-btn.is-busy {
   cursor: wait;
 }
 
+body.workpass-hub.dashboard-tab .preview-panel {
+  display: none !important;
+}
+body.workpass-hub.dashboard-tab .workspace {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+body.workpass-hub.dashboard-tab .form-panel {
+  width: 100% !important;
+  max-width: none !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+body.workpass-hub.dashboard-tab .workspace {
+  overflow: hidden !important;
+}
+body.workpass-hub .dash-stage {
+  border-color: rgba(90, 140, 200, 0.28);
+}
+body.workpass-hub .dash-stage-pillars li {
+  background: rgba(8, 14, 26, 0.55);
+}
+
 body.workpass-hub.dashboard-tab .lex-ribbon {
-  opacity: 0.9;
+  display: none !important;
+}
+body.workpass-hub.dashboard-tab .lex-context-bar {
+  display: none !important;
+}
+body.workpass-hub.document-tab .form-panel {
+  background:
+    radial-gradient(90% 50% at 0% 0%, rgba(59, 158, 255, 0.1), transparent 48%),
+    linear-gradient(180deg, #0b1220 0%, #0a1522 100%) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  position: relative !important;
+  z-index: 5 !important;
+  contain: layout !important;
+}
+body.workpass-hub.document-tab .preview-panel {
+  border-left: 1px solid rgba(90, 140, 200, 0.14);
+  background:
+    radial-gradient(ellipse at 42% 8%, rgba(34, 211, 238, 0.12), transparent 38%),
+    radial-gradient(ellipse at 70% 85%, rgba(14, 116, 144, 0.16), transparent 45%),
+    linear-gradient(180deg, #07101c 0%, #050914 55%, #04070f 100%) !important;
+  overflow: hidden !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  position: relative !important;
+  z-index: 1 !important;
+  zoom: 1 !important;
+  contain: layout paint !important;
+  clip-path: inset(0) !important;
+}
+body.workpass-hub.document-tab .workspace,
+body.workpass-hub.document-tab #invoiceWorkspace {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  overflow: hidden !important;
+  min-height: 0 !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  margin: 0 !important;
+}
+@media (min-width: 1400px) {
+  body.workpass-hub.document-tab .workspace,
+  body.workpass-hub.document-tab #invoiceWorkspace {
+    grid-template-columns: minmax(360px, 1fr) minmax(0, 860px) !important;
+  }
+}
+@media (max-width: 1399px) {
+  body.workpass-hub.document-tab .workspace,
+  body.workpass-hub.document-tab #invoiceWorkspace {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+  }
+}
+body.workpass-hub.document-tab.rechnung-split-stacked .workspace,
+body.workpass-hub.document-tab.rechnung-split-stacked #invoiceWorkspace {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
 }
 body.workpass-hub .dash-checklist-items li.is-next:not(.done) {
   border-left-color: var(--wp-cyan-hot);
@@ -783,6 +863,17 @@ body.workpass-hub .app-sidebar {
   flex-shrink: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  width: var(--sidebar-w, 220px);
+  transition: width 0.18s ease, min-width 0.18s ease;
+}
+body.workpass-hub.sidebar-collapsed .app-sidebar,
+body.workpass-hub.sidebar-collapsed .lex-module-panel {
+  width: 58px !important;
+  min-width: 58px !important;
+  max-width: 58px !important;
+}
+body.workpass-hub.sidebar-collapsed .app-frame {
+  grid-template-columns: 58px 1fr !important;
 }
 body.workpass-hub .app-main {
   flex: 1 1 auto;
@@ -825,6 +916,12 @@ body.workpass-hub .lex-appbar {
     border-right: none !important;
     border-bottom: 1px solid var(--wp-line) !important;
     background: rgba(8, 14, 26, 0.92) !important;
+  }
+  body.workpass-hub.sidebar-collapsed .app-sidebar,
+  body.workpass-hub.sidebar-collapsed .lex-module-panel {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
   }
   body.workpass-hub .lex-module-head {
     background: transparent !important;

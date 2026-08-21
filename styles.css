@@ -339,6 +339,16 @@ body.lexware-app .form-panel {
   overscroll-behavior: contain;
 }
 
+/* Hub Rechnung: sticky overlays the form — disable completely */
+body.document-tab .preview-panel,
+body.workpass-hub.document-tab #invoicePreview.preview-panel {
+  position: relative !important;
+  top: auto !important;
+  align-self: stretch !important;
+  max-height: 100% !important;
+  zoom: 1 !important;
+}
+
 .preview-panel .preview-tools {
   position: sticky;
   top: 0;
@@ -710,9 +720,9 @@ pre {
 }
 
 .sig-mode-btn.active {
-  border-color: #1d4ed8;
-  background: #eff6ff;
-  box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.12);
+  border-color: #0e7490;
+  background: rgba(14, 116, 144, 0.1);
+  box-shadow: 0 0 0 2px rgba(14, 116, 144, 0.12);
 }
 
 .sig-color-row {
@@ -733,7 +743,7 @@ pre {
 }
 
 .sig-color-btn.active {
-  box-shadow: 0 0 0 2px #1d4ed8;
+  box-shadow: 0 0 0 2px #0e7490;
 }
 
 .sig-style-grid {
@@ -756,8 +766,8 @@ pre {
 }
 
 .sig-style-card.active {
-  border-color: #1d4ed8;
-  box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.14);
+  border-color: #0e7490;
+  box-shadow: 0 0 0 2px rgba(14, 116, 144, 0.14);
 }
 
 .sig-style-card .sig-style-label {
@@ -812,9 +822,27 @@ pre {
 
 .check-inline {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: 8px;
   font-size: 0.88rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  text-align: left;
+}
+.check-inline input {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+.check-inline > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  line-height: 1.35;
 }
 
 .sig-caption-row {
@@ -853,14 +881,19 @@ pre {
 /* Freischwebende Signatur auf dem A4-Beleg */
 .invoice-doc-stage {
   position: relative;
-  display: block;
+  display: flex;
+  flex-direction: column;
   box-sizing: border-box;
   width: 100%;
   max-width: 210mm;
-  /* Full A4 canvas so the signature can sit at the real page bottom */
+  /* Fixed A4 page — nothing may spill onto the dark preview chrome */
+  height: 297mm;
   min-height: 297mm;
+  max-height: 297mm;
   margin: 0 auto;
-  padding: 14mm 16mm 18mm;
+  padding: 12mm 14mm 10mm;
+  /* Bottom band reserved for signature / seal — stays inside white page */
+  padding-bottom: 48mm;
   background: #fff;
   color: #121518;
   border: 1px solid #d8dee6;
@@ -868,18 +901,29 @@ pre {
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.7) inset,
     0 18px 40px rgba(15, 23, 42, 0.12);
-  overflow: visible;
+  overflow: hidden;
+}
+
+.invoice-doc-stage::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #0e7490 0%, #0891b2 55%, #155e75 100%);
 }
 
 .invoice-doc-stage .invoice-top {
   padding-bottom: 10px;
   margin-bottom: 10px;
-  border-bottom: 1.5pt solid #1e3a5f;
+  border-bottom: 1.5pt solid #0e7490;
+  flex: 0 0 auto;
 }
 
 .invoice-doc-stage .invoice-top h2 {
   margin: 0;
-  font-size: 1.45rem;
+  font-size: 1.5rem;
   letter-spacing: -0.02em;
   color: #0f172a;
 }
@@ -888,51 +932,453 @@ pre {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 18px;
-  margin: 8px 0 14px;
+  margin: 6px 0 12px;
   font-size: 0.82rem;
   color: #475569;
+  flex: 0 0 auto;
 }
 
 .invoice-doc-stage .addresses {
-  margin: 16px 0 18px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 12px 0 16px;
+  flex: 0 0 auto;
+}
+
+.invoice-doc-stage .addresses > div {
+  padding: 10px 12px;
+  border: 1px solid #d5e4ec;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f5fafc 0%, #ffffff 100%);
+  min-height: 5.5rem;
+  box-shadow: inset 3px 0 0 #0e7490;
 }
 
 .invoice-doc-stage .addresses h3 {
-  margin: 0 0 4px;
-  font-size: 0.72rem;
+  margin: 0 0 6px;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #64748b;
+  color: #0e7490;
+}
+
+.invoice-doc-stage .invoice-purpose {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #d5e4ec;
+  background: linear-gradient(180deg, #f0f9ff, #fff);
+  flex: 0 0 auto;
+}
+
+.invoice-doc-stage .invoice-purpose h3 {
+  margin: 0 0 4px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #0e7490;
+}
+
+.invoice-doc-stage .invoice-purpose p {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: #0f172a;
+}
+
+.invoice-doc-stage .invoice-purpose.is-empty {
+  display: none !important;
 }
 
 .invoice-doc-stage .preview-items {
-  margin: 8px 0 4px;
+  margin: 4px 0 8px;
+  width: 100%;
+  border-collapse: collapse;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .invoice-doc-stage .preview-items th {
-  background: #f1f5f9;
-  font-size: 0.72rem;
+  background: linear-gradient(180deg, #e6f4f8, #eef6f9);
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  color: #155e75;
+  padding: 8px 8px;
+  border-bottom: 1.5px solid #0e7490;
+}
+
+.invoice-doc-stage .preview-items td {
+  padding: 9px 8px;
+  border-bottom: 1px solid #e8eef2;
+  vertical-align: top;
+  white-space: pre-wrap;
 }
 
 .invoice-doc-stage .totals {
-  margin-top: 18px;
+  margin-top: 12px;
+  margin-left: auto;
+  width: min(78mm, 100%);
+  max-width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d5e4ec;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f5fafc, #ffffff);
+  flex: 0 0 auto;
+  box-sizing: border-box;
+}
+
+.invoice-doc-stage .grand-total {
+  border-top: 1.4pt solid #0e7490;
+  padding-top: 8px;
+  margin-top: 6px;
+  font-size: 1.05rem;
+  color: #0f172a;
+}
+
+/* Soft push toward the reserved signature band — still inside the page */
+.invoice-doc-stage #invoiceBankBlock:not(.is-empty),
+.invoice-doc-stage #invoiceBankBlock.is-empty ~ #invoiceNoteBlock:not(.is-empty),
+.invoice-doc-stage .invoice-closing {
+  margin-top: auto;
+}
+
+.invoice-doc-stage .invoice-closing {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 10px 14px;
+  align-items: stretch;
+  flex: 0 0 auto;
+  width: 100%;
+  padding-top: 8px;
+  border-top: 1px solid rgba(14, 116, 144, 0.18);
+}
+
+.invoice-doc-stage .invoice-closing-main {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
 }
 
 .invoice-doc-stage .invoice-bank,
 .invoice-doc-stage .note-box {
-  margin-top: 20px;
+  margin-top: 0;
   padding: 10px 12px;
-  border-radius: 8px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: linear-gradient(165deg, #f3fafc 0%, #ffffff 70%);
+  border: 1px solid #cfe3ea;
+  flex: 0 0 auto;
+  max-width: none;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .invoice-doc-stage .note-box {
   background: #fff;
   border-style: dashed;
+  border-color: #9ec0cb;
 }
+
+.invoice-doc-stage .invoice-bank h3,
+.invoice-doc-stage .note-box h3 {
+  color: #0e7490;
+}
+
+.invoice-doc-stage .invoice-bank.is-empty,
+.invoice-doc-stage .note-box.is-empty {
+  display: none !important;
+}
+
+.invoice-doc-stage .invoice-closing:has(#invoiceBankBlock.is-empty):has(#invoiceNoteBlock.is-empty) .invoice-closing-main {
+  display: none;
+}
+
+.invoice-doc-stage .invoice-sig-plate {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 34mm;
+  padding: 12px 14px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(14, 116, 144, 0.28);
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgba(14, 116, 144, 0.08), transparent 55%),
+    linear-gradient(180deg, #f7fbfd 0%, #ffffff 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.invoice-doc-stage .invoice-sig-plate-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #0e7490;
+}
+
+.invoice-doc-stage .invoice-sig-plate-line {
+  display: block;
+  height: 0;
+  border-bottom: 1px solid #94b8c4;
+  margin-top: auto;
+  width: 100%;
+}
+
+/* Clearer invoice entry fields (form only — structure unchanged) */
+.invoice-entry-section .invoice-entry-hint {
+  margin: -4px 0 12px;
+}
+.invoice-entry-section label > span:first-child,
+.invoice-entry-section .note-field-head > span:first-child {
+  font-weight: 600;
+  color: var(--lex-navy, #1e3a5f);
+}
+.invoice-entry-section input[type="text"],
+.invoice-entry-section input[type="date"],
+.invoice-entry-section input[type="number"],
+.invoice-entry-section textarea,
+.invoice-entry-section select {
+  padding: 9px 11px;
+  border-radius: 6px;
+  border: 1px solid #c5d0dc;
+  background: #fff;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+.invoice-entry-section input:focus,
+.invoice-entry-section textarea:focus,
+.invoice-entry-section select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  outline: none;
+}
+.invoice-entry-section .items-table-wrap {
+  border: 1px solid #d8dee6;
+  border-radius: 8px;
+  overflow: auto;
+  background: #fff;
+}
+.invoice-entry-section .items-table .desc-input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+}
+.invoice-entry-section .note-field {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+.invoice-entry-section .purpose-field {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 4px;
+}
+.invoice-entry-section .purpose-field textarea {
+  min-height: 4.5rem;
+}
+.invoice-entry-section .items-table .desc-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.8rem;
+  resize: vertical;
+  padding: 8px 10px;
+  font: inherit;
+  line-height: 1.35;
+  border: 1px solid #d0d7e2;
+  border-radius: 6px;
+}
+
+/* Distinct Rechnung vs Firma modules */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0);
+  white-space: nowrap; border: 0;
+}
+
+.nav-mod-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  line-height: 1.2;
+}
+.nav-mod-copy small {
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.72;
+  color: inherit;
+}
+
+.sidebar-nav-btn.nav-mod-invoice {
+  border-radius: 8px !important;
+}
+.sidebar-nav-btn.nav-mod-invoice:hover {
+  background: rgba(14, 116, 144, 0.12) !important;
+  border-color: rgba(14, 116, 144, 0.35) !important;
+}
+.sidebar-nav-btn.nav-mod-invoice.active {
+  background: linear-gradient(90deg, rgba(14, 116, 144, 0.18), rgba(255,255,255,0.92)) !important;
+  border-color: #0e7490 !important;
+  border-left: 3px solid #0e7490 !important;
+  box-shadow: 0 0 0 1px rgba(14, 116, 144, 0.25), 0 8px 18px rgba(14, 116, 144, 0.12) !important;
+}
+.sidebar-nav-btn.nav-mod-invoice.active .sidebar-nav-svg {
+  color: #0e7490 !important;
+}
+
+.sidebar-nav-btn.nav-mod-company {
+  border-radius: 8px !important;
+}
+.sidebar-nav-btn.nav-mod-company:hover {
+  background: rgba(180, 83, 9, 0.1) !important;
+  border-color: rgba(180, 83, 9, 0.35) !important;
+}
+.sidebar-nav-btn.nav-mod-company.active {
+  background: linear-gradient(90deg, rgba(180, 83, 9, 0.16), rgba(255,255,255,0.92)) !important;
+  border-color: #b45309 !important;
+  border-left: 3px solid #b45309 !important;
+  box-shadow: 0 0 0 1px rgba(180, 83, 9, 0.22), 0 8px 18px rgba(180, 83, 9, 0.1) !important;
+}
+.sidebar-nav-btn.nav-mod-company.active .sidebar-nav-svg {
+  color: #b45309 !important;
+}
+
+.module-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+.module-hero-badge {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+.module-hero-text h2 {
+  margin: 0 0 4px;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+.module-hero-text p {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  opacity: 0.9;
+}
+.module-hero-invoice {
+  background: linear-gradient(135deg, #ecfeff 0%, #f0f9ff 55%, #fff 100%);
+  border-color: #a5f3fc;
+}
+.module-hero-invoice .module-hero-badge {
+  background: #0e7490;
+  color: #fff;
+}
+.module-hero-invoice .module-hero-text h2 { color: #155e75; }
+.module-hero-company {
+  background: linear-gradient(135deg, #fff7ed 0%, #fffbeb 55%, #fff 100%);
+  border-color: #fdba74;
+}
+.module-hero-company .module-hero-badge {
+  background: #b45309;
+  color: #fff;
+}
+.module-hero-company .module-hero-text h2 { color: #9a3412; }
+
+/* Reclaim vertical space: form + preview start higher on Rechnung / Firma */
+body.document-tab .app-topbar.lex-page-header,
+body.company-tab .app-topbar.lex-page-header {
+  display: none !important;
+}
+
+body.document-tab .lex-context-bar,
+body.company-tab .lex-context-bar {
+  height: 34px;
+  padding: 0 14px;
+}
+
+body.document-tab .workspace .form-panel,
+body.company-tab .workspace .form-panel {
+  padding: 10px 16px 20px !important;
+}
+
+body.document-tab .workspace .preview-panel {
+  padding: 8px 12px 12px 6px !important;
+}
+
+body.company-tab .workspace {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+body.company-tab .workspace .preview-panel {
+  display: none !important;
+}
+
+body.document-tab .module-hero,
+body.company-tab .module-hero {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  gap: 12px;
+}
+
+body.document-tab .module-hero-badge,
+body.company-tab .module-hero-badge {
+  width: 38px;
+  height: 38px;
+  font-size: 0.78rem;
+  border-radius: 8px;
+}
+
+body.document-tab .module-hero-text h2,
+body.company-tab .module-hero-text h2 {
+  font-size: 1.05rem;
+  margin-bottom: 2px;
+}
+
+body.document-tab .module-hero-text p,
+body.company-tab .module-hero-text p {
+  font-size: 0.8rem;
+}
+
+body.document-tab .invoice-entry-section .invoice-entry-hint {
+  margin: -2px 0 8px;
+}
+
+body.document-tab .form-section {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+}
+
+.note-field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.linkish-btn {
+  border: none;
+  background: transparent;
+  color: #1d4ed8;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.linkish-btn:hover { color: #1e3a8a; }
 
 .sig-name-field {
   position: relative;
@@ -993,8 +1439,8 @@ pre {
 
 .wp-sig-layer:focus,
 .wp-sig-layer.is-selected {
-  border-color: rgba(29, 78, 216, 0.55);
-  background: rgba(239, 246, 255, 0.35);
+  border-color: rgba(14, 116, 144, 0.55);
+  background: rgba(14, 116, 144, 0.06);
   outline: none;
 }
 
@@ -1005,8 +1451,8 @@ pre {
 .wp-sig-layer.is-dragging {
   cursor: grabbing;
   z-index: 20;
-  border-color: rgba(29, 78, 216, 0.8);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  border-color: rgba(14, 116, 144, 0.85);
+  box-shadow: 0 8px 24px rgba(14, 116, 144, 0.16);
 }
 
 .wp-sig-layer.is-empty {
@@ -1015,14 +1461,15 @@ pre {
 
 .wp-sig-seal {
   position: absolute;
-  right: 14px;
-  bottom: 14px;
+  left: 14px;
+  right: auto;
+  bottom: 12px;
   z-index: 9;
-  max-width: 46%;
+  max-width: 42%;
   padding: 6px 8px;
   border: 1px solid #94a3b8;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.95);
   font-size: 0.68rem;
   line-height: 1.25;
   color: #0f172a;
@@ -1034,7 +1481,7 @@ pre {
   font-size: 0.72rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #1d4ed8;
+  color: #0e7490;
 }
 
 .wp-sig-seal.is-invalid {
@@ -1225,36 +1672,277 @@ body.annual-mode #invoicePreview > :not(#annualTaxSheet) {
   display: none !important;
 }
 
-/* Mandantenverwaltung: Firmenbriefkopf, nicht Mitarbeiter-LStB */
-body.letterhead-preview.annual-mode #invoicePreview > :not(#annualTaxSheet):not(#datevSheetHost):not(#payrollSheet):not(#verdienstSheet),
-body.letterhead-preview.payroll-mode:not(.annual-mode) #invoicePreview > :not(#datevSheetHost):not(#payrollSheet):not(#annualTaxSheet):not(#verdienstSheet) {
-  display: revert !important;
-}
-
-body.letterhead-preview #annualTaxSheet,
-body.letterhead-preview #datevSheetHost,
-body.letterhead-preview #payrollSheet,
-body.letterhead-preview #verdienstSheet {
+/* Hide invoice surface on Übersicht + Firma */
+body.dashboard-tab .invoice-doc-stage,
+body.dashboard-tab #invoiceDocStage,
+body.dashboard-tab .wp-sig-layer,
+body.dashboard-tab .wp-sig-seal,
+body.dashboard-tab .invoice-top,
+body.dashboard-tab .invoice-meta,
+body.dashboard-tab .addresses,
+body.dashboard-tab .invoice-purpose,
+body.dashboard-tab .preview-items,
+body.dashboard-tab .totals,
+body.dashboard-tab .invoice-bank,
+body.dashboard-tab .note-box,
+body.company-tab .invoice-doc-stage,
+body.company-tab #invoiceDocStage,
+body.company-tab .wp-sig-layer,
+body.company-tab .wp-sig-seal,
+body.company-tab .invoice-top,
+body.company-tab .invoice-meta,
+body.company-tab .addresses,
+body.company-tab .invoice-purpose,
+body.company-tab .preview-items,
+body.company-tab .totals,
+body.company-tab .invoice-bank,
+body.company-tab .note-box {
   display: none !important;
 }
 
-body.letterhead-preview #invoicePreview > .preview-tools,
-body.letterhead-preview #invoicePreview > .invoice-top,
-body.letterhead-preview #invoicePreview > .invoice-meta,
-body.letterhead-preview #invoicePreview > .addresses,
-body.letterhead-preview #invoicePreview > .preview-items,
-body.letterhead-preview #invoicePreview > .totals,
-body.letterhead-preview #invoicePreview > .invoice-bank,
-body.letterhead-preview #invoicePreview > .note-box {
-  display: revert !important;
+body.dashboard-tab .preview-tools .preview-zoom-label,
+body.dashboard-tab .preview-tools .preview-zoom-select,
+body.company-tab .preview-tools .preview-zoom-label,
+body.company-tab .preview-tools .preview-zoom-select {
+  display: none !important;
 }
 
-body.letterhead-preview.payroll-mode .preview-panel,
-body.letterhead-preview.annual-mode .workspace .preview-panel {
-  width: auto;
-  max-width: 100%;
-  background: #e8e8e8 !important;
-  padding: 12px 16px 20px;
+body.company-tab #companyProfilePreview {
+  display: none !important;
+}
+body:not(.company-tab) #companyProfilePreview {
+  display: none !important;
+}
+
+body.dashboard-tab #hubShowcasePreview,
+body:not(.dashboard-tab) #hubShowcasePreview {
+  display: none !important;
+}
+
+/* Übersicht: elegant showcase moved into .dash-stage (form panel) */
+.hub-showcase-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: #0e7490;
+  color: #fff;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.hub-showcase-btn:hover { filter: brightness(1.08); }
+.hub-showcase-btn-ghost {
+  background: transparent;
+  border-color: rgba(148, 163, 184, 0.4);
+  color: #e2e8f0;
+}
+
+/* Firma profile card — richer */
+.company-profile-preview {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 0;
+  border: 1px solid #fdba74;
+  border-radius: 14px;
+  background: #fff;
+  color: #0f172a;
+  box-shadow:
+    0 0 0 1px rgba(180, 83, 9, 0.08),
+    0 18px 40px rgba(120, 53, 15, 0.12);
+  overflow: hidden;
+}
+.company-profile-preview .cpp-hero {
+  margin: 0;
+  padding: 18px 20px;
+  border-bottom: none;
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 45%, #fff 100%);
+}
+.company-profile-preview .cpp-block,
+.company-profile-preview .cpp-grid {
+  margin-left: 16px;
+  margin-right: 16px;
+}
+.company-profile-preview .cpp-look {
+  margin: 0 16px 16px;
+}
+
+/* Rechnung tab: slightly richer invoice stage chrome */
+body.document-tab .invoice-doc-stage {
+  border-color: #94a3b8;
+  box-shadow:
+    0 0 0 1px rgba(14, 116, 144, 0.08),
+    0 18px 40px rgba(15, 23, 42, 0.14);
+}
+body.document-tab .invoice-doc-stage::before {
+  height: 4px;
+  background: linear-gradient(90deg, #0e7490, #1e3a5f 55%, #b45309);
+}
+
+.cpp-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #fed7aa;
+}
+
+.cpp-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
+.cpp-kicker {
+  margin: 0 0 2px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #b45309;
+}
+
+.cpp-hero-text h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+  color: #9a3412;
+}
+
+.cpp-profile-name {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: #78716c;
+}
+
+.cpp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.cpp-block {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #e7e5e4;
+  border-radius: 8px;
+  background: #fafaf9;
+}
+
+.cpp-block h3 {
+  margin: 0 0 6px;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #78716c;
+}
+
+.cpp-block p,
+.cpp-block pre {
+  margin: 0;
+  font: inherit;
+  white-space: pre-wrap;
+  line-height: 1.4;
+  color: #1c1917;
+}
+
+.cpp-look {
+  background: #fff;
+  border-style: dashed;
+  border-color: #fdba74;
+}
+
+.cpp-look-hint {
+  margin: 0 0 10px !important;
+  font-size: 0.8rem !important;
+  color: #78716c !important;
+}
+
+.cpp-look-sample {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.cpp-look-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.cpp-look-logo-slot {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  border: 1px dashed #cbd5e1;
+  display: grid;
+  place-items: center;
+  font-size: 0.65rem;
+  color: #94a3b8;
+  overflow: hidden;
+  background: #fff;
+}
+
+.cpp-look-logo-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.cpp-look-head strong {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.cpp-look-sub {
+  display: block;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.cpp-look-body {
+  min-height: 72px;
+  padding: 16px 12px;
+  font-size: 0.82rem;
+  color: #94a3b8;
+  text-align: center;
+  background:
+    repeating-linear-gradient(
+      -12deg,
+      #fff,
+      #fff 8px,
+      #f8fafc 8px,
+      #f8fafc 16px
+    );
+}
+
+.cpp-look-foot {
+  padding: 8px 12px;
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.72rem;
+  color: #64748b;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 720px) {
+  .cpp-grid { grid-template-columns: 1fr; }
 }
 
 body.payroll-mode #payrollSheet {
@@ -2740,13 +3428,16 @@ body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-an
   }
 
   body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-annual-only):not(.print-verdienst-only) .invoice-doc-stage {
+    height: 297mm !important;
     min-height: 297mm !important;
+    max-height: 297mm !important;
     width: 210mm !important;
     max-width: 210mm !important;
     margin: 0 !important;
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
+    overflow: hidden !important;
   }
 
   body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-annual-only):not(.print-verdienst-only) .wp-sig-layer {
@@ -3215,5 +3906,973 @@ body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-an
   }
 }
 
+/* ═══════════════════════════════════════════════════════════
+   Rechnung 2.54.26 — dramatic form + premium A4 closing
+   Deep teal atelier · luminous white fields · elegant paper foot
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --re-accent: #0e7490;
+  --re-accent-2: #0891b2;
+  --re-accent-deep: #134e4a;
+  --re-ink: #0b1220;
+  --re-muted: #8ba0b5;
+  --re-field-edge: rgba(148, 210, 224, 0.55);
+}
 
+/* —— Left atelier: Lohn-like navy rail, luminous white fields —— */
+body.document-tab .workspace .form-panel {
+  background:
+    radial-gradient(90% 50% at 0% 0%, rgba(59, 158, 255, 0.1), transparent 48%),
+    linear-gradient(180deg, #0b1220 0%, #0a1522 100%) !important;
+  color: #e8eef6;
+  padding: 8px 16px 28px !important;
+}
+body.document-tab .workspace .form-panel .muted,
+body.document-tab .workspace .form-panel .invoice-entry-hint,
+body.document-tab .workspace .form-panel .signature-help {
+  color: var(--re-muted) !important;
+}
+body.document-tab .module-hero-invoice {
+  background:
+    linear-gradient(120deg, rgba(14, 116, 144, 0.35), rgba(8, 145, 178, 0.12) 40%, rgba(255, 255, 255, 0.04)),
+    rgba(8, 18, 32, 0.65);
+  border: 1px solid rgba(94, 210, 230, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(14, 116, 144, 0.2) inset,
+    0 18px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+}
+body.document-tab .module-hero-invoice .module-hero-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #22d3ee, #0e7490 55%, #155e75);
+  color: #041018;
+  font-size: 0.9rem;
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.45);
+}
+body.document-tab .module-hero-invoice .module-hero-text h2 {
+  color: #ecfeff;
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+}
+body.document-tab .module-hero-invoice .module-hero-text p {
+  color: #9ecad8;
+}
 
+body.document-tab .invoice-rail-hint {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  background: rgba(8, 145, 178, 0.12);
+  color: #b6dce6 !important;
+}
+body.document-tab .invoice-rail-hint a {
+  color: #67e8f9;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+body.document-tab .invoice-entry-section {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  display: grid;
+  gap: 14px;
+}
+body.document-tab .invoice-entry-section > .form-section-title,
+body.document-tab .invoice-entry-section > .invoice-entry-hint {
+  display: none;
+}
+
+body.document-tab .invoice-block {
+  margin: 0;
+  padding: 16px 18px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)),
+    rgba(12, 24, 40, 0.72);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 16px 36px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(12px);
+}
+body.document-tab .invoice-block-meta {
+  box-shadow:
+    0 0 0 1px rgba(34, 211, 238, 0.15),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 16px 36px rgba(0, 0, 0, 0.28);
+}
+body.document-tab .invoice-block .form-section-title,
+body.document-tab .invoice-block-title,
+body.document-tab .invoice-block .items-header h3,
+body.document-tab .invoice-block-sign .signature-head h3 {
+  margin: 0 0 12px;
+  padding: 0;
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7dd3fc;
+}
+body.document-tab .invoice-block .form-section-title,
+body.document-tab .invoice-block-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+body.document-tab .invoice-block .form-section-title::before,
+body.document-tab .invoice-block-title::before,
+body.document-tab .invoice-block-sign .signature-head h3::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #22d3ee;
+  box-shadow: 0 0 12px #22d3ee;
+}
+body.document-tab .invoice-entry-hint {
+  margin: 0 0 14px !important;
+  color: var(--re-muted) !important;
+  font-size: 0.82rem;
+}
+
+/* Luminous white fields — unmistakable */
+body.document-tab .invoice-entry-section label > span:first-child,
+body.document-tab .invoice-entry-section .note-field-head > span:first-child,
+body.document-tab .invoice-entry-section .purpose-field > span:first-child,
+body.document-tab .invoice-entry-section .sig-name-field > span:first-child {
+  color: #b6d4e0 !important;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+body.document-tab .invoice-entry-section input[type="text"],
+body.document-tab .invoice-entry-section input[type="date"],
+body.document-tab .invoice-entry-section input[type="number"],
+body.document-tab .invoice-entry-section textarea,
+body.document-tab .invoice-entry-section select,
+body.document-tab .invoice-entry-section .items-table .desc-input,
+body.document-tab .invoice-entry-section .items-table input {
+  border: 1px solid var(--re-field-edge) !important;
+  border-radius: 14px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f3fbfd 100%) !important;
+  color: var(--re-ink) !important;
+  padding: 12px 14px !important;
+  font-size: 0.98rem !important;
+  line-height: 1.4 !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 10px 28px rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(14, 116, 144, 0.08) !important;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+body.document-tab .invoice-entry-section input:hover,
+body.document-tab .invoice-entry-section textarea:hover,
+body.document-tab .invoice-entry-section select:hover {
+  border-color: rgba(34, 211, 238, 0.7) !important;
+  transform: translateY(-1px);
+}
+body.document-tab .invoice-entry-section input:focus,
+body.document-tab .invoice-entry-section textarea:focus,
+body.document-tab .invoice-entry-section select:focus,
+body.document-tab .invoice-entry-section .items-table .desc-input:focus,
+body.document-tab .invoice-entry-section .items-table input:focus {
+  border-color: #22d3ee !important;
+  background: #ffffff !important;
+  box-shadow:
+    0 0 0 4px rgba(34, 211, 238, 0.28),
+    0 14px 32px rgba(8, 145, 178, 0.35) !important;
+  outline: none !important;
+  transform: translateY(-1px);
+}
+
+/* TAX FLAGS — Kleinunternehmer / Reverse-Charge (search: invoiceTaxFlags · invoice-flag-chip) */
+body.document-tab .invoice-tax-flags,
+body.document-tab #invoiceTaxFlags {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  gap: 10px !important;
+  margin-top: 12px;
+  box-sizing: border-box !important;
+}
+@container invoiceform (min-width: 640px) {
+  body.document-tab .invoice-tax-flags,
+  body.document-tab #invoiceTaxFlags {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+body.document-tab .invoice-flag-chip {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: start !important;
+  column-gap: 10px !important;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  background: rgba(8, 145, 178, 0.1);
+  cursor: pointer;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+body.document-tab .invoice-flag-chip:has(input:checked) {
+  border-color: rgba(34, 211, 238, 0.55);
+  background: rgba(34, 211, 238, 0.16);
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.15);
+}
+body.document-tab .invoice-flag-chip input {
+  accent-color: #22d3ee;
+  margin-top: 2px;
+  grid-column: 1;
+}
+body.document-tab .invoice-flag-chip span {
+  grid-column: 2;
+  color: #d7eef5 !important;
+  font-size: 0.84rem !important;
+  font-weight: 560 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+  white-space: normal !important;
+  line-height: 1.35 !important;
+}
+
+body.document-tab .invoice-block-items #addItemBtn {
+  appearance: none;
+  border: none;
+  background: linear-gradient(135deg, #22d3ee, #0e7490);
+  color: #041018;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(8, 145, 178, 0.4);
+}
+body.document-tab .invoice-entry-section .items-table-wrap {
+  border: 1px solid rgba(125, 211, 252, 0.25);
+  border-radius: 16px;
+  background: rgba(4, 16, 28, 0.35);
+  overflow: hidden;
+}
+body.document-tab .invoice-entry-section .items-table th {
+  background: rgba(8, 145, 178, 0.28);
+  color: #ecfeff;
+  border-color: rgba(125, 211, 252, 0.2);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+body.document-tab .invoice-entry-section .items-table td {
+  border-color: rgba(125, 211, 252, 0.12);
+  background: transparent;
+}
+body.document-tab .linkish-btn {
+  color: #67e8f9 !important;
+}
+
+/* Signature atelier */
+body.document-tab .signature-pad-wrap.invoice-block-sign {
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  background:
+    radial-gradient(80% 70% at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    rgba(10, 22, 36, 0.85);
+  border-radius: 18px;
+  padding: 16px 18px;
+}
+body.document-tab .invoice-block-sign .signature-head {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(125, 211, 252, 0.18);
+}
+body.document-tab .invoice-block-sign #clearSignatureBtn {
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  color: #ecfeff;
+  background: rgba(34, 211, 238, 0.12);
+  border-radius: 999px;
+  padding: 6px 14px;
+}
+body.document-tab .sig-mode-btn {
+  border-radius: 16px;
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+  color: #e8eef6;
+  padding: 12px 14px;
+  min-height: 72px;
+}
+body.document-tab .sig-mode-btn span {
+  color: #8ba0b5;
+}
+body.document-tab .sig-mode-btn:hover {
+  border-color: rgba(34, 211, 238, 0.45);
+  background: rgba(34, 211, 238, 0.08);
+}
+body.document-tab .sig-mode-btn.active {
+  border-color: #22d3ee;
+  background: rgba(34, 211, 238, 0.16);
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2), 0 0 24px rgba(34, 211, 238, 0.18);
+}
+body.document-tab .sig-mode-btn strong {
+  color: #ecfeff;
+}
+body.document-tab .sig-style-card {
+  border-radius: 14px;
+  border-color: rgba(125, 211, 252, 0.22);
+  background: rgba(255, 255, 255, 0.95);
+}
+body.document-tab .sig-advanced-box {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  background: rgba(8, 145, 178, 0.1);
+  color: #d7eef5;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+body.document-tab .sig-advanced-box h4 {
+  color: #67e8f9;
+  margin: 0 0 8px;
+}
+/* SIG CHECKBOXES — Freie Position (search: check-inline · sig-adv-grid · signatureAdvancedBox) */
+body.document-tab .sig-adv-grid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 10px 0 !important;
+}
+body.document-tab .sig-adv-grid .check-inline {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: start !important;
+  column-gap: 10px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  text-align: left !important;
+}
+body.document-tab .sig-adv-grid .check-inline input {
+  grid-column: 1 !important;
+  margin-top: 2px !important;
+}
+body.document-tab .sig-adv-grid .check-inline > span {
+  grid-column: 2 !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+  line-height: 1.35 !important;
+  color: #d7eef5 !important;
+}
+body.document-tab .sig-draw-panel {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(125, 211, 252, 0.25);
+  background: rgba(255, 255, 255, 0.04);
+}
+body.document-tab .sig-draw-panel canvas {
+  border-radius: 12px;
+  border: 1px dashed rgba(34, 211, 238, 0.45);
+  background: linear-gradient(180deg, #ffffff, #eef9fc);
+  max-width: 100%;
+  display: block;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+}
+body.document-tab .sig-adv-actions .primary-btn {
+  background: linear-gradient(135deg, #22d3ee, #0e7490);
+  border: none;
+  color: #041018;
+  font-weight: 800;
+  border-radius: 999px;
+  box-shadow: 0 8px 22px rgba(8, 145, 178, 0.4);
+}
+body.document-tab .sig-adv-actions .secondary-btn {
+  border-radius: 999px;
+  border-color: rgba(34, 211, 238, 0.35);
+  color: #ecfeff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* —— Right preview stage (Lohn-like desk; overridden further in app-ui split) —— */
+body.document-tab .workspace .preview-panel {
+  background:
+    radial-gradient(ellipse at 42% 8%, rgba(34, 211, 238, 0.12), transparent 38%),
+    radial-gradient(ellipse at 70% 85%, rgba(14, 116, 144, 0.16), transparent 45%),
+    linear-gradient(180deg, #07101c 0%, #050914 55%, #04070f 100%) !important;
+}
+body.document-tab .workspace .preview-panel::before {
+  content: attr(data-preview-label);
+  background: transparent;
+  color: #5eb4ff;
+  border-bottom: none;
+  margin: 0 0 8px;
+  padding: 0;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+}
+body.document-tab .workspace .preview-panel .preview-tools {
+  border: 1px solid rgba(90, 140, 200, 0.22);
+  border-radius: 12px;
+  background: rgba(12, 20, 34, 0.72);
+  box-shadow: none;
+}
+
+/* Premium A4 paper */
+body.document-tab .invoice-doc-stage {
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  border-radius: 4px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.97), #ffffff 18%),
+    #fff;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.4) inset,
+    0 8px 16px rgba(8, 145, 178, 0.12),
+    0 32px 64px rgba(0, 0, 0, 0.45);
+}
+body.document-tab .invoice-doc-stage::before {
+  height: 5px;
+  background: linear-gradient(90deg, #134e4a, #0e7490 30%, #22d3ee 70%, #0891b2);
+}
+body.document-tab .invoice-doc-stage .invoice-top {
+  border-bottom: 2px solid #0e7490;
+}
+body.document-tab .invoice-doc-stage .invoice-top h2 {
+  font-size: 1.7rem;
+  letter-spacing: -0.04em;
+  background: linear-gradient(90deg, #0f172a, #0e7490);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+body.document-tab .invoice-doc-stage .addresses > div {
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #f0f9ff, #ffffff);
+  box-shadow:
+    inset 4px 0 0 #0e7490,
+    0 8px 18px rgba(14, 116, 144, 0.08);
+}
+body.document-tab .invoice-doc-stage .preview-items th {
+  background: linear-gradient(180deg, #0e7490, #155e75);
+  color: #ecfeff;
+  border-bottom: none;
+  letter-spacing: 0.06em;
+}
+body.document-tab .invoice-doc-stage .totals {
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #0e7490, #134e4a);
+  color: #ecfeff;
+  box-shadow: 0 12px 28px rgba(14, 116, 144, 0.28);
+  padding: 12px 14px;
+}
+body.document-tab .invoice-doc-stage .totals p {
+  margin: 5px 0;
+}
+body.document-tab .invoice-doc-stage .grand-total {
+  border-top: 1px solid rgba(236, 254, 255, 0.35);
+  color: #ffffff;
+  font-size: 1.15rem;
+}
+body.document-tab .invoice-doc-stage .invoice-closing {
+  margin-top: auto;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(14, 116, 144, 0.2);
+  background:
+    radial-gradient(90% 80% at 100% 100%, rgba(14, 116, 144, 0.08), transparent 50%),
+    linear-gradient(180deg, #f4fafc, #ffffff);
+  box-shadow: 0 10px 24px rgba(14, 116, 144, 0.08);
+  grid-template-columns: minmax(0, 1.1fr) minmax(112px, 0.9fr);
+  gap: 12px;
+}
+body.document-tab .invoice-doc-stage .invoice-bank,
+body.document-tab .invoice-doc-stage .note-box {
+  border-radius: 12px;
+  border: 1px solid rgba(14, 116, 144, 0.18);
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+body.document-tab .invoice-doc-stage .invoice-sig-plate {
+  min-height: 38mm;
+  border-radius: 14px;
+  border: 1.5px dashed rgba(14, 116, 144, 0.45);
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(34, 211, 238, 0.1), transparent 55%),
+    linear-gradient(180deg, #f8fcfd, #ffffff);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.8),
+    0 8px 20px rgba(14, 116, 144, 0.1);
+}
+body.document-tab .invoice-doc-stage .invoice-sig-plate-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  color: #0e7490;
+}
+body.document-tab .invoice-doc-stage .invoice-sig-plate-line {
+  border-bottom: 1.5px solid #0e7490;
+  opacity: 0.55;
+}
+body.document-tab .wp-sig-line {
+  border-bottom-color: #0e7490;
+}
+
+@media (max-width: 900px) {
+  body.document-tab .invoice-tax-flags,
+  body.document-tab .sig-mode-row {
+    grid-template-columns: 1fr;
+  }
+  body.document-tab .invoice-doc-stage .invoice-closing {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   2.54.27 — elegant finishing pass (form + invoice paper)
+   Soften glow, tighten rhythm, refine letterhead & closing
+   ═══════════════════════════════════════════════════════════ */
+
+/* Form: calmer rhythm, still luminous fields */
+body.document-tab .invoice-entry-section {
+  gap: 12px;
+}
+body.document-tab .invoice-block {
+  padding: 15px 16px 16px;
+  border-radius: 16px;
+}
+body.document-tab .module-hero-invoice .module-hero-badge {
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.32);
+}
+body.document-tab .invoice-entry-section input[type="text"],
+body.document-tab .invoice-entry-section input[type="date"],
+body.document-tab .invoice-entry-section input[type="number"],
+body.document-tab .invoice-entry-section textarea,
+body.document-tab .invoice-entry-section select,
+body.document-tab .invoice-entry-section .items-table .desc-input,
+body.document-tab .invoice-entry-section .items-table input {
+  border-radius: 12px !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 8px 20px rgba(0, 0, 0, 0.18) !important;
+}
+body.document-tab .invoice-entry-section input:focus,
+body.document-tab .invoice-entry-section textarea:focus,
+body.document-tab .invoice-entry-section select:focus {
+  box-shadow:
+    0 0 0 3px rgba(34, 211, 238, 0.22),
+    0 10px 24px rgba(8, 145, 178, 0.28) !important;
+}
+body.document-tab .sig-mode-btn {
+  min-height: 62px;
+  border-radius: 14px;
+}
+
+/* Invoice paper: letterhead */
+body.document-tab .invoice-doc-stage .invoice-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 2px 0 14px;
+  margin-bottom: 12px;
+  border-bottom: none;
+  position: relative;
+}
+body.document-tab .invoice-doc-stage .invoice-top::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #0e7490 0%, #22d3ee 42%, rgba(14, 116, 144, 0.15) 100%);
+}
+body.document-tab .invoice-doc-stage .invoice-top-left {
+  align-items: center;
+  gap: 14px;
+}
+body.document-tab .invoice-doc-stage .preview-company-logo {
+  max-height: 56px;
+  max-width: 140px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #f8fbfd;
+  border: 1px solid rgba(14, 116, 144, 0.14);
+}
+body.document-tab .invoice-doc-stage .invoice-top h2 {
+  margin: 0 0 4px;
+  font-size: 1.55rem;
+  font-weight: 750;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+}
+body.document-tab .invoice-doc-stage #previewInvoiceNumber {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #0e7490;
+}
+
+/* Dates column as elegant meta card */
+body.document-tab .invoice-doc-stage .dates {
+  min-width: 148px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: linear-gradient(160deg, #f4fafc, #ffffff);
+  border: 1px solid rgba(14, 116, 144, 0.14);
+  box-shadow: 0 6px 16px rgba(14, 116, 144, 0.06);
+}
+body.document-tab .invoice-doc-stage .dates p {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+body.document-tab .invoice-doc-stage .dates p:last-child {
+  margin-bottom: 0;
+}
+body.document-tab .invoice-doc-stage .dates span {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+}
+body.document-tab .invoice-doc-stage .dates strong {
+  color: #0f172a;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+body.document-tab .invoice-doc-stage .status-badge {
+  background: linear-gradient(135deg, #ccfbf1, #e0f2fe);
+  color: #0f766e;
+  border: 1px solid rgba(14, 116, 144, 0.22);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 2px 9px;
+}
+body.document-tab .invoice-doc-stage .status-badge.status-warning {
+  background: #fff7ed;
+  color: #c2410c;
+  border-color: rgba(194, 65, 12, 0.25);
+}
+body.document-tab .invoice-doc-stage .status-badge.status-overdue {
+  background: #fff1f2;
+  color: #be123c;
+  border-color: rgba(190, 18, 60, 0.25);
+}
+
+/* Tax / register meta as soft chips */
+body.document-tab .invoice-doc-stage .invoice-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+body.document-tab .invoice-doc-stage .invoice-meta p {
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f0f9ff;
+  border: 1px solid rgba(14, 116, 144, 0.14);
+  color: #155e75;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+body.document-tab .invoice-doc-stage .invoice-meta p:empty {
+  display: none;
+}
+
+/* Addresses + purpose */
+body.document-tab .invoice-doc-stage .addresses {
+  gap: 12px;
+  margin: 0 0 12px;
+}
+body.document-tab .invoice-doc-stage .addresses > div {
+  padding: 12px 14px;
+  min-height: 5.2rem;
+}
+body.document-tab .invoice-doc-stage .addresses h3 {
+  margin: 0 0 8px;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+}
+body.document-tab .invoice-doc-stage .addresses pre {
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: #0f172a;
+}
+body.document-tab .invoice-doc-stage .invoice-purpose {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(14, 116, 144, 0.16);
+  background: linear-gradient(135deg, rgba(14, 116, 144, 0.05), #ffffff 55%);
+  box-shadow: inset 3px 0 0 #0e7490;
+}
+body.document-tab .invoice-doc-stage .invoice-purpose h3 {
+  margin: 0 0 6px;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  color: #0e7490;
+}
+body.document-tab .invoice-doc-stage .invoice-purpose p {
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: #0f172a;
+}
+
+/* Line items */
+body.document-tab .invoice-doc-stage .preview-items {
+  margin: 0 0 10px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(14, 116, 144, 0.12);
+}
+body.document-tab .invoice-doc-stage .preview-items th {
+  padding: 9px 10px;
+  font-size: 0.65rem;
+}
+body.document-tab .invoice-doc-stage .preview-items td {
+  padding: 10px;
+  font-size: 0.88rem;
+  border-bottom: 1px solid #eef4f7;
+}
+body.document-tab .invoice-doc-stage .preview-items tr:nth-child(even) td {
+  background: #f8fbfd;
+}
+body.document-tab .invoice-doc-stage .preview-items tr:last-child td {
+  border-bottom: none;
+}
+
+/* Totals plaque */
+body.document-tab .invoice-doc-stage .totals {
+  border-radius: 12px;
+  padding: 11px 14px;
+  box-shadow: 0 10px 22px rgba(14, 116, 144, 0.22);
+}
+body.document-tab .invoice-doc-stage .totals p {
+  margin: 4px 0;
+  font-size: 0.82rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+body.document-tab .invoice-doc-stage .grand-total {
+  margin-top: 8px;
+  padding-top: 8px;
+  font-size: 1.08rem;
+}
+
+/* Closing band — bank / note / signature plate */
+body.document-tab .invoice-doc-stage .invoice-closing {
+  padding: 10px;
+  border-radius: 14px;
+  gap: 10px;
+  align-items: stretch;
+}
+body.document-tab .invoice-doc-stage .invoice-closing-main {
+  gap: 8px;
+}
+body.document-tab .invoice-doc-stage .invoice-bank,
+body.document-tab .invoice-doc-stage .note-box {
+  padding: 10px 12px;
+  border-radius: 11px;
+}
+body.document-tab .invoice-doc-stage .invoice-bank h3,
+body.document-tab .invoice-doc-stage .note-box h3 {
+  margin: 0 0 5px;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 750;
+}
+body.document-tab .invoice-doc-stage .invoice-bank p,
+body.document-tab .invoice-doc-stage .note-box p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #334155;
+  white-space: pre-wrap;
+}
+body.document-tab .invoice-doc-stage .invoice-sig-plate {
+  min-height: 36mm;
+  padding: 12px 14px 14px;
+  border-radius: 12px;
+  border-style: solid;
+  border-width: 1px;
+  border-color: rgba(14, 116, 144, 0.28);
+  background:
+    linear-gradient(180deg, rgba(14, 116, 144, 0.04), transparent 40%),
+    #ffffff;
+}
+body.document-tab .invoice-doc-stage .invoice-sig-plate-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  opacity: 0.9;
+}
+body.document-tab .invoice-doc-stage .invoice-sig-plate-line {
+  margin-top: 18px;
+  opacity: 0.4;
+}
+
+/* Extras form (surcharge + warning) */
+body.document-tab .invoice-extras {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(125, 211, 252, 0.18);
+  display: grid;
+  gap: 12px;
+}
+body.document-tab .invoice-extras-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr;
+  gap: 10px;
+}
+@media (max-width: 900px) {
+  body.document-tab .invoice-extras-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Totals — unmistakable payable amount */
+body.document-tab .invoice-doc-stage .totals,
+body.document-tab .invoice-doc-stage #invoiceTotalsBlock {
+  width: min(92mm, 100%);
+  margin-left: auto;
+  margin-top: 10px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  display: grid;
+  gap: 0;
+}
+body.document-tab .invoice-doc-stage .totals-lines {
+  padding: 10px 14px;
+  border-radius: 12px 12px 0 0;
+  border: 1px solid rgba(14, 116, 144, 0.2);
+  border-bottom: none;
+  background: linear-gradient(180deg, #f4fafc, #ffffff);
+}
+body.document-tab .invoice-doc-stage .totals-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin: 4px 0;
+  font-size: 0.82rem;
+  color: #334155;
+}
+body.document-tab .invoice-doc-stage .totals-line.hidden,
+body.document-tab .invoice-doc-stage .totals-line[hidden] {
+  display: none !important;
+}
+body.document-tab .invoice-doc-stage .grand-total-plaque {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px 16px;
+  border-radius: 0 0 14px 14px;
+  background: linear-gradient(145deg, #0e7490 0%, #0f766e 45%, #134e4a 100%);
+  box-shadow:
+    0 14px 32px rgba(14, 116, 144, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+body.document-tab .invoice-doc-stage .grand-total-kicker {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #a5f3fc;
+}
+body.document-tab .invoice-doc-stage .grand-total-amount,
+body.document-tab .invoice-doc-stage #previewTotal {
+  font-size: clamp(1.55rem, 3.2vw, 1.95rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #ffffff !important;
+  line-height: 1.1;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+/* Warning banner on paper */
+body.document-tab .invoice-doc-stage .invoice-warning {
+  margin: 10px 0 0;
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(245, 158, 11, 0.55);
+  background:
+    linear-gradient(135deg, rgba(251, 191, 36, 0.16), rgba(255, 255, 255, 0.95));
+  box-shadow: inset 4px 0 0 #f59e0b;
+  flex: 0 0 auto;
+}
+body.document-tab .invoice-doc-stage .invoice-warning.is-empty {
+  display: none !important;
+}
+body.document-tab .invoice-doc-stage .invoice-warning h3 {
+  margin: 0 0 4px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #b45309;
+}
+body.document-tab .invoice-doc-stage .invoice-warning p {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: #7c2d12;
+  font-weight: 600;
+}
+
+/* Signature must sit above decorative plate and remain draggable everywhere */
+body.document-tab .invoice-doc-stage .invoice-sig-plate {
+  pointer-events: none;
+}
+body.document-tab .invoice-doc-stage .wp-sig-layer,
+body.document-tab #signaturePreviewBox {
+  z-index: 40 !important;
+  pointer-events: auto !important;
+}
+body.document-tab .invoice-doc-stage .wp-sig-layer:not([hidden]) {
+  opacity: 1;
+}
+body.document-tab .invoice-doc-stage .wp-sig-layer.is-empty:not([hidden]) {
+  opacity: 0.85;
+  border: 1px dashed rgba(14, 116, 144, 0.45);
+  background: rgba(14, 116, 144, 0.04);
+  min-height: 36px;
+}

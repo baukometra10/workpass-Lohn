@@ -43,6 +43,16 @@ const sellerInput = document.getElementById("seller");
 const companySellerInput = document.getElementById("companySeller");
 const customerInput = document.getElementById("customer");
 const noteInput = document.getElementById("note");
+const invoicePurposeInput = document.getElementById("invoicePurpose");
+const previewInvoicePurpose = document.getElementById("previewInvoicePurpose");
+const invoiceSurchargeLabelInput = document.getElementById("invoiceSurchargeLabel");
+const invoiceSurchargeAmountInput = document.getElementById("invoiceSurchargeAmount");
+const invoiceWarningInput = document.getElementById("invoiceWarning");
+const previewSurcharge = document.getElementById("previewSurcharge");
+const surchargeRowPreview = document.getElementById("surchargeRowPreview");
+const surchargeLabelEl = document.getElementById("surchargeLabel");
+const previewInvoiceWarning = document.getElementById("previewInvoiceWarning");
+const invoiceWarningBlock = document.getElementById("invoiceWarningBlock");
 
 const previewInvoiceNumber = document.getElementById("previewInvoiceNumber");
 const previewInvoiceDate = document.getElementById("previewInvoiceDate");
@@ -96,6 +106,7 @@ const newCompanyProfileBtn = document.getElementById("newCompanyProfileBtn");
 const deleteCompanyProfileBtn = document.getElementById("deleteCompanyProfileBtn");
 const taxNumberInput = document.getElementById("taxNumber");
 const vatIdInput = document.getElementById("vatId");
+const companyPhoneInput = document.getElementById("companyPhone");
 const commercialRegisterInput = document.getElementById("commercialRegister");
 const managingDirectorInput = document.getElementById("managingDirector");
 const companyBankNameInput = document.getElementById("companyBankName");
@@ -237,8 +248,9 @@ const WAGE_TYPE_PRESETS = [
 const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
+const USED_DOC_NUMBERS_KEY = "finanzDokumentUsedDocNumbersV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2.54.13";
+const APP_VERSION = "2.54.55";
 const APP_VERSION_BUILD = "2026.45";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
@@ -931,7 +943,13 @@ function hubShowSyncStatus(text, { error = false, nextActions = [] } = {}) {
 
 function hubT(key, fallback, vars) {
   const v = window.WorkPassI18n?.t?.(key, vars);
-  return (v && v !== key) ? v : (fallback || key);
+  let out = (v && v !== key) ? v : (fallback || key);
+  if (vars && typeof out === "string") {
+    Object.keys(vars).forEach((k) => {
+      out = out.replace(new RegExp(`\\{${k}\\}`, "g"), String(vars[k]));
+    });
+  }
+  return out;
 }
 
 /** Map known German/platform sync messages → UI locale. Keep env var names as-is. */
@@ -1308,6 +1326,7 @@ function updateDashboardChecklist() {
     MC.renderSummary("dashChecklistSummary", checks);
     MC.renderSummary("companyChecklistSummary", checks);
   }
+  if (isCompanyTabActive()) updateCompanyIdentityStrip();
 }
 
 function renderMandantAccountingStatus() {
@@ -1378,6 +1397,7 @@ function buildHubProfilePayload() {
     companyBankName: data.companyBankName || "",
     companyIban: data.companyIban || "",
     companyBic: data.companyBic || "",
+    companyPhone: data.companyPhone || "",
     datevClientNo: datevClientNoInput?.value || "",
     datevConsultantNo: datevConsultantNoInput?.value || "",
     payrollLayout: data.payrollLayout || "datev",
@@ -1409,12 +1429,27 @@ function buildCompanyUpsertBody(companyId) {
   };
 }
 
-function setMandantSyncHint(text, { error = false } = {}) {
+function setMandantSyncHint(text, { error = false, ok = false } = {}) {
   const el = document.getElementById("mandantProfileSyncHint");
   if (!el) return;
   el.textContent = text;
-  el.classList.toggle("is-error", error);
-  el.classList.toggle("is-ok", !error && /Server|synchron/i.test(text));
+  const success = ok || (!error && /gespeichert|Server|synchron|Sync/i.test(text));
+  el.classList.toggle("is-error", Boolean(error));
+  el.classList.toggle("is-ok", success && !error);
+  el.classList.add("is-flash");
+  window.clearTimeout(el._flashTimer);
+  el._flashTimer = window.setTimeout(() => el.classList.remove("is-flash"), 1600);
+}
+
+function flashCompanySaveButton({ error = false } = {}) {
+  const btn = saveCompanyProfileBtn;
+  if (!btn) return;
+  btn.classList.remove("is-save-ok", "is-save-error");
+  btn.classList.add(error ? "is-save-error" : "is-save-ok");
+  window.clearTimeout(btn._saveFlashTimer);
+  btn._saveFlashTimer = window.setTimeout(() => {
+    btn.classList.remove("is-save-ok", "is-save-error");
+  }, 1800);
 }
 
 function fillIfEmpty(input, value) {
@@ -1446,6 +1481,7 @@ function applyHubProfileFromServer(hubProfile, { force = false } = {}) {
   setVal(companyBankNameInput, hubProfile.companyBankName);
   setVal(companyIbanInput, hubProfile.companyIban);
   setVal(companyBicInput, hubProfile.companyBic);
+  setVal(companyPhoneInput, hubProfile.companyPhone);
   setVal(datevClientNoInput, hubProfile.datevClientNo);
   setVal(datevConsultantNoInput, hubProfile.datevConsultantNo);
   setVal(payrollHeaderLineInput, hubProfile.payrollHeaderLine);
@@ -1457,7 +1493,7 @@ function applyHubProfileFromServer(hubProfile, { force = false } = {}) {
       changed = true;
     }
   }
-  if (hubProfile.note && noteInput && (force || !noteInput.value.trim())) {
+  if (hubProfile.note && noteInput && force && noteInput.dataset.userCleared !== "1") {
     noteInput.value = hubProfile.note;
     changed = true;
   }
@@ -1524,6 +1560,7 @@ async function pullCompanyProfileFromBridge({ force = false } = {}) {
     hubWorkspace = data.workspace || hubWorkspace;
     fillIfEmpty(taxNumberInput, company.taxNumber);
     fillIfEmpty(vatIdInput, company.vatId);
+    fillIfEmpty(companyPhoneInput, company.phone || company.companyPhone);
     fillIfEmpty(datevClientNoInput, company.datevClientNo);
     fillIfEmpty(datevConsultantNoInput, company.datevConsultantNo);
     if (companyProfileNameInput && (force || !companyProfileNameInput.value.trim() || companyProfileNameInput.value === "Standard-Mandant")) {
@@ -1783,15 +1820,69 @@ function initTabs() {
       document.body.classList.toggle("dashboard-tab", target === "dashboard");
       document.body.classList.toggle("help-tab", target === "help");
       document.body.classList.toggle("company-tab", target === "company");
+      document.body.classList.toggle("document-tab", target === "document");
       updateTopbarForMode();
       updateDashboard();
       updatePreview();
+      requestAnimationFrame(() => {
+        lockDocumentSplit();
+        if (typeof window.__workpassLockRechnungSplit === "function") {
+          window.__workpassLockRechnungSplit();
+        }
+      });
     });
   });
   const initialTab = document.querySelector(".form-tab.active")?.dataset.tab || "dashboard";
   document.body.classList.toggle("dashboard-tab", initialTab === "dashboard");
   document.body.classList.toggle("help-tab", initialTab === "help");
   document.body.classList.toggle("company-tab", initialTab === "company");
+  document.body.classList.toggle("document-tab", initialTab === "document");
+}
+
+const SIDEBAR_COLLAPSE_KEY = "workpass.hub.sidebarCollapsed";
+
+function setSidebarCollapsed(collapsed) {
+  const on = Boolean(collapsed);
+  document.body.classList.toggle("sidebar-collapsed", on);
+  const btn = document.getElementById("sidebarToggleBtn");
+  if (btn) {
+    btn.setAttribute("aria-expanded", on ? "false" : "true");
+    const collapseTitle = window.WorkPassI18n?.t?.("nav.sidebarCollapse") || "Module einklappen";
+    const expandTitle = window.WorkPassI18n?.t?.("nav.sidebarExpand") || "Module ausklappen";
+    btn.title = on ? expandTitle : collapseTitle;
+    btn.setAttribute("aria-label", btn.title);
+    const iconCollapse = btn.querySelector(".sidebar-toggle-icon-collapse");
+    const iconExpand = btn.querySelector(".sidebar-toggle-icon-expand");
+    if (iconCollapse) iconCollapse.hidden = on;
+    if (iconExpand) iconExpand.hidden = !on;
+  }
+  try {
+    localStorage.setItem(SIDEBAR_COLLAPSE_KEY, on ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+  requestAnimationFrame(() => lockDocumentSplit());
+}
+
+function initSidebarCollapse() {
+  const btn = document.getElementById("sidebarToggleBtn");
+  if (!btn) return;
+  let saved = false;
+  try {
+    saved = localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === "1";
+  } catch {
+    saved = false;
+  }
+  setSidebarCollapsed(saved);
+  btn.addEventListener("click", () => {
+    setSidebarCollapsed(!document.body.classList.contains("sidebar-collapsed"));
+  });
+  document.querySelectorAll(".sidebar-nav-btn").forEach((el) => {
+    if (el.title) return;
+    const label = el.querySelector("[data-i18n]")?.textContent?.trim()
+      || el.textContent?.trim();
+    if (label) el.title = label.replace(/\s+/g, " ");
+  });
 }
 
 function syncDocTypeCards(mode) {
@@ -1922,6 +2013,9 @@ function updateDocumentLogos() {
   setLogoPreviewImage(previewCompanyLogo, activeLogoDataUrl);
   setLogoPreviewImage(payrollHeadLogo, activeLogoDataUrl);
   setLogoPreviewImage(companyLogoPreview, activeLogoDataUrl);
+  if (typeof isCompanyTabActive === "function" && isCompanyTabActive()) {
+    updateCompanyIdentityStrip();
+  }
 }
 
 function resizeLogoFile(file) {
@@ -2002,6 +2096,7 @@ function collectCompanyProfileData() {
     seller: getSellerText(),
     taxNumber: taxNumberInput?.value || "",
     vatId: vatIdInput?.value || "",
+    companyPhone: companyPhoneInput?.value || "",
     commercialRegister: commercialRegisterInput?.value || "",
     managingDirector: managingDirectorInput?.value || "",
     companyBankName: companyBankNameInput?.value || "",
@@ -2024,6 +2119,7 @@ function applyCompanyProfile(profile) {
   syncSellerFields("seller");
   if (taxNumberInput) taxNumberInput.value = profile.taxNumber || "";
   if (vatIdInput) vatIdInput.value = profile.vatId || "";
+  if (companyPhoneInput) companyPhoneInput.value = profile.companyPhone || "";
   if (commercialRegisterInput) commercialRegisterInput.value = profile.commercialRegister || "";
   if (managingDirectorInput) managingDirectorInput.value = profile.managingDirector || "";
   if (companyBankNameInput) companyBankNameInput.value = profile.companyBankName || "";
@@ -2087,16 +2183,37 @@ async function saveCurrentCompanyProfile(showMessage = true) {
   writeCompanyProfiles(profiles);
   refreshCompanyProfileSelect();
   updateDashboardChecklist();
-  const sync = await pushCompanyProfileToBridge({ quiet: !showMessage });
-  if (showMessage) {
-    if (sync?.ok && !sync.skipped) {
-      window.alert(sync.logoSkipped
-        ? "Mandantenprofil lokal und auf dem Server gespeichert (Logo nur lokal – zu groß)."
-        : "Mandantenprofil lokal und auf dem Server gespeichert.");
-    } else if (sync?.skipped) {
-      window.alert("Mandantenprofil lokal gespeichert.");
-    } else {
-      window.alert(`Mandantenprofil lokal gespeichert.\nServer: ${sync?.error || "Sync fehlgeschlagen"}`);
+  updateCompanyIdentityStrip();
+  if (saveCompanyProfileBtn) {
+    saveCompanyProfileBtn.disabled = true;
+    saveCompanyProfileBtn.setAttribute("aria-busy", "true");
+  }
+  try {
+    const sync = await pushCompanyProfileToBridge({ quiet: !showMessage });
+    if (showMessage) {
+      if (sync?.ok && !sync.skipped) {
+        const msg = sync.logoSkipped
+          ? hubT("co.saveLocalServerLogoLocal", "Gespeichert · lokal + Server (Logo nur lokal – zu groß).")
+          : hubT("co.saveLocalServer", "Gespeichert · lokal und auf dem Server.");
+        setMandantSyncHint(msg, { ok: true });
+        flashCompanySaveButton({ error: false });
+      } else if (sync?.skipped) {
+        setMandantSyncHint(hubT("co.saveLocalOnly", "Gespeichert · lokal auf diesem Gerät."), { ok: true });
+        flashCompanySaveButton({ error: false });
+      } else {
+        setMandantSyncHint(
+          hubT("co.saveLocalServerFail", "Lokal gespeichert · Server: {err}", {
+            err: sync?.error || hubT("co.syncFailedShort", "Sync fehlgeschlagen"),
+          }),
+          { error: true }
+        );
+        flashCompanySaveButton({ error: true });
+      }
+    }
+  } finally {
+    if (saveCompanyProfileBtn) {
+      saveCompanyProfileBtn.disabled = false;
+      saveCompanyProfileBtn.removeAttribute("aria-busy");
     }
   }
 }
@@ -2843,17 +2960,20 @@ function getSignatureDisplayName() {
 function getInvoiceDocumentSnapshot() {
   const rows = typeof getRowsData === "function" ? getRowsData() : [];
   const subtotal = rows.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
+  const surcharge = Math.max(0, Number(invoiceSurchargeAmountInput?.value) || 0);
   const isKlein = kleinunternehmerInput?.checked;
   const isReverse = reverseChargeInput?.checked;
   const taxRate = (isKlein || isReverse) ? 0 : (Number(taxRateInput?.value) || 0);
-  const tax = subtotal * (taxRate / 100);
+  const taxable = subtotal + surcharge;
+  const tax = taxable * (taxRate / 100);
   return {
     type: "invoice",
     number: invoiceNumberInput?.value || "",
     date: invoiceDateInput?.value || "",
     seller: sellerInput?.value || "",
     customer: getEmployeeAddressText(),
-    total: (subtotal + tax).toFixed(2),
+    total: (taxable + tax).toFixed(2),
+    surcharge: surcharge.toFixed(2),
     items: rows.map((r) => ({
       description: r.description,
       quantity: r.quantity,
@@ -3068,7 +3188,11 @@ function applySignaturePreview(dataUrl, displayName) {
     return;
   }
 
-  if (box) box.hidden = false;
+  if (box) {
+    box.hidden = false;
+    box.style.pointerEvents = "auto";
+    box.style.zIndex = "40";
+  }
 
   if (lineEl) lineEl.classList.toggle("is-hidden", !layout.showLine);
 
@@ -3120,7 +3244,26 @@ function applySignaturePreview(dataUrl, displayName) {
 function ensureInvoiceDocStage() {
   if (!invoicePreviewEl) return null;
   let stage = document.getElementById("invoiceDocStage");
-  if (stage?.dataset.ready === "1") return stage;
+  const stageHost =
+    document.getElementById("invoicePreviewStage")
+    || invoicePreviewEl.querySelector(".invoice-preview-stage")
+    || invoicePreviewEl;
+
+  if (stage?.dataset.ready === "1") {
+    if (stageHost && stage.parentElement !== stageHost) {
+      const pad = document.getElementById("invoiceZoomPad");
+      const frame = document.getElementById("invoiceFitFrame");
+      if (pad && stage.parentElement === pad) {
+        // Blatt lives inside zoom pad (fitInvoiceSheet) — keep pad in the scroll stage
+        if (pad.parentElement !== stageHost) stageHost.appendChild(pad);
+      } else if (frame && stage.parentElement === frame) {
+        if (frame.parentElement !== stageHost) stageHost.appendChild(frame);
+      } else {
+        stageHost.appendChild(stage);
+      }
+    }
+    return stage;
+  }
 
   if (!stage) {
     stage = document.createElement("div");
@@ -3129,27 +3272,37 @@ function ensureInvoiceDocStage() {
   stage.className = "invoice-doc-stage mode-invoice-only";
   stage.dataset.ready = "1";
 
-  const anchor = document.getElementById("datevSheetHost")
-    || invoicePreviewEl.querySelector(".preview-tools");
-  if (stage.parentElement !== invoicePreviewEl) {
-    if (anchor?.parentElement === invoicePreviewEl) anchor.after(stage);
-    else invoicePreviewEl.appendChild(stage);
+  if (stage.parentElement !== stageHost) {
+    const anchor = stageHost.querySelector?.("#datevSheetHost")
+      || invoicePreviewEl.querySelector(".preview-tools");
+    if (anchor && anchor.parentElement === stageHost) anchor.after(stage);
+    else stageHost.appendChild(stage);
   }
 
   const selectors = [
     ".invoice-top.mode-invoice-only",
     "#invoiceMetaBlock",
     ".addresses.mode-invoice-only",
+    "#invoicePurposeBlock",
     "table.preview-items.mode-invoice-only",
     ".totals.mode-invoice-only",
+    "#invoiceTotalsBlock",
+    "#invoiceWarningBlock",
+    "#invoiceClosing",
     "#invoiceBankBlock",
+    "#invoiceNoteBlock",
     ".note-box.mode-invoice-only",
     "#signaturePreviewBox",
     "#signatureSealBadge",
   ];
   selectors.forEach((sel) => {
     const el = invoicePreviewEl.querySelector(sel);
-    if (el && el.parentElement !== stage) stage.appendChild(el);
+    if (!el) return;
+    if ((sel === "#invoiceBankBlock" || sel === "#invoiceNoteBlock" || sel === ".note-box.mode-invoice-only")
+      && el.closest("#invoiceClosing")) {
+      return;
+    }
+    if (el.parentElement !== stage) stage.appendChild(el);
   });
   return stage;
 }
@@ -3863,13 +4016,13 @@ function setPaymentStatus(invoiceDateValue, dueDateValue) {
 function createItemRow(description = "", quantity = 1, price = 0) {
   const row = document.createElement("tr");
   row.innerHTML = `
-    <td><input class="desc-input" type="text" value="${escapeHtml(description)}" placeholder="z. B. Beratung" /></td>
+    <td><textarea class="desc-input" rows="2" placeholder="Leistung klar beschreiben…">${escapeHtml(description)}</textarea></td>
     <td><input class="qty-input" type="number" min="0" step="1" value="${quantity}" /></td>
     <td><input class="price-input" type="number" min="0" step="0.01" value="${price}" /></td>
     <td class="line-total">0,00</td>
     <td><button type="button" class="remove-item">Entfernen</button></td>
   `;
-  row.querySelectorAll("input").forEach((input) => {
+  row.querySelectorAll("input, textarea").forEach((input) => {
     input.addEventListener("input", () => {
       updatePreview();
       saveDraft(false);
@@ -4183,6 +4336,8 @@ function buildPayrollFooterText() {
   if (taxNo || vat) {
     lines.push([taxNo ? `St.-Nr. ${taxNo}` : "", vat ? `USt-IdNr. ${vat}` : ""].filter(Boolean).join(" · "));
   }
+  const phone = companyPhoneInput?.value?.trim();
+  if (phone) lines.push(`Tel. ${phone}`);
   const bank = companyBankNameInput?.value?.trim();
   const iban = companyIbanInput?.value?.trim();
   const bic = companyBicInput?.value?.trim();
@@ -4837,11 +4992,14 @@ function warnInsuranceNumberIfNeeded(askOnPrint = false) {
 function updateInvoicePreview() {
   const rowsData = getRowsData();
   const subtotal = rowsData.reduce((sum, item) => sum + item.total, 0);
+  const surcharge = Math.max(0, Number(invoiceSurchargeAmountInput?.value) || 0);
+  const surchargeName = (invoiceSurchargeLabelInput?.value || "").trim() || "Zusatzbetrag";
   const isKlein = kleinunternehmerInput?.checked;
   const isReverse = reverseChargeInput?.checked;
   let taxRate = (isKlein || isReverse) ? 0 : (Number(taxRateInput.value) || 0);
-  const tax = subtotal * (taxRate / 100);
-  const total = subtotal + tax;
+  const taxable = subtotal + surcharge;
+  const tax = taxable * (taxRate / 100);
+  const total = taxable + tax;
 
   previewDocumentTitle.textContent = "Rechnung";
   previewInvoiceNumber.textContent = `Nr. ${invoiceNumberInput.value.trim() || "-"}`;
@@ -4850,13 +5008,20 @@ function updateInvoicePreview() {
     previewServiceDate.textContent = formatDateForView(serviceDateInput?.value || invoiceDateInput.value);
   }
   previewDueDate.textContent = formatDateForView(dueDateInput.value);
-  previewSeller.textContent = sellerInput.value.trim() || "-";
-  previewCustomer.textContent = customerInput.value.trim() || "-";
+  previewSeller.textContent = sellerInput.value.trim() || "—";
+  previewCustomer.textContent = customerInput.value.trim() || "—";
 
-  let noteText = noteInput.value.trim() || "-";
-  if (isKlein) noteText += "\n\nGemäß § 19 UStG wird keine Umsatzsteuer berechnet.";
-  if (isReverse) noteText += "\n\nSteuerschuldnerschaft des Leistungsempfängers (§ 13b UStG).";
-  previewNote.textContent = noteText;
+  const userNote = noteInput?.value?.trim() || "";
+  const legalBits = [];
+  if (isKlein) legalBits.push("Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.");
+  if (isReverse) legalBits.push("Steuerschuldnerschaft des Leistungsempfängers (§ 13b UStG).");
+  const noteText = [userNote, ...legalBits].filter(Boolean).join("\n\n");
+  if (previewNote) previewNote.textContent = noteText;
+  document.getElementById("invoiceNoteBlock")?.classList.toggle("is-empty", !noteText);
+
+  const warnText = invoiceWarningInput?.value?.trim() || "";
+  if (previewInvoiceWarning) previewInvoiceWarning.textContent = warnText;
+  invoiceWarningBlock?.classList.toggle("is-empty", !warnText);
 
   refreshActiveSignature({ save: false });
   refreshSignatureSealUi();
@@ -4871,6 +5036,12 @@ function updateInvoicePreview() {
       ? `USt-IdNr.: ${vatIdInput.value.trim()}`
       : "";
   }
+  const previewCompanyPhone = document.getElementById("previewCompanyPhone");
+  if (previewCompanyPhone) {
+    previewCompanyPhone.textContent = companyPhoneInput?.value?.trim()
+      ? `Tel.: ${companyPhoneInput.value.trim()}`
+      : "";
+  }
   if (previewCommercialRegister) {
     previewCommercialRegister.textContent = commercialRegisterInput?.value?.trim()
       ? commercialRegisterInput.value.trim()
@@ -4881,25 +5052,42 @@ function updateInvoicePreview() {
     if (companyBankNameInput?.value?.trim()) parts.push(companyBankNameInput.value.trim());
     if (companyIbanInput?.value?.trim()) parts.push(`IBAN: ${companyIbanInput.value.trim()}`);
     if (companyBicInput?.value?.trim()) parts.push(`BIC: ${companyBicInput.value.trim()}`);
-    previewCompanyBank.textContent = parts.length ? parts.join(" · ") : "-";
+    previewCompanyBank.textContent = parts.length ? parts.join(" · ") : "";
+  }
+  document.getElementById("invoiceBankBlock")?.classList.toggle(
+    "is-empty",
+    !previewCompanyBank?.textContent?.trim()
+  );
+
+  if (previewInvoicePurpose) {
+    const purpose = invoicePurposeInput?.value?.trim() || "";
+    previewInvoicePurpose.textContent = purpose;
+    document.getElementById("invoicePurposeBlock")?.classList.toggle("is-empty", !purpose);
   }
 
-  subtotalLabel.textContent = "Zwischensumme (netto):";
+  if (subtotalLabel) subtotalLabel.textContent = "Zwischensumme (netto):";
   if (isReverse) {
-    taxLabel.textContent = "USt (§ 13b Reverse-Charge):";
-  } else {
+    if (taxLabel) taxLabel.textContent = "USt (§ 13b Reverse-Charge):";
+  } else if (taxLabel) {
     taxLabel.textContent = isKlein ? "USt (§ 19):" : `USt (${taxRate} %):`;
   }
-  totalLabel.textContent = "Gesamtbetrag:";
+  if (totalLabel) totalLabel.textContent = "Betrag fällig";
   setPaymentStatus(invoiceDateInput.value, dueDateInput.value);
 
   if (taxRowPreview) taxRowPreview.classList.toggle("hidden", isKlein || isReverse);
+  if (surchargeRowPreview) {
+    const showSurcharge = surcharge > 0;
+    surchargeRowPreview.hidden = !showSurcharge;
+    surchargeRowPreview.classList.toggle("hidden", !showSurcharge);
+    if (surchargeLabelEl) surchargeLabelEl.textContent = `${surchargeName}:`;
+    if (previewSurcharge) previewSurcharge.textContent = eur.format(surcharge);
+  }
 
   clearTableBody(previewItemsBody);
   rowsData.forEach((item) => {
     if (!item.description && item.quantity === 0 && item.price === 0) return;
     const row = document.createElement("tr");
-    ["description", "quantity", "price", "total"].forEach((key, i) => {
+    ["description", "quantity", "price", "total"].forEach((key) => {
       const td = document.createElement("td");
       if (key === "price" || key === "total") td.textContent = eur.format(item[key]);
       else if (key === "description") td.textContent = item.description || "-";
@@ -4915,12 +5103,13 @@ function updateInvoicePreview() {
     previewItemsBody.appendChild(row);
   }
 
-  previewSubtotal.textContent = eur.format(subtotal);
-  previewTax.textContent = isKlein ? "entfällt" : `${eur.format(tax)} (${taxRate} %)`;
-  previewTotal.textContent = eur.format(total);
+  if (previewSubtotal) previewSubtotal.textContent = eur.format(subtotal);
+  if (previewTax) previewTax.textContent = isKlein ? "entfällt" : `${eur.format(tax)} (${taxRate} %)`;
+  if (previewTotal) previewTotal.textContent = eur.format(total);
   updateInvoiceComplianceList();
   ensureInvoiceDocStage();
   applySignatureLayoutToDom();
+  requestAnimationFrame(() => lockDocumentSplit());
 }
 
 function updateInvoiceComplianceList() {
@@ -4948,6 +5137,77 @@ function updateInvoiceComplianceList() {
     li.textContent = `${ok ? "✓" : "○"} ${hubT(key, fb)}`;
     invoiceComplianceList.appendChild(li);
   });
+}
+
+function escapeHelpHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function renderHelpContactCard(contactOverride) {
+  const host = document.getElementById("helpContactList");
+  if (!host) return;
+  const defaults = window.WorkPassHelpContactDefaults || {};
+  const c = Object.assign({}, defaults, window.WorkPassHelpContact || {}, contactOverride || {});
+  window.WorkPassHelpContact = Object.assign({}, c);
+  const rows = [];
+  if (c.product) {
+    rows.push(`<li class="help-contact-product"><span>${escapeHelpHtml(hubT("help.contactProduct", "Produkt"))}</span><strong>${escapeHelpHtml(c.product)}</strong></li>`);
+  }
+  if (c.email) {
+    rows.push(`<li><span>${escapeHelpHtml(hubT("help.contactEmail", "E-Mail"))}</span><a href="mailto:${escapeHelpHtml(c.email)}">${escapeHelpHtml(c.email)}</a></li>`);
+  }
+  if (c.phone) {
+    const telHref = String(c.phone).replace(/[^\d+]/g, "");
+    rows.push(`<li><span>${escapeHelpHtml(hubT("help.contactPhone", "Telefon"))}</span><a href="tel:${escapeHelpHtml(telHref)}">${escapeHelpHtml(c.phone)}</a></li>`);
+  }
+  if (c.whatsapp) {
+    const wa = String(c.whatsapp).replace(/\D/g, "");
+    rows.push(`<li><span>WhatsApp</span><a href="https://wa.me/${escapeHelpHtml(wa)}" target="_blank" rel="noopener noreferrer">${escapeHelpHtml(c.phone || `+${wa}`)}</a></li>`);
+  }
+  if (c.website) {
+    rows.push(`<li><span>${escapeHelpHtml(hubT("help.contactWeb", "Website"))}</span><a href="${escapeHelpHtml(c.website)}" target="_blank" rel="noopener noreferrer">${escapeHelpHtml(c.websiteLabel || c.website)}</a></li>`);
+  }
+  if (c.hoursDe) {
+    rows.push(`<li><span>${escapeHelpHtml(hubT("help.contactHours", "Erreichbarkeit"))}</span><strong>${escapeHelpHtml(c.hoursDe)}</strong></li>`);
+  }
+  host.innerHTML = rows.join("") || `<li class="muted">${escapeHelpHtml(hubT("help.contactEmpty", "Kontaktdaten folgen in Kürze."))}</li>`;
+}
+
+const HELP_CONTACT_CACHE_KEY = "workpass.helpContact.v1";
+
+function applyCachedHelpContact() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(HELP_CONTACT_CACHE_KEY) || "null");
+    if (raw && typeof raw === "object") renderHelpContactCard(raw);
+  } catch {
+    /* ignore */
+  }
+}
+
+async function loadHelpContactFromServer() {
+  applyCachedHelpContact();
+  renderHelpContactCard();
+  try {
+    const base = hubResolveApiBase();
+    const url = `${base}/v1/help/contact`;
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    const contact = data?.contact;
+    if (!contact || typeof contact !== "object") return;
+    try {
+      localStorage.setItem(HELP_CONTACT_CACHE_KEY, JSON.stringify(contact));
+    } catch {
+      /* ignore */
+    }
+    renderHelpContactCard(contact);
+  } catch {
+    /* keep defaults / cache */
+  }
 }
 
 /* ── Preview: Payroll ── */
@@ -5016,7 +5276,10 @@ function updatePayrollPreview() {
   previewPayrollMonth.textContent = formatMonthForView(payrollMonthInput.value);
   previewSeller.textContent = sellerInput.value.trim() || "-";
   previewCustomer.textContent = customerInput.value.trim() || "-";
-  previewNote.textContent = noteInput.value.trim() || "-";
+  if (previewNote) {
+    previewNote.textContent = noteInput.value.trim() || "";
+    document.getElementById("invoiceNoteBlock")?.classList.toggle("is-empty", !noteInput.value.trim());
+  }
   subtotalLabel.textContent = "Brutto:";
   taxLabel.textContent = "Abzüge gesamt:";
   totalLabel.textContent = "Nettoauszahlung:";
@@ -5318,8 +5581,16 @@ function updateAnnualPreview() {
   }
 }
 
+function isDashboardTabActive() {
+  return document.querySelector(".form-tab.active")?.dataset.tab === "dashboard";
+}
+
 function isCompanyTabActive() {
   return document.querySelector(".form-tab.active")?.dataset.tab === "company";
+}
+
+function isDocumentTabActive() {
+  return document.querySelector(".form-tab.active")?.dataset.tab === "document";
 }
 
 function uiText(key, fallback) {
@@ -5330,10 +5601,14 @@ function uiText(key, fallback) {
 function syncPreviewChrome() {
   const preview = document.getElementById("invoicePreview");
   if (!preview) return;
+  if (isDashboardTabActive()) {
+    preview.dataset.previewLabel = "";
+    return;
+  }
   if (isCompanyTabActive()) {
     preview.dataset.previewLabel = uiText(
-      "preview.companyLetterhead",
-      "Vorschau · Firmenbriefkopf (nicht Mitarbeiter-LStB)"
+      "preview.companyProfile",
+      "Vorschau · Firmenprofil & Erscheinungsbild"
     );
     return;
   }
@@ -5344,39 +5619,120 @@ function syncPreviewChrome() {
     );
     return;
   }
-  preview.dataset.previewLabel = uiText("preview.printBw", "Vorschau · Drucklayout Schwarz/Weiß");
+  if (getCurrentMode() === "payroll") {
+    preview.dataset.previewLabel = uiText(
+      "preview.payrollLive",
+      "Live-Vorschau · A4 · Entgeltabrechnung"
+    );
+    return;
+  }
+  preview.dataset.previewLabel = uiText(
+    "preview.invoiceLive",
+    "Live-Vorschau · A4 · Rechnung"
+  );
+}
+
+function setTextOrDash(el, value) {
+  if (!el) return;
+  const text = String(value || "").trim();
+  el.textContent = text || "—";
+}
+
+function updateCompanyIdentityStrip() {
+  const nameEl = document.getElementById("companyIdentityName");
+  const metaEl = document.getElementById("companyIdentityMeta");
+  const progressEl = document.getElementById("companyIdentityProgress");
+  const logoHost = document.getElementById("companyIdentityLogo");
+  if (!nameEl && !metaEl && !progressEl && !logoHost) return;
+
+  const sellerRaw = (companySellerInput?.value || sellerInput?.value || "").trim();
+  const sellerLines = sellerRaw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const companyName = sellerLines[0]
+    || companyProfileNameInput?.value?.trim()
+    || uiText("co.previewFallbackName", "Ihre Firma");
+  if (nameEl) nameEl.textContent = companyName;
+
+  const metaParts = [];
+  const phone = companyPhoneInput?.value?.trim();
+  if (phone) metaParts.push(`Tel. ${phone}`);
+  const addrLine = sellerLines.slice(1).join(", ");
+  if (addrLine) metaParts.push(addrLine);
+  else if (taxNumberInput?.value?.trim()) metaParts.push(`St.-Nr. ${taxNumberInput.value.trim()}`);
+  else if (vatIdInput?.value?.trim()) metaParts.push(`USt-IdNr. ${vatIdInput.value.trim()}`);
+  if (metaEl) metaEl.textContent = metaParts.join(" · ") || uiText("co.identityMetaEmpty", "Anschrift und Telefon ergänzen");
+
+  const checks = getMandantChecklistState();
+  const keys = ["seller", "tax", "bank", "logo", "register", "layout", "datev"];
+  const done = keys.filter((k) => Boolean(checks[k])).length;
+  if (progressEl) progressEl.textContent = `${done}/${keys.length}`;
+
+  if (logoHost) {
+    logoHost.innerHTML = "";
+    if (activeLogoDataUrl) {
+      const img = document.createElement("img");
+      img.src = activeLogoDataUrl;
+      img.alt = "";
+      logoHost.appendChild(img);
+    } else {
+      logoHost.textContent = "CO";
+    }
+  }
+}
+
+function updateCompanyProfilePreview() {
+  // White A4 profile card removed from Firma — live strip only.
+  updateCompanyIdentityStrip();
+  const card = document.getElementById("companyProfilePreview");
+  if (card) card.hidden = true;
 }
 
 function updatePreview() {
   toggleModeUI();
   updateDocumentLogos();
   const companyTab = isCompanyTabActive();
+  const dashboardTab = isDashboardTabActive();
+  const documentTab = isDocumentTabActive();
   document.body.classList.toggle("company-tab", companyTab);
-  document.body.classList.toggle("letterhead-preview", companyTab);
-  if (companyTab) {
+  document.body.classList.toggle("document-tab", documentTab);
+  document.body.classList.toggle("dashboard-tab", dashboardTab);
+  document.body.classList.toggle("letterhead-preview", false);
+
+  const companyCard = document.getElementById("companyProfilePreview");
+  if (companyCard) companyCard.hidden = true;
+
+  const hideInvoiceSurface = companyTab || dashboardTab;
+  if (hideInvoiceSurface) {
     annualTaxSheet?.classList.add("hidden");
-    invoiceOnlyElements.forEach((el) => el.classList.remove("hidden"));
+    invoiceOnlyElements.forEach((el) => el.classList.add("hidden"));
     payrollOnlyElements.forEach((el) => el.classList.add("hidden"));
     annualOnlyElements.forEach((el) => el.classList.add("hidden"));
-    updateInvoicePreview();
+    document.getElementById("invoiceDocStage")?.classList.add("hidden");
+    if (companyTab) updateCompanyIdentityStrip();
     updateDashboard();
     syncPreviewChrome();
+    requestAnimationFrame(() => lockDocumentSplit());
     return;
   }
+
+  document.getElementById("invoiceDocStage")?.classList.remove("hidden");
+
   if (getCurrentMode() === "payroll-annual") {
     updateAnnualPreview();
     updateDashboard();
     syncPreviewChrome();
+    requestAnimationFrame(() => lockDocumentSplit());
     return;
   }
   if (getCurrentMode() === "payroll") {
     updatePayrollPreview();
     syncPreviewChrome();
+    requestAnimationFrame(() => lockDocumentSplit());
     return;
   }
   updateInvoicePreview();
   updateDashboard();
   syncPreviewChrome();
+  requestAnimationFrame(() => lockDocumentSplit());
 }
 
 function buildPdfFilename() {
@@ -5947,9 +6303,73 @@ function setDefaultInvoiceNumber() {
   const isPayroll = getCurrentMode() === "payroll";
   const key = `${isPayroll ? "payroll" : "invoice"}Counter-${y}${m}`;
   const prefix = isPayroll ? "LOHN" : "RE";
-  const current = Number(localStorage.getItem(key) || "0") + 1;
+  const used = collectUsedDocumentNumbers();
+  let current = Number(localStorage.getItem(key) || "0");
+  let candidate = "";
+  // Advance until free — never reuse a known Nr. RE- / LOHN-
+  do {
+    current += 1;
+    candidate = `${prefix}-${y}${m}-${String(current).padStart(4, "0")}`;
+  } while (used.has(candidate));
   localStorage.setItem(key, String(current));
-  invoiceNumberInput.value = `${prefix}-${y}${m}-${String(current).padStart(4, "0")}`;
+  invoiceNumberInput.value = candidate;
+  rememberDocumentNumber(candidate);
+}
+
+function collectUsedDocumentNumbers() {
+  const used = new Set();
+  try {
+    const raw = JSON.parse(localStorage.getItem(USED_DOC_NUMBERS_KEY) || "[]");
+    if (Array.isArray(raw)) raw.forEach((n) => {
+      const s = String(n || "").trim();
+      if (s) used.add(s);
+    });
+  } catch { /* ignore */ }
+  try {
+    const arch = window.WorkPassHub?.readInvoiceArchive?.() || [];
+    arch.forEach((x) => {
+      const s = String(x?.number || "").trim();
+      if (s) used.add(s);
+    });
+  } catch { /* ignore */ }
+  try {
+    const listed = window.WorkPassHub?.listInvoices?.() || [];
+    listed.forEach((x) => {
+      const s = String(x?.number || "").trim();
+      if (s) used.add(s);
+    });
+  } catch { /* ignore */ }
+  return used;
+}
+
+function rememberDocumentNumber(number) {
+  const n = String(number || "").trim();
+  if (!n) return;
+  let list = [];
+  try {
+    const raw = JSON.parse(localStorage.getItem(USED_DOC_NUMBERS_KEY) || "[]");
+    if (Array.isArray(raw)) list = raw.map((x) => String(x || "").trim()).filter(Boolean);
+  } catch { list = []; }
+  if (!list.includes(n)) {
+    list.push(n);
+    localStorage.setItem(USED_DOC_NUMBERS_KEY, JSON.stringify(list.slice(-500)));
+  }
+}
+
+function isDocumentNumberTaken(number, { allowSameAsCurrent = true } = {}) {
+  const n = String(number || "").trim();
+  if (!n) return false;
+  const current = String(invoiceNumberInput?.value || "").trim();
+  if (allowSameAsCurrent && n === current) return false;
+  return collectUsedDocumentNumbers().has(n);
+}
+
+function ensureUniqueInvoiceNumberOrAlert() {
+  if (!invoiceNumberInput?.value?.trim()) setDefaultInvoiceNumber();
+  const n = String(invoiceNumberInput?.value || "").trim();
+  if (!n) return false;
+  rememberDocumentNumber(n);
+  return true;
 }
 
 function setDraftSaveState(saved) {
@@ -5965,9 +6385,130 @@ function setDraftSaveState(saved) {
   }
 }
 
+/** CSS px for A4 at 96dpi — identical to Lohn (never force-fit that bleeds). */
+const INVOICE_A4_W = 794;
+const INVOICE_A4_H = 1123;
+
+function lockDocumentSplit() {
+  if (typeof window.__workpassLockRechnungSplit === "function") {
+    window.__workpassLockRechnungSplit();
+    return;
+  }
+  // Fallback if lock script not yet loaded
+  const workspace = document.getElementById("invoiceWorkspace") || document.querySelector("main.layout.workspace");
+  if (!workspace || !document.body.classList.contains("document-tab")) return;
+  workspace.style.setProperty("display", "grid", "important");
+  workspace.style.setProperty("grid-template-columns", "minmax(320px, 1fr) minmax(0, 900px)", "important");
+  workspace.style.setProperty("overflow", "hidden", "important");
+  fitInvoiceSheet();
+}
+
+/**
+ * Lohn technique: Blatt stays 794×1123.
+ * Never use CSS `zoom` on the sheet — it paints over the form.
+ * User zoom uses a sized pad + transform:scale, clipped inside the stage.
+ */
+function fitInvoiceSheet() {
+  if (!invoicePreviewEl) return;
+  invoicePreviewEl.style.setProperty("zoom", "1", "important");
+  invoicePreviewEl.style.setProperty("transform", "none", "important");
+
+  const sheet =
+    document.getElementById("invoiceDocStage")
+    || invoicePreviewEl.querySelector(".invoice-doc-stage");
+  const previewStage =
+    document.getElementById("invoicePreviewStage")
+    || invoicePreviewEl.querySelector(".invoice-preview-stage")
+    || invoicePreviewEl;
+  const userPct = Math.max(50, Math.min(200, Number(previewZoomInput?.value) || 100));
+  const scale = userPct / 100;
+
+  if (sheet && document.body.classList.contains("document-tab") && !sheet.classList.contains("hidden")) {
+    const frame = document.getElementById("invoiceFitFrame");
+    if (frame) {
+      while (frame.firstChild) previewStage.appendChild(frame.firstChild);
+      frame.remove();
+    }
+
+    let pad = document.getElementById("invoiceZoomPad");
+    if (!pad) {
+      pad = document.createElement("div");
+      pad.id = "invoiceZoomPad";
+      pad.className = "invoice-zoom-pad";
+    }
+    if (sheet.parentElement !== pad) pad.appendChild(sheet);
+    if (pad.parentElement !== previewStage) previewStage.appendChild(pad);
+
+    // Fit A4 into preview column — stable scale (no scrollbar feedback loop)
+    let fitScale = scale;
+    const stageW = Math.max(previewStage.clientWidth || 0, 120) - 12;
+    if (stageW > 80) {
+      const auto = stageW / INVOICE_A4_W;
+      fitScale = Math.max(0.28, Math.min(scale, auto));
+    }
+    // Quantize to avoid endless 0.001 oscillations
+    fitScale = Math.round(fitScale * 100) / 100;
+    const prevFit = Number(sheet.dataset.fitScale || "0");
+    if (Math.abs(prevFit - fitScale) < 0.015 && sheet.dataset.a4Lock === "1to1-794x1123") {
+      // unchanged — skip DOM writes that retrigger layout
+      const companyCardEarly = document.getElementById("companyProfilePreview");
+      if (companyCardEarly) {
+        companyCardEarly.style.zoom = "";
+        companyCardEarly.style.transform = "";
+      }
+      return;
+    }
+    sheet.dataset.fitScale = String(fitScale);
+
+    const padW = Math.round(INVOICE_A4_W * fitScale);
+    const padH = Math.round(INVOICE_A4_H * fitScale);
+    pad.style.cssText = [
+      "box-sizing:border-box",
+      `width:${padW}px`,
+      `height:${padH}px`,
+      "max-width:100%",
+      "margin:0 auto",
+      "flex:0 0 auto",
+      "position:relative",
+      "overflow:hidden",
+    ].join(";");
+
+    sheet.style.setProperty("position", "absolute", "important");
+    sheet.style.setProperty("top", "0", "important");
+    sheet.style.setProperty("left", "0", "important");
+    sheet.style.setProperty("right", "auto", "important");
+    sheet.style.setProperty("bottom", "auto", "important");
+    sheet.style.setProperty("zoom", "1", "important");
+    sheet.style.setProperty("transform", fitScale === 1 ? "none" : `scale(${fitScale})`, "important");
+    sheet.style.setProperty("transform-origin", "top left", "important");
+    sheet.style.setProperty("width", `${INVOICE_A4_W}px`, "important");
+    sheet.style.setProperty("max-width", `${INVOICE_A4_W}px`, "important");
+    sheet.style.setProperty("min-width", `${INVOICE_A4_W}px`, "important");
+    sheet.style.setProperty("height", `${INVOICE_A4_H}px`, "important");
+    sheet.style.setProperty("min-height", `${INVOICE_A4_H}px`, "important");
+    sheet.style.setProperty("max-height", `${INVOICE_A4_H}px`, "important");
+    sheet.style.setProperty("margin", "0", "important");
+    sheet.dataset.a4Lock = "1to1-794x1123";
+  } else if (sheet) {
+    sheet.style.setProperty("zoom", "1", "important");
+    sheet.style.setProperty("transform", scale === 1 ? "none" : `scale(${scale})`, "important");
+    sheet.style.setProperty("transform-origin", "top center", "important");
+  }
+
+  const companyCard = document.getElementById("companyProfilePreview");
+  if (companyCard) {
+    companyCard.style.zoom = "";
+    companyCard.style.transform = "";
+  }
+}
+
+window.__workpassFitInvoice = fitInvoiceSheet;
+
 function applyPreviewZoom() {
-  if (!previewZoomInput || !invoicePreviewEl) return;
-  invoicePreviewEl.style.zoom = `${Number(previewZoomInput.value) || 100}%`;
+  fitInvoiceSheet();
+  if (typeof window.__workpassLockRechnungSplit === "function") {
+    window.__workpassLockRechnungSplit();
+  }
 }
 
 function collectDraftData() {
@@ -5984,6 +6525,10 @@ function collectDraftData() {
     reverseCharge: reverseChargeInput?.checked || false,
     seller: sellerInput.value,
     customer: getEmployeeAddressText(),
+    invoicePurpose: invoicePurposeInput?.value || "",
+    invoiceSurchargeLabel: invoiceSurchargeLabelInput?.value || "",
+    invoiceSurchargeAmount: invoiceSurchargeAmountInput?.value || "",
+    invoiceWarning: invoiceWarningInput?.value || "",
     note: noteInput.value,
     signatureName: signatureNameInput.value,
     signatureDataUrl,
@@ -5995,6 +6540,7 @@ function collectDraftData() {
     signatureAudit,
     taxNumber: taxNumberInput?.value || "",
     vatId: vatIdInput?.value || "",
+    companyPhone: companyPhoneInput?.value || "",
     commercialRegister: commercialRegisterInput?.value || "",
     managingDirector: managingDirectorInput?.value || "",
     companyBankName: companyBankNameInput?.value || "",
@@ -6047,6 +6593,7 @@ function archiveCurrentInvoiceIfNeeded() {
   const draft = collectDraftData();
   const number = String(draft.invoiceNumber || invoiceNumberInput?.value || "").trim();
   if (!number) return;
+  rememberDocumentNumber(number);
   const buyer = String(draft.customer || document.getElementById("customer")?.value || "").split("\n")[0];
   const totalEl = document.getElementById("previewTotal");
   window.WorkPassHub?.upsertInvoice?.({
@@ -6063,6 +6610,7 @@ function saveDraft(showMessage = true) {
     setDraftSaveState(false);
     return;
   }
+  if (getCurrentMode() === "invoice") ensureUniqueInvoiceNumberOrAlert();
   const profiles = readCompanyProfiles();
   profiles[activeCompanyProfileId] = collectCompanyProfileData();
   writeCompanyProfiles(profiles);
@@ -6082,7 +6630,17 @@ function isDraftMeaningless(draft) {
 }
 
 function seedFreshInvoiceWorkspace() {
-  noteInput.value = LEGAL_CONFIG?.invoice?.defaultNote || noteInput.value || "";
+  // Suggestion only in placeholder; keep value empty so clearing sticks
+  if (invoicePurposeInput) invoicePurposeInput.value = "";
+  if (invoiceSurchargeLabelInput) invoiceSurchargeLabelInput.value = "";
+  if (invoiceSurchargeAmountInput) invoiceSurchargeAmountInput.value = "";
+  if (invoiceWarningInput) invoiceWarningInput.value = "";
+  if (noteInput) {
+    const suggestion = LEGAL_CONFIG?.invoice?.defaultNote || "Zahlbar ohne Abzug innerhalb von 14 Tagen.";
+    noteInput.placeholder = suggestion;
+    noteInput.value = "";
+    noteInput.dataset.userCleared = "1";
+  }
   documentTypeInput.value = "invoice";
   if (sellerInput && !sellerInput.value.trim()) {
     sellerInput.value = "Muster GmbH\nMusterstraße 1\n12345 Musterstadt";
@@ -6124,7 +6682,16 @@ function applyDraftFromObject(draft, options = {}) {
     employeeAddressInput.value = draft.payroll?.employeeAddress || draft.customer || "";
   }
   syncEmployeeAddressFields("auto");
+  if (invoicePurposeInput) invoicePurposeInput.value = draft.invoicePurpose || "";
+  if (invoiceSurchargeLabelInput) invoiceSurchargeLabelInput.value = draft.invoiceSurchargeLabel || "";
+  if (invoiceSurchargeAmountInput) invoiceSurchargeAmountInput.value = draft.invoiceSurchargeAmount || "";
+  if (invoiceWarningInput) invoiceWarningInput.value = draft.invoiceWarning || "";
   noteInput.value = draft.note || "";
+  if (noteInput) {
+    noteInput.placeholder = LEGAL_CONFIG?.invoice?.defaultNote || noteInput.placeholder || "";
+    if (String(draft.note || "").trim()) delete noteInput.dataset.userCleared;
+    else noteInput.dataset.userCleared = "1";
+  }
   signatureNameInput.value = draft.signatureName || "";
   signatureMode = ["auto", "styled", "draw", "none"].includes(draft.signatureMode)
     ? draft.signatureMode
@@ -6142,6 +6709,7 @@ function applyDraftFromObject(draft, options = {}) {
   refreshSignatureSealUi();
   if (taxNumberInput) taxNumberInput.value = draft.taxNumber || "";
   if (vatIdInput) vatIdInput.value = draft.vatId || "";
+  if (companyPhoneInput) companyPhoneInput.value = draft.companyPhone || "";
   if (commercialRegisterInput) commercialRegisterInput.value = draft.commercialRegister || "";
   if (managingDirectorInput) managingDirectorInput.value = draft.managingDirector || "";
   if (companyBankNameInput) companyBankNameInput.value = draft.companyBankName || "";
@@ -6432,7 +7000,15 @@ function resetForm() {
   sellerInput.value = "";
   customerInput.value = "";
   if (employeeAddressInput) employeeAddressInput.value = "";
-  noteInput.value = LEGAL_CONFIG.invoice.defaultNote;
+  if (invoicePurposeInput) invoicePurposeInput.value = "";
+  if (invoiceSurchargeLabelInput) invoiceSurchargeLabelInput.value = "";
+  if (invoiceSurchargeAmountInput) invoiceSurchargeAmountInput.value = "";
+  if (invoiceWarningInput) invoiceWarningInput.value = "";
+  if (noteInput) {
+    noteInput.value = "";
+    noteInput.placeholder = LEGAL_CONFIG?.invoice?.defaultNote || noteInput.placeholder || "";
+    noteInput.dataset.userCleared = "1";
+  }
   employeeNameInput.value = "";
   if (employeeSearchInput) employeeSearchInput.value = "";
   employeeIdInput.value = "";
@@ -6959,8 +7535,8 @@ function importAllData(file) {
 function syncHubBannerVisibility() {
   const banner = document.getElementById("dashHubBanner");
   if (!banner) return;
-  const onboardingVisible = Boolean(onboardingBanner && !onboardingBanner.classList.contains("hidden"));
-  banner.hidden = onboardingVisible;
+  /* Übersicht: Hub-Banner dauerhaft aus — Stage deckt den Einstieg ab */
+  banner.hidden = true;
 }
 
 function initOnboarding() {
@@ -7006,7 +7582,8 @@ function updateIncompleteFieldHighlights() {
 const watchedInputs = [
   invoiceNumberInput, invoiceDateInput, serviceDateInput, dueDateInput, taxRateInput,
   kleinunternehmerInput, reverseChargeInput,
-  sellerInput, customerInput, noteInput, documentTypeInput,
+  sellerInput, customerInput, invoicePurposeInput, noteInput, documentTypeInput,
+  invoiceSurchargeLabelInput, invoiceSurchargeAmountInput, invoiceWarningInput,
   employeeNameInput, employeeAddressInput, employeeIdInput, employeeTaxIdInput, employeeInsuranceNoInput,
   employeeBirthDateInput, employeeEntryDateInput, employeeExitDateInput,
   payrollMonthInput, taxYearInput, taxClassInput, grossSalaryInput,
@@ -7015,7 +7592,7 @@ const watchedInputs = [
   pensionPercentInput, healthPercentInput, carePercentInput, unemploymentPercentInput,
   workHoursInput, workDaysInput, bankNameInput, bankBicInput, bankIbanInput,
   signatureNameInput,
-  taxNumberInput, vatIdInput, commercialRegisterInput, managingDirectorInput,
+  taxNumberInput, vatIdInput, companyPhoneInput, commercialRegisterInput, managingDirectorInput,
   companyBankNameInput, companyIbanInput, companyBicInput, datevClientNoInput, datevConsultantNoInput, payrollLayoutSelect,
   payrollHeaderLineInput, payrollFooterLineInput,
 ];
@@ -7121,20 +7698,46 @@ if (syncCompanyProfileBtn) {
   syncCompanyProfileBtn.addEventListener("click", async () => {
     const firm = Boolean(window.WorkPassAuth?.isCompanyPortalUser?.());
     if (!firm && !window.WorkPassAuth?.getSessionToken?.()) {
-      window.alert("Firmen-Login nötig, um mit dem Server zu synchronisieren.");
+      setMandantSyncHint(hubT("co.syncNeedsLogin", "Firmen-Login nötig, um mit dem Server zu synchronisieren."), { error: true });
+      flashCompanySaveButton({ error: true });
       return;
     }
-    await saveCurrentCompanyProfile(true);
-    await pullCompanyProfileFromBridge({ force: false });
-    saveDraft(false);
+    syncCompanyProfileBtn.disabled = true;
+    syncCompanyProfileBtn.setAttribute("aria-busy", "true");
+    try {
+      await saveCurrentCompanyProfile(true);
+      await pullCompanyProfileFromBridge({ force: false });
+      saveDraft(false);
+      setMandantSyncHint(hubT("co.syncDone", "Synchronisiert · Profil aktualisiert."), { ok: true });
+    } finally {
+      syncCompanyProfileBtn.disabled = false;
+      syncCompanyProfileBtn.removeAttribute("aria-busy");
+    }
   });
 }
+document.getElementById("companyIdentityProgressBtn")?.addEventListener("click", () => {
+  focusNextMandantField({ openCompanyTab: false });
+});
 if (newCompanyProfileBtn) newCompanyProfileBtn.addEventListener("click", createNewCompanyProfile);
 if (deleteCompanyProfileBtn) deleteCompanyProfileBtn.addEventListener("click", deleteCurrentCompanyProfile);
 
 addItemBtn.addEventListener("click", () => {
   createItemRow("", 1, 0);
   saveDraft(false);
+});
+
+document.getElementById("insertDefaultNoteBtn")?.addEventListener("click", () => {
+  if (!noteInput) return;
+  noteInput.value = LEGAL_CONFIG?.invoice?.defaultNote || "Zahlbar ohne Abzug innerhalb von 14 Tagen.";
+  delete noteInput.dataset.userCleared;
+  noteInput.focus();
+  updatePreview();
+  saveDraft(false);
+});
+
+noteInput?.addEventListener("input", () => {
+  if (!noteInput.value.trim()) noteInput.dataset.userCleared = "1";
+  else delete noteInput.dataset.userCleared;
 });
 
 if (addWageItemBtn) {
@@ -7267,6 +7870,96 @@ window.addEventListener("workpass:load-invoice", (ev) => {
   document.querySelector('[data-tab="document"]')?.click();
 });
 
+function escapeFindHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function bindInvoiceFindSearch() {
+  const input = document.getElementById("invoiceFindSearch");
+  const host = document.getElementById("invoiceFindResults");
+  if (!input || !host || input.dataset.bound === "1") return;
+  input.dataset.bound = "1";
+  let timer = 0;
+  const hide = () => {
+    host.hidden = true;
+    host.innerHTML = "";
+  };
+  const render = () => {
+    const q = String(input.value || "").trim();
+    if (!q) {
+      hide();
+      return;
+    }
+    const hits = window.WorkPassHub?.findInvoices?.(q) || [];
+    if (!hits.length) {
+      const empty = (window.WorkPassI18n?.t?.("hub.invoiceArchiveNoMatch") && window.WorkPassI18n.t("hub.invoiceArchiveNoMatch") !== "hub.invoiceArchiveNoMatch")
+        ? window.WorkPassI18n.t("hub.invoiceArchiveNoMatch")
+        : "Keine Rechnung zu diesem Kunden oder dieser Nr. RE- gefunden.";
+      host.innerHTML = `<p class="muted small invoice-find-empty">${escapeFindHtml(empty)}</p>`;
+      host.hidden = false;
+      return;
+    }
+    const openLabel = (window.WorkPassI18n?.t?.("lohn.open") && window.WorkPassI18n.t("lohn.open") !== "lohn.open")
+      ? window.WorkPassI18n.t("lohn.open")
+      : "Öffnen";
+    host.innerHTML = hits.map((item) => {
+      const nr = String(item.number || "").trim();
+      const label = /^nr\.?\s*/i.test(nr) ? nr : `Nr. ${nr}`;
+      const buyer = String(item.buyer || "").trim() || "—";
+      return `<button type="button" class="invoice-find-hit" role="option" data-number="${escapeFindHtml(nr)}">
+        <strong>${escapeFindHtml(label)}</strong>
+        <span>${escapeFindHtml(buyer)}</span>
+        <em>${escapeFindHtml(openLabel)}</em>
+      </button>`;
+    }).join("");
+    host.hidden = false;
+    host.querySelectorAll(".invoice-find-hit").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const num = btn.getAttribute("data-number");
+        const item = (window.WorkPassHub?.listInvoices?.() || []).find((x) => String(x.number) === num)
+          || (window.WorkPassHub?.readInvoiceArchive?.() || []).find((x) => String(x.number) === num);
+        if (item?.draft) {
+          window.dispatchEvent(new CustomEvent("workpass:load-invoice", { detail: item.draft }));
+          input.value = "";
+          hide();
+          return;
+        }
+        // Fall back: open via archive button path
+        const archBtn = document.querySelector(`#invoiceArchiveList [data-number="${CSS.escape(num || "")}"] .inv-open`);
+        if (archBtn) {
+          archBtn.click();
+          input.value = "";
+          hide();
+          return;
+        }
+        window.alert(
+          (window.WorkPassI18n?.t?.("doc.findInvoiceNoDraft") && window.WorkPassI18n.t("doc.findInvoiceNoDraft") !== "doc.findInvoiceNoDraft")
+            ? window.WorkPassI18n.t("doc.findInvoiceNoDraft")
+            : "Diese Rechnung ist ohne lokalen Entwurf – bitte in der Übersicht → Rechnungsarchiv öffnen."
+        );
+      });
+    });
+  };
+  input.addEventListener("input", () => {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(render, 120);
+  });
+  input.addEventListener("search", () => {
+    if (!String(input.value || "").trim()) hide();
+    else render();
+  });
+  document.addEventListener("click", (ev) => {
+    if (ev.target === input || host.contains(ev.target)) return;
+    hide();
+  });
+}
+
+bindInvoiceFindSearch();
+
 if (saveDraftBtn) saveDraftBtn.addEventListener("click", () => saveDraft(true));
 bindFileImportButton(null, "importPayrollInput", importPayrollFile);
 if (importPayrollBtn) {
@@ -7328,6 +8021,7 @@ if (resetBtn) resetBtn.addEventListener("click", resetForm);
 /* ── Init ── */
 
 initTabs();
+initSidebarCollapse();
 initLexShell();
 initDashboardActions();
 initDocTypeCards();
@@ -7349,6 +8043,9 @@ window.addEventListener("afterprint", restoreAfterPrint);
 if (appVersionLabel) appVersionLabel.textContent = `v${APP_VERSION}`;
 if (sidebarVersionLabel) sidebarVersionLabel.textContent = `v${APP_VERSION}`;
 if (lexStatusVersion) lexStatusVersion.textContent = `v${APP_VERSION}`;
+renderHelpContactCard();
+loadHelpContactFromServer();
+window.addEventListener("workpass:locale", () => renderHelpContactCard());
 refreshCompanyProfileSelect();
 updateLayoutDescription();
 ensurePayrollDefaultLayout();
@@ -7396,8 +8093,24 @@ if (window.PayrollEngine?.ready) {
 
 updateIncompleteFieldHighlights();
 updateInvoiceComplianceList();
-applyPreviewZoom();
+lockDocumentSplit();
 saveDraft(false);
+
+let __invoiceSplitResizeTimer = 0;
+window.addEventListener("resize", () => {
+  window.clearTimeout(__invoiceSplitResizeTimer);
+  __invoiceSplitResizeTimer = window.setTimeout(() => {
+    requestAnimationFrame(() => lockDocumentSplit());
+  }, 40);
+});
+if (typeof ResizeObserver === "function") {
+  const shell = document.querySelector(".app-main") || document.querySelector(".app-shell");
+  if (shell) {
+    new ResizeObserver(() => {
+      requestAnimationFrame(() => lockDocumentSplit());
+    }).observe(shell);
+  }
+}
 
 window.addEventListener("workpass:locale", () => {
   window.WorkPassI18n?.applyDom?.(document);

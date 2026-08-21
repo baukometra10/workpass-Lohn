@@ -92,7 +92,7 @@
     bank: "companyIban",
     logo: "companyLogoInput",
     register: "commercialRegister",
-    layout: "payrollLayout",
+    layout: "payrollLayoutSelect",
     datev: "datevClientNo",
   };
 
@@ -120,7 +120,16 @@
         const done = Boolean(checks[key]);
         li.classList.toggle("done", done);
         li.classList.toggle("is-next", false);
+        li.classList.toggle("is-clickable", !done);
         li.setAttribute("aria-checked", done ? "true" : "false");
+        li.setAttribute("role", done ? "checkbox" : "button");
+        if (!done) {
+          li.tabIndex = 0;
+          li.setAttribute("title", tt("hub.checkClickHint", "Klicken, um das Feld zu öffnen"));
+        } else {
+          li.removeAttribute("tabindex");
+          li.removeAttribute("title");
+        }
         const span = li.querySelector("[data-check-label]");
         if (span && resolved[key]) span.textContent = resolved[key];
         else if (!span && resolved[key] && !li.querySelector("[data-i18n]")) {
@@ -135,7 +144,7 @@
       return;
     }
     checklist.innerHTML = Object.keys(resolved).map((key) => `
-      <li data-check="${key}" class="${checks[key] ? "done" : ""}${!checks[key] && key === nextOpen(checks) ? " is-next" : ""}" role="checkbox" aria-checked="${checks[key] ? "true" : "false"}">${resolved[key]}</li>
+      <li data-check="${key}" class="${checks[key] ? "done" : "is-clickable"}${!checks[key] && key === nextOpen(checks) ? " is-next" : ""}" role="${checks[key] ? "checkbox" : "button"}" aria-checked="${checks[key] ? "true" : "false"}"${checks[key] ? "" : ' tabindex="0"'}>${resolved[key]}</li>
     `).join("");
   }
 
@@ -171,10 +180,15 @@
     }
     const el = document.getElementById(fieldId);
     if (!el) return false;
+    const section = el.closest(".company-section");
+    if (section) {
+      section.classList.add("is-highlight");
+      window.setTimeout(() => section.classList.remove("is-highlight"), 1400);
+    }
     el.scrollIntoView({ behavior: "smooth", block: "center" });
     try { el.focus({ preventScroll: true }); } catch { el.focus?.(); }
     el.classList?.add("field-pulse");
-    setTimeout(() => el.classList?.remove("field-pulse"), 1200);
+    window.setTimeout(() => el.classList?.remove("field-pulse"), 1200);
     return true;
   }
 
@@ -182,8 +196,7 @@
     const checklist = document.getElementById(rootId);
     if (!checklist || checklist.dataset.mcWired === "1") return;
     checklist.dataset.mcWired = "1";
-    checklist.addEventListener("click", (event) => {
-      const li = event.target.closest("li[data-check]");
+    const activate = (li) => {
       if (!li || li.classList.contains("done")) return;
       const key = li.dataset.check;
       const fieldId = fieldMap[key];
@@ -194,6 +207,16 @@
         return;
       }
       focusField(fieldId, options);
+    };
+    checklist.addEventListener("click", (event) => {
+      activate(event.target.closest("li[data-check]"));
+    });
+    checklist.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const li = event.target.closest("li[data-check]");
+      if (!li) return;
+      event.preventDefault();
+      activate(li);
     });
   }
 

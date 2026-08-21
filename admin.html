@@ -13,6 +13,17 @@
     <meta name="theme-color" content="#0b1220" />
     <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png" />
     <style>
+      /* Admin is a long document page — override lohn.css viewport lock */
+      html, body {
+        height: auto !important;
+        min-height: 100%;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+      }
+      body.auth-locked {
+        height: 100% !important;
+        overflow: hidden !important;
+      }
       body {
         margin: 0;
         min-height: 100%;
@@ -26,7 +37,10 @@
       .admin-shell {
         max-width: 1100px;
         margin: 0 auto;
-        padding: 20px 18px 48px;
+        padding: 20px 18px 72px;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
       }
       .admin-topbar {
         display: flex;
@@ -162,6 +176,12 @@
       .admin-actions button:hover,
       .admin-actions a:hover {
         border-color: rgba(93, 180, 255, 0.55);
+      }
+      .admin-actions button:disabled,
+      .admin-nav button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        pointer-events: none;
       }
       .admin-actions button.is-busy,
       .admin-nav button.is-busy {
@@ -326,7 +346,7 @@
       }
     </style>
   </head>
-  <body class="auth-locked">
+  <body class="auth-locked admin-page">
     <div id="authGate" class="auth-gate" aria-hidden="false">
       <div class="auth-card">
         <div class="auth-brand">
@@ -415,6 +435,41 @@
         <h2 data-i18n="admin.rights">Ihre Admin-Rechte</h2>
         <ul class="admin-rights" id="adminRights"></ul>
       </div>
+      <div class="admin-panel" id="adminHelpContactPanel">
+        <h2 data-i18n="admin.helpContactTitle">Hilfe-Kontakt (öffentlich)</h2>
+        <p class="admin-hint" data-i18n="admin.helpContactHint">
+          E-Mail, Telefon und Website erscheinen im Hub unter <strong>Hilfe</strong>. Sie können die Angaben jederzeit ändern und speichern — auch offline (dann lokal auf diesem Gerät).
+        </p>
+        <div class="admin-field-grid">
+          <label><span data-i18n="admin.helpProduct">Produktzeile</span>
+            <input id="helpContactProduct" type="text" autocomplete="organization" />
+          </label>
+          <label><span data-i18n="admin.helpEmail">E-Mail</span>
+            <input id="helpContactEmail" type="email" autocomplete="email" placeholder="support@…" />
+          </label>
+          <label><span data-i18n="admin.helpPhone">Telefon</span>
+            <input id="helpContactPhone" type="tel" autocomplete="tel" placeholder="+49 …" />
+          </label>
+          <label><span data-i18n="admin.helpWhatsapp">WhatsApp (nur Ziffern, Ländervorwahl)</span>
+            <input id="helpContactWhatsapp" type="text" inputmode="numeric" placeholder="49170…" />
+          </label>
+          <label><span data-i18n="admin.helpWebsite">Website-URL</span>
+            <input id="helpContactWebsite" type="url" placeholder="https://…" />
+          </label>
+          <label><span data-i18n="admin.helpWebsiteLabel">Website-Anzeige</span>
+            <input id="helpContactWebsiteLabel" type="text" placeholder="beispiel.de" />
+          </label>
+          <label><span data-i18n="admin.helpHours">Erreichbarkeit</span>
+            <input id="helpContactHours" type="text" placeholder="Mo–Fr 9:00–17:00 (CET)" />
+          </label>
+        </div>
+        <p class="admin-hint" id="helpContactMeta" hidden></p>
+        <div class="admin-actions" style="margin-top:12px;margin-bottom:0">
+          <button type="button" class="primary" id="btnHelpContactSave" data-i18n="admin.helpContactSave">Kontakt speichern</button>
+          <button type="button" id="btnHelpContactReload" data-i18n="admin.helpContactReload">Neu laden</button>
+        </div>
+      </div>
+
       <div class="admin-panel">
         <h2 data-i18n="admin.syncTitle">Firma aus Plattform hier anlegen (Login-Sync)</h2>
         <p class="admin-hint" data-i18n="admin.syncHint">
@@ -495,10 +550,10 @@
       <p class="admin-foot" data-i18n="admin.foot">WorkPass Steuerprogramm · Bridge-Admin</p>
     </div>
 
-    <script src="workpass-i18n-packs.js?v=16"></script>
+    <script src="workpass-i18n-packs.js?v=20"></script>
     <script src="workpass-i18n.js?v=6"></script>
     <script src="workpass-pwa.js?v=4"></script>
-    <script src="auth-gate.js?v=18"></script>
+    <script src="auth-gate.js?v=19"></script>
     <script>
       if (window.WorkPassI18n) {
         window.WorkPassI18n.init();
@@ -510,15 +565,37 @@
         if (h === "localhost" || h === "127.0.0.1") return "http://127.0.0.1:8787";
         return location.origin;
       }
+      function bridgeMsg(err) {
+        const msg = String(err?.message || err || "");
+        if (/Failed to fetch|NetworkError|Load failed|fetch|ECONNREFUSED|offline/i.test(msg)) {
+          return t(
+            "admin.bridgeOffline",
+            "Bridge nicht erreichbar. Offline funktioniert: Geräte-PIN + Hilfe-Kontakt speichern. Andere Buttons brauchen die Bridge (npm start)."
+          );
+        }
+        return msg || t("admin.unknownError", "Unbekannter Fehler");
+      }
       async function api(path, opts = {}) {
         const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
         const token = window.WorkPassAuth?.getSessionToken?.();
         if (token) headers["X-WorkPass-Session"] = token;
         const key = localStorage.getItem("workpass.admin.apiKey") || "";
         if (key) headers["X-WorkPass-Key"] = key;
-        const res = await fetch(`${origin()}${path}`, { ...opts, headers });
+        let res;
+        try {
+          res = await fetch(`${origin()}${path}`, { ...opts, headers });
+        } catch (e) {
+          const err = new Error(bridgeMsg(e));
+          err.cause = e;
+          err.offline = true;
+          throw err;
+        }
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        if (!res.ok) {
+          const err = new Error(data.error || bridgeMsg(`HTTP ${res.status}`));
+          err.status = res.status;
+          throw err;
+        }
         return data;
       }
       function t(key, fb, vars) {
@@ -541,6 +618,9 @@
         if (busy) btn.setAttribute("aria-busy", "true");
         else btn.removeAttribute("aria-busy");
         if (label != null) btn.textContent = label;
+        if (!busy && typeof isOfflineAdminSession === "function" && isOfflineAdminSession()) {
+          setBridgeDependentControls(true);
+        }
       }
       function esc(s) {
         return String(s ?? "")
@@ -554,6 +634,7 @@
         setBusy(btn, true, t("admin.loading", "Lädt…"));
         try {
           const data = await api("/v1/admin/overview");
+          setBridgeDependentControls(false);
           const user = window.WorkPassAuth?.getSessionUser?.();
           document.getElementById("adminWho").textContent = user
             ? t("admin.whoRole", "{name} · Rolle: {role}", { name: user.name || user.email, role: user.role })
@@ -655,7 +736,12 @@
           await refreshTaxRules();
           await refreshOpsHealth();
         } catch (e) {
-          setStatus(e.message, false);
+          setStatus(bridgeMsg(e), false);
+          setBridgeDependentControls(true);
+          const rights = document.getElementById("adminRights");
+          if (rights && !rights.children.length) {
+            rights.innerHTML = "<li>" + esc(t("admin.rightsOffline", "Offline – Rechte erscheinen nach Bridge-Verbindung.")) + "</li>";
+          }
         } finally {
           setBusy(btn, false, t("action.refresh", "Aktualisieren"));
         }
@@ -838,6 +924,203 @@
           setBusy(btn, false, t("admin.monthCloseAll", "Monatsabschluss alle Firmen"));
         }
       });
+      const HELP_CONTACT_LS_KEY = "workpass.helpContact.v1";
+      const HELP_CONTACT_DEFAULTS = {
+        product: "WorkPass Steuerprogramm · Suppix AI",
+        website: "https://suppix-ai-workpass.com",
+        websiteLabel: "suppix-ai-workpass.com",
+        email: "support@suppix-ai-workpass.com",
+        phone: "",
+        whatsapp: "",
+        hoursDe: "Mo–Fr 9:00–17:00 (CET)",
+      };
+
+      function isOfflineAdminSession() {
+        const u = window.WorkPassAuth?.getSessionUser?.();
+        const via = (() => {
+          try {
+            const raw = localStorage.getItem("workpassAdminSessionV2");
+            return raw ? JSON.parse(raw)?.via : "";
+          } catch {
+            return "";
+          }
+        })();
+        return via === "device-pin-offline" || String(u?.email || "") === "offline-admin@local";
+      }
+
+      function setBridgeDependentControls(offline) {
+        const ids = [
+          "btnBackup",
+          "btnMonthCloseAll",
+          "btnClearRate",
+          "btnSyncLogin",
+          "btnTaxRulesRefresh",
+          "btnTaxIngest",
+          "btnTaxDraftFile",
+          "btnOpsHealth",
+        ];
+        const tip = t(
+          "admin.needsBridge",
+          "Benötigt laufende Bridge (npm start) und Online-Admin-Login."
+        );
+        ids.forEach((id) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.disabled = Boolean(offline);
+          if (offline) el.setAttribute("title", tip);
+          else el.removeAttribute("title");
+        });
+        // Help-Kontakt bleibt immer aktiv
+        ["btnHelpContactSave", "btnHelpContactReload", "btnRefresh", "btnLock"].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el && offline) el.disabled = false;
+        });
+      }
+
+      function readLocalHelpContact() {
+        try {
+          const raw = JSON.parse(localStorage.getItem(HELP_CONTACT_LS_KEY) || "null");
+          if (raw && typeof raw === "object") return raw;
+        } catch { /* ignore */ }
+        return null;
+      }
+
+      function writeLocalHelpContact(contact) {
+        const next = {
+          ...HELP_CONTACT_DEFAULTS,
+          ...contact,
+          updatedAt: new Date().toISOString(),
+          updatedBy: contact?.updatedBy || "offline-admin",
+        };
+        localStorage.setItem(HELP_CONTACT_LS_KEY, JSON.stringify(next));
+        return next;
+      }
+
+      function fillHelpContactForm(contact) {
+        const c = contact || {};
+        const set = (id, val) => {
+          const el = document.getElementById(id);
+          if (el) el.value = val == null ? "" : String(val);
+        };
+        set("helpContactProduct", c.product);
+        set("helpContactEmail", c.email);
+        set("helpContactPhone", c.phone);
+        set("helpContactWhatsapp", c.whatsapp);
+        set("helpContactWebsite", c.website);
+        set("helpContactWebsiteLabel", c.websiteLabel);
+        set("helpContactHours", c.hoursDe);
+        const meta = document.getElementById("helpContactMeta");
+        if (meta) {
+          if (c.updatedAt) {
+            const when = new Date(c.updatedAt).toLocaleString();
+            const by = c.updatedBy
+              ? t("admin.helpContactBy", " · von {who}", { who: c.updatedBy })
+              : "";
+            meta.textContent = t("admin.helpContactMeta", "Zuletzt gespeichert: {when}{by}", { when, by });
+            meta.hidden = false;
+          } else {
+            meta.textContent = "";
+            meta.hidden = true;
+          }
+        }
+      }
+      function readHelpContactForm() {
+        return {
+          product: document.getElementById("helpContactProduct")?.value || "",
+          email: document.getElementById("helpContactEmail")?.value || "",
+          phone: document.getElementById("helpContactPhone")?.value || "",
+          whatsapp: document.getElementById("helpContactWhatsapp")?.value || "",
+          website: document.getElementById("helpContactWebsite")?.value || "",
+          websiteLabel: document.getElementById("helpContactWebsiteLabel")?.value || "",
+          hoursDe: document.getElementById("helpContactHours")?.value || "",
+        };
+      }
+      async function loadHelpContactForm() {
+        try {
+          const data = await api("/v1/admin/help-contact");
+          fillHelpContactForm(data.contact || {});
+          if (data.contact) {
+            try { localStorage.setItem(HELP_CONTACT_LS_KEY, JSON.stringify(data.contact)); } catch { /* ignore */ }
+          }
+          return data.contact;
+        } catch (e) {
+          try {
+            const pub = await api("/v1/help/contact");
+            fillHelpContactForm(pub.contact || {});
+            return pub.contact;
+          } catch {
+            const local = readLocalHelpContact() || HELP_CONTACT_DEFAULTS;
+            fillHelpContactForm(local);
+            return local;
+          }
+        }
+      }
+      async function saveHelpContactForm() {
+        const contact = readHelpContactForm();
+        try {
+          const data = await api("/v1/admin/help-contact", {
+            method: "PUT",
+            body: JSON.stringify({ contact }),
+          });
+          fillHelpContactForm(data.contact || contact);
+          try {
+            localStorage.setItem(HELP_CONTACT_LS_KEY, JSON.stringify(data.contact || contact));
+          } catch { /* ignore */ }
+          return { contact: data.contact, offline: false };
+        } catch (e) {
+          const saved = writeLocalHelpContact({ ...contact, updatedBy: "offline-admin" });
+          fillHelpContactForm(saved);
+          return { contact: saved, offline: true, error: e.message };
+        }
+      }
+
+      async function syncLocalHelpContactIfOnline() {
+        if (isOfflineAdminSession()) return;
+        const local = readLocalHelpContact();
+        if (!local?.updatedAt) return;
+        try {
+          const data = await api("/v1/admin/help-contact");
+          const remote = data.contact || {};
+          const localTs = Date.parse(local.updatedAt) || 0;
+          const remoteTs = Date.parse(remote.updatedAt) || 0;
+          if (localTs > remoteTs) {
+            await api("/v1/admin/help-contact", {
+              method: "PUT",
+              body: JSON.stringify({ contact: local }),
+            });
+          }
+        } catch { /* bridge still down */ }
+      }
+
+      document.getElementById("btnHelpContactSave")?.addEventListener("click", async () => {
+        const btn = document.getElementById("btnHelpContactSave");
+        setBusy(btn, true, t("admin.syncSaving", "Speichert…"));
+        try {
+          const result = await saveHelpContactForm();
+          if (result.offline) {
+            setStatus(t("admin.helpContactSavedOffline", "Hilfe-Kontakt lokal gespeichert (Bridge offline). Hub zeigt die Werte auf diesem Gerät."), true);
+          } else {
+            setStatus(t("admin.helpContactSaved", "Hilfe-Kontakt gespeichert."), true);
+          }
+        } catch (e) {
+          setStatus(e.message, false);
+        } finally {
+          setBusy(btn, false, t("admin.helpContactSave", "Kontakt speichern"));
+        }
+      });
+      document.getElementById("btnHelpContactReload")?.addEventListener("click", async () => {
+        const btn = document.getElementById("btnHelpContactReload");
+        setBusy(btn, true, t("admin.loading", "Lädt…"));
+        try {
+          await loadHelpContactForm();
+          setStatus(t("admin.helpContactLoaded", "Hilfe-Kontakt geladen."), true);
+        } catch (e) {
+          setStatus(e.message, false);
+        } finally {
+          setBusy(btn, false, t("admin.helpContactReload", "Neu laden"));
+        }
+      });
+
       document.getElementById("btnSyncLogin")?.addEventListener("click", async () => {
         const companyId = String(document.getElementById("syncCompanyId")?.value || "").trim();
         const name = String(document.getElementById("syncCompanyName")?.value || "").trim();
@@ -870,13 +1153,23 @@
       window.WorkPassAuth.init({
         onUnlock: () => {
           window.WorkPassI18n?.syncFromSession?.();
+          window.WorkPassI18n?.applyDom?.(document);
           const u = window.WorkPassAuth.getSessionUser?.();
           if (u && u.role !== "admin") {
             setStatus(t("admin.firmNoAdmin", "Firmen-Login hat keinen Admin-Zugang. Bitte Admin-Konto nutzen."), false);
             window.WorkPassAuth.lock();
             return;
           }
+          if (isOfflineAdminSession()) {
+            setBridgeDependentControls(true);
+            setStatus(t("admin.offlineMode", "Offline-Admin (Geräte-PIN). Hilfe-Kontakt lokal speicherbar. Bridge starten + Admin-Konto für Server-Aktionen."), true);
+            loadHelpContactForm().catch(() => {});
+            return;
+          }
+          setBridgeDependentControls(false);
           refresh();
+          loadHelpContactForm().catch(() => {});
+          syncLocalHelpContactIfOnline().catch(() => {});
         },
       });
     </script>

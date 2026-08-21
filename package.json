@@ -1,6 +1,6 @@
 {
   "name": "workpass-lohn",
-  "version": "2.54.13",
+  "version": "2.54.48",
   "private": true,
   "description": "WorkPass Steuerprogramm – Buchhaltung + Platform Bridge API",
   "type": "module",

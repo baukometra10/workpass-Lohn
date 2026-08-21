@@ -319,7 +319,7 @@ window.WorkPassI18nExtraPacks = [
   ["hub.getStarted",{"de":"Loslegen","en":"Get started","tr":"Başla","ar":"ابدأ","fr":"Commencer","es":"Empezar","it":"Inizia","pl":"Zacznij"}],
   ["hub.annualBtn",{"de":"LStB im Lohn-Portal","en":"LStB in payroll portal","tr":"LStB bordro portalında","ar":"LStB في بوابة الأجور","fr":"LStB dans le portail paie","es":"LStB en el portal de nómina","it":"LStB nel portale paghe","pl":"LStB w portalu płac"}],
   ["hub.invoiceArchive",{"de":"Rechnungsarchiv","en":"Invoice archive","tr":"Fatura arşivi","ar":"أرشيف الفواتير","fr":"Archives factures","es":"Archivo de facturas","it":"Archivio fatture","pl":"Archiwum faktur"}],
-  ["hub.invoiceArchiveHint",{"de":"Lokal gespeicherte Entwürfe und freigegebene Rechnungen vom Server (Firmen-Login).","en":"Local drafts and released invoices from the server (company login).","tr":"Yerel taslaklar ve sunucudan onaylı faturalar.","ar":"مسودات محلية وفواتير معتمدة من الخادم (دخول الشركة).","fr":"Brouillons locaux et factures validées du serveur.","es":"Borradores locales y facturas liberadas del servidor.","it":"Bozze locali e fatture rilasciate dal server.","pl":"Lokalne szkice i zatwierdzone faktury z serwera."}],
+  ["hub.invoiceArchiveHint",{"de":"Jede Rechnung hat eine Nr. RE-…. Tippen Sie den Kundennamen, um die passende Rechnung zu finden (Nummernkreis bleibt unverändert).","en":"Every invoice has a Nr. RE-…. Type the customer name to find the matching invoice (number sequence unchanged).","tr":"Her faturanın Nr. RE-… numarası vardır. Müşteri adını yazın (numara sırası değişmez).","ar":"لكل فاتورة Nr. RE-…. اكتب اسم العميل للعثور على الفاتورة (تسلسل الأرقام دون تغيير).","fr":"Chaque facture a un Nr. RE-…. Saisissez le client (séquence de numéros inchangée).","es":"Cada factura tiene un Nr. RE-…. Escriba el cliente (secuencia de números sin cambiar).","it":"Ogni fattura ha un Nr. RE-…. Digiti il cliente (sequenza numeri invariata).","pl":"Każda faktura ma Nr. RE-…. Wpisz klienta (kolejność numerów bez zmian)."}],
   ["hub.syncHistory",{"de":"Sync-Historie","en":"Sync history","tr":"Sync geçmişi","ar":"سجل المزامنة","fr":"Historique sync","es":"Historial de sync","it":"Cronologia sync","pl":"Historia sync"}],
   ["hub.empHistory",{"de":"Mitarbeiter-Historie","en":"Employee history","tr":"Çalışan geçmişi","ar":"سجل الموظفين","fr":"Historique employés","es":"Historial de empleados","it":"Cronologia dipendenti","pl":"Historia pracowników"}],
   ["hub.empHistoryHint",{"de":"Gespeicherte Monatsabrechnungen (lokal). Für Jahresbescheinigung werden diese summiert.","en":"Saved monthly payslips (local). Summed for the annual certificate.","tr":"Kayıtlı aylık bordrolar (yerel).","ar":"كشوف شهرية محفوظة (محلياً). تُجمَع للشهادة السنوية.","fr":"Bulletins mensuels enregistrés (local).","es":"Nóminas mensuales guardadas (local).","it":"Cedolini mensili salvati (locale).","pl":"Zapisane listy miesięczne (lokalnie)."}],
@@ -343,7 +343,7 @@ window.WorkPassI18nExtraPacks = [
   ["status.openShort",{"de":"Status: Offen","en":"Status: Open","tr":"Durum: Açık","ar":"الحالة: مفتوح","fr":"Statut : Ouvert","es":"Estado: Abierto","it":"Stato: Aperto","pl":"Status: Otwarte"}],
   ["auth.productMeta",{"de":"Produkt","en":"Product","tr":"Ürün","ar":"المنتج","fr":"Produit","es":"Producto","it":"Prodotto","pl":"Produkt"}],
   ["auth.modeMeta",{"de":"Modus","en":"Mode","tr":"Mod","ar":"الوضع","fr":"Mode","es":"Modo","it":"Modalità","pl":"Tryb"}],
-  ["hub.companyIntro",{"de":"Rechts: Firmenbriefkopf für Rechnung und PDF. Die Lohnsteuerbescheinigung (LStB) gilt für den Mitarbeiter und liegt im <a href=\"lohn.html\">Lohn-Portal</a> — nicht auf dieser Seite.","en":"Right: company letterhead for invoices and PDF. The wage tax certificate (LStB) is for the employee and lives in the <a href=\"lohn.html\">payroll portal</a> — not on this page.","tr":"Sağda: fatura/PDF için firma anteti. LStB çalışan belgesidir ve <a href=\"lohn.html\">bordro portalındadır</a> — bu sayfada değil.","ar":"يمينًا: ترويسة الشركة للفاتورة و PDF. شهادة LStB للموظف وفي <a href=\"lohn.html\">بوابة الأجور</a> — ليست في هذه الصفحة.","fr":"À droite : en-tête société pour facture et PDF. La LStB est pour le salarié, dans le <a href=\"lohn.html\">portail paie</a> — pas ici.","es":"A la derecha: membrete de empresa para factura y PDF. La LStB es del empleado y está en el <a href=\"lohn.html\">portal de nómina</a> — no en esta página.","it":"A destra: intestazione aziendale per fattura e PDF. La LStB è del dipendente e sta nel <a href=\"lohn.html\">portale paghe</a> — non in questa pagina.","pl":"Po prawej: nagłówek firmy na fakturę i PDF. LStB jest dokumentem pracownika w <a href=\"lohn.html\">portalu płac</a> — nie na tej stronie."}],
+  ["hub.companyIntro",{"de":"Hier pflegen Sie Logo, Anschrift, Steuer, Telefon und Bank — einmal korrekt, überall auf dem Beleg. Die Lohnsteuerbescheinigung (LStB) liegt im <a href=\"lohn.html\">Lohn-Portal</a>.","en":"Maintain logo, address, tax, phone and bank here — once correct, everywhere on the document. The LStB lives in the <a href=\"lohn.html\">payroll portal</a>.","tr":"Logo, adres, vergi, telefon ve banka burada — bir kez doğru, belgede her yerde. LStB <a href=\"lohn.html\">bordro portalındadır</a>.","ar":"هنا تُدار الشعار والعنوان والضرائب والهاتف والبنك — مرة صحيحة، في كل المستند. LStB في <a href=\"lohn.html\">بوابة الأجور</a>.","fr":"Logo, adresse, fiscalité, téléphone et banque ici — une fois correct, partout sur le document. La LStB est dans le <a href=\"lohn.html\">portail paie</a>.","es":"Logo, dirección, impuestos, teléfono y banco aquí — una vez correcto, en todo el documento. La LStB está en el <a href=\"lohn.html\">portal de nómina</a>.","it":"Logo, indirizzo, fisco, telefono e banca qui — una volta corretto, ovunque sul documento. La LStB è nel <a href=\"lohn.html\">portale paghe</a>.","pl":"Logo, adres, podatki, telefon i bank tutaj — raz poprawnie, wszędzie na dokumencie. LStB jest w <a href=\"lohn.html\">portalu płac</a>."}],
   ["hub.masterChecklist",{"de":"Stammdaten-Checkliste","en":"Master data checklist","tr":"Ana veri listesi","ar":"قائمة تحقق البيانات الأساسية","fr":"Liste données de base","es":"Lista de datos maestros","it":"Checklist anagrafica","pl":"Checklista danych podstawowych"}],
   ["hub.checkNextFocus",{"de":"Nächstes offenes Feld fokussieren","en":"Focus next incomplete field","tr":"Sonraki açık alana odaklan","ar":"التركيز على الحقل الناقص التالي","fr":"Focus sur le prochain champ","es":"Enfocar el siguiente campo","it":"Metti a fuoco il prossimo campo","pl":"Ustaw fokus na następnym polu"}],
   ["hub.invoiceArchiveEmpty",{"de":"Noch keine gespeicherten oder freigegebenen Rechnungen.","en":"No saved or released invoices yet.","tr":"Kayıtlı/onaylı fatura yok.","ar":"لا فواتير محفوظة أو معتمدة بعد.","fr":"Pas encore de factures enregistrées ou validées.","es":"Aún no hay facturas guardadas o liberadas.","it":"Ancora nessuna fattura salvata o rilasciata.","pl":"Brak zapisanych lub zatwierdzonych faktur."}],
@@ -1451,4 +1451,1327 @@ window.WorkPassI18nExtraPacks = [
       pl: "Bank"
     }
   }
+,
+  {
+    key: "doc.dataHint",
+    locales: {
+      de: "Nummer, Daten und Adressen erscheinen so auf der Rechnung.",
+      en: "Number, dates and addresses appear as entered on the invoice.",
+      tr: "Numara, tarihler ve adresler faturada böyle görünür.",
+      ar: "الرقم والتواريخ والعناوين تظهر كما هي على الفاتورة.",
+      fr: "Le numéro, les dates et adresses apparaissent tels quels sur la facture.",
+      es: "El número, las fechas y las direcciones aparecen así en la factura.",
+      it: "Numero, date e indirizzi appaiono così in fattura.",
+      pl: "Numer, daty i adresy pojawiają się tak na fakturze."
+    }
+  },
+  {
+    key: "doc.noteHint",
+    locales: {
+      de: "Leer lassen = kein Hinweis auf der Rechnung. Text vollständig löschbar.",
+      en: "Leave empty = no note on the invoice. Text fully removable.",
+      tr: "Boş bırakın = faturada not olmaz. Metin tamamen silinebilir.",
+      ar: "اتركه فارغاً = لا ملاحظة على الفاتورة. يمكن مسح النص بالكامل.",
+      fr: "Laisser vide = aucune note. Texte entièrement effaçable.",
+      es: "Dejar vacío = sin nota. Texto totalmente borrable.",
+      it: "Lasciare vuoto = nessuna nota. Testo completamente cancellabile.",
+      pl: "Puste = brak uwagi. Tekst w pełni usuwalny."
+    }
+  },
+  {
+    key: "doc.noteInsertDefault",
+    locales: {
+      de: "Vorschlag einfügen",
+      en: "Insert suggestion",
+      tr: "Öneri ekle",
+      ar: "إدراج اقتراح",
+      fr: "Insérer suggestion",
+      es: "Insertar sugerencia",
+      it: "Inserisci suggerimento",
+      pl: "Wstaw sugestię"
+    }
+  }
+,
+  {
+    key: "nav.documentSub",
+    locales: {
+      de: "erstellen & senden",
+      en: "create & send",
+      tr: "oluştur & gönder",
+      ar: "إنشاء وإرسال",
+      fr: "créer & envoyer",
+      es: "crear y enviar",
+      it: "crea e invia",
+      pl: "utwórz i wyślij"
+    }
+  },
+  {
+    key: "nav.companySub",
+    locales: {
+      de: "Stammdaten & Briefkopf",
+      en: "master data & letterhead",
+      tr: "cari bilgiler & antet",
+      ar: "بيانات أساسية وترويسة",
+      fr: "données & en-tête",
+      es: "datos y membrete",
+      it: "anagrafica e intestazione",
+      pl: "dane i nagłówek"
+    }
+  },
+  {
+    key: "doc.moduleSub",
+    locales: {
+      de: "Ausgangsrechnung nach § 14 UStG – klar für den Empfänger, bereit zum Drucken.",
+      en: "Outgoing invoice under § 14 UStG – clear for the recipient, ready to print.",
+      tr: "§ 14 UStG’ye göre giden fatura – alıcı için net, baskıya hazır.",
+      ar: "فاتورة صادرة وفق § 14 UStG — واضحة للمستلم وجاهزة للطباعة.",
+      fr: "Facture sortante selon § 14 UStG – claire pour le destinataire, prête à imprimer.",
+      es: "Factura emitida según § 14 UStG – clara para el destinatario, lista para imprimir.",
+      it: "Fattura in uscita secondo § 14 UStG – chiara per il destinatario, pronta per la stampa.",
+      pl: "Faktura wychodząca wg § 14 UStG – jasna dla odbiorcy, gotowa do druku."
+    }
+  },
+  {
+    key: "co.moduleSub",
+    locales: {
+      de: "Stammdaten, Briefkopf und Bank – einmal pflegen, überall korrekt auf dem Beleg.",
+      en: "Master data, letterhead and bank – maintain once, correct on every document.",
+      tr: "Cari bilgiler, antet ve banka – bir kez girin, belgede her yerde doğru.",
+      ar: "البيانات الأساسية والترويسة والبنك — أدخِلها مرة وتظهر صحيحة على كل مستند.",
+      fr: "Données, en-tête et banque – saisis une fois, corrects sur chaque document.",
+      es: "Datos, membrete y banco – una vez, correctos en cada documento.",
+      it: "Anagrafica, intestazione e banca – una volta, corretti su ogni documento.",
+      pl: "Dane, nagłówek i bank – raz uzupełnij, poprawnie na każdym dokumencie."
+    }
+  },
+  {
+    key: "doc.purpose",
+    locales: {
+      de: "Beschreibung / Zweck der Rechnung",
+      en: "Description / purpose of the invoice",
+      tr: "Fatura açıklaması / amacı",
+      ar: "وصف / غرض الفاتورة",
+      fr: "Description / objet de la facture",
+      es: "Descripción / motivo de la factura",
+      it: "Descrizione / scopo della fattura",
+      pl: "Opis / cel faktury"
+    }
+  },
+  {
+    key: "doc.purposeHint",
+    locales: {
+      de: "Für den Empfänger: warum diese Rechnung gestellt wird – Anlass, Auftrag, Projekt oder Kurzbeschreibung.",
+      en: "For the recipient: why this invoice is issued – reason, order, project or short description.",
+      tr: "Alıcı için: bu faturanın neden kesildiği – sebep, sipariş, proje veya kısa açıklama.",
+      ar: "للمستلم: لماذا تُصدر هذه الفاتورة — السبب أو الطلب أو المشروع أو وصف مختصر.",
+      fr: "Pour le destinataire : pourquoi cette facture – motif, commande, projet ou courte description.",
+      es: "Para el destinatario: por qué se emite – motivo, pedido, proyecto o descripción breve.",
+      it: "Per il destinatario: perché si emette – motivo, ordine, progetto o breve descrizione.",
+      pl: "Dla odbiorcy: dlaczego wystawiono – powód, zlecenie, projekt lub krótki opis."
+    }
+  },
+  {
+    key: "doc.purposeTitle",
+    locales: {
+      de: "Beschreibung",
+      en: "Description",
+      tr: "Açıklama",
+      ar: "الوصف",
+      fr: "Description",
+      es: "Descripción",
+      it: "Descrizione",
+      pl: "Opis"
+    }
+  },
+  {
+    key: "doc.purposePh",
+    locales: {
+      de: "z. B. Beratung März 2026 · Auftrag 4821 · Projekt Website-Relaunch",
+      en: "e.g. Consulting March 2026 · Order 4821 · Website relaunch project",
+      tr: "örn. Danışmanlık Mart 2026 · Sipariş 4821 · Web sitesi yenileme",
+      ar: "مثال: استشارة مارس 2026 · طلب 4821 · مشروع إعادة إطلاق الموقع",
+      fr: "ex. Conseil mars 2026 · Commande 4821 · Refonte du site",
+      es: "p. ej. Consultoría marzo 2026 · Pedido 4821 · Relanzamiento web",
+      it: "es. Consulenza marzo 2026 · Ordine 4821 · Rilancio sito",
+      pl: "np. Doradztwo marzec 2026 · Zlecenie 4821 · Relaunch strony"
+    }
+  }
+,
+  {
+    key: "nav.sidebarCollapse",
+    locales: {
+      de: "Module einklappen",
+      en: "Collapse modules",
+      tr: "Modülleri daralt",
+      ar: "طي الوحدات",
+      fr: "Réduire les modules",
+      es: "Contraer módulos",
+      it: "Comprimi moduli",
+      pl: "Zwiń moduły"
+    }
+  },
+  {
+    key: "nav.sidebarExpand",
+    locales: {
+      de: "Module ausklappen",
+      en: "Expand modules",
+      tr: "Modülleri genişlet",
+      ar: "فتح الوحدات",
+      fr: "Développer les modules",
+      es: "Expandir módulos",
+      it: "Espandi moduli",
+      pl: "Rozwiń moduły"
+    }
+  }
+,
+  {
+    key: "preview.companyProfile",
+    locales: {
+      de: "Vorschau · Firmenprofil & Erscheinungsbild",
+      en: "Preview · company profile & appearance",
+      tr: "Önizleme · firma profili & görünüm",
+      ar: "معاينة · ملف الشركة والمظهر",
+      fr: "Aperçu · profil société & apparence",
+      es: "Vista previa · perfil e imagen de empresa",
+      it: "Anteprima · profilo e aspetto aziendale",
+      pl: "Podgląd · profil firmy i wygląd"
+    }
+  },
+  {
+    key: "co.previewKicker",
+    locales: {
+      de: "Firmenprofil",
+      en: "Company profile",
+      tr: "Firma profili",
+      ar: "ملف الشركة",
+      fr: "Profil société",
+      es: "Perfil de empresa",
+      it: "Profilo aziendale",
+      pl: "Profil firmy"
+    }
+  },
+  {
+    key: "co.previewAddress",
+    locales: {
+      de: "Anschrift",
+      en: "Address",
+      tr: "Adres",
+      ar: "العنوان",
+      fr: "Adresse",
+      es: "Dirección",
+      it: "Indirizzo",
+      pl: "Adres"
+    }
+  },
+  {
+    key: "co.previewBank",
+    locales: {
+      de: "Bankverbindung",
+      en: "Bank details",
+      tr: "Banka bilgileri",
+      ar: "بيانات البنك",
+      fr: "Coordonnées bancaires",
+      es: "Datos bancarios",
+      it: "Coordinate bancarie",
+      pl: "Dane bankowe"
+    }
+  },
+  {
+    key: "co.previewLook",
+    locales: {
+      de: "Erscheinungsbild",
+      en: "Appearance",
+      tr: "Görünüm",
+      ar: "المظهر",
+      fr: "Apparence",
+      es: "Apariencia",
+      it: "Aspetto",
+      pl: "Wygląd"
+    }
+  },
+  {
+    key: "co.previewLookHint",
+    locales: {
+      de: "So wirken Logo, Kopf- und Fußzeile auf Ihren Belegen — ohne Rechnungsinhalt.",
+      en: "How logo, header and footer look on your documents — without invoice content.",
+      tr: "Logo, üst ve alt bilginin belgelerde görünümü — fatura içeriği olmadan.",
+      ar: "كيف يظهر الشعار والترويسة والتذييل على مستنداتك — دون محتوى فاتورة.",
+      fr: "Rendu du logo, en-tête et pied — sans contenu de facture.",
+      es: "Así se ven logo, membrete y pie — sin contenido de factura.",
+      it: "Come compaiono logo, intestazione e piè — senza contenuto fattura.",
+      pl: "Jak wyglądają logo, nagłówek i stopka — bez treści faktury."
+    }
+  },
+  {
+    key: "co.previewLookBody",
+    locales: {
+      de: "Hier erscheint später der Beleginhalt.",
+      en: "Document content appears here later.",
+      tr: "Belge içeriği burada görünür.",
+      ar: "محتوى المستند يظهر هنا لاحقاً.",
+      fr: "Le contenu du document apparaît ici.",
+      es: "Aquí aparece el contenido del documento.",
+      it: "Qui compare il contenuto del documento.",
+      pl: "Tutaj pojawi się treść dokumentu."
+    }
+  },
+  {
+    key: "co.previewFallbackName",
+    locales: {
+      de: "Ihre Firma",
+      en: "Your company",
+      tr: "Firmanız",
+      ar: "شركتك",
+      fr: "Votre société",
+      es: "Su empresa",
+      it: "La vostra azienda",
+      pl: "Wasza firma"
+    }
+  }
+,
+  {
+    key: "preview.hubShowcase",
+    locales: {
+      de: "Übersicht · WorkPass",
+      en: "Overview · WorkPass",
+      tr: "Genel bakış · WorkPass",
+      ar: "نظرة عامة · WorkPass",
+      fr: "Aperçu · WorkPass",
+      es: "Resumen · WorkPass",
+      it: "Panoramica · WorkPass",
+      pl: "Przegląd · WorkPass"
+    }
+  },
+  {
+    key: "hub.showcaseKicker",
+    locales: {
+      de: "WorkPass Steuerprogramm",
+      en: "WorkPass Tax Suite",
+      tr: "WorkPass Steuerprogramm",
+      ar: "WorkPass Steuerprogramm",
+      fr: "WorkPass Steuerprogramm",
+      es: "WorkPass Steuerprogramm",
+      it: "WorkPass Steuerprogramm",
+      pl: "WorkPass Steuerprogramm"
+    }
+  },
+  {
+    key: "hub.showcaseTitle",
+    locales: {
+      de: "Klar. Vertrauenswürdig. Für Ihre Firma.",
+      en: "Clear. Trustworthy. For your firm.",
+      tr: "Net. Güvenilir. Firmanız için.",
+      ar: "واضح. موثوق. لشركتك.",
+      fr: "Clair. Digne de confiance. Pour votre entreprise.",
+      es: "Claro. Confiable. Para su empresa.",
+      it: "Chiaro. Affidabile. Per la vostra azienda.",
+      pl: "Przejrzyście. Wiarygodnie. Dla Waszej firmy."
+    }
+  },
+  {
+    key: "hub.showcaseLead",
+    locales: {
+      de: "Rechnung, Stammdaten und Lohn – ein ruhiger Arbeitsplatz ohne Demo-Ballast.",
+      en: "Invoices, master data and payroll – a calm workspace without demo clutter.",
+      tr: "Fatura, cari bilgiler ve bordro – demo yükü olmadan sakin bir çalışma alanı.",
+      ar: "فاتورة وبيانات أساسية وأجور — مساحة عمل هادئة بلا بيانات تجريبية.",
+      fr: "Factures, données et paie – un espace calme, sans démos.",
+      es: "Facturas, datos y nómina – un espacio calmado, sin demos.",
+      it: "Fatture, anagrafica e paghe – uno spazio calmo, senza demo.",
+      pl: "Faktury, dane i płace – spokojne miejsce pracy bez demo."
+    }
+  },
+  {
+    key: "hub.showcaseInvoice",
+    locales: {
+      de: "Ausgangsrechnungen nach § 14 UStG",
+      en: "Outgoing invoices under § 14 UStG",
+      tr: "§ 14 UStG’ye göre giden faturalar",
+      ar: "فواتير صادرة وفق § 14 UStG",
+      fr: "Factures sortantes selon § 14 UStG",
+      es: "Facturas emitidas según § 14 UStG",
+      it: "Fatture in uscita secondo § 14 UStG",
+      pl: "Faktury wychodzące wg § 14 UStG"
+    }
+  },
+  {
+    key: "hub.showcaseCompany",
+    locales: {
+      de: "Profil, Logo, Bank und Briefkopf",
+      en: "Profile, logo, bank and letterhead",
+      tr: "Profil, logo, banka ve antet",
+      ar: "الملف والشعار والبنك والترويسة",
+      fr: "Profil, logo, banque et en-tête",
+      es: "Perfil, logo, banco y membrete",
+      it: "Profilo, logo, banca e intestazione",
+      pl: "Profil, logo, bank i nagłówek"
+    }
+  },
+  {
+    key: "hub.showcaseLohn",
+    locales: {
+      de: "Monatsabrechnung im Lohn-Portal",
+      en: "Monthly payroll in the payroll portal",
+      tr: "Aylık bordro bordro portalında",
+      ar: "كشف شهري في بوابة الأجور",
+      fr: "Bulletin mensuel dans le portail paie",
+      es: "Nómina mensual en el portal",
+      it: "Cedolino mensile nel portale paghe",
+      pl: "Lista miesięczna w portalu płac"
+    }
+  }
+,
+  {
+    key: "doc.partiesTitle",
+    locales: {
+      de: "Absender & Empfänger",
+      en: "Sender & recipient",
+      tr: "Gönderen & alıcı",
+      ar: "المرسل والمستلم",
+      fr: "Expéditeur & destinataire",
+      es: "Remitente y destinatario",
+      it: "Mittente e destinatario",
+      pl: "Nadawca i odbiorca"
+    }
+  }
+,
+  {
+    key: "doc.surchargeLabel",
+    locales: {
+      de: "Zusatzbetrag / Zuschlag (Bezeichnung)",
+      en: "Surcharge / extra (label)",
+      tr: "Ek ücret / ek tutar (ad)",
+      ar: "مبلغ إضافي / رسم (التسمية)",
+      fr: "Montant additionnel (libellé)",
+      es: "Importe adicional (etiqueta)",
+      it: "Importo aggiuntivo (etichetta)",
+      pl: "Kwota dodatkowa (nazwa)"
+    }
+  },
+  {
+    key: "doc.surchargeLabelPh",
+    locales: {
+      de: "z. B. Expresszuschlag, Versand, Bearbeitung",
+      en: "e.g. express fee, shipping, handling",
+      tr: "örn. ekspres, kargo, işlem",
+      ar: "مثال: رسوم مستعجلة، شحن، معالجة",
+      fr: "ex. express, envoi, traitement",
+      es: "p. ej. urgente, envío, gestión",
+      it: "es. espresso, spedizione, gestione",
+      pl: "np. ekspres, wysyłka, obsługa"
+    }
+  },
+  {
+    key: "doc.surchargeAmount",
+    locales: {
+      de: "Zusatzbetrag (EUR, netto)",
+      en: "Surcharge (EUR, net)",
+      tr: "Ek tutar (EUR, net)",
+      ar: "المبلغ الإضافي (يورو، صافي)",
+      fr: "Montant additionnel (EUR, net)",
+      es: "Importe adicional (EUR, neto)",
+      it: "Importo aggiuntivo (EUR, netto)",
+      pl: "Kwota dodatkowa (EUR, netto)"
+    }
+  },
+  {
+    key: "doc.invoiceWarning",
+    locales: {
+      de: "Warnung / Hinweis auf der Rechnung",
+      en: "Warning / notice on the invoice",
+      tr: "Uyarı / faturadaki not",
+      ar: "تحذير / ملاحظة على الفاتورة",
+      fr: "Avertissement / mention sur la facture",
+      es: "Aviso / nota en la factura",
+      it: "Avviso / nota sulla fattura",
+      pl: "Ostrzeżenie / uwaga na fakturze"
+    }
+  },
+  {
+    key: "doc.invoiceWarningPh",
+    locales: {
+      de: "z. B. Zahlungsverzug: 5 % Verzugszinsen · Mahnung folgt",
+      en: "e.g. late payment: 5% interest · reminder follows",
+      tr: "örn. gecikme: %5 faiz · hatırlatma gelir",
+      ar: "مثال: تأخير الدفع: فائدة 5٪ · يتبع إنذار",
+      fr: "ex. retard: 5 % d’intérêts · rappel à suivre",
+      es: "p. ej. retraso: 5 % intereses · aviso sigue",
+      it: "es. ritardo: 5 % interessi · sollecito",
+      pl: "np. opóźnienie: 5 % odsetek · wezwanie"
+    }
+  },
+  {
+    key: "doc.invoiceWarningHint",
+    locales: {
+      de: "Erscheint deutlich auf dem Beleg – leer lassen = kein Warnhinweis.",
+      en: "Shown clearly on the document – leave empty for no warning.",
+      tr: "Belgede belirgin görünür – boş = uyarı yok.",
+      ar: "تظهر بوضوح على المستند — اتركها فارغة بلا تحذير.",
+      fr: "Apparait clairement – laisser vide = pas d’avertissement.",
+      es: "Aparece claramente – vacío = sin aviso.",
+      it: "Compare chiaramente – vuoto = nessun avviso.",
+      pl: "Wyraźnie na dokumencie – puste = bez ostrzeżenia."
+    }
+  },
+  {
+    key: "doc.invoiceWarningTitle",
+    locales: {
+      de: "Wichtig",
+      en: "Important",
+      tr: "Önemli",
+      ar: "مهم",
+      fr: "Important",
+      es: "Importante",
+      it: "Importante",
+      pl: "Ważne"
+    }
+  }
+,
+  {
+    key: "preview.invoiceLive",
+    locales: {
+      de: "Live-Vorschau · A4 · Rechnung",
+      en: "Live preview · A4 · Invoice",
+      tr: "Canlı önizleme · A4 · Fatura",
+      ar: "معاينة مباشرة · A4 · فاتورة",
+      fr: "Aperçu live · A4 · Facture",
+      es: "Vista previa · A4 · Factura",
+      it: "Anteprima · A4 · Fattura",
+      pl: "Podgląd na żywo · A4 · Faktura"
+    }
+  },
+  {
+    key: "preview.payrollLive",
+    locales: {
+      de: "Live-Vorschau · A4 · Entgeltabrechnung",
+      en: "Live preview · A4 · Payslip",
+      tr: "Canlı önizleme · A4 · Bordro",
+      ar: "معاينة مباشرة · A4 · كشف الراتب",
+      fr: "Aperçu live · A4 · Bulletin",
+      es: "Vista previa · A4 · Nómina",
+      it: "Anteprima · A4 · Cedolino",
+      pl: "Podgląd na żywo · A4 · Lista"
+    }
+  }
+,
+  {
+    key: "hub.invoiceArchiveSearch",
+    locales: {
+      de: "Kunde oder Nr. RE- suchen",
+      en: "Search customer or Nr. RE-",
+      tr: "Müşteri veya Nr. RE- ara",
+      ar: "ابحث عن العميل أو Nr. RE-",
+      fr: "Rechercher client ou Nr. RE-",
+      es: "Buscar cliente o Nr. RE-",
+      it: "Cerca cliente o Nr. RE-",
+      pl: "Szukaj klienta lub Nr. RE-"
+    }
+  },
+  {
+    key: "hub.invoiceArchiveSearchPh",
+    locales: {
+      de: "Kunde oder Nr. RE-…",
+      en: "Customer or Nr. RE-…",
+      tr: "Müşteri veya Nr. RE-…",
+      ar: "العميل أو Nr. RE-…",
+      fr: "Client ou Nr. RE-…",
+      es: "Cliente o Nr. RE-…",
+      it: "Cliente o Nr. RE-…",
+      pl: "Klient lub Nr. RE-…"
+    }
+  },
+  {
+    key: "hub.invoiceArchiveCustomer",
+    locales: {
+      de: "Kunde",
+      en: "Customer",
+      tr: "Müşteri",
+      ar: "العميل",
+      fr: "Client",
+      es: "Cliente",
+      it: "Cliente",
+      pl: "Klient"
+    }
+  },
+  {
+    key: "hub.invoiceArchiveNoMatch",
+    locales: {
+      de: "Keine Rechnung zu diesem Kunden oder dieser Nr. RE- gefunden.",
+      en: "No invoice found for this customer or Nr. RE-.",
+      tr: "Bu müşteri veya Nr. RE- için fatura yok.",
+      ar: "لا فاتورة لهذا العميل أو لهذا Nr. RE-.",
+      fr: "Aucune facture pour ce client ou ce Nr. RE-.",
+      es: "No hay factura para este cliente o Nr. RE-.",
+      it: "Nessuna fattura per questo cliente o Nr. RE-.",
+      pl: "Brak faktury dla tego klienta lub Nr. RE-."
+    }
+  }
+,
+  {
+    key: "doc.findInvoice",
+    locales: {
+      de: "Rechnung finden",
+      en: "Find invoice",
+      tr: "Fatura bul",
+      ar: "البحث عن فاتورة",
+      fr: "Trouver une facture",
+      es: "Buscar factura",
+      it: "Trova fattura",
+      pl: "Znajdź fakturę"
+    }
+  },
+  {
+    key: "doc.findInvoiceHint",
+    locales: {
+      de: "Nach Nr. RE- oder Kundenname suchen (auch in der Übersicht → Rechnungsarchiv).",
+      en: "Search by Nr. RE- or customer (also Overview → Invoice archive).",
+      tr: "Nr. RE- veya müşteri adı (ayrıca Genel bakış → Fatura arşivi).",
+      ar: "ابحث بـ Nr. RE- أو اسم العميل (أيضاً النظرة العامة → أرشيف الفواتير).",
+      fr: "Recherchez par Nr. RE- ou client (aussi Aperçu → Archives).",
+      es: "Busque por Nr. RE- o cliente (también Resumen → Archivo).",
+      it: "Cerca per Nr. RE- o cliente (anche Panoramica → Archivio).",
+      pl: "Szukaj po Nr. RE- lub kliencie (także Przegląd → Archiwum)."
+    }
+  },
+  {
+    key: "doc.findInvoicePh",
+    locales: {
+      de: "Nr. RE-… oder Kundenname",
+      en: "Nr. RE-… or customer name",
+      tr: "Nr. RE-… veya müşteri adı",
+      ar: "Nr. RE-… أو اسم العميل",
+      fr: "Nr. RE-… ou nom du client",
+      es: "Nr. RE-… o nombre del cliente",
+      it: "Nr. RE-… o nome cliente",
+      pl: "Nr. RE-… lub nazwa klienta"
+    }
+  },
+  {
+    key: "doc.findInvoiceNoDraft",
+    locales: {
+      de: "Diese Rechnung ist ohne lokalen Entwurf – bitte in der Übersicht → Rechnungsarchiv öffnen.",
+      en: "This invoice has no local draft – open it in Overview → Invoice archive.",
+      tr: "Bu faturanın yerel taslağı yok – Genel bakış → Fatura arşivi.",
+      ar: "هذه الفاتورة بلا مسودة محلية – افتحها من النظرة العامة → أرشيف الفواتير.",
+      fr: "Pas de brouillon local – ouvrez-la dans Aperçu → Archives.",
+      es: "Sin borrador local – ábrala en Resumen → Archivo.",
+      it: "Senza bozza locale – aprila in Panoramica → Archivio.",
+      pl: "Brak lokalnego szkicu – otwórz w Przegląd → Archiwum."
+    }
+  },
+  {
+    key: "doc.numberAutoHint",
+    locales: {
+      de: "Automatisch vergeben · eindeutig · wird nicht wiederholt",
+      en: "Assigned automatically · unique · never reused",
+      tr: "Otomatik · benzersiz · tekrar edilmez",
+      ar: "تُمنح تلقائياً · فريدة · لا تُعاد",
+      fr: "Attribué automatiquement · unique · jamais réutilisé",
+      es: "Asignado automáticamente · único · no se reutiliza",
+      it: "Assegnato automaticamente · unico · non riutilizzato",
+      pl: "Nadawany automatycznie · unikalny · bez powtórzeń"
+    }
+  },
+  {
+    key: "co.phone",
+    locales: {
+      de: "Telefon (Firma)",
+      en: "Phone (company)",
+      tr: "Telefon (firma)",
+      ar: "هاتف (الشركة)",
+      fr: "Téléphone (entreprise)",
+      es: "Teléfono (empresa)",
+      it: "Telefono (azienda)",
+      pl: "Telefon (firma)"
+    }
+  }
+,
+  {
+    key: "co.identityReady",
+    locales: {
+      de: "Stammdaten",
+      en: "Master data",
+      tr: "Ana veri",
+      ar: "البيانات الأساسية",
+      fr: "Données de base",
+      es: "Datos maestros",
+      it: "Anagrafica",
+      pl: "Dane podstawowe"
+    }
+  },
+  {
+    key: "co.identityMetaEmpty",
+    locales: {
+      de: "Anschrift und Telefon ergänzen",
+      en: "Add address and phone",
+      tr: "Adres ve telefon ekleyin",
+      ar: "أكمل العنوان والهاتف",
+      fr: "Compléter adresse et téléphone",
+      es: "Complete dirección y teléfono",
+      it: "Completare indirizzo e telefono",
+      pl: "Uzupełnij adres i telefon"
+    }
+  },
+  {
+    key: "co.secIdentity",
+    locales: {
+      de: "Identität",
+      en: "Identity",
+      tr: "Kimlik",
+      ar: "الهوية",
+      fr: "Identité",
+      es: "Identidad",
+      it: "Identità",
+      pl: "Tożsamość"
+    }
+  },
+  {
+    key: "co.secIdentityHint",
+    locales: {
+      de: "Profil, Logo, Anschrift und Telefon für Briefkopf und Rechnung.",
+      en: "Profile, logo, address and phone for letterhead and invoice.",
+      tr: "Profil, logo, adres ve telefon (antet ve fatura).",
+      ar: "الملف والشعار والعنوان والهاتف للترويسة والفاتورة.",
+      fr: "Profil, logo, adresse et téléphone pour en-tête et facture.",
+      es: "Perfil, logo, dirección y teléfono para membrete y factura.",
+      it: "Profilo, logo, indirizzo e telefono per intestazione e fattura.",
+      pl: "Profil, logo, adres i telefon na nagłówek i fakturę."
+    }
+  },
+  {
+    key: "co.secTax",
+    locales: {
+      de: "Steuern & Recht",
+      en: "Tax & legal",
+      tr: "Vergi & hukuk",
+      ar: "الضرائب والقانون",
+      fr: "Fiscalité & droit",
+      es: "Impuestos y legal",
+      it: "Fisco e legale",
+      pl: "Podatki i prawo"
+    }
+  },
+  {
+    key: "co.secTaxHint",
+    locales: {
+      de: "Steuernummer, USt-IdNr. und rechtliche Angaben auf dem Beleg.",
+      en: "Tax number, USt-IdNr. and legal details on the document.",
+      tr: "Vergi no., USt-IdNr. ve yasal bilgiler belgede.",
+      ar: "الرقم الضريبي وUSt-IdNr. والبيانات القانونية على المستند.",
+      fr: "N° fiscal, USt-IdNr. et mentions légales sur le document.",
+      es: "N.º fiscal, USt-IdNr. y datos legales en el documento.",
+      it: "N. fiscale, USt-IdNr. e dati legali sul documento.",
+      pl: "Nr podatkowy, USt-IdNr. i dane prawne na dokumencie."
+    }
+  },
+  {
+    key: "co.secBank",
+    locales: {
+      de: "Bank",
+      en: "Bank",
+      tr: "Banka",
+      ar: "البنك",
+      fr: "Banque",
+      es: "Banco",
+      it: "Banca",
+      pl: "Bank"
+    }
+  },
+  {
+    key: "co.secBankHint",
+    locales: {
+      de: "Zahlungsdaten der Firma für Rechnungen und Fußzeile.",
+      en: "Company payment details for invoices and footer.",
+      tr: "Firma ödeme bilgileri (fatura ve altbilgi).",
+      ar: "بيانات دفع الشركة للفواتير والتذييل.",
+      fr: "Coordonnées de paiement pour factures et pied de page.",
+      es: "Datos de pago para facturas y pie de página.",
+      it: "Dati di pagamento per fatture e piè di pagina.",
+      pl: "Dane płatnicze firmy na faktury i stopkę."
+    }
+  },
+  {
+    key: "co.secPayroll",
+    locales: {
+      de: "Lohn & DATEV",
+      en: "Payroll & DATEV",
+      tr: "Bordro & DATEV",
+      ar: "الأجور و DATEV",
+      fr: "Paie & DATEV",
+      es: "Nómina y DATEV",
+      it: "Paghe e DATEV",
+      pl: "Płace i DATEV"
+    }
+  },
+  {
+    key: "co.secPayrollHint",
+    locales: {
+      de: "Vorlage, Mandant-/Berater-Nr. und Briefkopf für Abrechnungen.",
+      en: "Template, client/consultant no. and letterhead for payslips.",
+      tr: "Şablon, müşteri/danışman no. ve antet (bordro).",
+      ar: "القالب ورقم العميل/المستشار والترويسة للكشوف.",
+      fr: "Modèle, n° client/conseiller et en-tête pour bulletins.",
+      es: "Plantilla, n.º cliente/asesor y membrete para nóminas.",
+      it: "Modello, n. cliente/consulente e intestazione per cedolini.",
+      pl: "Szablon, nr klienta/doradcy i nagłówek na listy płac."
+    }
+  },
+  {
+    key: "co.secSecurity",
+    locales: {
+      de: "Sicherheit & Backup",
+      en: "Security & backup",
+      tr: "Güvenlik & yedek",
+      ar: "الأمان والنسخ الاحتياطي",
+      fr: "Sécurité & sauvegarde",
+      es: "Seguridad y copia",
+      it: "Sicurezza e backup",
+      pl: "Bezpieczeństwo i kopia"
+    }
+  },
+  {
+    key: "co.secSecurityHint",
+    locales: {
+      de: "PIN auf diesem Gerät und lokales JSON-Backup.",
+      en: "PIN on this device and local JSON backup.",
+      tr: "Bu cihazda PIN ve yerel JSON yedek.",
+      ar: "رمز PIN على هذا الجهاز ونسخة JSON محلية.",
+      fr: "PIN sur cet appareil et sauvegarde JSON locale.",
+      es: "PIN en este dispositivo y copia JSON local.",
+      it: "PIN su questo dispositivo e backup JSON locale.",
+      pl: "PIN na tym urządzeniu i lokalna kopia JSON."
+    }
+  },
+  {
+    key: "co.backupTitle",
+    locales: {
+      de: "Datensicherung",
+      en: "Data backup",
+      tr: "Veri yedekleme",
+      ar: "النسخ الاحتياطي",
+      fr: "Sauvegarde",
+      es: "Copia de seguridad",
+      it: "Backup dati",
+      pl: "Kopia zapasowa"
+    }
+  },
+  {
+    key: "co.backupHint",
+    locales: {
+      de: "Browser-Backup: alle lokalen Mandanten, Mitarbeiter und Einstellungen als JSON. Server-Backups (SQLite, verschlüsselt) liegen im <a href=\"admin.html\">Admin</a> unter Backup – dort auch Wiederherstellen.",
+      en: "Browser backup: all local clients, employees and settings as JSON. Server backups (encrypted SQLite) are in <a href=\"admin.html\">Admin</a> under Backup — restore there too.",
+      tr: "Tarayıcı yedeği: yerel müşteriler, çalışanlar ve ayarlar JSON. Sunucu yedekleri (şifreli SQLite) <a href=\"admin.html\">Admin</a> → Backup.",
+      ar: "نسخة المتصفح: كل العملاء والموظفين والإعدادات المحلية كـ JSON. نسخ الخادم (SQLite مشفّر) في <a href=\"admin.html\">Admin</a> تحت Backup.",
+      fr: "Sauvegarde navigateur : clients, employés et réglages locaux en JSON. Sauvegardes serveur (SQLite chiffré) dans <a href=\"admin.html\">Admin</a>.",
+      es: "Copia del navegador: clientes, empleados y ajustes locales en JSON. Copias del servidor (SQLite cifrado) en <a href=\"admin.html\">Admin</a>.",
+      it: "Backup browser: clienti, dipendenti e impostazioni locali in JSON. Backup server (SQLite cifrato) in <a href=\"admin.html\">Admin</a>.",
+      pl: "Kopia przeglądarki: lokalni klienci, pracownicy i ustawienia jako JSON. Kopie serwera (SQLite szyfrowany) w <a href=\"admin.html\">Admin</a>."
+    }
+  },
+  {
+    key: "co.exportAll",
+    locales: {
+      de: "Alles exportieren",
+      en: "Export all",
+      tr: "Tümünü dışa aktar",
+      ar: "تصدير الكل",
+      fr: "Tout exporter",
+      es: "Exportar todo",
+      it: "Esporta tutto",
+      pl: "Eksportuj wszystko"
+    }
+  },
+  {
+    key: "co.importAll",
+    locales: {
+      de: "Daten importieren",
+      en: "Import data",
+      tr: "Veri içe aktar",
+      ar: "استيراد البيانات",
+      fr: "Importer les données",
+      es: "Importar datos",
+      it: "Importa dati",
+      pl: "Importuj dane"
+    }
+  },
+  {
+    key: "co.pinTitle",
+    locales: {
+      de: "Zugangsschutz (PIN)",
+      en: "Access protection (PIN)",
+      tr: "Erişim koruması (PIN)",
+      ar: "حماية الدخول (PIN)",
+      fr: "Protection d’accès (PIN)",
+      es: "Protección de acceso (PIN)",
+      it: "Protezione accesso (PIN)",
+      pl: "Ochrona dostępu (PIN)"
+    }
+  },
+  {
+    key: "co.pinHint",
+    locales: {
+      de: "PIN ändern – schützt Hub und Lohnarbeitsplatz auf diesem Gerät.",
+      en: "Change PIN – protects hub and payroll workspace on this device.",
+      tr: "PIN değiştir – bu cihazda hub ve bordroyu korur.",
+      ar: "غيّر PIN – يحمي المركز ومكان عمل الأجور على هذا الجهاز.",
+      fr: "Changer le PIN – protège le hub et l’espace paie sur cet appareil.",
+      es: "Cambiar PIN – protege el hub y la nómina en este dispositivo.",
+      it: "Cambia PIN – protegge hub e area paghe su questo dispositivo.",
+      pl: "Zmień PIN – chroni hub i stanowisko płac na tym urządzeniu."
+    }
+  },
+  {
+    key: "co.pinOld",
+    locales: {
+      de: "Alte PIN",
+      en: "Old PIN",
+      tr: "Eski PIN",
+      ar: "PIN السابق",
+      fr: "Ancien PIN",
+      es: "PIN anterior",
+      it: "PIN precedente",
+      pl: "Stary PIN"
+    }
+  },
+  {
+    key: "co.pinNew",
+    locales: {
+      de: "Neue PIN",
+      en: "New PIN",
+      tr: "Yeni PIN",
+      ar: "PIN جديد",
+      fr: "Nouveau PIN",
+      es: "PIN nuevo",
+      it: "Nuovo PIN",
+      pl: "Nowy PIN"
+    }
+  },
+  {
+    key: "co.pinConfirm",
+    locales: {
+      de: "Bestätigen",
+      en: "Confirm",
+      tr: "Onayla",
+      ar: "تأكيد",
+      fr: "Confirmer",
+      es: "Confirmar",
+      it: "Conferma",
+      pl: "Potwierdź"
+    }
+  },
+  {
+    key: "co.pinSave",
+    locales: {
+      de: "PIN speichern",
+      en: "Save PIN",
+      tr: "PIN kaydet",
+      ar: "حفظ PIN",
+      fr: "Enregistrer le PIN",
+      es: "Guardar PIN",
+      it: "Salva PIN",
+      pl: "Zapisz PIN"
+    }
+  }
+,
+  {
+    key: "hub.checkClickHint",
+    locales: {
+      de: "Klicken, um das Feld zu öffnen",
+      en: "Click to open the field",
+      tr: "Alana gitmek için tıklayın",
+      ar: "انقر لفتح الحقل",
+      fr: "Cliquer pour ouvrir le champ",
+      es: "Clic para abrir el campo",
+      it: "Clic per aprire il campo",
+      pl: "Kliknij, aby otworzyć pole"
+    }
+  },
+  {
+    key: "co.saveLocalOnly",
+    locales: {
+      de: "Gespeichert · lokal auf diesem Gerät.",
+      en: "Saved · locally on this device.",
+      tr: "Kaydedildi · bu cihazda yerel.",
+      ar: "تم الحفظ · محليًا على هذا الجهاز.",
+      fr: "Enregistré · localement sur cet appareil.",
+      es: "Guardado · localmente en este dispositivo.",
+      it: "Salvato · in locale su questo dispositivo.",
+      pl: "Zapisano · lokalnie na tym urządzeniu."
+    }
+  },
+  {
+    key: "co.saveLocalServer",
+    locales: {
+      de: "Gespeichert · lokal und auf dem Server.",
+      en: "Saved · locally and on the server.",
+      tr: "Kaydedildi · yerel ve sunucuda.",
+      ar: "تم الحفظ · محليًا وعلى الخادم.",
+      fr: "Enregistré · en local et sur le serveur.",
+      es: "Guardado · local y en el servidor.",
+      it: "Salvato · in locale e sul server.",
+      pl: "Zapisano · lokalnie i na serwerze."
+    }
+  },
+  {
+    key: "co.saveLocalServerLogoLocal",
+    locales: {
+      de: "Gespeichert · lokal + Server (Logo nur lokal – zu groß).",
+      en: "Saved · local + server (logo local only – too large).",
+      tr: "Kaydedildi · yerel + sunucu (logo yalnızca yerel – çok büyük).",
+      ar: "تم الحفظ · محلي + خادم (الشعار محلي فقط – كبير جدًا).",
+      fr: "Enregistré · local + serveur (logo local uniquement – trop volumineux).",
+      es: "Guardado · local + servidor (logo solo local – demasiado grande).",
+      it: "Salvato · locale + server (logo solo locale – troppo grande).",
+      pl: "Zapisano · lokalnie + serwer (logo tylko lokalnie – za duże)."
+    }
+  },
+  {
+    key: "co.saveLocalServerFail",
+    locales: {
+      de: "Lokal gespeichert · Server: {err}",
+      en: "Saved locally · Server: {err}",
+      tr: "Yerel kaydedildi · Sunucu: {err}",
+      ar: "حُفظ محليًا · الخادم: {err}",
+      fr: "Enregistré en local · Serveur : {err}",
+      es: "Guardado local · Servidor: {err}",
+      it: "Salvato in locale · Server: {err}",
+      pl: "Zapisano lokalnie · Serwer: {err}"
+    }
+  },
+  {
+    key: "co.syncFailedShort",
+    locales: {
+      de: "Sync fehlgeschlagen",
+      en: "Sync failed",
+      tr: "Sync başarısız",
+      ar: "فشلت المزامنة",
+      fr: "Échec de la sync",
+      es: "Error de sync",
+      it: "Sync non riuscita",
+      pl: "Sync nieudany"
+    }
+  },
+  {
+    key: "co.syncNeedsLogin",
+    locales: {
+      de: "Firmen-Login nötig, um mit dem Server zu synchronisieren.",
+      en: "Company login required to sync with the server.",
+      tr: "Sunucuyla senkron için firma girişi gerekli.",
+      ar: "يلزم دخول الشركة للمزامنة مع الخادم.",
+      fr: "Connexion entreprise requise pour synchroniser.",
+      es: "Se requiere acceso de empresa para sincronizar.",
+      it: "Serve login aziendale per sincronizzare.",
+      pl: "Wymagane logowanie firmy do synchronizacji."
+    }
+  },
+  {
+    key: "co.syncDone",
+    locales: {
+      de: "Synchronisiert · Profil aktualisiert.",
+      en: "Synced · profile updated.",
+      tr: "Senkronize · profil güncellendi.",
+      ar: "تمت المزامنة · تم تحديث الملف.",
+      fr: "Synchronisé · profil mis à jour.",
+      es: "Sincronizado · perfil actualizado.",
+      it: "Sincronizzato · profilo aggiornato.",
+      pl: "Zsynchronizowano · profil zaktualizowany."
+    }
+  }
+,
+  {
+    key: "help.heroSub",
+    locales: {
+      de: "Kurz erklärt: Firma, Rechnung, Lohn — und wie Sie uns erreichen.",
+      en: "Quick guide: company, invoice, payroll — and how to reach us.",
+      tr: "Kısa özet: firma, fatura, bordro — ve bize nasıl ulaşılır.",
+      ar: "باختصار: الشركة والفاتورة والأجور — وكيف تتواصل معنا.",
+      fr: "En bref : entreprise, facture, paie — et comment nous joindre.",
+      es: "En breve: empresa, factura, nómina — y cómo contactarnos.",
+      it: "In breve: azienda, fattura, paghe — e come contattarci.",
+      pl: "Krótko: firma, faktura, płace — i jak się z nami skontaktować."
+    }
+  },
+  {
+    key: "help.contactTitle",
+    locales: {
+      de: "Kontakt & Support",
+      en: "Contact & support",
+      tr: "İletişim & destek",
+      ar: "الاتصال والدعم",
+      fr: "Contact & assistance",
+      es: "Contacto y soporte",
+      it: "Contatto e supporto",
+      pl: "Kontakt i wsparcie"
+    }
+  },
+  {
+    key: "help.contactLead",
+    locales: {
+      de: "Fragen zu WorkPass Steuerprogramm, Login oder Belegen? Schreiben Sie uns — wir helfen weiter.",
+      en: "Questions about WorkPass Steuerprogramm, login or documents? Write to us — we’re here to help.",
+      tr: "WorkPass Steuerprogramm, giriş veya belgeler hakkında sorular? Yazın — yardımcı oluruz.",
+      ar: "أسئلة عن WorkPass Steuerprogramm أو الدخول أو المستندات؟ راسلنا — سنساعد.",
+      fr: "Questions sur WorkPass Steuerprogramm, connexion ou documents ? Écrivez-nous.",
+      es: "¿Preguntas sobre WorkPass Steuerprogramm, acceso o documentos? Escríbanos.",
+      it: "Domande su WorkPass Steuerprogramm, accesso o documenti? Scriveteci.",
+      pl: "Pytania o WorkPass Steuerprogramm, logowanie lub dokumenty? Napisz do nas."
+    }
+  },
+  {
+    key: "help.contactHint",
+    locales: {
+      de: "Bitte Firmenname und Mandant-ID in der Nachricht angeben, damit wir schneller helfen können.",
+      en: "Please include company name and client ID in your message so we can help faster.",
+      tr: "Mesajda firma adı ve Mandant-ID yazın — daha hızlı yardım ederiz.",
+      ar: "يرجى ذكر اسم الشركة ومعرّف العميل في الرسالة لنساعد بسرعة أكبر.",
+      fr: "Indiquez le nom de l’entreprise et l’ID mandant dans le message.",
+      es: "Indique el nombre de la empresa y el ID de cliente en el mensaje.",
+      it: "Indicate nome azienda e ID cliente nel messaggio.",
+      pl: "Podaj nazwę firmy i ID mandanta w wiadomości."
+    }
+  },
+  {
+    key: "help.contactProduct",
+    locales: {
+      de: "Produkt",
+      en: "Product",
+      tr: "Ürün",
+      ar: "المنتج",
+      fr: "Produit",
+      es: "Producto",
+      it: "Prodotto",
+      pl: "Produkt"
+    }
+  },
+  {
+    key: "help.contactEmail",
+    locales: {
+      de: "E-Mail",
+      en: "Email",
+      tr: "E-posta",
+      ar: "البريد",
+      fr: "E-mail",
+      es: "Correo",
+      it: "E-mail",
+      pl: "E-mail"
+    }
+  },
+  {
+    key: "help.contactPhone",
+    locales: {
+      de: "Telefon",
+      en: "Phone",
+      tr: "Telefon",
+      ar: "الهاتف",
+      fr: "Téléphone",
+      es: "Teléfono",
+      it: "Telefono",
+      pl: "Telefon"
+    }
+  },
+  {
+    key: "help.contactWeb",
+    locales: {
+      de: "Website",
+      en: "Website",
+      tr: "Web sitesi",
+      ar: "الموقع",
+      fr: "Site web",
+      es: "Sitio web",
+      it: "Sito web",
+      pl: "Strona"
+    }
+  },
+  {
+    key: "help.contactHours",
+    locales: {
+      de: "Erreichbarkeit",
+      en: "Availability",
+      tr: "Ulaşılabilirlik",
+      ar: "أوقات الرد",
+      fr: "Disponibilité",
+      es: "Disponibilidad",
+      it: "Disponibilità",
+      pl: "Dostępność"
+    }
+  },
+  {
+    key: "help.contactEmpty",
+    locales: {
+      de: "Kontaktdaten folgen in Kürze.",
+      en: "Contact details coming soon.",
+      tr: "İletişim yakında.",
+      ar: "بيانات الاتصال قريبًا.",
+      fr: "Coordonnées bientôt.",
+      es: "Contacto pronto.",
+      it: "Contatti a breve.",
+      pl: "Kontakt wkrótce."
+    }
+  },
+  {
+    key: "help.modulesTitle",
+    locales: {
+      de: "Module auf einen Blick",
+      en: "Modules at a glance",
+      tr: "Modüllere bakış",
+      ar: "الوحدات بنظرة",
+      fr: "Modules en un coup d’œil",
+      es: "Módulos de un vistazo",
+      it: "Moduli in sintesi",
+      pl: "Moduły w skrócie"
+    }
+  },
+  {
+    key: "help.modFirma",
+    locales: {
+      de: "<strong>Firma</strong> – Stammdaten einmal pflegen; Checkliste klicken öffnet das fehlende Feld; Profil speichern sichert lokal (und Server bei Firmen-Login).",
+      en: "<strong>Company</strong> – maintain master data once; checklist click opens the missing field; save stores locally (and on the server with company login).",
+      tr: "<strong>Firma</strong> – ana veriyi bir kez tutun; kontrol listesine tıklayınca eksik alan açılır.",
+      ar: "<strong>الشركة</strong> – حدّث البيانات مرة واحدة؛ النقر على القائمة يفتح الحقل الناقص؛ الحفظ محليًا (والخادم مع دخول الشركة).",
+      fr: "<strong>Entreprise</strong> – données de base une fois ; clic checklist ouvre le champ manquant.",
+      es: "<strong>Empresa</strong> – datos maestros una vez; clic en la lista abre el campo faltante.",
+      it: "<strong>Azienda</strong> – anagrafica una volta; clic sulla checklist apre il campo mancante.",
+      pl: "<strong>Firma</strong> – dane podstawowe raz; klik na checklistę otwiera brakujące pole."
+    }
+  },
+  {
+    key: "help.modRechnung",
+    locales: {
+      de: "<strong>Rechnung</strong> – Jede Rechnung erhält eine eindeutige <strong>Nr. RE-</strong>. Suche nach Nummer oder Kundenname im Tab Rechnung und im Rechnungsarchiv (Übersicht).",
+      en: "<strong>Invoice</strong> – each invoice gets a unique <strong>Nr. RE-</strong>. Search by number or customer in Invoice and in the archive (Overview).",
+      tr: "<strong>Fatura</strong> – her faturanın benzersiz <strong>Nr. RE-</strong> numarası vardır. Fatura sekmesinde veya arşivde arayın.",
+      ar: "<strong>الفاتورة</strong> – لكل فاتورة <strong>Nr. RE-</strong> فريد. ابحث بالرقم أو اسم العميل في الفاتورة أو الأرشيف.",
+      fr: "<strong>Facture</strong> – chaque facture a un <strong>Nr. RE-</strong> unique. Recherchez dans Facture ou Archives.",
+      es: "<strong>Factura</strong> – cada factura tiene un <strong>Nr. RE-</strong> único. Busque en Factura o archivo.",
+      it: "<strong>Fattura</strong> – ogni fattura ha un <strong>Nr. RE-</strong> univoco. Cerca in Fattura o archivio.",
+      pl: "<strong>Faktura</strong> – każda ma unikalny <strong>Nr. RE-</strong>. Szukaj w Fakturze lub archiwum."
+    }
+  },
+  {
+    key: "help.modLohn",
+    locales: {
+      de: "<strong>Lohn-Portal</strong> – Abrechnung, LStB und LStA nur unter <a href=\"lohn.html\">lohn.html</a> — nicht im Rechnungs-Tab.",
+      en: "<strong>Payroll portal</strong> – payslip, LStB and LStA only under <a href=\"lohn.html\">lohn.html</a> — not in the invoice tab.",
+      tr: "<strong>Bordro portalı</strong> – bordro, LStB ve LStA yalnızca <a href=\"lohn.html\">lohn.html</a>.",
+      ar: "<strong>بوابة الأجور</strong> – الكشف وLStB وLStA فقط في <a href=\"lohn.html\">lohn.html</a> — وليس في تبويب الفاتورة.",
+      fr: "<strong>Portail paie</strong> – bulletin, LStB et LStA uniquement sous <a href=\"lohn.html\">lohn.html</a>.",
+      es: "<strong>Portal de nómina</strong> – nómina, LStB y LStA solo en <a href=\"lohn.html\">lohn.html</a>.",
+      it: "<strong>Portale paghe</strong> – cedolino, LStB e LStA solo in <a href=\"lohn.html\">lohn.html</a>.",
+      pl: "<strong>Portal płac</strong> – lista, LStB i LStA tylko w <a href=\"lohn.html\">lohn.html</a>."
+    }
+  },
+  {
+    key: "help.faqTitle",
+    locales: {
+      de: "Häufige Fragen",
+      en: "FAQ",
+      tr: "SSS",
+      ar: "أسئلة شائعة",
+      fr: "FAQ",
+      es: "Preguntas frecuentes",
+      it: "Domande frequenti",
+      pl: "Częste pytania"
+    }
+  },
+  {
+    key: "help.faq1q",
+    locales: {
+      de: "Wo finde ich eine Rechnung nach Kundenname?",
+      en: "Where do I find an invoice by customer name?",
+      tr: "Müşteri adına göre faturayı nerede bulurum?",
+      ar: "أين أجد فاتورة باسم العميل؟",
+      fr: "Où trouver une facture par client ?",
+      es: "¿Dónde encuentro una factura por cliente?",
+      it: "Dove trovo una fattura per cliente?",
+      pl: "Gdzie znajdę fakturę po kliencie?"
+    }
+  },
+  {
+    key: "help.faq1a",
+    locales: {
+      de: "Im Tab Rechnung oben suchen, oder in der Übersicht → Rechnungsarchiv. Tippen Sie den Kundennamen oder die Nr. RE-.",
+      en: "Search at the top of the Invoice tab, or Overview → Invoice archive. Type the customer name or Nr. RE-.",
+      tr: "Fatura sekmesinin üstünden veya Genel bakış → Fatura arşivi. Müşteri adı veya Nr. RE- yazın.",
+      ar: "ابحث أعلى تبويب الفاتورة، أو النظرة العامة → أرشيف الفواتير. اكتب اسم العميل أو Nr. RE-.",
+      fr: "Recherchez en haut de Facture, ou Aperçu → Archives. Saisissez le client ou Nr. RE-.",
+      es: "Busque arriba en Factura, o Resumen → Archivo. Escriba el cliente o Nr. RE-.",
+      it: "Cerca in alto in Fattura, o Panoramica → Archivio. Digiti il cliente o Nr. RE-.",
+      pl: "Szukaj u góry w Fakturze lub Przegląd → Archiwum. Wpisz klienta lub Nr. RE-."
+    }
+  },
+  {
+    key: "help.faq2q",
+    locales: {
+      de: "Warum ändert sich die Rechnungsnummer nicht manuell?",
+      en: "Why can’t I change the invoice number manually?",
+      tr: "Fatura numarası neden elle değişmiyor?",
+      ar: "لماذا لا يمكن تغيير رقم الفاتورة يدويًا؟",
+      fr: "Pourquoi le n° de facture n’est pas modifiable ?",
+      es: "¿Por qué no puedo cambiar el n.º de factura?",
+      it: "Perché non posso cambiare il numero fattura?",
+      pl: "Dlaczego nie mogę zmienić numeru faktury?"
+    }
+  },
+  {
+    key: "help.faq2a",
+    locales: {
+      de: "Nummern werden automatisch vergeben und nicht wiederholt (GoBD-freundlich). Neue Rechnung = neue Nr. RE-.",
+      en: "Numbers are assigned automatically and never reused (GoBD-friendly). New invoice = new Nr. RE-.",
+      tr: "Numaralar otomatik verilir ve tekrar edilmez. Yeni fatura = yeni Nr. RE-.",
+      ar: "تُمنح الأرقام تلقائيًا ولا تُعاد. فاتورة جديدة = Nr. RE- جديد.",
+      fr: "Les numéros sont attribués automatiquement et non réutilisés. Nouvelle facture = nouveau Nr. RE-.",
+      es: "Los números se asignan automáticamente y no se reutilizan. Nueva factura = nuevo Nr. RE-.",
+      it: "I numeri sono assegnati automaticamente e non riutilizzati. Nuova fattura = nuovo Nr. RE-.",
+      pl: "Numery nadawane automatycznie i bez powtórzeń. Nowa faktura = nowy Nr. RE-."
+    }
+  },
+  {
+    key: "help.faq3q",
+    locales: {
+      de: "Wo trage ich die Firmen-Telefonnummer ein?",
+      en: "Where do I enter the company phone number?",
+      tr: "Firma telefon numarasını nereye yazarım?",
+      ar: "أين أُدخل هاتف الشركة؟",
+      fr: "Où saisir le téléphone de l’entreprise ?",
+      es: "¿Dónde indico el teléfono de la empresa?",
+      it: "Dove inserisco il telefono azienda?",
+      pl: "Gdzie wpisać telefon firmy?"
+    }
+  },
+  {
+    key: "help.faq3a",
+    locales: {
+      de: "Unter Firma → Identität → Telefon (Firma). Sie erscheint auf der Rechnung als Tel.: …",
+      en: "Under Company → Identity → Phone (company). It appears on the invoice as Tel.: …",
+      tr: "Firma → Kimlik → Telefon (firma). Faturada Tel.: … olarak görünür.",
+      ar: "تحت الشركة → الهوية → هاتف (الشركة). يظهر على الفاتورة كـ Tel.: …",
+      fr: "Sous Entreprise → Identité → Téléphone. Il apparaît sur la facture comme Tel. : …",
+      es: "En Empresa → Identidad → Teléfono. Aparece en la factura como Tel.: …",
+      it: "In Azienda → Identità → Telefono. Compare in fattura come Tel.: …",
+      pl: "W Firma → Tożsamość → Telefon. Na fakturze jako Tel.: …"
+    }
+  }
+  ["admin.helpContactTitle", {"de":"Hilfe-Kontakt (öffentlich)","en":"Help contact (public)","tr":"Yardım iletişimi (herkese açık)","ar":"جهة اتصال المساعدة (عامة)","fr":"Contact d’aide (public)","es":"Contacto de ayuda (público)","it":"Contatto assistenza (pubblico)","pl":"Kontakt pomocy (publiczny)"}],
+  ["admin.helpContactHint", {"de":"E-Mail, Telefon und Website erscheinen im Hub unter Hilfe. Sie können die Angaben jederzeit ändern und speichern — auch offline (dann lokal auf diesem Gerät).","en":"Email, phone and website appear in the Hub under Help. You can change and save them anytime — also offline (then locally on this device).","tr":"E-posta, telefon ve web sitesi Hub → Yardım’da görünür. İstediğiniz zaman değiştirip kaydedebilirsiniz — çevrimdışı da (bu cihazda yerel).","ar":"البريد والهاتف والموقع تظهر في المركز تحت مساعدة. يمكنك تعديلها وحفظها في أي وقت — حتى دون اتصال (محليًا على هذا الجهاز).","fr":"E-mail, téléphone et site apparaissent dans le Hub sous Aide. Modifiez et enregistrez à tout moment — aussi hors ligne (alors en local sur cet appareil).","es":"El correo, teléfono y web aparecen en el Hub bajo Ayuda. Puede cambiarlos y guardarlos cuando quiera — también sin conexión (entonces en local en este dispositivo).","it":"Email, telefono e sito compaiono nell’Hub sotto Aiuto. Puoi modificarli e salvarli quando vuoi — anche offline (poi in locale su questo dispositivo).","pl":"E-mail, telefon i strona pojawiają się w Hubie w Pomocy. Możesz je zmieniać i zapisywać w dowolnej chwili — także offline (wtedy lokalnie na tym urządzeniu)."}],
+  ["admin.helpProduct", {"de":"Produktzeile","en":"Product line","tr":"Ürün satırı","ar":"سطر المنتج","fr":"Ligne produit","es":"Línea de producto","it":"Riga prodotto","pl":"Linia produktu"}],
+  ["admin.helpEmail", {"de":"E-Mail","en":"Email","tr":"E-posta","ar":"البريد","fr":"E-mail","es":"Correo","it":"E-mail","pl":"E-mail"}],
+  ["admin.helpPhone", {"de":"Telefon","en":"Phone","tr":"Telefon","ar":"الهاتف","fr":"Téléphone","es":"Teléfono","it":"Telefono","pl":"Telefon"}],
+  ["admin.helpWhatsapp", {"de":"WhatsApp (nur Ziffern, Ländervorwahl)","en":"WhatsApp (digits only, country code)","tr":"WhatsApp (yalnızca rakam, ülke kodu)","ar":"WhatsApp (أرقام فقط مع رمز الدولة)","fr":"WhatsApp (chiffres seuls, indicatif)","es":"WhatsApp (solo dígitos, prefijo)","it":"WhatsApp (solo cifre, prefisso)","pl":"WhatsApp (tylko cyfry, kod kraju)"}],
+  ["admin.helpWebsite", {"de":"Website-URL","en":"Website URL","tr":"Web sitesi URL","ar":"رابط الموقع","fr":"URL du site","es":"URL del sitio","it":"URL del sito","pl":"URL strony"}],
+  ["admin.helpWebsiteLabel", {"de":"Website-Anzeige","en":"Website label","tr":"Web sitesi etiketi","ar":"تسمية الموقع","fr":"Libellé du site","es":"Etiqueta del sitio","it":"Etichetta sito","pl":"Etykieta strony"}],
+  ["admin.helpHours", {"de":"Erreichbarkeit","en":"Availability","tr":"Ulaşılabilirlik","ar":"أوقات التواجد","fr":"Disponibilité","es":"Disponibilidad","it":"Disponibilità","pl":"Dostępność"}],
+  ["admin.helpContactSave", {"de":"Kontakt speichern","en":"Save contact","tr":"İletişimi kaydet","ar":"حفظ جهة الاتصال","fr":"Enregistrer le contact","es":"Guardar contacto","it":"Salva contatto","pl":"Zapisz kontakt"}],
+  ["admin.helpContactReload", {"de":"Neu laden","en":"Reload","tr":"Yeniden yükle","ar":"إعادة التحميل","fr":"Recharger","es":"Recargar","it":"Ricarica","pl":"Odśwież"}],
+  ["admin.helpContactSaved", {"de":"Hilfe-Kontakt gespeichert.","en":"Help contact saved.","tr":"Yardım iletişimi kaydedildi.","ar":"تم حفظ جهة اتصال المساعدة.","fr":"Contact d’aide enregistré.","es":"Contacto de ayuda guardado.","it":"Contatto assistenza salvato.","pl":"Kontakt pomocy zapisany."}],
+  ["admin.helpContactLoaded", {"de":"Hilfe-Kontakt geladen.","en":"Help contact loaded.","tr":"Yardım iletişimi yüklendi.","ar":"تم تحميل جهة اتصال المساعدة.","fr":"Contact d’aide chargé.","es":"Contacto de ayuda cargado.","it":"Contatto assistenza caricato.","pl":"Kontakt pomocy wczytany."}],
+  ["admin.helpContactMeta", {"de":"Zuletzt gespeichert: {when}{by}","en":"Last saved: {when}{by}","tr":"Son kayıt: {when}{by}","ar":"آخر حفظ: {when}{by}","fr":"Dernier enregistrement : {when}{by}","es":"Último guardado: {when}{by}","it":"Ultimo salvataggio: {when}{by}","pl":"Ostatni zapis: {when}{by}"}],
+  ["admin.helpContactBy", {"de":" · von {who}","en":" · by {who}","tr":" · {who}","ar":" · بواسطة {who}","fr":" · par {who}","es":" · por {who}","it":" · da {who}","pl":" · przez {who}"}],
+  ["help.contactAdminNote", {"de":"Kontaktdaten pflegt der Accounting-Admin unter Admin → Hilfe-Kontakt.","en":"Contact details are managed by the Accounting Admin under Admin → Help contact.","tr":"İletişim bilgilerini Accounting-Admin, Admin → Yardım iletişimi altında yönetir.","ar":"يدير مسؤول المحاسبة جهات الاتصال من Admin ← جهة اتصال المساعدة.","fr":"Les contacts sont gérés par l’Admin comptable sous Admin → Contact d’aide.","es":"Los contactos los gestiona el Admin contable en Admin → Contacto de ayuda.","it":"I contatti li gestisce l’Admin contabile in Admin → Contatto assistenza.","pl":"Dane kontaktowe ustawia Admin księgowy w Admin → Kontakt pomocy."}],
+  ["auth.adminOfflineHint", {"de":"Bridge offline – Admin mit Geräte-PIN entsperren. Hilfe-Kontakt lokal speichern; für Server-Aktionen Bridge starten und mit Admin-Konto anmelden.","en":"Bridge offline – unlock Admin with device PIN. Save help contact locally; start the bridge and sign in with the Admin account for server actions.","tr":"Bridge çevrimdışı – Admin’i cihaz PIN’i ile açın. Yardım iletişimini yerel kaydedin; sunucu işlemleri için Bridge’i başlatıp Admin hesabıyla giriş yapın.","ar":"الجسر غير متصل – افتح Admin برمز الجهاز. احفظ جهة اتصال المساعدة محليًا؛ لعمليات الخادم شغّل الجسر وسجّل بحساب Admin.","fr":"Bridge hors ligne – déverrouillez Admin avec le code PIN. Enregistrez le contact d’aide en local ; démarrez le bridge et connectez-vous en Admin pour le serveur.","es":"Bridge sin conexión – desbloquee Admin con el PIN. Guarde el contacto de ayuda en local; inicie el bridge e inicie sesión Admin para el servidor.","it":"Bridge offline – sblocca Admin con PIN dispositivo. Salva il contatto assistenza in locale; avvia il bridge e accedi come Admin per il server.","pl":"Bridge offline – odblokuj Admin kodem PIN. Zapisz kontakt pomocy lokalnie; uruchom bridge i zaloguj się jako Admin do serwera."}],
+  ["auth.adminBridgeDown", {"de":"Bridge nicht erreichbar – Tab „Geräte-PIN“ nutzen.","en":"Bridge unreachable – use the Device PIN tab.","tr":"Bridge’e ulaşılamıyor – Cihaz PIN sekmesini kullanın.","ar":"الجسر غير متاح – استخدم تبويب رمز الجهاز.","fr":"Bridge inaccessible – utilisez l’onglet code PIN.","es":"Bridge no disponible – use la pestaña PIN.","it":"Bridge non raggiungibile – usa la scheda PIN.","pl":"Bridge niedostępny – użyj karty PIN."}],
+  ["admin.offlineMode", {"de":"Offline-Admin (Geräte-PIN). Hilfe-Kontakt lokal speicherbar. Bridge starten + Admin-Konto für Server-Aktionen.","en":"Offline Admin (device PIN). Help contact can be saved locally. Start the bridge + Admin account for server actions.","tr":"Çevrimdışı Admin (cihaz PIN). Yardım iletişimi yerel kaydedilebilir. Sunucu için Bridge + Admin hesabı.","ar":"Admin دون اتصال (رمز الجهاز). يمكن حفظ جهة اتصال المساعدة محليًا. للخادم: شغّل الجسر + حساب Admin.","fr":"Admin hors ligne (PIN). Contact d’aide enregistrable en local. Bridge + compte Admin pour le serveur.","es":"Admin sin conexión (PIN). Contacto de ayuda se guarda en local. Bridge + cuenta Admin para el servidor.","it":"Admin offline (PIN). Contatto assistenza salvabile in locale. Bridge + account Admin per il server.","pl":"Admin offline (PIN). Kontakt pomocy można zapisać lokalnie. Bridge + konto Admin do serwera."}],
+  ["admin.helpContactSavedOffline", {"de":"Hilfe-Kontakt lokal gespeichert (Bridge offline). Hub zeigt die Werte auf diesem Gerät.","en":"Help contact saved locally (bridge offline). Hub shows the values on this device.","tr":"Yardım iletişimi yerel kaydedildi (Bridge çevrimdışı). Hub bu cihazdaki değerleri gösterir.","ar":"تم حفظ جهة اتصال المساعدة محليًا (الجسر غير متصل). المركز يعرض القيم على هذا الجهاز.","fr":"Contact d’aide enregistré en local (bridge hors ligne). Le Hub affiche les valeurs sur cet appareil.","es":"Contacto de ayuda guardado en local (bridge sin conexión). El Hub muestra los valores en este dispositivo.","it":"Contatto assistenza salvato in locale (bridge offline). L’Hub mostra i valori su questo dispositivo.","pl":"Kontakt pomocy zapisany lokalnie (bridge offline). Hub pokazuje wartości na tym urządzeniu."}],
+  ["admin.bridgeOffline", {"de":"Bridge nicht erreichbar. Offline funktioniert: Geräte-PIN + Hilfe-Kontakt speichern. Andere Buttons brauchen die Bridge (npm start).","en":"Bridge unreachable. Offline works: device PIN + save help contact. Other buttons need the bridge (npm start).","tr":"Bridge’e ulaşılamıyor. Çevrimdışı: cihaz PIN + yardım iletişimi. Diğer düğmeler Bridge ister (npm start).","ar":"الجسر غير متاح. دون اتصال: رمز الجهاز + حفظ جهة الاتصال. الأزرار الأخرى تحتاج الجسر (npm start).","fr":"Bridge inaccessible. Hors ligne : PIN + contact d’aide. Les autres boutons nécessitent le bridge (npm start).","es":"Bridge no disponible. Sin conexión: PIN + contacto de ayuda. Otros botones requieren el bridge (npm start).","it":"Bridge non raggiungibile. Offline: PIN + contatto assistenza. Gli altri pulsanti richiedono il bridge (npm start).","pl":"Bridge niedostępny. Offline: PIN + kontakt pomocy. Inne przyciski wymagają bridge (npm start)."}],
+  ["admin.needsBridge", {"de":"Benötigt laufende Bridge (npm start) und Online-Admin-Login.","en":"Requires a running bridge (npm start) and online Admin login.","tr":"Çalışan Bridge (npm start) ve çevrimiçi Admin girişi gerekir.","ar":"يتطلب جسراً شغّالاً (npm start) وتسجيل Admin متصل.","fr":"Nécessite un bridge démarré (npm start) et une connexion Admin en ligne.","es":"Requiere bridge en marcha (npm start) e inicio de sesión Admin en línea.","it":"Richiede bridge avviato (npm start) e login Admin online.","pl":"Wymaga uruchomionego bridge (npm start) i logowania Admin online."}],
+  ["admin.rightsOffline", {"de":"Offline – Rechte erscheinen nach Bridge-Verbindung.","en":"Offline – rights appear after the bridge connects.","tr":"Çevrimdışı – haklar Bridge bağlanınca görünür.","ar":"دون اتصال – تظهر الصلاحيات بعد اتصال الجسر.","fr":"Hors ligne – les droits apparaissent après connexion au bridge.","es":"Sin conexión – los derechos aparecen tras conectar el bridge.","it":"Offline – i diritti compaiono dopo il collegamento al bridge.","pl":"Offline – uprawnienia pojawią się po połączeniu z bridge."}],
 ];

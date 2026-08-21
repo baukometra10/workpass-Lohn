@@ -714,8 +714,15 @@
   let manualOverride = false;
 
   (window.WorkPassI18nExtraPacks || []).forEach((row) => {
-    const key = row?.[0];
-    const locs = row?.[1];
+    let key;
+    let locs;
+    if (Array.isArray(row)) {
+      key = row[0];
+      locs = row[1];
+    } else if (row && typeof row === "object") {
+      key = row.key;
+      locs = row.locales;
+    }
     if (!key || !locs) return;
     SUPPORTED.forEach((code) => {
       if (!dict[code]) dict[code] = {};

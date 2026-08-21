@@ -275,12 +275,33 @@
     return true;
   }
 
+  function bridgeOffline() {
+    return !authConfig || authConfig.ok === false;
+  }
+
+  function saveOfflineAdminSession() {
+    const until = Date.now() + IDLE_MS;
+    savePlatformSession({
+      token: `offline-admin-${until}`,
+      expiresAt: new Date(until).toISOString(),
+      user: {
+        role: "admin",
+        name: "Offline Admin",
+        email: "offline-admin@local",
+      },
+      via: "device-pin-offline",
+    });
+    touchSession(IDLE_MS);
+  }
+
   /** One successful login (Konto oder PIN) keeps the app open. Admin is a separate session. */
   function isUnlocked() {
     if (storageGet(TEST_BYPASS) === "1" || sessionStorage.getItem(TEST_BYPASS) === "1") return true;
     if (isAdminPage()) {
       const s = loadPlatformSession();
-      return Boolean(s?.token && s.user?.role === "admin");
+      if (!(s?.token && s.user?.role === "admin")) return false;
+      if (s.via === "device-pin-offline") return sessionActive() || platformSessionActive();
+      return platformSessionActive();
     }
     return sessionActive() || platformSessionActive();
   }
@@ -402,14 +423,29 @@
     if (tabPin) tabPin.hidden = !pinOk || (requirePlat && !setupIncomplete);
     const hint = document.getElementById("authHint");
     if (isAdminPage()) {
-      if (tabs) tabs.hidden = true;
-      if (tabPin) tabPin.hidden = true;
-      setLoginMode("platform");
+      const pinOk = authConfig?.devicePinAllowed !== false;
+      const offline = bridgeOffline();
+      // Offline: Geräte-PIN freigeben. Online: Konto + optional PIN-Fallback.
+      if (tabs) tabs.hidden = !(pinOk);
+      if (tabPin) tabPin.hidden = !pinOk;
+      if (offline && pinOk) {
+        setLoginMode("pin");
+        setPinMode(!loadStore()?.pinHash);
+      } else {
+        setLoginMode("platform");
+      }
       if (hint) {
-        hint.textContent = authConfig?.adminHint
-          || tt("auth.adminHint", "Admin ist getrennt vom Firmen-Zugang. E-Mail + Passwort aus Railway (WORKPASS_ADMIN_EMAIL). Der Plattform-Knopf öffnet Lohn, nicht Admin.");
-        if (authConfig?.setupGaps?.length) {
-          hint.textContent = `${hint.textContent} · Fehlt: ${authConfig.setupGaps.join(", ")}`;
+        if (offline) {
+          hint.textContent = tt(
+            "auth.adminOfflineHint",
+            "Bridge offline – Admin mit Geräte-PIN entsperren. Hilfe-Kontakt lokal speichern; für Server-Aktionen Bridge starten und mit Admin-Konto anmelden."
+          );
+        } else {
+          hint.textContent = authConfig?.adminHint
+            || tt("auth.adminHint", "Admin ist getrennt vom Firmen-Zugang. E-Mail + Passwort aus Railway (WORKPASS_ADMIN_EMAIL). Offline: Tab Geräte-PIN.");
+          if (authConfig?.setupGaps?.length) {
+            hint.textContent = `${hint.textContent} · Fehlt: ${authConfig.setupGaps.join(", ")}`;
+          }
         }
       }
       return;
@@ -433,7 +469,12 @@
     if (err) err.textContent = msg || "";
     applyConfigToGate();
     if (isAdminPage()) {
-      setLoginMode("platform");
+      if (bridgeOffline() && authConfig?.devicePinAllowed !== false) {
+        setLoginMode("pin");
+        setPinMode(!loadStore()?.pinHash);
+      } else {
+        setLoginMode("platform");
+      }
       return;
     }
     const preferPlatform = authConfig?.platformAuthConfigured || authConfig?.localAdminFallback;
@@ -548,7 +589,17 @@
       onUnlockCb?.();
       return true;
     } catch (e) {
-      if (err) err.textContent = `Bridge nicht erreichbar: ${e.message}`;
+      if (err) {
+        err.textContent = isAdminPage()
+          ? tt("auth.adminBridgeDown", "Bridge nicht erreichbar – Tab „Geräte-PIN“ nutzen.")
+          : `Bridge nicht erreichbar: ${e.message}`;
+      }
+      if (isAdminPage() && authConfig?.devicePinAllowed !== false) {
+        authConfig = { ...(authConfig || {}), ok: false, devicePinAllowed: true };
+        applyConfigToGate();
+        setLoginMode("pin");
+        setPinMode(!loadStore()?.pinHash);
+      }
       return false;
     }
   }
@@ -581,7 +632,8 @@
         createdAt: new Date().toISOString(),
       });
       pinFails = 0;
-      touchSession();
+      if (isAdminPage()) saveOfflineAdminSession();
+      else touchSession();
       hideGate();
       onUnlockCb?.();
       return true;
@@ -610,7 +662,8 @@
         updatedAt: new Date().toISOString(),
       });
     }
-    touchSession();
+    if (isAdminPage()) saveOfflineAdminSession();
+    else touchSession();
     hideGate();
     onUnlockCb?.();
     return true;
@@ -665,6 +718,14 @@
   async function verifyPlatformSessionOrClear() {
     const plat = loadPlatformSession();
     if (!plat?.token) return { ok: true, skipped: true };
+    if (plat.via === "device-pin-offline" || String(plat.token || "").startsWith("offline-admin-")) {
+      if (!sessionActive() && !platformSessionActive()) {
+        clearPlatformSession();
+        clearSession();
+        return { ok: false, error: tt("auth.offlineExpired", "Offline-Admin-Sitzung abgelaufen – PIN erneut eingeben.") };
+      }
+      return { ok: true, offline: true, user: plat.user || null };
+    }
     const companyId = String(
       plat.user?.companyId || plat.rawCompanyId || ""
     ).trim();

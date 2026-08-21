@@ -48,14 +48,14 @@ html, body { margin: 0; padding: 0; background: #fff; color: #121518;
 .invoice-doc-stage .invoice-top {
   display: flex; justify-content: space-between; gap: 12px;
   padding-bottom: 8px; margin-bottom: 10px;
-  border-bottom: 1.6pt solid #1e3a5f;
+  border-bottom: 1.6pt solid #0e7490;
 }
 .invoice-doc-stage .invoice-top h2 { margin: 0; font-size: 18pt; color: #0f172a; }
 .invoice-doc-stage .dates { text-align: right; font-size: 9pt; color: #334155; }
 .invoice-doc-stage .invoice-meta { font-size: 8.5pt; color: #475569; margin: 6px 0 12px; }
 .invoice-doc-stage .addresses { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
 .invoice-doc-stage .addresses h3 {
-  margin: 0 0 4px; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b;
+  margin: 0 0 4px; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.06em; color: #0e7490;
 }
 .invoice-doc-stage pre { margin: 0; font-family: inherit; white-space: pre-wrap; font-size: 10pt; line-height: 1.35; }
 .preview-items { width: 100%; border-collapse: collapse; margin: 10px 0 6px; }
@@ -63,18 +63,32 @@ html, body { margin: 0; padding: 0; background: #fff; color: #121518;
   border-bottom: 0.6pt solid #cbd5e1; padding: 7px 5px; text-align: left; font-size: 9.5pt;
 }
 .preview-items th {
-  background: #f1f5f9; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.04em;
+  background: #eef6f9; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.04em; color: #155e75;
 }
 .preview-items th:last-child, .preview-items td:last-child,
 .preview-items td:nth-child(2), .preview-items td:nth-child(3) { text-align: right; }
 .totals { margin: 16px 0 0 auto; width: 55%; font-size: 10pt; }
-.totals p { display: flex; justify-content: space-between; gap: 10px; margin: 6px 0; }
-.grand-total { border-top: 1.4pt solid #0f172a; padding-top: 8px; font-size: 12pt; font-weight: 700; }
+.totals p, .totals-line { display: flex; justify-content: space-between; gap: 10px; margin: 6px 0; }
+.grand-total, .grand-total-plaque {
+  border-top: 1.4pt solid #0e7490; padding-top: 8px; font-size: 12pt; font-weight: 700;
+}
+.grand-total-plaque {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 8px 10px; border: none; border-radius: 6px;
+  background: #0e7490; color: #fff;
+}
+.grand-total-kicker { font-size: 8pt; letter-spacing: 0.08em; text-transform: uppercase; color: #a5f3fc; }
+.grand-total-amount, #previewTotal { font-size: 14pt; color: #fff; font-weight: 800; }
+.invoice-warning { margin-top: 10px; padding: 8px 10px; border: 0.7pt solid #f59e0b; border-radius: 4px; background: #fffbeb; font-size: 9pt; }
+.invoice-warning.is-empty { display: none !important; }
 .invoice-bank, .note-box {
-  margin-top: 16px; padding: 8px 10px; border: 0.6pt solid #e2e8f0; border-radius: 4px; font-size: 9pt;
+  margin-top: 16px; padding: 8px 10px; border: 0.6pt solid #d5e4ec; border-radius: 4px; font-size: 9pt;
 }
 .note-box { border-style: dashed; }
-.invoice-bank h3, .note-box h3 { margin: 0 0 4px; font-size: 8pt; text-transform: uppercase; color: #64748b; }
+.invoice-bank h3, .note-box h3 { margin: 0 0 4px; font-size: 8pt; text-transform: uppercase; color: #0e7490; }
+.invoice-closing { display: block; margin-top: 12px; padding: 0; border: none; background: transparent; box-shadow: none; }
+.invoice-closing-main { display: block; }
+.invoice-sig-plate { display: none !important; }
 .wp-sig-layer {
   position: absolute !important;
   z-index: 20 !important;
@@ -110,59 +124,97 @@ html, body {
 }
 .invoice-print-sheet {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
   width: 210mm;
   height: 297mm;
   max-height: 297mm;
+  min-height: 297mm;
   margin: 0;
-  padding: 14mm 16mm 14mm;
+  padding: 12mm 14mm 10mm;
+  padding-bottom: 40mm;
   overflow: hidden;
   background: #fff;
   color: #121518;
   border: none;
   box-shadow: none;
 }
+.invoice-print-sheet::before {
+  content: "";
+  position: absolute; left: 0; top: 0; right: 0; height: 3.2mm;
+  background: linear-gradient(90deg, #134e4a, #0e7490 35%, #0891b2 70%, #22d3ee);
+}
 .invoice-print-sheet .invoice-top {
   display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
-  padding-bottom: 8px; margin: 0 0 10px;
-  border-bottom: 1.5pt solid #1e3a5f;
+  padding: 2mm 0 3mm; margin: 0 0 3.5mm;
+  border-bottom: 1.4pt solid #0e7490;
 }
 .invoice-print-sheet .invoice-top-left { display: flex; align-items: center; gap: 10px; }
-.invoice-print-sheet .invoice-top h2 { margin: 0; font-size: 17pt; font-weight: 700; color: #0f172a; letter-spacing: -0.02em; }
-.invoice-print-sheet #previewInvoiceNumber { margin: 2px 0 0; font-size: 9.5pt; color: #334155; }
-.invoice-print-sheet .dates { text-align: right; font-size: 8.5pt; color: #334155; line-height: 1.45; }
-.invoice-print-sheet .dates p { margin: 0 0 2px; }
-.invoice-print-sheet .dates span { color: #64748b; }
+.invoice-print-sheet .invoice-top h2 {
+  margin: 0; font-size: 18pt; font-weight: 750; color: #0f172a; letter-spacing: -0.02em;
+}
+.invoice-print-sheet #previewInvoiceNumber {
+  margin: 2px 0 0; font-size: 9pt; font-weight: 650; color: #0e7490; letter-spacing: 0.03em;
+}
+.invoice-print-sheet .dates {
+  text-align: right; font-size: 8pt; color: #334155; line-height: 1.45;
+  min-width: 38mm; padding: 2mm 2.4mm; border: 0.5pt solid #cfe3ea; border-radius: 2.5mm;
+  background: #f5fafc;
+}
+.invoice-print-sheet .dates p { margin: 0 0 1.5px; display: flex; justify-content: space-between; gap: 6px; }
+.invoice-print-sheet .dates span { color: #64748b; font-size: 7pt; text-transform: uppercase; letter-spacing: 0.04em; }
 .invoice-print-sheet .status-badge {
   display: inline-block; padding: 1px 7px; border-radius: 999px;
-  font-size: 7.5pt; font-weight: 600; background: #e2e8f0; color: #0f172a;
+  font-size: 7.5pt; font-weight: 700; background: #ccfbf1; color: #0f766e;
 }
 .invoice-print-sheet .invoice-meta {
-  display: flex; flex-wrap: wrap; gap: 4px 14px;
-  margin: 0 0 12px; font-size: 8pt; color: #475569;
+  display: flex; flex-wrap: wrap; gap: 3px 6px; margin: 0 0 3.5mm;
 }
-.invoice-print-sheet .invoice-meta p { margin: 0; }
+.invoice-print-sheet .invoice-meta p {
+  margin: 0; padding: 1.5px 7px; border-radius: 999px;
+  background: #f0f9ff; border: 0.4pt solid #cfe3ea; color: #155e75; font-size: 7.5pt; font-weight: 600;
+}
+.invoice-print-sheet .invoice-meta p:empty { display: none; }
 .invoice-print-sheet .addresses {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 0 0 14px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; margin: 0 0 3.5mm; flex: 0 0 auto;
+}
+.invoice-print-sheet .addresses > div {
+  padding: 2.4mm 2.8mm; border: 0.55pt solid #cfe3ea; border-radius: 2.5mm;
+  background: #f8fbfd; box-shadow: inset 2.2mm 0 0 #0e7490; min-height: 17mm;
 }
 .invoice-print-sheet .addresses h3 {
-  margin: 0 0 3px; font-size: 7.5pt; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.06em; color: #64748b;
+  margin: 0 0 2px; font-size: 7pt; font-weight: 750;
+  text-transform: uppercase; letter-spacing: 0.08em; color: #0e7490;
 }
 .invoice-print-sheet pre {
   margin: 0; font-family: inherit; white-space: pre-wrap;
   font-size: 9.5pt; line-height: 1.35; color: #0f172a;
 }
+.invoice-print-sheet .invoice-purpose {
+  margin: 0 0 3mm; padding: 2.2mm 2.8mm;
+  border: 0.55pt solid #cfe3ea; border-radius: 2.5mm; background: #f5fafc;
+  box-shadow: inset 2mm 0 0 #0e7490; flex: 0 0 auto;
+}
+.invoice-print-sheet .invoice-purpose h3 {
+  margin: 0 0 2px; font-size: 7pt; text-transform: uppercase; letter-spacing: 0.08em; color: #0e7490;
+}
+.invoice-print-sheet .invoice-purpose p {
+  margin: 0; white-space: pre-wrap; font-size: 9.5pt; line-height: 1.4;
+}
+.invoice-print-sheet .invoice-purpose.is-empty { display: none !important; }
 .invoice-print-sheet .preview-items {
-  width: 100%; border-collapse: collapse; margin: 4px 0 8px; table-layout: fixed;
+  width: 100%; border-collapse: collapse; margin: 1mm 0 3mm; table-layout: fixed;
+  flex: 1 1 auto; min-height: 0; border: 0.5pt solid #cfe3ea; border-radius: 2mm; overflow: hidden;
 }
 .invoice-print-sheet .preview-items th,
 .invoice-print-sheet .preview-items td {
-  border-bottom: 0.55pt solid #cbd5e1; padding: 6px 5px;
+  border-bottom: 0.45pt solid #dbeaf0; padding: 5.5px 5px;
   text-align: left; font-size: 9pt; vertical-align: top;
 }
 .invoice-print-sheet .preview-items th {
-  background: #f1f5f9; font-size: 7.5pt; text-transform: uppercase;
-  letter-spacing: 0.04em; font-weight: 700; color: #334155;
+  background: #0e7490; color: #ecfeff; font-size: 7.2pt; text-transform: uppercase;
+  letter-spacing: 0.05em; font-weight: 700; border-bottom: none;
 }
 .invoice-print-sheet .preview-items th:nth-child(2),
 .invoice-print-sheet .preview-items td:nth-child(2),
@@ -173,34 +225,77 @@ html, body {
 .invoice-print-sheet .preview-items th:nth-child(1),
 .invoice-print-sheet .preview-items td:nth-child(1) { width: 46%; }
 .invoice-print-sheet .totals {
-  margin: 12px 0 0 auto; width: 52%; font-size: 9.5pt;
+  margin: 2mm 0 0 auto; width: 58%; font-size: 9.5pt;
+  padding: 0; border: none; background: transparent; flex: 0 0 auto;
 }
+.invoice-print-sheet .totals-lines {
+  padding: 2mm 2.6mm; border: 0.55pt solid #cfe3ea; border-radius: 2.5mm 2.5mm 0 0;
+  background: #f5fafc;
+}
+.invoice-print-sheet .totals-line,
 .invoice-print-sheet .totals p {
-  display: flex; justify-content: space-between; gap: 10px; margin: 5px 0;
+  display: flex; justify-content: space-between; gap: 10px; margin: 3px 0;
+}
+.invoice-print-sheet .totals-line.hidden,
+.invoice-print-sheet .totals-line[hidden] { display: none !important; }
+.invoice-print-sheet .grand-total-plaque {
+  display: flex; flex-direction: column; gap: 1mm;
+  padding: 2.6mm 3mm; border-radius: 0 0 2.5mm 2.5mm;
+  background: linear-gradient(135deg, #0e7490, #134e4a);
+  color: #ffffff;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+.invoice-print-sheet .grand-total-kicker {
+  font-size: 7.5pt; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+  color: #a5f3fc; opacity: 0.95;
+}
+.invoice-print-sheet .grand-total-amount,
+.invoice-print-sheet #previewTotal {
+  font-size: 16pt; font-weight: 800; letter-spacing: -0.02em; color: #ffffff; line-height: 1.1;
 }
 .invoice-print-sheet .grand-total {
-  border-top: 1.3pt solid #0f172a; padding-top: 7px;
-  font-size: 11pt; font-weight: 700;
+  border-top: none; padding-top: 0; font-size: 16pt; font-weight: 800; color: #fff;
 }
+.invoice-print-sheet .invoice-warning {
+  margin: 3mm 0 0; padding: 2.2mm 2.8mm;
+  border: 0.7pt solid #f59e0b; border-radius: 2.5mm; background: #fffbeb;
+  flex: 0 0 auto;
+}
+.invoice-print-sheet .invoice-warning.is-empty { display: none !important; }
+.invoice-print-sheet .invoice-warning h3 {
+  margin: 0 0 2px; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.08em; color: #b45309;
+}
+.invoice-print-sheet .invoice-warning p {
+  margin: 0; white-space: pre-wrap; font-size: 9pt; line-height: 1.35; color: #7c2d12;
+}
+.invoice-print-sheet .invoice-closing {
+  display: grid; grid-template-columns: 1fr; gap: 2mm;
+  margin-top: auto; padding-top: 2mm; flex: 0 0 auto;
+}
+.invoice-print-sheet .invoice-closing-main { display: grid; gap: 2mm; }
+.invoice-print-sheet .invoice-sig-plate { display: none !important; }
 .invoice-print-sheet .invoice-bank,
 .invoice-print-sheet .note-box {
-  margin-top: 12px; padding: 7px 9px;
-  border: 0.55pt solid #e2e8f0; border-radius: 3px; font-size: 8.5pt;
+  margin-top: 0; padding: 2mm 2.4mm;
+  border: 0.55pt solid #cfe3ea; border-radius: 2.2mm; font-size: 8.5pt;
+  flex: 0 0 auto; box-sizing: border-box; width: 100%; max-width: 118mm; background: #f8fbfd;
 }
-.invoice-print-sheet .note-box { border-style: dashed; }
+.invoice-print-sheet .note-box { border-style: dashed; background: #fff; }
+.invoice-print-sheet .invoice-bank.is-empty,
+.invoice-print-sheet .note-box.is-empty { display: none !important; }
 .invoice-print-sheet .invoice-bank h3,
 .invoice-print-sheet .note-box h3 {
-  margin: 0 0 3px; font-size: 7.5pt; text-transform: uppercase;
-  letter-spacing: 0.05em; color: #64748b;
+  margin: 0 0 2px; font-size: 7pt; text-transform: uppercase;
+  letter-spacing: 0.08em; color: #0e7490; font-weight: 750;
 }
 .invoice-print-sheet .invoice-bank p,
 .invoice-print-sheet .note-box p { margin: 0; line-height: 1.35; }
 .invoice-print-sheet .preview-company-logo {
-  max-height: 16mm; max-width: 40mm; width: auto; height: auto; object-fit: contain;
+  max-height: 15mm; max-width: 38mm; width: auto; height: auto; object-fit: contain;
 }
 .invoice-print-sheet .wp-sig-layer {
   position: absolute !important;
-  z-index: 5 !important;
+  z-index: 8 !important;
   right: auto !important; bottom: auto !important;
   margin: 0 !important; padding: 0 !important;
   border: none !important; background: transparent !important;
@@ -211,7 +306,7 @@ html, body {
   max-width: 100%; height: auto; display: block;
 }
 .invoice-print-sheet .wp-sig-line {
-  border-bottom: 0.65pt solid #94a3b8; margin: 0 0 3px; min-height: 1px;
+  border-bottom: 0.7pt solid #0e7490; margin: 0 0 3px; min-height: 1px; opacity: 0.55;
 }
 .invoice-print-sheet .signature-name {
   margin: 2px 0 0; font-size: 8.5pt; color: #0f172a;
@@ -323,6 +418,8 @@ ${styleBlock}
       }
       node.remove();
     });
+    root.querySelectorAll("#invoiceNoteBlock.is-empty, #invoiceBankBlock.is-empty, #invoicePurposeBlock.is-empty, #invoiceWarningBlock.is-empty, .note-box.is-empty, .invoice-bank.is-empty, .invoice-purpose.is-empty, .invoice-warning.is-empty, .invoice-sig-plate")
+      .forEach((n) => n.remove());
 
     root.id = "invoicePrintSheet";
     root.className = "invoice-print-sheet";
@@ -454,31 +551,68 @@ ${styleBlock}
     return Array.from(byNumber.values()).sort((a, b) => String(b.savedAt || "").localeCompare(String(a.savedAt || "")));
   }
 
+  function formatInvoiceNrLabel(number) {
+    const n = String(number || "").trim();
+    if (!n) return "Nr. —";
+    return /^nr\.?\s*/i.test(n) ? n : `Nr. ${n}`;
+  }
+
+  function archiveSearchQuery() {
+    const el = document.getElementById("invoiceArchiveSearch");
+    return String(el?.value || "").trim().toLowerCase();
+  }
+
+  function filterArchiveList(list) {
+    const q = archiveSearchQuery();
+    if (!q) return list;
+    return list.filter((item) => {
+      const number = String(item.number || "").toLowerCase();
+      const buyer = String(item.buyer || "").toLowerCase();
+      const total = String(item.total || "").toLowerCase();
+      const date = String(item.date || "").toLowerCase();
+      return number.includes(q)
+        || buyer.includes(q)
+        || total.includes(q)
+        || date.includes(q)
+        || formatInvoiceNrLabel(item.number).toLowerCase().includes(q);
+    });
+  }
+
   function renderInvoiceArchive() {
     const host = document.getElementById("invoiceArchiveList");
     if (!host) return;
-    const list = mergedArchiveList();
-    if (!list.length) {
-      const empty = (window.WorkPassI18n?.t?.("hub.invoiceArchiveEmpty") && window.WorkPassI18n.t("hub.invoiceArchiveEmpty") !== "hub.invoiceArchiveEmpty")
-        ? window.WorkPassI18n.t("hub.invoiceArchiveEmpty")
-        : "Noch keine gespeicherten oder freigegebenen Rechnungen.";
-      host.innerHTML = `<p class="muted small">${empty}</p>`;
+    const all = mergedArchiveList();
+    const list = filterArchiveList(all);
+    const tt = (k, fb) => {
+      const v = window.WorkPassI18n?.t?.(k);
+      return (v && v !== k) ? v : fb;
+    };
+    if (!all.length) {
+      host.innerHTML = `<p class="muted small">${tt("hub.invoiceArchiveEmpty", "Noch keine gespeicherten oder freigegebenen Rechnungen.")}</p>`;
       return;
     }
-    const openLabel = (window.WorkPassI18n?.t?.("lohn.open") && window.WorkPassI18n.t("lohn.open") !== "lohn.open")
-      ? window.WorkPassI18n.t("lohn.open")
-      : "Öffnen";
-    host.innerHTML = list.slice(0, 16).map((item) => {
+    if (!list.length) {
+      host.innerHTML = `<p class="muted small">${tt("hub.invoiceArchiveNoMatch", "Keine Rechnung zu diesem Kunden oder dieser Nr. RE- gefunden.")}</p>`;
+      return;
+    }
+    const openLabel = tt("lohn.open", "Öffnen");
+    const customerLabel = tt("hub.invoiceArchiveCustomer", "Kunde");
+    // Keep full filtered list (archive capped at 80). Without search, show recent 40.
+    const visible = archiveSearchQuery() ? list : list.slice(0, 40);
+    host.innerHTML = visible.map((item) => {
       const badge = item.source === "server"
-        ? `<span class="inv-badge">${window.WorkPassI18n?.t?.("hub.badgeServer") || "Server"}</span>`
+        ? `<span class="inv-badge">${tt("hub.badgeServer", "Server")}</span>`
         : (item.source === "both"
-          ? `<span class="inv-badge">${window.WorkPassI18n?.t?.("hub.badgeBoth") || "Lokal+Server"}</span>`
-          : `<span class="inv-badge inv-badge-local">${window.WorkPassI18n?.t?.("hub.badgeLocal") || "Lokal"}</span>`);
+          ? `<span class="inv-badge">${tt("hub.badgeBoth", "Lokal+Server")}</span>`
+          : `<span class="inv-badge inv-badge-local">${tt("hub.badgeLocal", "Lokal")}</span>`);
+      const buyer = String(item.buyer || "").trim() || "—";
+      const metaParts = [item.total, item.date, item.status].filter(Boolean);
       return `
-      <div class="invoice-archive-item" data-number="${escapeAttr(item.number)}" data-server-id="${escapeAttr(item.serverId || "")}">
-        <div>
-          <strong>${escapeHtml(item.number)}</strong> ${badge}
-          <div class="muted small">${escapeHtml(item.buyer || "—")} · ${escapeHtml(item.total || "")}${item.status ? ` · ${escapeHtml(item.status)}` : ""}</div>
+      <div class="invoice-archive-item" role="listitem" data-number="${escapeAttr(item.number)}" data-server-id="${escapeAttr(item.serverId || "")}" data-buyer="${escapeAttr(buyer)}">
+        <div class="invoice-archive-item-main">
+          <div class="invoice-archive-nr"><strong>${escapeHtml(formatInvoiceNrLabel(item.number))}</strong> ${badge}</div>
+          <div class="invoice-archive-buyer"><span class="invoice-archive-buyer-lab">${escapeHtml(customerLabel)}:</span> ${escapeHtml(buyer)}</div>
+          ${metaParts.length ? `<div class="muted small invoice-archive-meta">${escapeHtml(metaParts.join(" · "))}</div>` : ""}
         </div>
         <button type="button" class="inv-open">${openLabel}</button>
       </div>`;
@@ -640,10 +774,40 @@ ${styleBlock}
     });
   }
 
+  function listInvoices() {
+    return mergedArchiveList();
+  }
+
+  function findInvoices(query) {
+    const q = String(query || "").trim().toLowerCase();
+    const list = mergedArchiveList();
+    if (!q) return list.slice(0, 12);
+    return list.filter((item) => {
+      const number = String(item.number || "").toLowerCase();
+      const buyer = String(item.buyer || "").toLowerCase();
+      const label = formatInvoiceNrLabel(item.number).toLowerCase();
+      return number.includes(q) || buyer.includes(q) || label.includes(q);
+    }).slice(0, 20);
+  }
+
+  function bindArchiveSearch() {
+    const input = document.getElementById("invoiceArchiveSearch");
+    if (!input || input.dataset.bound === "1") return;
+    input.dataset.bound = "1";
+    let timer = 0;
+    const refresh = () => renderInvoiceArchive();
+    input.addEventListener("input", () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(refresh, 120);
+    });
+    input.addEventListener("search", refresh);
+  }
+
   function boot() {
     document.body.classList.add("workpass-hub");
     document.documentElement.classList.add("hub-desktop");
     bootI18n();
+    bindArchiveSearch();
     renderInvoiceArchive();
     renderSyncLog();
     bindPinChange();
@@ -686,6 +850,8 @@ ${styleBlock}
     upsertInvoice,
     readInvoiceArchive,
     renderInvoiceArchive,
+    listInvoices,
+    findInvoices,
     setServerInvoices,
     pushSyncLog,
     readSyncLog,

@@ -105,6 +105,7 @@ import {
 } from "./platform-config.mjs";
 import { tryServeStatic } from "./static.mjs";
 import { logDataPaths } from "./paths.mjs";
+import { readHelpContact, writeHelpContact } from "./help-contact-store.mjs";
 import {
   authPublicConfig,
   loginWithPassword,
@@ -275,6 +276,11 @@ async function handler(req, res) {
       healthSnapshot = { at: now, body: buildHealthBody(req) };
     }
     return reply(200, { ...healthSnapshot.body, time: new Date().toISOString() });
+  }
+
+  // Public help contacts (Hilfe page) — no auth
+  if (req.method === "GET" && path === "/v1/help/contact") {
+    return reply(200, { ok: true, contact: readHelpContact() });
   }
 
   // UI (Rechnung / Lohn) – öffentlich, ohne API-Key
@@ -759,6 +765,24 @@ async function handler(req, res) {
       clearRateLimitState();
       audit({ type: "admin.rateclear", outcome: "ok", ip, path });
       return reply(200, { ok: true, cleared: true });
+    }
+
+    if (req.method === "GET" && path === "/v1/admin/help-contact") {
+      return reply(200, { ok: true, contact: readHelpContact() });
+    }
+    if (req.method === "PUT" && path === "/v1/admin/help-contact") {
+      const body = (await readBodyLimited(req)) || {};
+      const contact = writeHelpContact(body.contact || body, {
+        updatedBy: req._workpassSession?.email || req._workpassSession?.name || "admin",
+      });
+      audit({
+        type: "admin.help-contact",
+        outcome: "ok",
+        ip,
+        path,
+        detail: { email: contact.email, phone: contact.phone ? "set" : "" },
+      });
+      return reply(200, { ok: true, contact });
     }
 
     if (req.method === "GET" && path === "/v1/admin/overview") {
