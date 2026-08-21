@@ -431,37 +431,36 @@ body.sidebar-collapsed .sidebar-toggle-icon-expand[hidden] {
 
 
 .sidebar-nav-btn {
-
   display: flex;
-
   align-items: center;
-
   gap: 10px;
-
   width: calc(100% - 12px);
-
   margin: 1px 6px;
-
   padding: 8px 12px !important;
-
   border: 1px solid transparent !important;
-
   border-radius: 3px !important;
-
   background: transparent !important;
-
   color: var(--lex-ink) !important;
-
   font-weight: 500 !important;
-
   font-size: 12px !important;
-
   text-align: left;
-
   cursor: pointer;
-
   transition: background 0.1s, border-color 0.1s;
+}
 
+/* Admin-Nav darf bei Firmen-Login nie sichtbar sein (display:flex überschreibt sonst [hidden]) */
+.hub-admin-only[hidden],
+#sidebarAdminTab[hidden],
+#hubTopAdminLink[hidden],
+body.company-portal .hub-admin-only,
+body.company-portal #sidebarAdminTab,
+body.company-portal #hubTopAdminLink,
+body.company-portal #hubAdminPanel,
+body.company-portal #hubAdminSessionBanner,
+body.company-portal #hubAdminAdvanced {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 a.sidebar-nav-link {

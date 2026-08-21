@@ -1093,9 +1093,19 @@ ${styleBlock}
         const isAdminUser = user?.role === "admin";
         document.body.classList.toggle("company-portal", Boolean(companyUser));
         document.body.classList.toggle("hub-admin-session", Boolean(isAdminUser && !companyUser));
-        document.querySelectorAll(".hub-admin-only").forEach((el) => {
-          el.hidden = !(isAdminUser && !companyUser);
+        const showAdminChrome = Boolean(isAdminUser && !companyUser);
+        document.querySelectorAll(".hub-admin-only, #sidebarAdminTab, #hubTopAdminLink").forEach((el) => {
+          el.hidden = !showAdminChrome;
+          if (!showAdminChrome) el.setAttribute("aria-hidden", "true");
+          else el.removeAttribute("aria-hidden");
         });
+        if (companyUser) {
+          const advanced = document.getElementById("hubAdminAdvanced");
+          if (advanced) advanced.hidden = true;
+          if (document.body.classList.contains("admin-tab")) {
+            document.querySelector('.form-tab[data-tab="dashboard"]')?.click();
+          }
+        }
         const badge = document.getElementById("hubCompanyBadge");
         if (badge) {
           if (companyUser) {

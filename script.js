@@ -1731,6 +1731,19 @@ async function updateDashboard() {
   if (onboard) onboard.hidden = firm || onboard.hidden;
   if (hubBanner) hubBanner.hidden = firm;
   document.body.classList.toggle("company-portal", firm);
+  // Firmen-Login: Admin-Schild / Admin-Tab immer ausblenden
+  if (firm) {
+    document.querySelectorAll(".hub-admin-only, #sidebarAdminTab, #hubTopAdminLink").forEach((el) => {
+      el.hidden = true;
+    });
+    const adminBanner = document.getElementById("hubAdminSessionBanner");
+    if (adminBanner) adminBanner.hidden = true;
+    const advanced = document.getElementById("hubAdminAdvanced");
+    if (advanced) advanced.hidden = true;
+    if (document.body.classList.contains("admin-tab")) {
+      document.querySelector('.form-tab[data-tab="dashboard"]')?.click();
+    }
+  }
 
   const { employeeNames, monthCount, profileName, history } = updateLocalDashboardKpis();
   updateDashboardEmployeeTable(employeeNames, history);
