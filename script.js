@@ -238,7 +238,7 @@ const STORAGE_KEY = "finanzDokumentDraftV3";
 const EMPLOYEE_HISTORY_KEY = "payrollEmployeeHistoryV2";
 const COMPANY_PROFILES_KEY = "finanzDokumentProfilesV1";
 const ONBOARDING_KEY = "finanzDokumentOnboardingDismissed";
-const APP_VERSION = "2.54.9";
+const APP_VERSION = "2.54.13";
 const APP_VERSION_BUILD = "2026.45";
 
 /** Verhindert Speichern leerer Entwürfe während des App-Starts */
@@ -2185,12 +2185,39 @@ function syncVerdienstSheetMeta(payroll, employeeName, monthLabel) {
 }
 
 function printVerdienstbescheinigung() {
-  if (getCurrentMode() !== "payroll") return;
+  if (getCurrentMode() !== "payroll") {
+    const go = window.confirm(
+      "VB (Verdienstbescheinigung) gehört zur Monats-Lohnabrechnung.\n\nJetzt zum Lohn-Modus / lohn.html wechseln?"
+    );
+    if (go) window.location.href = "lohn.html";
+    return;
+  }
   if (!validatePayrollDocumentBeforePrint()) return;
   updatePreview();
+
+  const sheet = verdienstSheet || document.getElementById("verdienstSheet");
+  if (!sheet) {
+    window.alert("Verdienstbescheinigung nicht gefunden.");
+    return;
+  }
+
+  // Ensure tables are filled and the sheet can be cloned for print
+  const wasHidden = sheet.classList.contains("hidden");
+  sheet.classList.remove("hidden");
+  sheet.removeAttribute("aria-hidden");
+
+  const title = `Verdienstbescheinigung ${payrollMonthInput?.value || ""}`.trim();
+  const ok = window.WorkPassHub?.printElement?.(sheet, title, {
+    strip: [".sig-ui-chrome", ".wp-sig-chrome", ".preview-tools"],
+  });
+
+  if (wasHidden && !verdienstPreviewMode) sheet.classList.add("hidden");
+  if (ok) return;
+
   document.body.classList.add("print-verdienst-only");
   const clearPrintMode = () => {
     document.body.classList.remove("print-verdienst-only");
+    if (wasHidden && !verdienstPreviewMode) sheet.classList.add("hidden");
     window.removeEventListener("afterprint", clearPrintMode);
   };
   window.addEventListener("afterprint", clearPrintMode);
@@ -3152,17 +3179,25 @@ function autoScrollPreviewDuringDrag(clientY) {
   else if (clientY > pr.bottom - edge) invoicePreviewEl.scrollTop += 18;
 }
 function applySignatureLayoutToDom() {
-  ensureInvoiceDocStage();
+  const stage = ensureInvoiceDocStage();
   const box = document.getElementById("signaturePreviewBox");
   const eng = getSignatureEngine();
   const layout = eng?.normalizeLayout?.(signatureLayout) || signatureLayout;
   signatureLayout = layout;
   if (!box) return;
+  if (stage && box.parentElement !== stage) stage.appendChild(box);
+  // Explicit absolute placement on the A4 stage — never rely on static flow
+  box.style.position = "absolute";
   box.style.left = `${layout.xPct}%`;
   box.style.top = `${layout.yPct}%`;
+  box.style.right = "auto";
+  box.style.bottom = "auto";
   box.style.width = `${layout.wPct}%`;
   box.style.opacity = String(layout.opacity);
   box.style.transform = `rotate(${layout.rotation}deg)`;
+  box.style.transformOrigin = "top left";
+  box.style.zIndex = "20";
+  box.style.margin = "0";
   box.classList.toggle("is-locked", Boolean(layout.locked));
 }
 
@@ -3236,20 +3271,25 @@ function initSignatureStageInteractions() {
     if (signatureDrag.type === "move") {
       let xPct = ((event.clientX - pt.rect.left - signatureDrag.offsetX) / pt.w) * 100;
       let yPct = ((event.clientY - pt.rect.top - signatureDrag.offsetY) / pt.h) * 100;
-      xPct = Math.min(92, Math.max(0, xPct));
-      yPct = Math.min(94, Math.max(0, yPct));
+      xPct = Math.min(98, Math.max(-2, xPct));
+      yPct = Math.min(96, Math.max(-2, yPct));
       signatureLayout.xPct = xPct;
       signatureLayout.yPct = yPct;
       applySignatureLayoutToDom();
     } else if (signatureDrag.type === "resize") {
       const dx = ((event.clientX - signatureDrag.startX) / pt.w) * 100;
-      signatureLayout.wPct = signatureDrag.startW + dx;
+      signatureLayout.wPct = Math.min(72, Math.max(10, signatureDrag.startW + dx));
       applySignatureLayoutToDom();
     }
   };
 
-  const onUp = () => {
+  const onUp = (event) => {
     if (!signatureDrag) return;
+    try {
+      if (signatureDrag.pointerId != null) {
+        box.releasePointerCapture?.(signatureDrag.pointerId);
+      }
+    } catch (_) { /* ignore */ }
     signatureDrag = null;
     box.classList.remove("is-dragging");
     document.removeEventListener("pointermove", onMove);
@@ -3274,15 +3314,18 @@ function initSignatureStageInteractions() {
         type: "resize",
         startX: event.clientX,
         startW: signatureLayout.wPct,
+        pointerId: event.pointerId,
       };
     } else {
       signatureDrag = {
         type: "move",
         offsetX: event.clientX - pt.rect.left - (signatureLayout.xPct / 100) * pt.w,
         offsetY: event.clientY - pt.rect.top - (signatureLayout.yPct / 100) * pt.h,
+        pointerId: event.pointerId,
       };
     }
     box.classList.add("is-dragging");
+    try { box.setPointerCapture?.(event.pointerId); } catch (_) { /* ignore */ }
     document.addEventListener("pointermove", onMove);
     document.addEventListener("pointerup", onUp);
     document.addEventListener("pointercancel", onUp);
@@ -4876,6 +4919,8 @@ function updateInvoicePreview() {
   previewTax.textContent = isKlein ? "entfällt" : `${eur.format(tax)} (${taxRate} %)`;
   previewTotal.textContent = eur.format(total);
   updateInvoiceComplianceList();
+  ensureInvoiceDocStage();
+  applySignatureLayoutToDom();
 }
 
 function updateInvoiceComplianceList() {
@@ -5456,6 +5501,32 @@ function prepareExportNode() {
     sig.classList.remove("is-selected", "is-dragging", "is-empty");
     sig.removeAttribute("tabindex");
     sig.hidden = signatureMode === "none";
+    const lay = getSignatureEngine()?.normalizeLayout?.(signatureLayout) || signatureLayout;
+    sig.style.position = "absolute";
+    sig.style.left = `${lay.xPct}%`;
+    sig.style.top = `${lay.yPct}%`;
+    sig.style.right = "auto";
+    sig.style.bottom = "auto";
+    sig.style.width = `${lay.wPct}%`;
+    sig.style.opacity = String(lay.opacity);
+    sig.style.transform = `rotate(${lay.rotation}deg)`;
+    sig.style.transformOrigin = "top left";
+    sig.style.zIndex = "20";
+    sig.style.margin = "0";
+    sig.style.border = "none";
+    sig.style.background = "transparent";
+  }
+  const stageClone = clone.querySelector("#invoiceDocStage, .invoice-doc-stage");
+  if (stageClone) {
+    stageClone.style.position = "relative";
+    stageClone.style.minHeight = "297mm";
+    stageClone.style.width = "210mm";
+    stageClone.style.maxWidth = "210mm";
+    stageClone.style.boxSizing = "border-box";
+    stageClone.style.padding = "14mm 16mm 16mm";
+    stageClone.style.background = "#fff";
+    stageClone.style.border = "none";
+    stageClone.style.boxShadow = "none";
   }
   const seal = clone.querySelector("#signatureSealBadge, .wp-sig-seal");
   if (seal && signatureAttestation) {
@@ -7096,13 +7167,23 @@ if (dismissOnboardingBtn) dismissOnboardingBtn.addEventListener("click", dismiss
 if (printVerdienstBtn) printVerdienstBtn.addEventListener("click", printVerdienstbescheinigung);
 if (previewVerdienstBtn) {
   previewVerdienstBtn.addEventListener("click", () => {
-    if (getCurrentMode() !== "payroll") return;
+    if (getCurrentMode() !== "payroll") {
+      const go = window.confirm(
+        "„VB anzeigen“ gilt nur im Modus Lohnabrechnung (monatlich).\n\nJetzt lohn.html öffnen?"
+      );
+      if (go) window.location.href = "lohn.html";
+      return;
+    }
     updatePreview();
     setVerdienstPreviewMode(!verdienstPreviewMode);
     if (verdienstPreviewMode) {
       payrollSheet?.classList.add("hidden");
       document.getElementById("datevSheetHost")?.classList.add("hidden");
       verdienstSheet?.classList.remove("hidden");
+      verdienstSheet?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+    } else {
+      document.getElementById("datevSheetHost")?.classList.remove("hidden");
+      verdienstSheet?.classList.add("hidden");
     }
   });
 }
@@ -7150,10 +7231,26 @@ if (printBtn) printBtn.addEventListener("click", async () => {
       return;
     }
 
-    // Rechnung: zuverlässiger Iframe-Druck ohne leere Seite
+    // Rechnung: eine saubere A4-Seite – nur das Blatt, keine Leerseiten / kein App-Chrome
+    if (getCurrentMode() === "invoice") {
+      ensureInvoiceDocStage();
+      applySignatureLayoutToDom();
+      const stage = document.getElementById("invoiceDocStage");
+      const title = `Rechnung ${invoiceNumberInput?.value || ""}`.trim();
+      const ok = window.WorkPassHub?.printInvoice?.(stage, title)
+        || window.WorkPassHub?.printElement?.(stage || invoicePreviewEl, title, { invoiceOnly: true });
+      if (ok) return;
+    }
+
     const preview = document.getElementById("invoicePreview") || invoicePreviewEl;
+    if (preview && window.WorkPassHub?.printInvoice) {
+      window.WorkPassHub.printInvoice(preview, `Rechnung ${invoiceNumberInput?.value || ""}`.trim());
+      return;
+    }
     if (preview && window.WorkPassHub?.printElement) {
-      window.WorkPassHub.printElement(preview, `Rechnung ${invoiceNumberInput?.value || ""}`.trim());
+      window.WorkPassHub.printElement(preview, `Rechnung ${invoiceNumberInput?.value || ""}`.trim(), {
+        invoiceOnly: true,
+      });
       return;
     }
     window.print();

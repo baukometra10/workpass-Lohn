@@ -307,10 +307,10 @@
 
   function defaultLayout() {
     return {
-      xPct: 55,
-      yPct: 82,
-      wPct: 36,
-      rotation: -1.5,
+      xPct: 58,
+      yPct: 78,
+      wPct: 34,
+      rotation: -1.2,
       opacity: 1,
       showCaption: false,
       captionText: null,
@@ -330,10 +330,11 @@
     const d = defaultLayout();
     const src = raw && typeof raw === "object" ? raw : {};
     return {
-      xPct: clamp(src.xPct ?? d.xPct, 0, 92),
-      yPct: clamp(src.yPct ?? d.yPct, 0, 94),
-      wPct: clamp(src.wPct ?? d.wPct, 12, 70),
-      rotation: clamp(src.rotation ?? d.rotation, -25, 25),
+      // Full A4 canvas — allow near-edge placement (bottom / sides)
+      xPct: clamp(src.xPct ?? d.xPct, -2, 98),
+      yPct: clamp(src.yPct ?? d.yPct, -2, 96),
+      wPct: clamp(src.wPct ?? d.wPct, 10, 72),
+      rotation: clamp(src.rotation ?? d.rotation, -28, 28),
       opacity: clamp(src.opacity ?? d.opacity, 0.35, 1),
       showCaption: src.showCaption == null ? d.showCaption : Boolean(src.showCaption),
       captionText: src.captionText == null ? null : String(src.captionText),

@@ -389,6 +389,21 @@ body.lexware-app .form-panel {
   display: none !important;
 }
 
+/* Ribbon: payroll-only actions never show in Rechnung / Firma */
+body:not(.payroll-mode) .lex-ribbon .mode-payroll-only,
+body.company-tab .lex-ribbon .mode-payroll-only,
+body:not(.payroll-mode) .lex-ribbon-compact .mode-payroll-only {
+  display: none !important;
+}
+
+body:not(.annual-mode) .lex-ribbon .mode-annual-only {
+  display: none !important;
+}
+
+body.payroll-mode .lex-ribbon .mode-invoice-only {
+  display: none !important;
+}
+
 .two-col {
   grid-template-columns: 1fr 1fr;
 }
@@ -835,12 +850,88 @@ pre {
   margin-top: 10px;
 }
 
-/* Freischwebende Signatur auf dem Beleg */
+/* Freischwebende Signatur auf dem A4-Beleg */
 .invoice-doc-stage {
   position: relative;
   display: block;
+  box-sizing: border-box;
   width: 100%;
-  min-height: 100%;
+  max-width: 210mm;
+  /* Full A4 canvas so the signature can sit at the real page bottom */
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 14mm 16mm 18mm;
+  background: #fff;
+  color: #121518;
+  border: 1px solid #d8dee6;
+  border-radius: 2px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 18px 40px rgba(15, 23, 42, 0.12);
+  overflow: visible;
+}
+
+.invoice-doc-stage .invoice-top {
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1.5pt solid #1e3a5f;
+}
+
+.invoice-doc-stage .invoice-top h2 {
+  margin: 0;
+  font-size: 1.45rem;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.invoice-doc-stage .invoice-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 8px 0 14px;
+  font-size: 0.82rem;
+  color: #475569;
+}
+
+.invoice-doc-stage .addresses {
+  margin: 16px 0 18px;
+}
+
+.invoice-doc-stage .addresses h3 {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.invoice-doc-stage .preview-items {
+  margin: 8px 0 4px;
+}
+
+.invoice-doc-stage .preview-items th {
+  background: #f1f5f9;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.invoice-doc-stage .totals {
+  margin-top: 18px;
+}
+
+.invoice-doc-stage .invoice-bank,
+.invoice-doc-stage .note-box {
+  margin-top: 20px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.invoice-doc-stage .note-box {
+  background: #fff;
+  border-style: dashed;
 }
 
 .sig-name-field {
@@ -879,12 +970,15 @@ pre {
 }
 
 .wp-sig-layer {
-  position: absolute;
-  z-index: 8;
-  left: 55%;
-  top: 82%;
-  width: 36%;
+  position: absolute !important;
+  z-index: 20;
+  left: 58%;
+  top: 78%;
+  right: auto;
+  bottom: auto;
+  width: 34%;
   min-width: 120px;
+  max-width: 72%;
   padding: 4px 6px 6px;
   box-sizing: border-box;
   cursor: grab;
@@ -893,7 +987,8 @@ pre {
   border: 1px dashed transparent;
   border-radius: 8px;
   background: transparent;
-  transform-origin: center center;
+  transform-origin: top left;
+  margin: 0;
 }
 
 .wp-sig-layer:focus,
@@ -2562,19 +2657,103 @@ body.pdf-export-mode #pdfExportClone {
   .form-panel,
   .actions,
   .preview-tools,
-  .mode-invoice-only,
   .ui-status-bar,
   .form-tabs {
     display: none !important;
   }
 
-  .mode-payroll-only,
-  #payrollSheet {
+  /* Payroll print only — never force Lohnblatt when printing Rechnung or VB */
+  body.payroll-mode:not(.print-verdienst-only):not(.print-annual-only) .mode-invoice-only,
+  body.print-payroll-only .mode-invoice-only {
+    display: none !important;
+  }
+
+  body.payroll-mode:not(.print-verdienst-only):not(.print-annual-only) .mode-payroll-only,
+  body.payroll-mode:not(.print-verdienst-only):not(.print-annual-only) #payrollSheet,
+  body.print-payroll-only .mode-payroll-only,
+  body.print-payroll-only #payrollSheet {
     display: block !important;
   }
 
-  #invoicePreview > :not(#payrollSheet) {
+  body.payroll-mode:not(.print-verdienst-only):not(.print-annual-only) #invoicePreview > :not(#payrollSheet):not(#verdienstSheet),
+  body.print-payroll-only #invoicePreview > :not(#payrollSheet) {
     display: none !important;
+  }
+
+  /* VB print: only Verdienstbescheinigung */
+  body.print-verdienst-only .lex-appbar,
+  body.print-verdienst-only .app-sidebar,
+  body.print-verdienst-only .lex-ribbon,
+  body.print-verdienst-only .lex-context-bar,
+  body.print-verdienst-only .lex-statusbar,
+  body.print-verdienst-only .form-panel,
+  body.print-verdienst-only .preview-tools,
+  body.print-verdienst-only .invoice-doc-stage,
+  body.print-verdienst-only #payrollSheet,
+  body.print-verdienst-only #annualTaxSheet,
+  body.print-verdienst-only #datevSheetHost,
+  body.print-verdienst-only .invoice-top,
+  body.print-verdienst-only .mode-invoice-only {
+    display: none !important;
+  }
+
+  body.print-verdienst-only #invoicePreview,
+  body.print-verdienst-only #verdienstSheet,
+  body.print-verdienst-only #verdienstSheet.hidden {
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Invoice print (Firma → Rechnung): only the invoice sheet */
+  body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-annual-only):not(.print-verdienst-only) .lex-appbar,
+  body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-annual-only):not(.print-verdienst-only) .app-sidebar,
+  body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-annual-only):not(.print-verdienst-only) .lex-ribbon,
+  body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-annual-only):not(.print-verdienst-only) .lex-context-bar,
+  body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-annual-only):not(.print-verdienst-only) .lex-statusbar,
+  body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-annual-only):not(.print-verdienst-only) .form-panel,
+  body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-annual-only):not(.print-verdienst-only) .preview-tools {
+    display: none !important;
+  }
+
+  body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-annual-only):not(.print-verdienst-only) #invoicePreview .mode-payroll-only,
+  body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-annual-only):not(.print-verdienst-only) #payrollSheet,
+  body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-annual-only):not(.print-verdienst-only) #verdienstSheet,
+  body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-annual-only):not(.print-verdienst-only) #annualTaxSheet,
+  body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-annual-only):not(.print-verdienst-only) #datevSheetHost {
+    display: none !important;
+  }
+
+body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-annual-only):not(.print-verdienst-only) #invoicePreview {
+    display: block !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    padding: 0 !important;
+  }
+
+  body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-annual-only):not(.print-verdienst-only) .invoice-doc-stage {
+    min-height: 297mm !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  body:not(.payroll-mode):not(.annual-mode):not(.print-payroll-only):not(.print-annual-only):not(.print-verdienst-only) .wp-sig-layer {
+    position: absolute !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
   }
 
   #payrollLayoutHint,

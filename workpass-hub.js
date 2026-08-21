@@ -6,7 +6,231 @@
   const SYNC_LOG_KEY = "workpassHubSyncLogV1";
   let serverInvoiceItems = [];
 
-  function printHtml(html, title) {
+  function collectPrintStyles() {
+    const chunks = [];
+    document.querySelectorAll('link[rel="stylesheet"]').forEach((link) => {
+      const href = link.getAttribute("href");
+      if (!href) return;
+      try {
+        chunks.push(`<link rel="stylesheet" href="${new URL(href, window.location.href).href}" />`);
+      } catch {
+        chunks.push(link.outerHTML);
+      }
+    });
+    // Critical fallbacks if linked CSS fails to load in the iframe
+    chunks.push(`<style id="workpassPrintFallback">
+@page { size: A4 portrait; margin: 0; }
+html, body { margin: 0; padding: 0; background: #fff; color: #121518;
+  font-family: "Barlow", "Segoe UI", Arial, sans-serif; }
+.hidden, [hidden] { display: none !important; }
+.preview-tools, .sig-ui-chrome, .wp-sig-chrome, .signature-mode-badge,
+.wp-sig-seal, #signatureSealBadge { display: none !important; }
+.mode-payroll-only, #payrollSheet, #verdienstSheet, #annualTaxSheet, #datevSheetHost { display: none !important; }
+#invoicePreview, .pdf-export-clone, .invoice-print-root {
+  width: 210mm; max-width: 210mm; margin: 0 auto; background: #fff; color: #000;
+  box-shadow: none !important; border: none !important; padding: 0 !important;
+}
+.invoice-doc-stage {
+  position: relative !important;
+  display: block !important;
+  box-sizing: border-box !important;
+  width: 210mm !important;
+  min-height: 297mm !important;
+  max-width: 210mm !important;
+  margin: 0 !important;
+  padding: 14mm 16mm 16mm !important;
+  background: #fff !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+.invoice-doc-stage .invoice-top {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding-bottom: 8px; margin-bottom: 10px;
+  border-bottom: 1.6pt solid #1e3a5f;
+}
+.invoice-doc-stage .invoice-top h2 { margin: 0; font-size: 18pt; color: #0f172a; }
+.invoice-doc-stage .dates { text-align: right; font-size: 9pt; color: #334155; }
+.invoice-doc-stage .invoice-meta { font-size: 8.5pt; color: #475569; margin: 6px 0 12px; }
+.invoice-doc-stage .addresses { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+.invoice-doc-stage .addresses h3 {
+  margin: 0 0 4px; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b;
+}
+.invoice-doc-stage pre { margin: 0; font-family: inherit; white-space: pre-wrap; font-size: 10pt; line-height: 1.35; }
+.preview-items { width: 100%; border-collapse: collapse; margin: 10px 0 6px; }
+.preview-items th, .preview-items td {
+  border-bottom: 0.6pt solid #cbd5e1; padding: 7px 5px; text-align: left; font-size: 9.5pt;
+}
+.preview-items th {
+  background: #f1f5f9; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.preview-items th:last-child, .preview-items td:last-child,
+.preview-items td:nth-child(2), .preview-items td:nth-child(3) { text-align: right; }
+.totals { margin: 16px 0 0 auto; width: 55%; font-size: 10pt; }
+.totals p { display: flex; justify-content: space-between; gap: 10px; margin: 6px 0; }
+.grand-total { border-top: 1.4pt solid #0f172a; padding-top: 8px; font-size: 12pt; font-weight: 700; }
+.invoice-bank, .note-box {
+  margin-top: 16px; padding: 8px 10px; border: 0.6pt solid #e2e8f0; border-radius: 4px; font-size: 9pt;
+}
+.note-box { border-style: dashed; }
+.invoice-bank h3, .note-box h3 { margin: 0 0 4px; font-size: 8pt; text-transform: uppercase; color: #64748b; }
+.wp-sig-layer {
+  position: absolute !important;
+  z-index: 20 !important;
+  right: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transform-origin: top left !important;
+}
+.wp-sig-layer #signaturePreview { max-width: 100%; height: auto; display: block; }
+.wp-sig-line { border-bottom: 0.7pt solid #94a3b8; margin: 0 0 4px; min-height: 1px; }
+.status-badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 8pt; }
+.preview-company-logo { max-height: 18mm; max-width: 42mm; object-fit: contain; }
+</style>`);
+    return chunks.join("\n");
+  }
+
+  function invoicePrintCss() {
+    return `
+@page { size: A4 portrait; margin: 0; }
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  width: 210mm; height: 297mm;
+  overflow: hidden !important;
+  background: #fff;
+  color: #121518;
+  font-family: "Barlow", "Segoe UI", Arial, Helvetica, sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.invoice-print-sheet {
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  max-height: 297mm;
+  margin: 0;
+  padding: 14mm 16mm 14mm;
+  overflow: hidden;
+  background: #fff;
+  color: #121518;
+  border: none;
+  box-shadow: none;
+}
+.invoice-print-sheet .invoice-top {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+  padding-bottom: 8px; margin: 0 0 10px;
+  border-bottom: 1.5pt solid #1e3a5f;
+}
+.invoice-print-sheet .invoice-top-left { display: flex; align-items: center; gap: 10px; }
+.invoice-print-sheet .invoice-top h2 { margin: 0; font-size: 17pt; font-weight: 700; color: #0f172a; letter-spacing: -0.02em; }
+.invoice-print-sheet #previewInvoiceNumber { margin: 2px 0 0; font-size: 9.5pt; color: #334155; }
+.invoice-print-sheet .dates { text-align: right; font-size: 8.5pt; color: #334155; line-height: 1.45; }
+.invoice-print-sheet .dates p { margin: 0 0 2px; }
+.invoice-print-sheet .dates span { color: #64748b; }
+.invoice-print-sheet .status-badge {
+  display: inline-block; padding: 1px 7px; border-radius: 999px;
+  font-size: 7.5pt; font-weight: 600; background: #e2e8f0; color: #0f172a;
+}
+.invoice-print-sheet .invoice-meta {
+  display: flex; flex-wrap: wrap; gap: 4px 14px;
+  margin: 0 0 12px; font-size: 8pt; color: #475569;
+}
+.invoice-print-sheet .invoice-meta p { margin: 0; }
+.invoice-print-sheet .addresses {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 0 0 14px;
+}
+.invoice-print-sheet .addresses h3 {
+  margin: 0 0 3px; font-size: 7.5pt; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em; color: #64748b;
+}
+.invoice-print-sheet pre {
+  margin: 0; font-family: inherit; white-space: pre-wrap;
+  font-size: 9.5pt; line-height: 1.35; color: #0f172a;
+}
+.invoice-print-sheet .preview-items {
+  width: 100%; border-collapse: collapse; margin: 4px 0 8px; table-layout: fixed;
+}
+.invoice-print-sheet .preview-items th,
+.invoice-print-sheet .preview-items td {
+  border-bottom: 0.55pt solid #cbd5e1; padding: 6px 5px;
+  text-align: left; font-size: 9pt; vertical-align: top;
+}
+.invoice-print-sheet .preview-items th {
+  background: #f1f5f9; font-size: 7.5pt; text-transform: uppercase;
+  letter-spacing: 0.04em; font-weight: 700; color: #334155;
+}
+.invoice-print-sheet .preview-items th:nth-child(2),
+.invoice-print-sheet .preview-items td:nth-child(2),
+.invoice-print-sheet .preview-items th:nth-child(3),
+.invoice-print-sheet .preview-items td:nth-child(3),
+.invoice-print-sheet .preview-items th:nth-child(4),
+.invoice-print-sheet .preview-items td:nth-child(4) { text-align: right; width: 18%; }
+.invoice-print-sheet .preview-items th:nth-child(1),
+.invoice-print-sheet .preview-items td:nth-child(1) { width: 46%; }
+.invoice-print-sheet .totals {
+  margin: 12px 0 0 auto; width: 52%; font-size: 9.5pt;
+}
+.invoice-print-sheet .totals p {
+  display: flex; justify-content: space-between; gap: 10px; margin: 5px 0;
+}
+.invoice-print-sheet .grand-total {
+  border-top: 1.3pt solid #0f172a; padding-top: 7px;
+  font-size: 11pt; font-weight: 700;
+}
+.invoice-print-sheet .invoice-bank,
+.invoice-print-sheet .note-box {
+  margin-top: 12px; padding: 7px 9px;
+  border: 0.55pt solid #e2e8f0; border-radius: 3px; font-size: 8.5pt;
+}
+.invoice-print-sheet .note-box { border-style: dashed; }
+.invoice-print-sheet .invoice-bank h3,
+.invoice-print-sheet .note-box h3 {
+  margin: 0 0 3px; font-size: 7.5pt; text-transform: uppercase;
+  letter-spacing: 0.05em; color: #64748b;
+}
+.invoice-print-sheet .invoice-bank p,
+.invoice-print-sheet .note-box p { margin: 0; line-height: 1.35; }
+.invoice-print-sheet .preview-company-logo {
+  max-height: 16mm; max-width: 40mm; width: auto; height: auto; object-fit: contain;
+}
+.invoice-print-sheet .wp-sig-layer {
+  position: absolute !important;
+  z-index: 5 !important;
+  right: auto !important; bottom: auto !important;
+  margin: 0 !important; padding: 0 !important;
+  border: none !important; background: transparent !important;
+  box-shadow: none !important; outline: none !important;
+  transform-origin: top left !important;
+}
+.invoice-print-sheet .wp-sig-layer #signaturePreview {
+  max-width: 100%; height: auto; display: block;
+}
+.invoice-print-sheet .wp-sig-line {
+  border-bottom: 0.65pt solid #94a3b8; margin: 0 0 3px; min-height: 1px;
+}
+.invoice-print-sheet .signature-name {
+  margin: 2px 0 0; font-size: 8.5pt; color: #0f172a;
+}
+.invoice-print-sheet .signature-name.is-hidden,
+.invoice-print-sheet .wp-sig-line.is-hidden,
+.invoice-print-sheet .hidden,
+.invoice-print-sheet [hidden],
+.invoice-print-sheet .sig-ui-chrome,
+.invoice-print-sheet .wp-sig-chrome,
+.invoice-print-sheet .signature-mode-badge,
+.invoice-print-sheet .wp-sig-seal,
+.invoice-print-sheet #signatureSealBadge {
+  display: none !important;
+}
+`;
+  }
+
+  function printHtml(html, title, opts = {}) {
     let frame = document.getElementById("workpassPrintFrame");
     if (!frame) {
       frame = document.createElement("iframe");
@@ -24,28 +248,148 @@
       window.alert("Druckfenster nicht verfügbar.");
       return false;
     }
-    const full = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>${title || "WorkPass"}</title>
-<style>
-@page { size: A4 portrait; margin: 12mm; }
-body { margin: 0; font-family: "Barlow", "Segoe UI", sans-serif; color: #121518; }
-</style></head><body>${html}</body></html>`;
+    const safeTitle = String(title || "WorkPass")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+    const styleBlock = opts.standalone
+      ? `<style id="workpassInvoicePrintCss">${opts.css || invoicePrintCss()}</style>`
+      : collectPrintStyles();
+    const full = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>${safeTitle}</title>
+${styleBlock}
+</head><body class="${opts.bodyClass || "invoice-print-root"}">${html}</body></html>`;
     doc.open();
     doc.write(full);
     doc.close();
-    setTimeout(() => {
+
+    const runPrint = () => {
       try {
         frame.contentWindow?.focus();
         frame.contentWindow?.print();
       } catch {
         window.alert("Druck fehlgeschlagen.");
       }
-    }, 250);
+    };
+
+    const waitImages = () => {
+      const imgs = Array.from(doc.images || []);
+      if (!imgs.length) {
+        setTimeout(runPrint, 120);
+        return;
+      }
+      Promise.all(imgs.map((img) => {
+        if (img.complete) return Promise.resolve();
+        return new Promise((resolve) => {
+          img.onload = resolve;
+          img.onerror = resolve;
+          setTimeout(resolve, 1500);
+        });
+      })).then(() => setTimeout(runPrint, 80));
+    };
+    setTimeout(waitImages, 60);
     return true;
   }
 
-  function printElement(el, title) {
+  /**
+   * Clean single-page invoice print — only the A4 Blatt, no app chrome, no blank pages.
+   */
+  function printInvoice(sourceEl, title) {
+    if (!sourceEl) return false;
+    const liveStage = sourceEl.id === "invoiceDocStage" || sourceEl.classList?.contains("invoice-doc-stage")
+      ? sourceEl
+      : sourceEl.querySelector?.("#invoiceDocStage, .invoice-doc-stage");
+    const root = (liveStage || sourceEl).cloneNode(true);
+
+    [
+      ".preview-tools",
+      ".sig-ui-chrome",
+      ".wp-sig-chrome",
+      ".signature-mode-badge",
+      ".wp-sig-seal",
+      "#signatureSealBadge",
+      ".mode-payroll-only",
+      "#payrollSheet",
+      "#verdienstSheet",
+      "#annualTaxSheet",
+      "#datevSheetHost",
+      "#portalCertPrintHost",
+    ].forEach((sel) => root.querySelectorAll(sel).forEach((n) => n.remove()));
+
+    root.querySelectorAll(".hidden, [hidden]").forEach((node) => {
+      if (node.id === "signaturePreviewBox" || node.classList.contains("wp-sig-layer")) {
+        // keep signature box; only hide if mode none left it hidden
+        return;
+      }
+      node.remove();
+    });
+
+    root.id = "invoicePrintSheet";
+    root.className = "invoice-print-sheet";
+    root.removeAttribute("style");
+    root.style.cssText = "";
+
+    const sig = root.querySelector("#signaturePreviewBox, .wp-sig-layer");
+    if (sig) {
+      sig.classList.remove("is-selected", "is-dragging", "is-empty", "hidden");
+      sig.removeAttribute("hidden");
+      sig.removeAttribute("tabindex");
+      // Keep left/top/width/transform from the live clone (already on attributes/style)
+      const liveSig = (liveStage || sourceEl).querySelector?.("#signaturePreviewBox, .wp-sig-layer");
+      if (liveSig) {
+        sig.style.position = "absolute";
+        sig.style.left = liveSig.style.left || "58%";
+        sig.style.top = liveSig.style.top || "78%";
+        sig.style.width = liveSig.style.width || "34%";
+        sig.style.right = "auto";
+        sig.style.bottom = "auto";
+        sig.style.opacity = liveSig.style.opacity || "1";
+        sig.style.transform = liveSig.style.transform || "none";
+        sig.style.transformOrigin = "top left";
+        sig.style.margin = "0";
+        sig.style.border = "none";
+        sig.style.background = "transparent";
+        if (liveSig.hidden || liveSig.classList.contains("hidden")) {
+          sig.remove();
+        }
+      }
+    }
+
+    return printHtml(root.outerHTML, title || "Rechnung", {
+      standalone: true,
+      css: invoicePrintCss(),
+      bodyClass: "invoice-print-root",
+    });
+  }
+
+  /**
+   * Print one element. For #invoicePreview, strip payroll/annual hosts so only the Rechnung prints.
+   * @param {Element} el
+   * @param {string} title
+   * @param {{ invoiceOnly?: boolean, strip?: string[], standalone?: boolean }} [opts]
+   */
+  function printElement(el, title, opts = {}) {
     if (!el) return false;
-    return printHtml(el.outerHTML, title);
+    if (opts.invoiceOnly || el.id === "invoicePreview" || el.classList?.contains("pdf-export-clone")
+      || el.id === "invoiceDocStage" || el.classList?.contains("invoice-doc-stage")) {
+      return printInvoice(el, title);
+    }
+
+    const clone = el.cloneNode(true);
+    const stripSelectors = [
+      ...(opts.strip || []),
+      ".preview-tools",
+      ".sig-ui-chrome",
+      ".wp-sig-chrome",
+      ".signature-mode-badge",
+    ];
+    stripSelectors.forEach((sel) => {
+      clone.querySelectorAll(sel).forEach((node) => node.remove());
+    });
+    clone.querySelectorAll(".hidden, [hidden]").forEach((node) => node.remove());
+
+    const html = clone.outerHTML;
+    return printHtml(html, title, { standalone: Boolean(opts.standalone) });
   }
 
   function readInvoiceArchive() {
@@ -338,6 +682,7 @@ body { margin: 0; font-family: "Barlow", "Segoe UI", sans-serif; color: #121518;
   window.WorkPassHub = {
     printHtml,
     printElement,
+    printInvoice,
     upsertInvoice,
     readInvoiceArchive,
     renderInvoiceArchive,
