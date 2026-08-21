@@ -53,6 +53,15 @@ assert(ok.user.role === "admin", "role admin");
 const verified = verifySessionToken(ok.session);
 assert(verified.ok && verified.user.email === "admin@example.test", "session verifies");
 
+console.log("\n=== Admin EMAILS list shares WORKPASS_ADMIN_PASSWORD ===");
+process.env.WORKPASS_ADMIN_EMAILS = "admin@example.test,second-admin@example.test";
+clearRateLimitState();
+const ok2 = await loginWithPassword("second-admin@example.test", "super-secret-admin-pass", req, {
+  audience: "admin",
+});
+assert(ok2.ok && ok2.user?.role === "admin", "secondary admin email accepted");
+assert(ok2.via === "local-admin", "secondary via local-admin");
+
 console.log("\n=== Wrong password ===");
 const bad = await loginWithPassword("admin@example.test", "wrong-password-xx", req);
 assert(!bad.ok && bad.status === 401, "reject wrong password");

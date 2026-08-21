@@ -855,12 +855,39 @@ ${styleBlock}
             ' <a class="hub-admin-cta" href="admin.html#adminHelpContactPanel">' +
             t("hub.adminOpenContacts", "Hilfe-Kontakt & Admin öffnen") +
             "</a>";
-          document.querySelectorAll('a[href="admin.html"]').forEach((a) => {
+          const handoffAdminSession = (ev) => {
+            try {
+              const raw =
+                localStorage.getItem("workpassPlatformSessionV2")
+                || sessionStorage.getItem("workpassPlatformSessionV2")
+                || localStorage.getItem("workpassPlatformSessionV1");
+              if (!raw) return;
+              const s = JSON.parse(raw);
+              if (!(s?.token && s?.user?.role === "admin")) return;
+              localStorage.setItem("workpassAdminSessionV2", raw);
+              // Hash handoff: works even if Admin session key was stale/blocked
+              const payload = encodeURIComponent(JSON.stringify({
+                token: s.token,
+                expiresAt: s.expiresAt || null,
+                user: s.user,
+                via: "hub-admin-handoff",
+                preferredLocale: s.preferredLocale || s.user?.locale || "",
+              }));
+              const a = ev?.currentTarget;
+              if (a && a.setAttribute) {
+                a.setAttribute("href", `admin.html#suppix-sso=${payload}`);
+              }
+            } catch { /* ignore */ }
+          };
+          document.querySelectorAll('a[href="admin.html"], a[href^="admin.html#"]').forEach((a) => {
             a.hidden = false;
             a.classList.add("wp-admin-link-hot");
-            if (!a.getAttribute("href")?.includes("#")) {
+            if (!String(a.getAttribute("href") || "").includes("#")) {
               a.setAttribute("href", "admin.html#adminHelpContactPanel");
             }
+            if (a.dataset.adminHandoffBound === "1") return;
+            a.dataset.adminHandoffBound = "1";
+            a.addEventListener("click", handoffAdminSession);
           });
         } else if (adminBanner) {
           adminBanner.hidden = true;

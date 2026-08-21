@@ -51,16 +51,15 @@ function fromB64url(s) {
 }
 
 function hasLocalAdminConfigured() {
-  const wantEmail = String(process.env.WORKPASS_ADMIN_EMAIL || "").trim();
   const wantPass = String(process.env.WORKPASS_ADMIN_PASSWORD || "").trim();
-  return Boolean(wantEmail && wantPass.length >= ADMIN_PASSWORD_MIN);
+  return Boolean(adminEmails().length && wantPass.length >= ADMIN_PASSWORD_MIN);
 }
 
 function adminSetupGaps() {
-  const email = String(process.env.WORKPASS_ADMIN_EMAIL || "").trim();
+  const emails = adminEmails();
   const pass = String(process.env.WORKPASS_ADMIN_PASSWORD || "").trim();
   const gaps = [];
-  if (!email) gaps.push("WORKPASS_ADMIN_EMAIL fehlt");
+  if (!emails.length) gaps.push("WORKPASS_ADMIN_EMAIL fehlt");
   if (!pass) gaps.push("WORKPASS_ADMIN_PASSWORD fehlt");
   else if (pass.length < ADMIN_PASSWORD_MIN) {
     gaps.push(`WORKPASS_ADMIN_PASSWORD zu kurz (min. ${ADMIN_PASSWORD_MIN})`);
@@ -87,7 +86,7 @@ export function authPublicConfig() {
   const requirePlatform = requirePlatformRaw && hasLocalAdmin;
   const gaps = adminSetupGaps();
   const adminHint = hasLocalAdmin
-    ? `Admin-Login: ${maskEmail(process.env.WORKPASS_ADMIN_EMAIL)} + WORKPASS_ADMIN_PASSWORD (Railway)`
+    ? `Admin-Login: ${maskEmail(process.env.WORKPASS_ADMIN_EMAIL || adminEmails()[0] || "")} + WORKPASS_ADMIN_PASSWORD (Railway) oder Plattform-Passwort`
     : "Admin-Login: WORKPASS_ADMIN_EMAIL und WORKPASS_ADMIN_PASSWORD in Railway setzen (min. 8 Zeichen). Der Plattform-Knopf ist Firmen-Zugang, kein Admin.";
 
   return {
@@ -95,7 +94,7 @@ export function authPublicConfig() {
     platformAuthConfigured: Boolean(platformUrl),
     localAdminFallback: hasLocalAdmin,
     adminLoginReady: hasLocalAdmin,
-    adminEmailHint: hasLocalAdmin ? maskEmail(process.env.WORKPASS_ADMIN_EMAIL) : null,
+    adminEmailHint: hasLocalAdmin ? maskEmail(process.env.WORKPASS_ADMIN_EMAIL || adminEmails()[0] || "") : null,
     requirePlatformLogin: requirePlatform,
     devicePinAllowed: process.env.WORKPASS_DEVICE_PIN_ALLOWED !== "0",
     setupIncomplete,
@@ -288,9 +287,9 @@ async function verifyWithPlatform(email, password) {
 }
 
 function verifyLocalAdmin(email, password) {
-  const wantEmail = String(process.env.WORKPASS_ADMIN_EMAIL || "").trim().toLowerCase();
   const wantPass = String(process.env.WORKPASS_ADMIN_PASSWORD || "").trim();
-  if (!wantEmail || wantPass.length < ADMIN_PASSWORD_MIN) {
+  const allowed = adminEmails();
+  if (!allowed.length || wantPass.length < ADMIN_PASSWORD_MIN) {
     return {
       ok: false,
       error: `Admin-Konto fehlt in Railway (${adminSetupGaps().join(", ") || "prüfen"}).`,
@@ -298,10 +297,11 @@ function verifyLocalAdmin(email, password) {
   }
   const mail = String(email || "").trim().toLowerCase();
   const pass = String(password || "");
-  if (!secureCompare(mail, wantEmail)) {
+  if (!allowed.includes(mail)) {
+    const hint = maskEmail(allowed[0]) || allowed[0];
     return {
       ok: false,
-      error: `E-Mail falsch. Bitte genau eingeben: ${wantEmail}`,
+      error: `E-Mail ist kein Admin-Konto. Erlaubt z. B.: ${hint} (WORKPASS_ADMIN_EMAIL / WORKPASS_ADMIN_EMAILS).`,
     };
   }
   if (!secureCompare(pass, wantPass)) {
@@ -439,9 +439,14 @@ export async function loginWithPassword(email, password, req, opts = {}) {
           : (companyLogin.error || `Kein Login. Domain für Firmen: @${companyLoginDomain()}`)),
     };
   } else if (!result.ok) {
+    const adminMail = adminEmails().includes(mail);
     result = {
       ok: false,
-      error: local?.error || (adminOnly ? companyLogin.error : companyLogin.error) || result.error,
+      error: adminOnly && adminMail
+        ? (local?.error?.includes("Passwort")
+          ? "Passwort falsch. Admin akzeptiert WORKPASS_ADMIN_PASSWORD (Railway) oder Ihr Plattform-Passwort."
+          : (local?.error || result.error))
+        : (local?.error || (adminOnly ? companyLogin.error : companyLogin.error) || result.error),
     };
   }
 
@@ -456,9 +461,12 @@ export async function loginWithPassword(email, password, req, opts = {}) {
     };
   }
 
-  const role = result.user.role === "admin" || result.user.role === "auditor"
+  const roleFromPlatform = result.user.role === "admin" || result.user.role === "auditor"
     ? normalizeRole(result.user.role, result.user.email)
     : resolveRole(result.user.email);
+  // Owner emails in WORKPASS_ADMIN_EMAIL(S) are always Accounting Admin,
+  // even when platform auth returns a firm/accountant role for the same mailbox.
+  const role = adminEmails().includes(mail) ? "admin" : roleFromPlatform;
   if (adminOnly && role !== "admin") {
     noteAuthFailure(ip);
     audit({ type: "auth.login.fail", outcome: "deny", ip, detail: { email: mail, reason: "not-admin" } });
@@ -469,7 +477,7 @@ export async function loginWithPassword(email, password, req, opts = {}) {
       setupGaps: adminSetupGaps(),
     };
   }
-  const session = createSession(withLocale({ ...result.user, role }));
+  const session = createSession(withLocale({ ...result.user, role, companyId: role === "admin" ? "" : result.user.companyId }));
   noteAuthSuccess(ip);
   audit({
     type: "auth.login.ok",

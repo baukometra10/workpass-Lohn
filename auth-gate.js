@@ -66,6 +66,21 @@
         rawCompanyId: companyId || null,
       }),
     );
+    // Accounting Admin → also unlock admin.html without a second login
+    if (user?.role === "admin") {
+      try {
+        localStorage.setItem(
+          "workpassAdminSessionV2",
+          JSON.stringify({
+            token: token || `pending:admin`,
+            expiresAt: data.expiresAt || null,
+            user,
+            via: data.via || "hub-admin-handoff",
+            preferredLocale: data.preferredLocale || data.locale || user?.locale || "",
+          }),
+        );
+      } catch { /* ignore */ }
+    }
     const ttlMs = Number.isFinite(expMs)
       ? Math.max(expMs - Date.now(), 60 * 60 * 1000)
       : 8 * 60 * 60 * 1000;
@@ -104,8 +119,9 @@
       } catch { /* ignore */ }
     }
     const path = String(location.pathname || "").toLowerCase();
-    if (/admin\.html$/i.test(path)) {
-      history.replaceState(null, "", location.pathname);
+    if (/admin\.html$/i.test(path) || document.body?.classList?.contains("admin-page")) {
+      const hashTarget = user?.role === "admin" ? "#adminHelpContactPanel" : "";
+      history.replaceState(null, "", `${location.pathname}${hashTarget}`);
       return;
     }
     const isFirm = Boolean(companyId && user?.role !== "admin");
@@ -182,7 +198,13 @@
   }
 
   function isAdminPage() {
-    return /admin\.html$/i.test(String(location.pathname || ""));
+    const p = String(location.pathname || "").toLowerCase();
+    if (/admin\.html$/i.test(p) || /\/admin\/?$/i.test(p)) return true;
+    try {
+      return document.body?.classList?.contains("admin-page") === true;
+    } catch {
+      return false;
+    }
   }
 
   function platformSessionKey() {
@@ -197,35 +219,57 @@
     }
   }
 
+  function sessionNotExpired(s) {
+    if (!s?.expiresAt) return true;
+    const exp = Date.parse(s.expiresAt);
+    if (!Number.isFinite(exp)) return true;
+    return Date.now() < exp;
+  }
+
+  function isOfflineAdminSessionData(s) {
+    return Boolean(
+      s
+      && (String(s.token || "").startsWith("offline-admin-") || s.via === "device-pin-offline")
+    );
+  }
+
   function isLiveAdminSession(s) {
     if (!s?.token || s.user?.role !== "admin") return false;
-    if (String(s.token).startsWith("offline-admin-") || s.via === "device-pin-offline") {
-      /* offline PIN is admin-page only */
+    if (isOfflineAdminSessionData(s)) {
+      /* offline PIN is admin-page only – never promote Hub→Admin */
       return false;
     }
-    if (s.expiresAt) {
-      const exp = Date.parse(s.expiresAt);
-      if (Number.isFinite(exp) && Date.now() >= exp) return false;
-    }
-    return true;
+    return sessionNotExpired(s);
+  }
+
+  function isUsableAdminPageSession(s) {
+    if (!s?.token || s.user?.role !== "admin") return false;
+    return sessionNotExpired(s);
+  }
+
+  /** Copy Hub Accounting-Admin session onto Admin key (same browser origin). */
+  function adoptHubAdminSession() {
+    const hub = parseSessionRaw(
+      storageGet(PLATFORM_SESSION_KEY) || storageGet(LEGACY_PLATFORM_KEY)
+    );
+    if (!isLiveAdminSession(hub)) return null;
+    try {
+      storageSet(ADMIN_SESSION_KEY, JSON.stringify(hub));
+    } catch { /* ignore */ }
+    return hub;
   }
 
   function loadPlatformSession() {
     try {
       if (isAdminPage()) {
+        const hubLive = adoptHubAdminSession();
         const admin = parseSessionRaw(storageGet(ADMIN_SESSION_KEY));
-        if (admin?.token && admin.user?.role === "admin") return admin;
-        // Hub/Lohn already logged in as Accounting Admin → open Admin without re-login
-        const hub = parseSessionRaw(
-          storageGet(PLATFORM_SESSION_KEY) || storageGet(LEGACY_PLATFORM_KEY)
-        );
-        if (isLiveAdminSession(hub)) {
-          try {
-            storageSet(ADMIN_SESSION_KEY, JSON.stringify(hub));
-          } catch { /* ignore */ }
-          return hub;
-        }
-        return admin;
+        // Prefer a live online Hub/Admin token over a stale or offline Admin slot.
+        // (A leftover offline-admin entry previously blocked seamless Hub→Admin.)
+        if (isLiveAdminSession(admin)) return admin;
+        if (hubLive) return hubLive;
+        if (isUsableAdminPageSession(admin)) return admin;
+        return null;
       }
       return parseSessionRaw(
         storageGet(PLATFORM_SESSION_KEY) || storageGet(LEGACY_PLATFORM_KEY)
@@ -894,6 +938,19 @@
         return { ok: true, legacy: true, user: plat.user || (companyId ? { companyId, role: "accountant" } : null) };
       }
 
+      // Admin page: keep a still-valid Accounting-Admin UI session (help contacts / PIN).
+      // Do not bounce to login when /v1/auth/me briefly fails after Hub handoff.
+      if (isAdminPage() && isUsableAdminPageSession(plat)) {
+        try { sessionStorage.removeItem("workpassSsoPending"); } catch { /* ignore */ }
+        return { ok: true, legacy: true, user: plat.user };
+      }
+
+      const hubRetry = isAdminPage() ? adoptHubAdminSession() : null;
+      if (hubRetry && isUsableAdminPageSession(hubRetry)) {
+        try { sessionStorage.removeItem("workpassSsoPending"); } catch { /* ignore */ }
+        return { ok: true, legacy: true, user: hubRetry.user };
+      }
+
       clearPlatformSession();
       clearSession();
       return {
@@ -906,6 +963,9 @@
     } catch (e) {
       if (sessionActive() || companyId || pendingSso) {
         return { ok: true, offline: true, user: plat.user || null };
+      }
+      if (isAdminPage() && isUsableAdminPageSession(plat)) {
+        return { ok: true, offline: true, user: plat.user };
       }
       return {
         ok: false,
