@@ -114,6 +114,8 @@ import {
   createPlatformHandoff,
   bootstrapPlatformSso,
   isReadOnlyRole,
+  createAdminHandoffTicket,
+  redeemAdminHandoffTicket,
 } from "./auth-session.mjs";
 import { clearRateLimitState } from "./security/rate-limit.mjs";
 import {
@@ -362,6 +364,17 @@ async function handler(req, res) {
       locale: body?.locale || body?.language || body?.preferredLocale,
       audience: body?.audience || body?.page,
     });
+    return reply(result.status || (result.ok ? 200 : 401), result);
+  }
+
+  if (req.method === "POST" && path === "/v1/auth/admin-handoff") {
+    const result = createAdminHandoffTicket(req);
+    return reply(result.status || (result.ok ? 200 : 401), result);
+  }
+
+  if (req.method === "GET" && path === "/v1/auth/admin-handoff") {
+    const ticket = String(url.searchParams.get("ticket") || "").trim();
+    const result = redeemAdminHandoffTicket(ticket);
     return reply(result.status || (result.ok ? 200 : 401), result);
   }
 

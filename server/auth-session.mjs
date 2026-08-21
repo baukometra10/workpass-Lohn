@@ -212,6 +212,75 @@ export function sessionFromRequest(req) {
   return verifySessionToken(header || bearer);
 }
 
+const HANDOFF_TTL_MS = 2 * 60 * 1000;
+
+/**
+ * Short signed ticket so Hub can open admin.html without a second login
+ * (avoids fragile localStorage handoff / URL-sized SSO hashes).
+ */
+export function createAdminHandoffTicket(req) {
+  const s = sessionFromRequest(req);
+  if (!s.ok) return { ok: false, status: 401, error: s.error || "Session fehlt" };
+  if (s.user?.role !== "admin") {
+    return { ok: false, status: 403, error: "Nur Accounting-Admin" };
+  }
+  const exp = Date.now() + HANDOFF_TTL_MS;
+  const body = b64url(JSON.stringify({
+    email: s.user.email,
+    name: s.user.name,
+    id: s.user.id,
+    role: "admin",
+    locale: s.user.locale || "",
+    exp,
+  }));
+  const sig = crypto.createHmac("sha256", sessionSecret()).update(`admin-handoff:${body}`).digest("base64url");
+  return {
+    ok: true,
+    status: 200,
+    ticket: `${body}.${sig}`,
+    expiresAt: new Date(exp).toISOString(),
+  };
+}
+
+export function redeemAdminHandoffTicket(ticket) {
+  const raw = String(ticket || "").trim();
+  const dot = raw.lastIndexOf(".");
+  if (dot < 1) return { ok: false, status: 400, error: "Ticket ungültig" };
+  const body = raw.slice(0, dot);
+  const sig = raw.slice(dot + 1);
+  const expected = crypto.createHmac("sha256", sessionSecret()).update(`admin-handoff:${body}`).digest("base64url");
+  if (!secureCompare(sig, expected)) {
+    return { ok: false, status: 401, error: "Ticket ungültig" };
+  }
+  let payload;
+  try {
+    payload = JSON.parse(fromB64url(body).toString("utf8"));
+  } catch {
+    return { ok: false, status: 400, error: "Ticket beschädigt" };
+  }
+  if (!payload?.exp || Date.now() > Number(payload.exp)) {
+    return { ok: false, status: 401, error: "Ticket abgelaufen – bitte erneut vom Hub öffnen." };
+  }
+  if (String(payload.role || "") !== "admin" || !payload.email) {
+    return { ok: false, status: 403, error: "Kein Admin-Ticket" };
+  }
+  const session = createSession({
+    id: payload.id || payload.email,
+    email: payload.email,
+    name: payload.name || payload.email,
+    role: "admin",
+    locale: payload.locale || "",
+  });
+  return {
+    ok: true,
+    status: 200,
+    session: session.token,
+    expiresAt: session.expiresAt,
+    user: session.user,
+    via: "hub-admin-ticket",
+  };
+}
+
 function adminEmails() {
   const primary = String(process.env.WORKPASS_ADMIN_EMAIL || "").trim().toLowerCase();
   const list = String(process.env.WORKPASS_ADMIN_EMAILS || "")

@@ -1079,6 +1079,39 @@
     return "";
   }
 
+  async function redeemAdminTicketIfPresent() {
+    if (!isAdminPage()) return false;
+    let ticket = "";
+    try {
+      ticket = String(new URLSearchParams(location.search).get("ticket") || "").trim();
+    } catch {
+      ticket = "";
+    }
+    if (!ticket) return false;
+    try {
+      const res = await fetch(`${apiOrigin()}/v1/auth/admin-handoff?ticket=${encodeURIComponent(ticket)}`, {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok || !data.session) return false;
+      const packed = JSON.stringify({
+        token: data.session,
+        expiresAt: data.expiresAt || null,
+        user: data.user,
+        via: data.via || "hub-admin-ticket",
+      });
+      storageSet(ADMIN_SESSION_KEY, packed);
+      storageSet(PLATFORM_SESSION_KEY, packed);
+      try {
+        history.replaceState(null, "", `${location.pathname}#adminHelpContactPanel`);
+      } catch { /* ignore */ }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async function init(options) {
     onUnlockCb = options?.onUnlock || null;
     bindActivity();
@@ -1094,8 +1127,8 @@
     });
     document.getElementById("btnLock")?.addEventListener("click", lock);
 
-    // Hub → Admin: Session liegt schon in localStorage (kein SSO-Hash nötig)
     if (isAdminPage()) {
+      await redeemAdminTicketIfPresent();
       try {
         if (sessionStorage.getItem("workpassAdminHandoff") === "1" || /[?&]from=hub\b/i.test(location.search)) {
           adoptHubAdminSession();

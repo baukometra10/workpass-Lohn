@@ -822,44 +822,48 @@ ${styleBlock}
     return false;
   }
 
-  function openFullAdminPage(ev) {
+  async function openFullAdminPage(ev) {
     if (ev) ev.preventDefault();
-    try {
-      const raw =
-        localStorage.getItem("workpassPlatformSessionV2")
-        || sessionStorage.getItem("workpassPlatformSessionV2")
-        || localStorage.getItem("workpassPlatformSessionV1")
-        || localStorage.getItem("workpassAdminSessionV2");
-      if (raw) {
-        const s = JSON.parse(raw);
-        if (s?.token && s?.user?.role === "admin") {
-          const refreshed = {
-            ...s,
-            // Client-expiresAt oft abgelaufen während Hub noch offen ist – neu setzen
-            expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
-            via: s.via || "hub-admin-handoff",
-            handoffAt: new Date().toISOString(),
-          };
-          const packed = JSON.stringify(refreshed);
-          localStorage.setItem("workpassAdminSessionV2", packed);
-          localStorage.setItem("workpassPlatformSessionV2", packed);
-          try {
-            sessionStorage.setItem("workpassAdminHandoffPayload", packed);
-            sessionStorage.setItem("workpassAdminHandoff", "1");
-            sessionStorage.setItem("workpassAdminHash", "adminHelpContactPanel");
-            sessionStorage.removeItem("workpassSsoError");
-          } catch { /* ignore */ }
-          localStorage.setItem(
-            "workpassLohnSessionV2",
-            JSON.stringify({
-              until: Date.now() + 8 * 60 * 60 * 1000,
-              touchedAt: new Date().toISOString(),
-            }),
-          );
-        }
+    const status = document.getElementById("hubHelpContactStatus");
+    const token = window.WorkPassAuth?.getSessionToken?.() || "";
+    if (!token) {
+      if (status) {
+        status.textContent = t(
+          "hub.adminHandoffNeedLogin",
+          "Keine Admin-Sitzung – bitte zuerst im Hub anmelden."
+        );
+        status.style.color = "";
       }
-    } catch { /* ignore */ }
-    location.assign(`admin.html?from=hub&t=${Date.now()}#adminHelpContactPanel`);
+      return;
+    }
+    if (status) {
+      status.textContent = t("hub.adminHandoffBusy", "Admin-Seite wird geöffnet…");
+      status.style.color = "#7dd3fc";
+    }
+    try {
+      const res = await fetch(`${apiOrigin()}/v1/auth/admin-handoff`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-WorkPass-Session": token,
+        },
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok || !data.ticket) {
+        throw new Error(data.error || `Handoff fehlgeschlagen (${res.status})`);
+      }
+      // Kurzes Ticket in der URL – kein riesiges Token, kein localStorage-Risiko
+      location.assign(
+        `admin.html?ticket=${encodeURIComponent(data.ticket)}&t=${Date.now()}#adminHelpContactPanel`
+      );
+    } catch (e) {
+      if (status) {
+        status.textContent = e.message || String(e);
+        status.style.color = "";
+      }
+    }
   }
 
   async function hubAdminFetch(path, opts = {}) {
