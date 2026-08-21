@@ -847,10 +847,21 @@ ${styleBlock}
             host.prepend(adminBanner);
           }
           adminBanner.hidden = false;
-          adminBanner.innerHTML = t(
-            "hub.adminBanner",
-            "Sie sind als Accounting-Admin angemeldet. Das Firmen-Portal-Design erscheint nur mit Firmen-Login. Admin-Rechte und Hilfe-Kontakt: <a href=\"admin.html\">admin.html</a>."
-          );
+          adminBanner.innerHTML =
+            t(
+              "hub.adminBanner",
+              "Sie sind als Accounting-Admin angemeldet. Firmen-Portal-Design nur mit Firmen-Login."
+            ) +
+            ' <a class="hub-admin-cta" href="admin.html#adminHelpContactPanel">' +
+            t("hub.adminOpenContacts", "Hilfe-Kontakt & Admin öffnen") +
+            "</a>";
+          document.querySelectorAll('a[href="admin.html"]').forEach((a) => {
+            a.hidden = false;
+            a.classList.add("wp-admin-link-hot");
+            if (!a.getAttribute("href")?.includes("#")) {
+              a.setAttribute("href", "admin.html#adminHelpContactPanel");
+            }
+          });
         } else if (adminBanner) {
           adminBanner.hidden = true;
         }

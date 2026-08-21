@@ -189,12 +189,47 @@
     return isAdminPage() ? ADMIN_SESSION_KEY : PLATFORM_SESSION_KEY;
   }
 
+  function parseSessionRaw(raw) {
+    try {
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function isLiveAdminSession(s) {
+    if (!s?.token || s.user?.role !== "admin") return false;
+    if (String(s.token).startsWith("offline-admin-") || s.via === "device-pin-offline") {
+      /* offline PIN is admin-page only */
+      return false;
+    }
+    if (s.expiresAt) {
+      const exp = Date.parse(s.expiresAt);
+      if (Number.isFinite(exp) && Date.now() >= exp) return false;
+    }
+    return true;
+  }
+
   function loadPlatformSession() {
     try {
-      const raw = isAdminPage()
-        ? storageGet(ADMIN_SESSION_KEY)
-        : (storageGet(PLATFORM_SESSION_KEY) || storageGet(LEGACY_PLATFORM_KEY));
-      return raw ? JSON.parse(raw) : null;
+      if (isAdminPage()) {
+        const admin = parseSessionRaw(storageGet(ADMIN_SESSION_KEY));
+        if (admin?.token && admin.user?.role === "admin") return admin;
+        // Hub/Lohn already logged in as Accounting Admin → open Admin without re-login
+        const hub = parseSessionRaw(
+          storageGet(PLATFORM_SESSION_KEY) || storageGet(LEGACY_PLATFORM_KEY)
+        );
+        if (isLiveAdminSession(hub)) {
+          try {
+            storageSet(ADMIN_SESSION_KEY, JSON.stringify(hub));
+          } catch { /* ignore */ }
+          return hub;
+        }
+        return admin;
+      }
+      return parseSessionRaw(
+        storageGet(PLATFORM_SESSION_KEY) || storageGet(LEGACY_PLATFORM_KEY)
+      );
     } catch {
       return null;
     }
@@ -204,6 +239,12 @@
     storageSet(platformSessionKey(), JSON.stringify(data));
     if (!isAdminPage()) {
       try { sessionStorage.removeItem(LEGACY_PLATFORM_KEY); } catch { /* ignore */ }
+      // Mirror real online admin onto Admin session so admin.html opens immediately
+      if (isLiveAdminSession(data)) {
+        try {
+          storageSet(ADMIN_SESSION_KEY, JSON.stringify(data));
+        } catch { /* ignore */ }
+      }
     }
   }
 
@@ -214,6 +255,7 @@
     }
     storageRemove(PLATFORM_SESSION_KEY);
     storageRemove(LEGACY_PLATFORM_KEY);
+    // Leaving Hub/Lohn does not wipe Admin page session
   }
 
   async function sha256(text) {
