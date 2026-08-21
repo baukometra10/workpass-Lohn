@@ -1003,6 +1003,14 @@
         return { ok: true, legacy: true, user: hubRetry.user };
       }
 
+      // Nie Admin-Session vom Hub löschen – sonst Login-Schleife bei „Erweiterte Admin-Seite“
+      if (isAdminPage() && (isUsableAdminPageSession(plat) || isLiveAdminSession(
+        parseSessionRaw(storageGet(PLATFORM_SESSION_KEY) || storageGet(LEGACY_PLATFORM_KEY))
+      ))) {
+        try { sessionStorage.removeItem("workpassSsoPending"); } catch { /* ignore */ }
+        return { ok: true, legacy: true, user: plat?.user || adoptHubAdminSession()?.user || null };
+      }
+
       clearPlatformSession();
       clearSession();
       return {
@@ -1059,10 +1067,31 @@
     });
     document.getElementById("btnLock")?.addEventListener("click", lock);
 
+    // Hub → Admin: Session liegt schon in localStorage (kein SSO-Hash nötig)
+    if (isAdminPage()) {
+      try {
+        if (sessionStorage.getItem("workpassAdminHandoff") === "1" || /[?&]from=hub\b/i.test(location.search)) {
+          adoptHubAdminSession();
+          sessionStorage.removeItem("workpassAdminHandoff");
+          sessionStorage.removeItem("workpassSsoError");
+        }
+      } catch { /* ignore */ }
+    }
+
     // Admin page unlock must not auto-open Hub/Lohn (separate session keys).
     if (isUnlocked()) {
       const verified = await verifyPlatformSessionOrClear();
       if (!verified.ok) {
+        // Nach Hub-Handoff: Admin-UI trotzdem öffnen, wenn Token lokal als Admin gilt
+        if (isAdminPage() && isUsableAdminPageSession(loadPlatformSession())) {
+          hideGate();
+          touchSession();
+          document.body.classList.remove("company-portal");
+          document.body.classList.add("admin-page");
+          await window.WorkPassI18n?.syncFromSession?.();
+          onUnlockCb?.();
+          return true;
+        }
         showGate(verified.error || takeSsoErrorMessage());
         window.WorkPassI18n?.applyDom?.(document.getElementById("authGate") || document);
         return false;

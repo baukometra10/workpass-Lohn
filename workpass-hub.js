@@ -828,29 +828,31 @@ ${styleBlock}
       const raw =
         localStorage.getItem("workpassPlatformSessionV2")
         || sessionStorage.getItem("workpassPlatformSessionV2")
-        || localStorage.getItem("workpassPlatformSessionV1");
-      if (!raw) {
-        location.assign("admin.html#adminHelpContactPanel");
-        return;
+        || localStorage.getItem("workpassPlatformSessionV1")
+        || localStorage.getItem("workpassAdminSessionV2");
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s?.token && s?.user?.role === "admin") {
+          // Nur localStorage – kein #suppix-sso= (Token sprengt die URL und zerstört die Session)
+          localStorage.setItem("workpassAdminSessionV2", raw);
+          localStorage.setItem("workpassPlatformSessionV2", raw);
+          try {
+            sessionStorage.setItem("workpassAdminHandoff", "1");
+            sessionStorage.setItem("workpassAdminHash", "adminHelpContactPanel");
+            sessionStorage.removeItem("workpassSsoError");
+          } catch { /* ignore */ }
+          const until = s.expiresAt ? Date.parse(s.expiresAt) : Date.now() + 8 * 60 * 60 * 1000;
+          localStorage.setItem(
+            "workpassLohnSessionV2",
+            JSON.stringify({
+              until: Number.isFinite(until) ? Math.max(until, Date.now() + 60 * 60 * 1000) : Date.now() + 8 * 60 * 60 * 1000,
+              touchedAt: new Date().toISOString(),
+            }),
+          );
+        }
       }
-      const s = JSON.parse(raw);
-      if (!(s?.token && s?.user?.role === "admin")) {
-        location.assign("admin.html#adminHelpContactPanel");
-        return;
-      }
-      localStorage.setItem("workpassAdminSessionV2", raw);
-      try { sessionStorage.setItem("workpassAdminHash", "adminHelpContactPanel"); } catch { /* ignore */ }
-      const payload = encodeURIComponent(JSON.stringify({
-        token: s.token,
-        expiresAt: s.expiresAt || null,
-        user: s.user,
-        via: "hub-admin-handoff",
-        preferredLocale: s.preferredLocale || s.user?.locale || "",
-      }));
-      location.assign(`admin.html#suppix-sso=${payload}`);
-    } catch {
-      location.assign("admin.html#adminHelpContactPanel");
-    }
+    } catch { /* ignore */ }
+    location.assign("admin.html?from=hub#adminHelpContactPanel");
   }
 
   async function hubAdminFetch(path, opts = {}) {
